@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-7xl mx-auto card bg-base-100 shadow">
+  <div class="card-body">
+    <h2 class="card-title">编辑页面</h2>
+    <form method="post" class="flex flex-col gap-4">
+      <div class="flex gap-4">
+          <input class="input input-bordered flex-1" name="title" value="{{ page.title }}" placeholder="标题" required>
+          <input class="input input-bordered flex-1" name="slug" value="{{ page.slug }}" type="number" step="1" placeholder="标识（整数，负数置顶）" required>
+      </div>
+      <textarea id="md-editor" name="content_md" placeholder="Markdown内容">{{ page.content_md }}</textarea>
+      
+      <div class="flex justify-between items-center mt-4">
+          <button class="btn btn-primary px-8" type="submit">保存修改</button>
+          <button type="button" class="btn btn-error btn-outline" onclick="delete_modal.showModal()">删除页面</button>
+      </div>
+    </form>
+    
+    <div class="mt-4">
+      <a class="btn btn-ghost" href="{{ url_for('view_page', wiki_id=wiki.id, slug=page.slug) }}">返回阅读</a>
+    </div>
+  </div>
+</div>
+
+<!-- 删除确认弹窗 -->
+<dialog id="delete_modal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg text-error">确认删除</h3>
+    <p class="py-4">您确定要删除页面 "<strong>{{ page.title }}</strong>" 吗？此操作无法撤销。</p>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">取消</button>
+      </form>
+      <form action="{{ url_for('delete_page', wiki_id=wiki.id, slug=page.slug) }}" method="post">
+        <button class="btn btn-error">确认删除</button>
+      </form>
+    </div>
+  </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const easyMDE = new EasyMDE({
+    element: document.getElementById('md-editor'),
+    minHeight: "400px",
+    uploadImage: true,
+    imageUploadEndpoint: "{{ url_for('upload_file') }}",
+    imagePathAbsolute: true,
+    imageCSRFToken: "", // 如果使用了CSRF保护，请在此处填入token
+    imageMaxSize: 1024 * 1024 * 16, // 16MB
+    imageAccept: "image/png, image/jpeg, image/gif, image/webp",
+    imageTexts: {
+        sbInit: "拖拽图片到这里或点击上传",
+        sbOnDragEnter: "松开上传",
+        sbOnDragLeave: "拖拽图片到这里或点击上传",
+        sbProgress: "上传中...",
+        sbOnUploaded: "上传成功",
+        sizeUnits: "b,kb,mb"
+    },
+    errorCallback: function(errorMessage) {
+        alert("上传失败: " + errorMessage);
+    }
+  });
+</script>
+{% endblock %}

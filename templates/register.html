@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto card bg-base-100 shadow">
+  <div class="card-body">
+    <h2 class="card-title">注册</h2>
+    <form method="post" class="flex flex-col gap-4">
+      <input class="input input-bordered" name="username" placeholder="用户名" required>
+      <input class="input input-bordered" name="email" type="email" placeholder="邮箱" required>
+      <input class="input input-bordered" type="password" name="password" placeholder="密码" required>
+      
+      <div class="form-control">
+        <label class="label cursor-pointer justify-start gap-4">
+          <span class="label-text">注册为管理员</span> 
+          <input type="checkbox" name="is_admin" class="checkbox checkbox-primary" />
+        </label>
+        <label class="label">
+          <span class="label-text-alt text-warning">注意：生产环境中应关闭此选项，仅供开发测试使用。</span>
+        </label>
+      </div>
+
+      <button class="btn btn-primary" type="submit">注册</button>
+      <div class="text-center text-sm">
+        已有账号？ <a href="{{ url_for('login') }}" class="link link-primary">去登录</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

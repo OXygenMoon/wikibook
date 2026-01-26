@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto card bg-base-100 shadow">
+  <div class="card-body">
+    <h2 class="card-title">编辑Markdown样式</h2>
+    <p class="text-base-content/70">选择器兼容Typora（如 .typora-export, .markdown-body 等）。</p>
+    <form method="post" class="flex flex-col gap-4">
+      <textarea class="textarea textarea-bordered min-h-96 font-mono" name="css_text" placeholder="CSS">{{ css_text }}</textarea>
+      <button class="btn btn-primary" type="submit">保存</button>
+    </form>
+    <div class="mt-4">
+      <a class="btn btn-outline" href="{{ url_for('index') }}">返回首页</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

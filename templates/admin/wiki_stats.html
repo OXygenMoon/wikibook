@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+    <!-- 头部信息 -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-stone-800">Wiki 数据统计</h1>
+            <p class="text-stone-500 mt-2">
+                <span class="font-bold">{{ wiki.title }}</span> 的订阅与浏览情况
+            </p>
+        </div>
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost">返回 Wiki</a>
+    </div>
+
+    <!-- 统计概览卡片 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 浏览量统计 -->
+        <div class="card bg-base-100 shadow-sm border border-stone-100">
+            <div class="card-body">
+                <h2 class="card-title text-stone-700 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    浏览次数统计
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>时间范围</th>
+                                <th class="text-right">浏览量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>过去 1 小时</td><td class="text-right font-mono">{{ view_stats['1h'] }}</td></tr>
+                            <tr><td>过去 12 小时</td><td class="text-right font-mono">{{ view_stats['12h'] }}</td></tr>
+                            <tr><td>过去 24 小时</td><td class="text-right font-mono">{{ view_stats['1d'] }}</td></tr>
+                            <tr><td>过去 7 天</td><td class="text-right font-mono">{{ view_stats['1w'] }}</td></tr>
+                            <tr><td>过去 30 天</td><td class="text-right font-mono">{{ view_stats['1m'] }}</td></tr>
+                            <tr><td>过去 90 天</td><td class="text-right font-mono">{{ view_stats['3m'] }}</td></tr>
+                            <tr><td>过去 180 天</td><td class="text-right font-mono">{{ view_stats['6m'] }}</td></tr>
+                            <tr><td>过去 1 年</td><td class="text-right font-mono">{{ view_stats['1y'] }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 订阅人数统计 -->
+        <div class="card bg-base-100 shadow-sm border border-stone-100">
+            <div class="card-body">
+                <h2 class="card-title text-stone-700 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    新增订阅人数
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra w-full">
+                        <thead>
+                            <tr>
+                                <th>时间范围</th>
+                                <th class="text-right">新增人数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>过去 1 小时</td><td class="text-right font-mono">{{ sub_stats['1h'] }}</td></tr>
+                            <tr><td>过去 12 小时</td><td class="text-right font-mono">{{ sub_stats['12h'] }}</td></tr>
+                            <tr><td>过去 24 小时</td><td class="text-right font-mono">{{ sub_stats['1d'] }}</td></tr>
+                            <tr><td>过去 7 天</td><td class="text-right font-mono">{{ sub_stats['1w'] }}</td></tr>
+                            <tr><td>过去 30 天</td><td class="text-right font-mono">{{ sub_stats['1m'] }}</td></tr>
+                            <tr><td>过去 90 天</td><td class="text-right font-mono">{{ sub_stats['3m'] }}</td></tr>
+                            <tr><td>过去 180 天</td><td class="text-right font-mono">{{ sub_stats['6m'] }}</td></tr>
+                            <tr><td>过去 1 年</td><td class="text-right font-mono">{{ sub_stats['1y'] }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 订阅用户列表 -->
+    <div class="card bg-base-100 shadow-sm border border-stone-100">
+        <div class="card-body">
+            <h2 class="card-title text-stone-700 mb-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    当前订阅用户列表
+                </div>
+                <div class="badge badge-lg">{{ subscribers|length }} 人</div>
+            </h2>
+            
+            {% if subscribers %}
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {% for user in subscribers %}
+                <div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
+                    <div class="avatar placeholder">
+                        <div class="bg-neutral text-neutral-content rounded-full w-8">
+                            <span class="text-xs">{{ user.username[0]|upper }}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                        <span class="font-bold truncate text-sm" title="{{ user.username }}">{{ user.username }}</span>
+                        <span class="text-xs text-stone-500 truncate" title="{{ user.email }}">{{ user.email }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-stone-400">
+                暂无订阅用户
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('markdown_css') }}">
+<style>
+    .toc-link {
+        display: block;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        color: #57534e;
+        border-left: 2px solid transparent;
+        transition: all 0.2s;
+    }
+    .toc-link:hover {
+        color: #ea580c;
+        background-color: #faf7f5;
+    }
+    .toc-link.active {
+        color: #ea580c;
+        border-left-color: #ea580c;
+        font-weight: 500;
+    }
+    .toc-h1 { margin-left: 0; }
+    .toc-h2 { margin-left: 1rem; }
+    .toc-h3 { margin-left: 2rem; }
+</style>
+{% endblock %}
+
+{% block sidebar_menu %}
+<div class="px-2 py-4">
+    <a href="{{ url_for('index') }}" class="flex items-center gap-2 mb-6 px-2 text-stone-600 hover:text-orange-600 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        <span class="font-bold truncate">返回广场</span>
+    </a>
+
+    {% if can_edit %}
+    <div class="menu-section-title">管理</div>
+    <ul class="space-y-1">
+        <li>
+            <a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                <span>新建页面</span>
+            </a>
+        </li>
+        {% if current_user.is_admin %}
+        <li>
+            <a href="{{ url_for('manage_editors', wiki_id=wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <span>编辑授权</span>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col lg:flex-row gap-6 h-full">
+    
+    <!-- 左侧导航区域：页面列表 + 目录 -->
+    <div class="w-full lg:w-72 flex-shrink-0 order-last lg:order-first">
+        <div class="sticky top-6 flex flex-col gap-6 max-h-[calc(100vh-3rem)] overflow-y-auto hide-scrollbar">
+            
+            <!-- 页面列表卡片 -->
+            <div class="card bg-base-100 shadow-sm border border-stone-100 flex-shrink-0">
+                <div class="card-body p-4">
+                    <h3 class="font-bold text-stone-700 mb-2 px-2 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        页面列表
+                    </h3>
+                    <ul class="menu menu-sm bg-base-100 w-full rounded-box p-0 max-h-[30vh] overflow-y-auto">
+                        {% for p in pages %}
+                        <li>
+                            <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="{{ 'active' if page and p.slug == page.slug else '' }} truncate block" title="{{ p.title }}">
+                                {{ p.title }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 本页目录卡片 -->
+            {% if page %}
+            <div class="card bg-base-100 shadow-sm border border-stone-100 flex-shrink-0">
+                <div class="card-body p-4">
+                    <h3 class="font-bold text-stone-700 mb-2 px-2 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                        本页目录
+                    </h3>
+                    <nav id="toc-container" class="space-y-1 max-h-[40vh] overflow-y-auto">
+                        <!-- TOC will be injected here via JS -->
+                    </nav>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 右侧主体区域 -->
+    <div class="flex-1 min-w-0 flex flex-col gap-6">
+        
+        <!-- Wiki 信息卡片（置顶） -->
+        <div class="card bg-base-100 shadow-sm border border-stone-100">
+            <div class="card-body p-5 flex-row items-start justify-between gap-4">
+                <div class="flex-1 min-w-0 group relative">
+                    <h2 class="text-xl font-bold text-stone-800 truncate" title="{{ wiki.title }}">{{ wiki.title }}</h2>
+                    <p class="text-sm text-stone-500 mt-1 line-clamp-1 group-hover:line-clamp-none transition-all duration-300 bg-base-100 z-10">
+                        {{ wiki.description }}
+                    </p>
+                    <!-- Tooltip fallback for long descriptions -->
+                    {% if wiki.description|length > 50 %}
+                    <div class="hidden group-hover:block absolute top-full left-0 mt-2 p-3 bg-stone-800 text-white text-xs rounded shadow-lg z-50 max-w-md">
+                        {{ wiki.description }}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="flex-shrink-0 flex items-center gap-3">
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('wiki_stats', wiki_id=wiki.id) }}" class="btn btn-sm btn-ghost gap-2" title="查看统计">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                        <span class="hidden lg:inline">统计</span>
+                    </a>
+                    {% endif %}
+
+                    {% if not is_subscribed %}
+                    <form action="{{ url_for('subscribe_wiki', wiki_id=wiki.id, next=request.full_path) }}" method="post">
+                        <button type="submit" class="btn btn-sm btn-primary w-24">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                            订阅
+                        </button>
+                    </form>
+                    {% else %}
+                    <form action="{{ url_for('subscribe_wiki', wiki_id=wiki.id, next=request.full_path) }}" method="post">
+                        <div class="dropdown dropdown-end dropdown-hover">
+                            <button tabindex="0" class="badge badge-success gap-1 p-0 h-8 w-24 cursor-pointer border-none hover:bg-neutral-200 hover:text-neutral-600 transition-colors group-hover:badge-outline flex items-center justify-center">
+                                <span class="group-hover:hidden flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                    已订阅
+                                </span>
+                                <span class="hidden group-hover:inline text-xs font-bold">取消订阅</span>
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 正文内容卡片 -->
+        <div class="card bg-base-100 shadow-sm border border-stone-100 min-h-[70vh]">
+            <div class="card-body p-6 lg:p-10">
+                {% if page %}
+                    <div class="flex items-center justify-between mb-8 pb-4 border-b border-stone-100">
+                      <h1 class="text-3xl font-bold text-stone-800">{{ page.title }}</h1>
+                      <div class="flex items-center gap-2">
+                        {% if can_edit %}
+                        <div class="dropdown dropdown-end">
+                            <label tabindex="0" class="btn btn-sm btn-ghost gap-1 text-stone-500">
+                                更多
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </label>
+                            <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 border border-stone-100">
+                                <li>
+                                    <a href="{{ url_for('edit_page', wiki_id=wiki.id, slug=page.slug) }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        编辑页面
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ url_for('page_history', wiki_id=wiki.id, slug=page.slug) }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        历史版本
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                        <span class="text-xs text-stone-400">最后更新: {{ page.updated_at.strftime('%Y-%m-%d') }}</span>
+                      </div>
+                    </div>
+
+                    {% if not can_view_wiki(wiki.id) and not is_subscribed %}
+                        <div class="alert alert-warning shadow-lg">
+                            <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                <span>请先订阅此 Wiki 以查看完整内容。</span>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="markdown-body prose prose-stone max-w-none lg:prose-lg">
+                          {{ html|safe }}
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="hero h-full">
+                      <div class="hero-content text-center">
+                        <div class="max-w-md">
+                          <h1 class="text-3xl font-bold text-stone-300 mb-4">欢迎来到 {{ wiki.title }}</h1>
+                          {% if can_edit %}
+                          <p class="py-6 text-stone-500">点击左侧管理菜单创建第一个页面</p>
+                          <a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="btn btn-primary">立即创建</a>
+                          {% else %}
+                          <p class="text-stone-400">此 Wiki 暂无内容，敬请期待。</p>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Code block copy button
+    document.querySelectorAll('pre code').forEach((block) => {
+        // Highlight.js might have already processed the block, so we target the pre
+        const pre = block.parentNode;
+        
+        // Create wrapper
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative group';
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(pre);
+        
+        // Create button
+        const button = document.createElement('button');
+        button.className = 'absolute top-2 right-2 p-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100';
+        button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>';
+        button.title = '复制';
+        
+        // Copy functionality
+        button.addEventListener('click', async () => {
+            const code = block.textContent; // Get raw code
+            try {
+                await navigator.clipboard.writeText(code);
+                const originalIcon = button.innerHTML;
+                button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                setTimeout(() => {
+                    button.innerHTML = originalIcon;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy!', err);
+            }
+        });
+        
+        wrapper.appendChild(button);
+    });
+
+    const content = document.querySelector('.markdown-body');
+    const tocContainer = document.getElementById('toc-container');
+    
+    if (content && tocContainer) {
+        const headers = content.querySelectorAll('h1, h2, h3');
+        
+        if (headers.length === 0) {
+            tocContainer.innerHTML = '<p class="px-2 text-xs text-stone-400 italic">暂无目录</p>';
+            return;
+        }
+
+        headers.forEach((header, index) => {
+            // Add ID to header if not present
+            if (!header.id) {
+                header.id = 'heading-' + index;
+            }
+
+            const link = document.createElement('a');
+            link.href = '#' + header.id;
+            link.textContent = header.textContent;
+            link.className = 'toc-link toc-' + header.tagName.toLowerCase();
+            
+            // Smooth scroll
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                header.scrollIntoView({ behavior: 'smooth' });
+                // Update active state
+                document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+
+            tocContainer.appendChild(link);
+        });
+
+        // Scroll spy
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.id;
+                    document.querySelectorAll('.toc-link').forEach(link => {
+                        if (link.getAttribute('href') === '#' + id) {
+                            link.classList.add('active');
+                        } else {
+                            link.classList.remove('active');
+                        }
+                    });
+                }
+            });
+        }, { rootMargin: '-100px 0px -66%' });
+
+        headers.forEach(header => observer.observe(header));
+    }
+});
+</script>
+{% endblock %}

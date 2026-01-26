@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto card bg-base-100 shadow">
+  <div class="card-body">
+    <h2 class="card-title">登录</h2>
+    <form method="post" class="flex flex-col gap-4">
+      <input class="input input-bordered" name="username" placeholder="用户名">
+      <input class="input input-bordered" type="password" name="password" placeholder="密码">
+      <button class="btn btn-primary" type="submit">登录</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

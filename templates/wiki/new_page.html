@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-7xl mx-auto card bg-base-100 shadow">
+  <div class="card-body">
+    <h2 class="card-title">新建页面</h2>
+    <form method="post" class="flex flex-col gap-4">
+      <div class="flex gap-4">
+          <input class="input input-bordered flex-1" name="title" placeholder="标题" required>
+          <input class="input input-bordered flex-1" name="slug" type="number" step="1" placeholder="标识（整数，负数置顶）" required>
+      </div>
+      <textarea id="md-editor" name="content_md" placeholder="Markdown内容"></textarea>
+      <button class="btn btn-primary mt-4" type="submit">保存</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const easyMDE = new EasyMDE({
+    element: document.getElementById('md-editor'),
+    minHeight: "400px",
+    uploadImage: true,
+    imageUploadEndpoint: "{{ url_for('upload_file') }}",
+    imagePathAbsolute: true,
+    imageCSRFToken: "",
+    imageMaxSize: 1024 * 1024 * 16,
+    imageAccept: "image/png, image/jpeg, image/gif, image/webp",
+    imageTexts: {
+        sbInit: "拖拽图片到这里或点击上传",
+        sbOnDragEnter: "松开上传",
+        sbOnDragLeave: "拖拽图片到这里或点击上传",
+        sbProgress: "上传中...",
+        sbOnUploaded: "上传成功",
+        sizeUnits: "b,kb,mb"
+    },
+    errorCallback: function(errorMessage) {
+        alert("上传失败: " + errorMessage);
+    }
+  });
+</script>
+{% endblock %}

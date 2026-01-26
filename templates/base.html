@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html data-theme="cupcake">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - WikiBook</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+    
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+
+    <style>
+        /* EasyMDE Style Overrides */
+        .EasyMDEContainer {
+            background-color: white;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .editor-toolbar {
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+            border-color: #d1d5db;
+        }
+        .CodeMirror {
+            border-color: #d1d5db;
+            border-bottom-left-radius: 0.5rem;
+            border-bottom-right-radius: 0.5rem;
+            min-height: 400px;
+        }
+        .editor-statusbar {
+            display: none; /* Hide status bar for cleaner look */
+        }
+        
+        /* 复用您提供的样式 */
+        .sidebar-content::-webkit-scrollbar { width: 4px; }
+        .sidebar-content::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-content::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+
+        .menu-item {
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 0.75rem;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #57534e;
+            border: 1px solid transparent;
+        }
+
+        .menu-item:hover {
+            background-color: #ffffff;
+            color: #ea580c; /* Orange-600 */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .menu-item.active {
+            background-color: #ffffff !important;
+            color: #d97706 !important; /* Amber-600 */
+            font-weight: 700;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border-color: #fce7f3;
+        }
+
+        .menu-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 6px;
+            width: 6px;
+            background-color: #d97706;
+            border-radius: 50%;
+        }
+
+        .menu-section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #a8a29e;
+            font-weight: 800;
+            padding: 1.5rem 1rem 0.5rem 1rem;
+        }
+
+        @media (min-width: 1024px) {
+            .main-content { margin-left: 16rem; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-base-200 text-base-content font-sans">
+
+    <!-- Mobile Navbar -->
+    <div class="lg:hidden navbar bg-base-100 shadow-md fixed top-0 w-full z-40">
+        <div class="navbar-start">
+            <button id="mobile-menu-btn" class="btn btn-ghost btn-circle">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+        </div>
+        <div class="navbar-center">
+            <a href="{{ url_for('index') }}" class="text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">WikiBook</a>
+        </div>
+        <div class="navbar-end"></div>
+    </div>
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-45 hidden lg:hidden transition-opacity"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" style="background-color: #faf7f5;" class="fixed left-0 top-0 h-screen w-64 border-r border-stone-200/60 shadow-xl z-50 sidebar-transition transform -translate-x-full lg:translate-x-0 flex flex-col">
+
+        <div class="h-20 flex items-center px-6 border-b border-stone-200/50">
+            <a href="{{ url_for('index') }}" class="flex items-center gap-3 w-full group">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-100 group-hover:rotate-3 transition-transform duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-stone-700 tracking-tight">WikiBook</h1>
+                    <div class="flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-green-400"></span>
+                        <p class="text-[10px] text-stone-400 font-medium uppercase">Knowledge Base</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto sidebar-content px-4 py-2">
+            {% block sidebar_menu %}
+            <div class="menu-section-title">发现</div>
+            <ul class="space-y-1">
+                <li>
+                    <a href="{{ url_for('index') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'index' else '' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        <span>Wiki 广场</span>
+                    </a>
+                </li>
+            </ul>
+
+            {% if current_user.is_authenticated %}
+                {% if current_user.subscriptions %}
+                <div class="menu-section-title">我的订阅</div>
+                <ul class="space-y-1">
+                    {% for sub in current_user.subscriptions %}
+                    <li>
+                        <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.view_args and request.view_args.get('wiki_id') == sub.wiki.id and request.endpoint in ['wiki_detail', 'view_page', 'edit_page', 'new_page'] else '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                            <span class="truncate">{{ sub.wiki.title }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if current_user.is_admin %}
+                <div class="menu-section-title">管理</div>
+                <ul class="space-y-1">
+                    <li>
+                        <a href="{{ url_for('create_wiki') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'create_wiki' else '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" /></svg>
+                            <span>新建 Wiki</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('edit_markdown_css') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'edit_markdown_css' else '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                            <span>Markdown 样式</span>
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
+            {% endif %}
+            {% endblock %}
+        </nav>
+
+        <div class="p-4 border-t border-stone-200/50 bg-[#faf7f5]">
+            {% if current_user.is_authenticated %}
+                {% set avatar_styles = [
+                    'bg-rose-100 text-rose-700 border border-rose-200',
+                    'bg-orange-100 text-orange-700 border border-orange-200',
+                    'bg-emerald-100 text-emerald-700 border border-emerald-200',
+                    'bg-cyan-100 text-cyan-700 border border-cyan-200',
+                    'bg-blue-100 text-blue-700 border border-blue-200',
+                    'bg-violet-100 text-violet-700 border border-violet-200',
+                    'bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200'
+                ] %}
+                {% set style_class = avatar_styles[(current_user.id) % 7] %}
+
+                <div class="flex items-center gap-3 w-full p-3 bg-white rounded-xl shadow-sm border border-stone-100">
+                    <div class="avatar placeholder">
+                        <div class="{{ style_class }} w-9 h-9 rounded-full grid place-items-center ring-2 ring-stone-50">
+                            <span class="text-sm font-bold leading-none select-none mt-[1px]">{{ current_user.username[0] | upper }}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 min-w-0 text-left">
+                        <p class="text-sm font-bold text-stone-700 truncate">{{ current_user.username }}</p>
+                        <p class="text-xs text-stone-400 truncate">{{ '管理员' if current_user.is_admin else '用户' }}</p>
+                    </div>
+                    <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-xs btn-square text-stone-400 hover:text-red-500" title="退出登录">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    </a>
+                </div>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-primary w-full text-white">立即登录</a>
+            {% endif %}
+        </div>
+    </aside>
+
+    <main class="min-h-screen main-content pt-16 lg:pt-0 transition-all duration-300">
+        <div class="p-4 sm:p-6 lg:p-8">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="toast toast-top toast-center z-50">
+                        {% for message in messages %}
+                        <div class="alert alert-info">
+                            <span>{{ message }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <script>
+        // 侧栏控制逻辑
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+
+        function toggleSidebar() {
+            if (!sidebar || !overlay) return;
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+        mobileMenuBtn?.addEventListener('click', toggleSidebar);
+        overlay?.addEventListener('click', toggleSidebar);
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

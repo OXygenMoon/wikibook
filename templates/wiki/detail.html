@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-2xl font-bold">{{ wiki.title }}</h1>
+    <p class="text-base-content/70">{{ wiki.description }}</p>
+  </div>
+  <div class="flex items-center gap-2">
+    {% if is_subscribed %}
+    <span class="badge badge-success">已订阅</span>
+    {% else %}
+    <form method="post" action="{{ url_for('subscribe_wiki', wiki_id=wiki.id) }}">
+      <button class="btn btn-outline btn-success" type="submit">订阅</button>
+    </form>
+    {% endif %}
+    {% if is_editor %}
+    <a class="btn btn-primary" href="{{ url_for('new_page', wiki_id=wiki.id) }}">新建页面</a>
+    <a class="btn btn-outline" href="{{ url_for('manage_editors', wiki_id=wiki.id) }}">编辑授权</a>
+    {% endif %}
+  </div>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title">页面列表</h3>
+        <ul class="menu">
+          {% for p in pages %}
+          <li><a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}">{{ p.title }}</a></li>
+          {% else %}
+          <li class="text-base-content/70">暂无页面</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="md:col-span-2 card bg-base-100 shadow">
+      <div class="card-body">
+        <p class="text-base-content/70">请选择左侧页面查看内容</p>
+      </div>
+    </div>
+  </div>
+{% endblock %}

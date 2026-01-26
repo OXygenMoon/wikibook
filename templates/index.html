@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-12 pb-12">
+    <!-- Hero Section -->
+    <div class="text-center space-y-8 py-16 bg-gradient-to-b from-primary/5 to-transparent rounded-3xl">
+        <div class="space-y-4">
+            <h1 class="text-4xl lg:text-5xl font-extrabold text-stone-800 tracking-tight">
+                探索知识的 <span class="text-primary">WikiBook</span>
+            </h1>
+            <p class="text-lg text-stone-500 max-w-2xl mx-auto">
+                构建、分享与协作。在这里发现有价值的文档，或创建属于你的知识库。
+            </p>
+        </div>
+
+        <!-- 居中搜索栏 -->
+        <div class="max-w-2xl mx-auto px-4">
+            <form action="{{ url_for('index') }}" method="get" class="relative group">
+                <input type="text" name="q" value="{{ q }}" 
+                    class="input input-lg w-full pl-12 pr-4 bg-white shadow-lg border-stone-200 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-full transition-all duration-300" 
+                    placeholder="搜索 Wiki 或文章内容...">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </form>
+        </div>
+    </div>
+
+    <!-- 搜索结果或 Wiki 列表 -->
+    <div class="bg-white rounded-3xl shadow-sm border border-stone-100 p-8 lg:p-12">
+        {% if q %}
+            <!-- 搜索结果展示 -->
+            <div class="space-y-12">
+                <!-- Wiki 结果 -->
+                <section>
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-1 h-6 bg-primary rounded-full"></div>
+                        <h2 class="text-xl font-bold text-stone-800">Wiki 匹配结果</h2>
+                        {% if not wikis %}<span class="text-sm text-stone-400 font-normal">无匹配</span>{% endif %}
+                    </div>
+                    {% if wikis %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {% for w in wikis %}
+                        <a href="{{ url_for('wiki_detail', wiki_id=w.id) }}" class="card bg-white hover:shadow-xl transition-all duration-300 border border-stone-800 group h-full">
+                            <div class="card-body">
+                                <div class="flex items-start justify-between">
+                                    <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                        <span class="font-bold text-lg">{{ w.title[0]|upper }}</span>
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-stone-300 group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                    </svg>
+                                </div>
+                                <h3 class="card-title text-stone-800 group-hover:text-primary transition-colors">{{ w.title }}</h3>
+                                <p class="text-stone-500 text-sm line-clamp-2">{{ w.description or '暂无描述' }}</p>
+                                <div class="mt-4 flex items-center gap-4 text-xs text-stone-400">
+                                    <span class="flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg> {{ w.pages|length }} 篇</span>
+                                    <span class="flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg> {{ w.created_by_id }}</span>
+                                </div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </section>
+
+                <!-- 页面结果 -->
+                <section>
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-1 h-6 bg-secondary rounded-full"></div>
+                        <h2 class="text-xl font-bold text-stone-800">文章匹配结果</h2>
+                        {% if not pages %}<span class="text-sm text-stone-400 font-normal">无匹配</span>{% endif %}
+                    </div>
+                    {% if pages %}
+                    <div class="grid grid-cols-1 gap-4">
+                        {% for p in pages %}
+                        <a href="{{ url_for('view_page', wiki_id=p.wiki.id, slug=p.slug) }}" class="flex flex-col md:flex-row gap-4 p-4 rounded-xl hover:bg-stone-50 transition-colors border border-transparent hover:border-stone-100 group">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="badge badge-sm badge-ghost">{{ p.wiki.title }}</span>
+                                    <h3 class="font-bold text-lg text-stone-800 group-hover:text-primary transition-colors truncate">{{ p.title }}</h3>
+                                </div>
+                                <p class="text-sm text-stone-500 line-clamp-2">{{ p.content_md[:200] }}...</p>
+                            </div>
+                            <div class="flex items-center gap-4 text-xs text-stone-400 flex-shrink-0 md:self-center">
+                                <span>{{ p.updated_at.strftime('%Y-%m-%d') }}</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-stone-300 group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </section>
+            </div>
+
+        {% else %}
+            <!-- 默认展示所有 Wiki -->
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center gap-3">
+                    <div class="w-1 h-6 bg-primary rounded-full"></div>
+                    <h2 class="text-2xl font-bold text-stone-800">精选 Wiki</h2>
+                </div>
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('create_wiki') }}" class="btn btn-primary btn-sm gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                    创建新 Wiki
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for w in wikis %}
+                <a href="{{ url_for('wiki_detail', wiki_id=w.id) }}" class="card bg-white hover:shadow-xl transition-all duration-300 border border-stone-800 group h-full">
+                    <div class="card-body">
+                        <div class="flex items-start justify-between">
+                            <div class="w-12 h-12 rounded-xl bg-white shadow-sm border border-stone-800 text-primary flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-md transition-all">
+                                <span class="font-bold text-xl">{{ w.title[0]|upper }}</span>
+                            </div>
+                            <div class="badge badge-ghost opacity-0 group-hover:opacity-100 transition-opacity">进入阅读</div>
+                        </div>
+                        <h3 class="card-title text-xl text-stone-800 mb-2 group-hover:text-primary transition-colors">{{ w.title }}</h3>
+                        <p class="text-stone-500 text-sm line-clamp-3 mb-4">{{ w.description or '暂无描述' }}</p>
+                        
+                        <div class="mt-auto pt-4 border-t border-stone-100 flex items-center justify-between text-xs text-stone-400">
+                            <div class="flex items-center gap-3">
+                                <span class="flex items-center gap-1" title="文章数">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/></svg>
+                                    {{ w.pages|length }}
+                                </span>
+                                <span class="flex items-center gap-1" title="订阅数">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" /></svg>
+                                    {{ w.subscriptions|length }}
+                                </span>
+                            </div>
+                            <span>{{ w.created_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

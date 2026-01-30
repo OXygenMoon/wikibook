@@ -1,13 +1,22 @@
 {% extends "base.html" %}
+
+{% block sidebar_menu %}
+    {% include "wiki/sidebar.html" %}
+{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto card bg-base-100 shadow">
   <div class="card-body">
-    <h2 class="card-title">新建页面</h2>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="card-title">新建页面</h2>
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost btn-sm">返回 Wiki</a>
+    </div>
     <form method="post" class="flex flex-col gap-4">
       <div class="flex gap-4">
           <input class="input input-bordered flex-1" name="title" placeholder="标题" required>
           <input class="input input-bordered flex-1" name="slug" type="number" step="1" placeholder="标识（整数，负数置顶）" required>
       </div>
+      <input class="input input-bordered w-full" name="tags" placeholder="标签 (用逗号分隔)">
       <textarea id="md-editor" name="content_md" placeholder="Markdown内容"></textarea>
       <button class="btn btn-primary mt-4" type="submit">保存</button>
     </form>

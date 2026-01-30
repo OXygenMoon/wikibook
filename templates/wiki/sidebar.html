@@ -1,0 +1,72 @@
+<div class="px-2 py-4">
+    <a href="{{ url_for('index') }}" class="flex items-center gap-2 mb-6 px-2 text-stone-600 hover:text-orange-600 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        <span class="font-bold truncate">返回广场</span>
+    </a>
+
+    {% if can_edit_wiki(wiki.id) %}
+    <div class="menu-section-title">管理</div>
+    <ul class="space-y-1">
+        <li>
+            <a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                <span>新建页面</span>
+            </a>
+        </li>
+        <li>
+            <a href="{{ url_for('edit_wiki', wiki_id=wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <span>Wiki 设置</span>
+            </a>
+        </li>
+        <li>
+            <a href="{{ url_for('manage_files', wiki_id=wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <span>文件管理</span>
+            </a>
+        </li>
+        {% if current_user.is_admin %}
+        <li>
+            <a href="{{ url_for('manage_editors', wiki_id=wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <span>编辑授权</span>
+            </a>
+        </li>
+        <li>
+            <a href="{{ url_for('wiki_stats', wiki_id=wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                <span>统计数据</span>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+    {% endif %}
+
+    <div class="menu-section-title">操作</div>
+    <ul class="space-y-1">
+        <li>
+            <form action="{{ url_for('subscribe_wiki', wiki_id=wiki.id, next=request.full_path) }}" method="post" class="w-full">
+                {# Check subscription status logic needs to be handled in the parent template or context processor if possible, 
+                   or passed explicitly. For simplicity, we assume `is_subscribed` is passed or we check it here if we have the helper. 
+                   Actually, `is_subscribed` is usually passed from view. 
+                   If this partial is included, it expects `wiki` and `is_subscribed` in context. #}
+                {% if is_subscribed %}
+                <button type="submit" class="menu-item flex items-center gap-3 px-3 py-2 w-full text-left hover:text-red-600 group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-500 group-hover:text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                    </svg>
+                    <span>已订阅</span>
+                    <span class="text-xs text-red-500 hidden group-hover:inline ml-auto">取消</span>
+                </button>
+                {% else %}
+                <button type="submit" class="menu-item flex items-center gap-3 px-3 py-2 w-full text-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                    <span>订阅 Wiki</span>
+                </button>
+                {% endif %}
+            </form>
+        </li>
+    </ul>
+</div>

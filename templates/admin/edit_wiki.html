@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}编辑 Wiki - {{ wiki.title }}{% endblock %}
+
+{% block sidebar_menu %}
+    {% include "wiki/sidebar.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-3xl font-bold">编辑 Wiki</h1>
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost btn-sm">返回 Wiki</a>
+    </div>
+
+    <div class="grid grid-cols-1 gap-8">
+        <!-- 编辑表单 -->
+        <div class="space-y-6">
+            <div class="card bg-base-100 shadow-xl border border-base-200">
+                <div class="card-body">
+                    <form method="post" class="space-y-4">
+                        <div class="form-control w-full">
+                            <label class="label">
+                                <span class="label-text font-medium">Wiki 标题</span>
+                            </label>
+                            <input type="text" name="title" class="input input-bordered w-full" value="{{ wiki.title }}" required />
+                        </div>
+                        
+                        <div class="form-control w-full">
+                            <label class="label">
+                                <span class="label-text font-medium">描述</span>
+                            </label>
+                            <textarea name="description" class="textarea textarea-bordered h-32" placeholder="简短描述这个 Wiki 的内容...">{{ wiki.description }}</textarea>
+                        </div>
+
+                        <div class="card-actions justify-end mt-4">
+                            <button type="submit" class="btn btn-primary">保存修改</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,19 +1,22 @@
 <!DOCTYPE html>
-<html data-theme="cupcake">
+{% set is_book_mode = request.path.startswith('/book') %}
+<html data-theme="{{ 'winter' if is_book_mode else 'cupcake' }}">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %} - WikiBook</title>
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link href="{{ url_for('static', filename='css/daisyui.full.css') }}" rel="stylesheet" type="text/css" />
+    <script src="{{ url_for('static', filename='js/tailwindcss.js') }}"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
-    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/easymde.min.css') }}">
+    <script src="{{ url_for('static', filename='js/easymde.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/link-card.css') }}">
+    <script src="{{ url_for('static', filename='js/link-card.js') }}"></script>
     
     <!-- Highlight.js for code syntax highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/atom-one-dark.min.css') }}">
+    <script src="{{ url_for('static', filename='js/highlight.min.js') }}"></script>
     <script>hljs.highlightAll();</script>
 
     <style>
@@ -56,13 +59,13 @@
 
         .menu-item:hover {
             background-color: #ffffff;
-            color: #ea580c; /* Orange-600 */
+            color: {% if is_book_mode %}#4f46e5{% else %}#ea580c{% endif %}; /* Indigo-600 vs Orange-600 */
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
 
         .menu-item.active {
             background-color: #ffffff !important;
-            color: #d97706 !important; /* Amber-600 */
+            color: {% if is_book_mode %}#4338ca{% else %}#d97706{% endif %} !important; /* Indigo-700 vs Amber-600 */
             font-weight: 700;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             border-color: #fce7f3;
@@ -76,7 +79,7 @@
             transform: translateY(-50%);
             height: 6px;
             width: 6px;
-            background-color: #d97706;
+            background-color: {% if is_book_mode %}#4338ca{% else %}#d97706{% endif %};
             border-radius: 50%;
         }
 
@@ -92,6 +95,57 @@
         @media (min-width: 1024px) {
             .main-content { margin-left: 16rem; }
         }
+        
+        /* Toggle Switch Customization */
+        .mode-toggle-label {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            height: 2rem;
+            border-radius: 9999px;
+            background-color: #f3f4f6;
+            cursor: pointer;
+            padding: 0.25rem;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .mode-toggle-slider {
+            position: absolute;
+            left: 0.25rem;
+            top: 0.25rem;
+            bottom: 0.25rem;
+            width: calc(50% - 0.25rem);
+            border-radius: 9999px;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .mode-book .mode-toggle-slider {
+            transform: translateX(100%);
+            background-color: #4f46e5; /* Indigo */
+        }
+        
+        .mode-wiki .mode-toggle-slider {
+            transform: translateX(0);
+            background-color: #f59e0b; /* Amber */
+        }
+        
+        .mode-text {
+            position: relative;
+            z-index: 10;
+            flex: 1;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6b7280;
+            transition: color 0.3s ease;
+        }
+        
+        .mode-wiki .text-wiki { color: white; }
+        .mode-book .text-book { color: white; }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -105,78 +159,116 @@
             </button>
         </div>
         <div class="navbar-center">
-            <a href="{{ url_for('index') }}" class="text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">WikiBook</a>
+            <a href="{{ url_for('index') }}" class="text-xl font-bold bg-gradient-to-r {% if is_book_mode %}from-indigo-500 to-purple-600{% else %}from-amber-500 to-orange-600{% endif %} bg-clip-text text-transparent">WikiBook</a>
         </div>
-        <div class="navbar-end"></div>
+        <div class="navbar-end">
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('online_users') }}" class="btn btn-ghost btn-sm gap-2 normal-case" title="查看在线用户">
+                <div class="badge badge-success badge-xs"></div>
+                <span class="hidden sm:inline">{{ online_user_count }} 人在线</span>
+                <span class="sm:hidden">{{ online_user_count }}</span>
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-45 hidden lg:hidden transition-opacity"></div>
 
     <!-- Sidebar -->
-    <aside id="sidebar" style="background-color: #faf7f5;" class="fixed left-0 top-0 h-screen w-64 border-r border-stone-200/60 shadow-xl z-50 sidebar-transition transform -translate-x-full lg:translate-x-0 flex flex-col">
+    <aside id="sidebar" style="background-color: {% if is_book_mode %}#f5f7fa{% else %}#faf7f5{% endif %};" class="fixed left-0 top-0 h-screen w-64 border-r border-stone-200/60 shadow-xl z-50 sidebar-transition transform -translate-x-full lg:translate-x-0 flex flex-col">
 
         <div class="h-20 flex items-center px-6 border-b border-stone-200/50">
-            <a href="{{ url_for('index') }}" class="flex items-center gap-3 w-full group">
-                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-100 group-hover:rotate-3 transition-transform duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
+            <div class="w-full">
+                <!-- Toggle Switch -->
+                <div class="mode-toggle-label {% if is_book_mode %}mode-book{% else %}mode-wiki{% endif %}" onclick="window.location.href='{{ url_for('index') if is_book_mode else url_for('book_index') }}'">
+                    <div class="mode-toggle-slider"></div>
+                    <span class="mode-text text-wiki">Wiki</span>
+                    <span class="mode-text text-book">Book</span>
                 </div>
-                <div>
-                    <h1 class="text-lg font-bold text-stone-700 tracking-tight">WikiBook</h1>
-                    <div class="flex items-center gap-1">
-                        <span class="w-2 h-2 rounded-full bg-green-400"></span>
-                        <p class="text-[10px] text-stone-400 font-medium uppercase">Knowledge Base</p>
-                    </div>
-                </div>
-            </a>
+            </div>
         </div>
 
         <nav class="flex-1 overflow-y-auto sidebar-content px-4 py-2">
             {% block sidebar_menu %}
-            <div class="menu-section-title">发现</div>
-            <ul class="space-y-1">
-                <li>
-                    <a href="{{ url_for('index') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'index' else '' }}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                        <span>Wiki 广场</span>
-                    </a>
-                </li>
-            </ul>
-
-            {% if current_user.is_authenticated %}
-                {% if current_user.subscriptions %}
-                <div class="menu-section-title">我的订阅</div>
+            
+            {% if not is_book_mode %}
+                <!-- Wiki Mode Menu -->
+                <div class="menu-section-title">发现</div>
                 <ul class="space-y-1">
-                    {% for sub in current_user.subscriptions %}
                     <li>
-                        <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.view_args and request.view_args.get('wiki_id') == sub.wiki.id and request.endpoint in ['wiki_detail', 'view_page', 'edit_page', 'new_page'] else '' }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-                            <span class="truncate">{{ sub.wiki.title }}</span>
+                        <a href="{{ url_for('index') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'index' else '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                            <span>Wiki 广场</span>
                         </a>
                     </li>
-                    {% endfor %}
                 </ul>
-                {% endif %}
 
-                {% if current_user.is_admin %}
-                <div class="menu-section-title">管理</div>
+                {% if current_user.is_authenticated %}
+                    {% if current_user.subscriptions %}
+                    <div class="menu-section-title">我的订阅</div>
+                    <ul class="space-y-1">
+                        {% for sub in current_user.subscriptions %}
+                        <li>
+                            <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.view_args and request.view_args.get('wiki_id') == sub.wiki.id and request.endpoint in ['wiki_detail', 'view_page', 'edit_page', 'new_page'] else '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                                <span class="truncate">{{ sub.wiki.title }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+
+                    {% if current_user.is_admin %}
+                    <div class="menu-section-title">管理</div>
+                    <ul class="space-y-1">
+                        <li>
+                            <a href="{{ url_for('manage_users') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'manage_users' else '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                <span>用户管理</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ url_for('create_wiki') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'create_wiki' else '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" /></svg>
+                                <span>新建 Wiki</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ url_for('edit_markdown_css') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'edit_markdown_css' else '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                                <span>Markdown 样式</span>
+                            </a>
+                        </li>
+                    </ul>
+                    {% endif %}
+                {% endif %}
+                
+            {% else %}
+                <!-- Book Mode Menu -->
+                <div class="menu-section-title">Book</div>
                 <ul class="space-y-1">
                     <li>
-                        <a href="{{ url_for('create_wiki') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'create_wiki' else '' }}">
+                        <a href="{{ url_for('book_index') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'book_index' and not request.hash else '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                            <span>我的笔记</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('book_received') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'book_received' else '' }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            <span>收到笔记</span>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="{{ url_for('new_note') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'new_note' else '' }}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" /></svg>
-                            <span>新建 Wiki</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('edit_markdown_css') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'edit_markdown_css' else '' }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
-                            <span>Markdown 样式</span>
+                            <span>新建笔记</span>
                         </a>
                     </li>
                 </ul>
-                {% endif %}
             {% endif %}
+            
             {% endblock %}
         </nav>
 
@@ -214,7 +306,16 @@
         </div>
     </aside>
 
-    <main class="min-h-screen main-content pt-16 lg:pt-0 transition-all duration-300">
+    <main class="min-h-screen main-content pt-16 lg:pt-0 transition-all duration-300 relative">
+        {% if current_user.is_authenticated %}
+        <div class="hidden lg:flex fixed top-4 right-6 z-50">
+            <a href="{{ url_for('online_users') }}" class="btn btn-sm gap-2 normal-case glass shadow-sm text-stone-600 bg-white/80 hover:bg-white" title="查看在线用户">
+                <div class="badge badge-success badge-xs"></div>
+                <span>{{ online_user_count }} 人在线</span>
+            </a>
+        </div>
+        {% endif %}
+        
         <div class="p-4 sm:p-6 lg:p-8">
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages() %}
@@ -253,5 +354,35 @@
         overlay?.addEventListener('click', toggleSidebar);
     </script>
     {% block scripts %}{% endblock %}
+
+    {% if current_user.is_authenticated %}
+    <script>
+        // Send heartbeat
+        function sendHeartbeat() {
+            fetch('/api/heartbeat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    path: window.location.pathname
+                })
+            })
+            .then(response => response.json())
+            .then(data => console.log('Heartbeat:', data))
+            .catch(console.error);
+        }
+        
+        // Send immediately on load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', sendHeartbeat);
+        } else {
+            sendHeartbeat();
+        }
+        
+        // Send every 30 seconds
+        setInterval(sendHeartbeat, 30000);
+    </script>
+    {% endif %}
 </body>
 </html>

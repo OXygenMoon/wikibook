@@ -27,80 +27,13 @@
 {% endblock %}
 
 {% block sidebar_menu %}
-<div class="px-2 py-4">
-    <a href="{{ url_for('index') }}" class="flex items-center gap-2 mb-6 px-2 text-stone-600 hover:text-orange-600 transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
-        <span class="font-bold truncate">返回广场</span>
-    </a>
-
-    {% if can_edit %}
-    <div class="menu-section-title">管理</div>
-    <ul class="space-y-1">
-        <li>
-            <a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                <span>新建页面</span>
-            </a>
-        </li>
-        {% if current_user.is_admin %}
-        <li>
-            <a href="{{ url_for('manage_editors', wiki_id=wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                <span>编辑授权</span>
-            </a>
-        </li>
-        {% endif %}
-    </ul>
-    {% endif %}
-</div>
+    {% include "wiki/sidebar.html" %}
 {% endblock %}
 
 {% block content %}
 <div class="flex flex-col lg:flex-row gap-6 h-full">
     
-    <!-- 左侧导航区域：页面列表 + 目录 -->
-    <div class="w-full lg:w-72 flex-shrink-0 order-last lg:order-first">
-        <div class="sticky top-6 flex flex-col gap-6 max-h-[calc(100vh-3rem)] overflow-y-auto hide-scrollbar">
-            
-            <!-- 页面列表卡片 -->
-            <div class="card bg-base-100 shadow-sm border border-stone-100 flex-shrink-0">
-                <div class="card-body p-4">
-                    <h3 class="font-bold text-stone-700 mb-2 px-2 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-                        页面列表
-                    </h3>
-                    <ul class="menu menu-sm bg-base-100 w-full rounded-box p-0 max-h-[30vh] overflow-y-auto">
-                        {% for p in pages %}
-                        <li>
-                            <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="{{ 'active' if page and p.slug == page.slug else '' }} truncate block" title="{{ p.title }}">
-                                {{ p.title }}
-                            </a>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-
-            <!-- 本页目录卡片 -->
-            {% if page %}
-            <div class="card bg-base-100 shadow-sm border border-stone-100 flex-shrink-0">
-                <div class="card-body p-4">
-                    <h3 class="font-bold text-stone-700 mb-2 px-2 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-                        本页目录
-                    </h3>
-                    <nav id="toc-container" class="space-y-1 max-h-[40vh] overflow-y-auto">
-                        <!-- TOC will be injected here via JS -->
-                    </nav>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- 右侧主体区域 -->
+    <!-- 左侧主体区域 -->
     <div class="flex-1 min-w-0 flex flex-col gap-6">
         
         <!-- Wiki 信息卡片（置顶） -->
@@ -118,38 +51,6 @@
                     </div>
                     {% endif %}
                 </div>
-                
-                <div class="flex-shrink-0 flex items-center gap-3">
-                    {% if current_user.is_admin %}
-                    <a href="{{ url_for('wiki_stats', wiki_id=wiki.id) }}" class="btn btn-sm btn-ghost gap-2" title="查看统计">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                        <span class="hidden lg:inline">统计</span>
-                    </a>
-                    {% endif %}
-
-                    {% if not is_subscribed %}
-                    <form action="{{ url_for('subscribe_wiki', wiki_id=wiki.id, next=request.full_path) }}" method="post">
-                        <button type="submit" class="btn btn-sm btn-primary w-24">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                            订阅
-                        </button>
-                    </form>
-                    {% else %}
-                    <form action="{{ url_for('subscribe_wiki', wiki_id=wiki.id, next=request.full_path) }}" method="post">
-                        <div class="dropdown dropdown-end dropdown-hover">
-                            <button tabindex="0" class="badge badge-success gap-1 p-0 h-8 w-24 cursor-pointer border-none hover:bg-neutral-200 hover:text-neutral-600 transition-colors group-hover:badge-outline flex items-center justify-center">
-                                <span class="group-hover:hidden flex items-center gap-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                    </svg>
-                                    已订阅
-                                </span>
-                                <span class="hidden group-hover:inline text-xs font-bold">取消订阅</span>
-                            </button>
-                        </div>
-                    </form>
-                    {% endif %}
-                </div>
             </div>
         </div>
 
@@ -158,8 +59,24 @@
             <div class="card-body p-6 lg:p-10">
                 {% if page %}
                     <div class="flex items-center justify-between mb-8 pb-4 border-b border-stone-100">
-                      <h1 class="text-3xl font-bold text-stone-800">{{ page.title }}</h1>
+                      <div>
+                        <h1 class="text-3xl font-bold text-stone-800">{{ page.title }}</h1>
+                        {% if page.tags %}
+                        <div class="flex items-center gap-2 mt-2">
+                            {% for tag in page.tags %}
+                            <span class="badge badge-sm badge-outline">{{ tag.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                      </div>
                       <div class="flex items-center gap-2">
+                        <button onclick="convert_wiki_page()" class="btn btn-sm btn-ghost gap-1 text-stone-500 hover:text-primary transition-colors" title="转换为我的笔记">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            <span class="hidden sm:inline">转为笔记</span>
+                        </button>
+
                         {% if can_edit %}
                         <div class="dropdown dropdown-end">
                             <label tabindex="0" class="btn btn-sm btn-ghost gap-1 text-stone-500">
@@ -197,6 +114,59 @@
                         <div class="markdown-body prose prose-stone max-w-none lg:prose-lg">
                           {{ html|safe }}
                         </div>
+                        
+                        <!-- 评论区 -->
+                        {% if page.comment_enabled %}
+                        <div class="border-t border-stone-100 mt-12 pt-8">
+                            <h3 class="text-lg font-bold text-stone-700 mb-6 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                                评论 ({{ page.comments|length }})
+                            </h3>
+                            
+                            <div class="space-y-6 mb-8">
+                                {% for comment in page.comments %}
+                                <div class="flex gap-4 group">
+                                    <div class="avatar placeholder">
+                                        <div class="bg-stone-200 text-stone-600 rounded-full w-10 h-10">
+                                            <span class="text-sm">{{ comment.user.username[0] | upper }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="font-bold text-sm text-stone-700">{{ comment.user.username }}</span>
+                                            <span class="text-xs text-stone-400">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                            
+                                            {% if current_user.is_admin or current_user.id == comment.user_id %}
+                                            <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post" class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button type="submit" class="btn btn-ghost btn-xs text-error" title="删除评论" onclick="return confirm('确定要删除这条评论吗？')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                        <div class="p-3 bg-stone-50 rounded-lg rounded-tl-none text-sm text-stone-600 whitespace-pre-wrap">{{ comment.content }}</div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-8 text-stone-400 italic">
+                                    暂无评论
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <form action="{{ url_for('comment_wiki_page', wiki_id=wiki.id, slug=page.slug) }}" method="post" class="flex gap-4">
+                                <div class="avatar placeholder">
+                                    <div class="bg-primary text-primary-content rounded-full w-10 h-10">
+                                        <span class="text-sm">{{ current_user.username[0] | upper }}</span>
+                                    </div>
+                                </div>
+                                <div class="flex-1 flex gap-2">
+                                    <textarea name="content" class="textarea textarea-bordered w-full h-20 resize-none bg-stone-50 focus:bg-white" placeholder="发表评论..." required></textarea>
+                                    <button type="submit" class="btn btn-primary h-auto">发表</button>
+                                </div>
+                            </form>
+                        </div>
+                        {% endif %}
                     {% endif %}
                 {% else %}
                     <div class="hero h-full">
@@ -216,6 +186,52 @@
             </div>
         </div>
         
+    </div>
+
+    <!-- 右侧导航区域：页面列表 + 目录 -->
+    <div class="w-full lg:w-72 flex-shrink-0">
+        <div class="sticky top-6 flex flex-col gap-6 max-h-[calc(100vh-3rem)] overflow-y-auto hide-scrollbar">
+            
+            <!-- 页面列表卡片 -->
+            <div class="card bg-base-100 shadow-sm border border-stone-100 flex-shrink-0">
+                <div class="card-body p-4">
+                    <h3 class="font-bold text-stone-700 mb-2 px-2 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        页面列表
+                    </h3>
+                    <ul class="menu menu-sm bg-base-100 w-full rounded-box p-0 max-h-[30vh] overflow-y-auto">
+                        {% for p in pages %}
+                        <li class="mb-1">
+                            <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="{{ 'active' if page and p.slug == page.slug else '' }} truncate block py-2" title="{{ p.title }}">
+                                {{ p.title }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 本页目录卡片 -->
+            {% if page %}
+            <div class="card bg-base-100 shadow-sm border border-stone-100 flex-shrink-0">
+                <div class="card-body p-4">
+                    <h3 class="font-bold text-stone-700 mb-2 px-2 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                        本页目录
+                    </h3>
+                    <nav id="toc-container" class="space-y-1 max-h-[40vh] overflow-y-auto">
+                        <!-- TOC will be injected here via JS -->
+                    </nav>
+                    
+                    <!-- 字数统计 -->
+                    <div class="border-t border-stone-100 mt-4 pt-3 px-2 flex items-center gap-2 text-xs text-stone-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        <span>字数: {{ page.content_md|length }} 字</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -311,5 +327,30 @@ document.addEventListener('DOMContentLoaded', function() {
         headers.forEach(header => observer.observe(header));
     }
 });
+
+function convert_wiki_page() {
+    if (confirm('确定要将当前页面内容转换为您的个人笔记吗？')) {
+        fetch("{{ url_for('convert_wiki_page', wiki_id=wiki.id, slug=page.slug) }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (confirm('转换成功！是否现在查看该笔记？')) {
+                    window.location.href = `/book/notes/${data.note_id}`;
+                }
+            } else {
+                alert('转换失败: ' + (data.error || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('请求发生错误');
+        });
+    }
+}
 </script>
 {% endblock %}

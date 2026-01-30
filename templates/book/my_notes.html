@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}我的笔记{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header & Stats -->
+    <div class="bg-base-100 rounded-3xl p-8 shadow-sm border border-base-200">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+            <div>
+                <h1 class="text-3xl font-extrabold text-base-content tracking-tight">我的笔记空间</h1>
+                <p class="text-base-content/60 mt-2">管理您的个人知识库与阅读数据</p>
+            </div>
+            <a href="{{ url_for('new_note') }}" class="btn btn-primary gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                新建笔记
+            </a>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="stats shadow bg-base-100 border border-base-200">
+                <div class="stat">
+                    <div class="stat-title">我的笔记</div>
+                    <div class="stat-value text-primary">{{ notes|length }}</div>
+                    <div class="stat-desc">累计创建</div>
+                </div>
+            </div>
+            
+            <div class="stats shadow bg-base-100 border border-base-200">
+                <div class="stat">
+                    <div class="stat-title">总学习时长</div>
+                    <div class="stat-value text-secondary text-2xl">{{ stats.total_formatted }}</div>
+                    <div class="stat-desc">今日: {{ stats.today_formatted }}</div>
+                </div>
+            </div>
+
+            <div class="stats shadow bg-base-100 border border-base-200">
+                <div class="stat">
+                    <div class="stat-title">阅读量</div>
+                    <div class="stat-value text-accent">{{ stats.total_reads }}</div>
+                    <div class="stat-desc">累计阅读笔记</div>
+                </div>
+            </div>
+
+            <div class="stats shadow bg-base-100 border border-base-200">
+                <div class="stat">
+                    <div class="stat-title">影响力</div>
+                    <div class="stat-value text-info">{{ stats.total_views_received }}</div>
+                    <div class="stat-desc">被阅读次数</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 详细学习时长统计 -->
+        <div class="collapse collapse-arrow border border-base-200 bg-base-100 rounded-box mb-8">
+            <input type="checkbox" /> 
+            <div class="collapse-title text-xl font-medium flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                学习时长统计详情
+            </div>
+            <div class="collapse-content"> 
+                <div class="overflow-x-auto">
+                    <table class="table w-full">
+                        <thead>
+                            <tr>
+                                <th>时间段</th>
+                                <th>时长</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>今日</td><td class="font-bold">{{ stats.today_formatted }}</td></tr>
+                            <tr><td>最近一周</td><td>{{ stats.week_formatted }}</td></tr>
+                            <tr><td>最近一月</td><td>{{ stats.month_formatted }}</td></tr>
+                            <tr><td>最近三月</td><td>{{ stats.three_months_formatted }}</td></tr>
+                            <tr><td>最近半年</td><td>{{ stats.six_months_formatted }}</td></tr>
+                            <tr><td>最近一年</td><td>{{ stats.year_formatted }}</td></tr>
+                            <tr><td>总计</td><td class="text-primary font-bold">{{ stats.total_formatted }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & List -->
+    <div>
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            <h2 class="text-xl font-bold text-base-content flex items-center gap-2">
+                全部笔记列表
+                <span class="badge badge-lg badge-ghost">{{ notes|length }}</span>
+            </h2>
+            <form action="{{ url_for('my_notes') }}" method="get" class="relative group w-full md:w-80">
+                <input type="text" name="q" value="{{ q }}" 
+                    class="input input-bordered w-full pl-10 bg-base-100 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-xl transition-all" 
+                    placeholder="搜索我的笔记...">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </form>
+        </div>
+
+        {% if notes %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for note in notes %}
+                <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-md transition-all border border-base-200 group h-full">
+                    <div class="card-body p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="card-title text-lg group-hover:text-primary transition-colors line-clamp-1">{{ note.title }}</h3>
+                            {% if note.is_featured %}
+                            <span class="badge badge-xs badge-warning flex-shrink-0">精选</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-sm text-base-content/60 line-clamp-3 flex-grow">
+                            {{ note.content_md | striptags }}
+                        </p>
+                        <div class="flex items-center justify-between mt-4 pt-3 border-t border-base-200/50 text-xs text-base-content/40">
+                            <span>{{ note.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            {% if note.shares %}
+                            <span class="flex items-center gap-1" title="已分享给 {{ note.shares|length }} 人">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                {{ note.shares|length }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-20 bg-base-100 rounded-3xl border border-base-200 border-dashed">
+                <div class="bg-base-200/50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                </div>
+                <h3 class="text-lg font-bold text-base-content/70">
+                    {% if q %}没有找到匹配的笔记{% else %}暂时没有笔记{% endif %}
+                </h3>
+                <p class="text-sm text-base-content/50 mt-1">
+                    {% if q %}尝试换个关键词搜索{% else %}记录下您的第一个想法吧{% endif %}
+                </p>
+                {% if not q %}
+                <a href="{{ url_for('new_note') }}" class="btn btn-primary mt-6">新建笔记</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

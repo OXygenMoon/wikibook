@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block sidebar_menu %}
+    {% include "wiki/sidebar.html" %}
+{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
     <!-- 头部信息 -->
@@ -10,7 +14,7 @@
                 <span class="font-bold">{{ wiki.title }}</span> 的订阅与浏览情况
             </p>
         </div>
-        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost">返回 Wiki</a>
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost btn-sm">返回 Wiki</a>
     </div>
 
     <!-- 统计概览卡片 -->

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}收到笔记{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-base-content tracking-tight">收到笔记</h1>
+        <p class="text-base-content/60 mt-2">查看其他用户分享给您的笔记</p>
+    </div>
+</div>
+
+<div class="space-y-4">
+    {% if note_shares %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {% for share in note_shares %}
+            {% set note = share.note %}
+            <div class="card bg-base-100 shadow-sm hover:shadow-md transition-all border border-base-200 group">
+                <div class="card-body p-5">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="avatar placeholder">
+                            <div class="bg-neutral-focus text-neutral-content rounded-full w-6 h-6">
+                                <span class="text-xs">{{ note.user.username[0] | upper }}</span>
+                            </div>
+                        </div>
+                        <span class="text-xs font-bold text-base-content/60">{{ note.user.username }} 分享</span>
+                        <span class="text-[10px] text-base-content/40 ml-auto">{{ note.updated_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="block">
+                        <h3 class="card-title text-lg group-hover:text-primary transition-colors">{{ note.title }}</h3>
+                        <p class="text-sm text-base-content/60 line-clamp-2 mt-2">
+                            {{ note.content_md | striptags }}
+                        </p>
+                    </a>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="delete_share({{ share.id }})" class="btn btn-sm btn-ghost btn-error">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            删除
+                        </button>
+                        <button onclick="convert_note({{ share.id }}, '{{ note.title }}', '{{ note.user.username }}')" class="btn btn-sm btn-ghost btn-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            转换为自己的笔记
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-12 bg-base-100 rounded-xl border border-base-200 border-dashed">
+            <p class="text-base-content/40">暂时没有收到分享的笔记</p>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function delete_share(shareId) {
+    if (confirm('确定要删除这条分享记录吗？')) {
+        fetch(`/book/share/${shareId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('删除失败: ' + (data.error || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('请求发生错误');
+        });
+    }
+}
+
+function convert_note(shareId, noteTitle, senderName) {
+    if (confirm(`确定要将笔记"${noteTitle}"转换为自己的笔记吗？\n新的笔记标题将包含发送人姓名。`)) {
+        fetch(`/book/share/${shareId}/convert`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('转换成功！');
+                location.reload();
+            } else {
+                alert('转换失败: ' + (data.error || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('请求发生错误');
+        });
+    }
+}
+</script>
+{% endblock %}

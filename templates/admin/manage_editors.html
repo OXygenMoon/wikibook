@@ -1,20 +1,63 @@
 {% extends "base.html" %}
+
+{% block sidebar_menu %}
+    {% include "wiki/sidebar.html" %}
+{% endblock %}
+
 {% block content %}
 <div class="max-w-2xl mx-auto card bg-base-100 shadow">
   <div class="card-body">
-    <h2 class="card-title">编辑授权 - {{ wiki.title }}</h2>
-    <form method="post" class="flex items-center gap-2 mb-4">
-      <input class="input input-bordered" name="username" placeholder="用户名">
-      <button class="btn btn-primary" type="submit">添加编辑者</button>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="card-title">编辑授权 - {{ wiki.title }}</h2>
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost btn-sm">返回 Wiki</a>
+    </div>
+    <form method="post" class="flex items-center gap-2 mb-8">
+      <input class="input input-bordered w-full" name="username" placeholder="输入用户名以添加编辑者..." required>
+      <button class="btn btn-primary whitespace-nowrap" type="submit">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+        添加
+      </button>
     </form>
-    <h3 class="font-semibold mb-2">当前编辑者</h3>
-    <ul class="menu">
-      {% for name in editors %}
-      <li>{{ name }}</li>
+    
+    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-content/70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+        当前编辑者 ({{ editors|length }})
+    </h3>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% for user in editors %}
+      <div class="card bg-base-200 border border-base-300 compact">
+        <div class="card-body flex-row items-center justify-between p-4">
+            <div class="flex items-center gap-3 overflow-hidden">
+                <div class="avatar placeholder">
+                    <div class="bg-neutral text-neutral-content rounded-full w-10">
+                        <span class="text-lg">{{ user.username[0]|upper }}</span>
+                    </div>
+                </div>
+                <div class="flex flex-col min-w-0">
+                    <span class="font-bold truncate">{{ user.username }}</span>
+                    <span class="text-xs text-base-content/60 truncate">{{ user.email }}</span>
+                </div>
+            </div>
+            
+            {% if user.id != wiki.created_by_id %}
+            <form action="{{ url_for('remove_editor', wiki_id=wiki.id, user_id=user.id) }}" method="post" onsubmit="return confirm('确定要移除该用户的编辑权限吗？');">
+                <button type="submit" class="btn btn-ghost btn-square btn-sm text-error hover:bg-error/10" title="移除权限">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </form>
+            {% else %}
+            <div class="badge badge-sm badge-ghost" title="创建者不可移除">创建者</div>
+            {% endif %}
+        </div>
+      </div>
       {% else %}
-      <li class="text-base-content/70">暂无编辑者</li>
+      <div class="col-span-full text-center py-12 text-base-content/40 bg-base-200/50 rounded-lg border border-dashed border-base-300">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+          <p>暂无其他编辑者</p>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
   </div>
 </div>
 {% endblock %}

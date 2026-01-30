@@ -8,6 +8,15 @@
           <input class="input input-bordered flex-1" name="title" value="{{ page.title }}" placeholder="标题" required>
           <input class="input input-bordered flex-1" name="slug" value="{{ page.slug }}" type="number" step="1" placeholder="标识（整数，负数置顶）" required>
       </div>
+      <input class="input input-bordered w-full" name="tags" value="{{ page.tags | map(attribute='name') | join(', ') }}" placeholder="标签 (用逗号分隔)">
+      
+      <div class="form-control">
+        <label class="label cursor-pointer justify-start gap-4">
+          <span class="label-text">允许评论</span> 
+          <input type="checkbox" name="comment_enabled" class="toggle toggle-primary" {% if page.comment_enabled %}checked{% endif %} />
+        </label>
+      </div>
+
       <textarea id="md-editor" name="content_md" placeholder="Markdown内容">{{ page.content_md }}</textarea>
       
       <div class="flex justify-between items-center mt-4">

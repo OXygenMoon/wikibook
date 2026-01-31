@@ -680,7 +680,8 @@ def upload_wiki_file(wiki_id):
         filename = secure_filename(file.filename)
         ext = os.path.splitext(filename)[1].lower()
         if ext not in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
-             return {"error": "File type not allowed"}, 400
+             app.logger.error(f"Upload failed: Invalid extension '{ext}' for file '{filename}'")
+             return {"error": f"File type '{ext}' not allowed. Allowed: jpg, png, gif, webp"}, 400
         unique_filename = str(uuid.uuid4()) + ext
         
         # Ensure uploads directory exists
@@ -754,7 +755,8 @@ def upload_file():
         filename = secure_filename(file.filename)
         ext = os.path.splitext(filename)[1].lower()
         if ext not in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
-             return {"error": "File type not allowed"}, 400
+             app.logger.error(f"Upload failed: Invalid extension '{ext}' for file '{filename}'")
+             return {"error": f"File type '{ext}' not allowed. Allowed: jpg, png, gif, webp"}, 400
         unique_filename = str(uuid.uuid4()) + ext
         file.save(os.path.join(app.config["UPLOAD_FOLDER"], unique_filename))
         return {"data": {"filePath": url_for("static", filename=f"uploads/{unique_filename}")}}

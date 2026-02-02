@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+
+{% block title %}日历视图{% endblock %}
+
+{% block extra_css %}
+<script src="{{ url_for('static', filename='js/fullcalendar.min.js') }}"></script>
+<style>
+    /* FullCalendar Customization */
+    :root {
+        --fc-border-color: #e5e7eb;
+        --fc-button-bg-color: white;
+        --fc-button-border-color: #e5e7eb;
+        --fc-button-text-color: #374151;
+        --fc-button-hover-bg-color: #f3f4f6;
+        --fc-button-hover-border-color: #d1d5db;
+        --fc-button-active-bg-color: #e5e7eb;
+        --fc-button-active-border-color: #d1d5db;
+        --fc-event-bg-color: #4f46e5;
+        --fc-event-border-color: #4f46e5;
+        --fc-today-bg-color: #f0fdf4;
+    }
+
+    .fc {
+        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+
+    .fc-toolbar-title {
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        color: #1f2937;
+    }
+    
+    .fc-toolbar {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .fc-button {
+        padding: 0.2rem 0.5rem !important;
+        font-size: 0.85rem !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        font-weight: 500 !important;
+        text-transform: capitalize;
+        transition: all 0.2s !important;
+    }
+
+    .fc-button:focus {
+        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2) !important;
+    }
+    
+    .fc-daygrid-day-frame {
+        min-height: 80px !important; /* Reduce min height */
+    }
+
+    .fc-daygrid-day {
+        transition: background-color 0.2s;
+    }
+
+    .fc-daygrid-day:hover {
+        background-color: #f9fafb;
+    }
+
+    .fc-event {
+        cursor: pointer;
+        border-radius: 4px;
+        padding: 2px 4px;
+        font-size: 0.85rem;
+        transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .fc-event:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    /* Snapshot Modal Animation */
+    @keyframes modal-pop {
+        0% { transform: scale(0.9); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .modal-box.animate-pop {
+        animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    
+    /* Timeline styles */
+    .timeline-container {
+        position: relative;
+        padding-left: 2rem;
+    }
+    .timeline-line {
+        position: absolute;
+        left: 0.5rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e5e7eb;
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 2rem;
+    }
+    .timeline-dot {
+        position: absolute;
+        left: -1.85rem;
+        top: 0.25rem;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background: #4f46e5;
+        border: 2px solid white;
+        box-shadow: 0 0 0 2px #e0e7ff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-base-content tracking-tight">日历时光机</h1>
+            <p class="text-base-content/60 mt-2">点击日期快速创建笔记，或筛选查看特定主题</p>
+        </div>
+        
+        <!-- Tag Filter -->
+        <div class="form-control w-full md:w-auto">
+            <div class="input-group">
+                <select id="tag-filter" class="select select-bordered w-full md:w-48">
+                    <option value="">所有标签</option>
+                    <!-- Tags will be populated via JS -->
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar View -->
+    <div id="calendar-view" class="card bg-base-100 shadow-xl border border-base-200">
+        <div class="card-body p-6">
+            <div id='calendar'></div>
+        </div>
+    </div>
+</div>
+
+<!-- Note Snapshot Modal -->
+<dialog id="note_snapshot_modal" class="modal">
+    <div class="modal-box w-11/12 max-w-2xl bg-white/90 backdrop-blur-md border border-white/20 shadow-2xl animate-pop">
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        </form>
+        <div id="snapshot-content">
+            <!-- Content injected via JS -->
+            <div class="h-48 bg-gray-100 rounded-lg animate-pulse mb-4"></div>
+            <div class="h-4 bg-gray-100 rounded animate-pulse w-3/4 mb-2"></div>
+            <div class="h-4 bg-gray-100 rounded animate-pulse w-1/2"></div>
+        </div>
+        <div class="modal-action">
+            <a id="view-full-note" href="#" class="btn btn-primary btn-sm">查看完整笔记</a>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
+
+<!-- Quick Create Modal -->
+<dialog id="quick_create_modal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">新建笔记</h3>
+        <p class="text-sm text-base-content/60 mb-4">创建于: <span id="create-date-display" class="font-mono font-bold"></span></p>
+        
+        <form id="quick-create-form" method="dialog">
+            <input type="hidden" id="create-date-input">
+            <div class="form-control w-full mb-4">
+                <label class="label">
+                    <span class="label-text">笔记标题</span>
+                </label>
+                <input type="text" id="new-note-title" class="input input-bordered w-full" placeholder="例如：今日学习总结" />
+            </div>
+            
+            <div class="form-control w-full mb-6">
+                <label class="label">
+                    <span class="label-text">内容摘要</span>
+                </label>
+                <textarea id="new-note-content" class="textarea textarea-bordered h-24" placeholder="写点什么..."></textarea>
+            </div>
+            
+            <div class="modal-action">
+                <button class="btn btn-ghost">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitQuickNote()">创建笔记</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let calendar;
+    let allEvents = [];
+    
+    // Tag colors mapping - Low Saturation (Pastel-like)
+    const tagColors = [
+        '#fca5a5', // Red 300
+        '#fdba74', // Orange 300
+        '#fcd34d', // Amber 300
+        '#bef264', // Lime 300
+        '#6ee7b7', // Emerald 300
+        '#67e8f9', // Cyan 300
+        '#93c5fd', // Blue 300
+        '#a5b4fc', // Indigo 300
+        '#c4b5fd', // Violet 300
+        '#f0abfc', // Fuchsia 300
+        '#fda4af'  // Rose 300
+    ];
+    // Text color for better contrast on pastel backgrounds
+    const tagTextColors = '#1f2937'; // Gray 800
+    const tagColorMap = new Map();
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const calendarEl = document.getElementById('calendar');
+        const tagFilter = document.getElementById('tag-filter');
+        
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'zh-cn',
+            height: 'auto', // Auto height
+            contentHeight: 600, // Limit content height
+            aspectRatio: 1.8, // Increase aspect ratio to make it shorter
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,listMonth'
+            },
+            buttonText: {
+                today: '今天',
+                month: '月视图',
+                list: '列表'
+            },
+            events: '/api/notes/calendar',
+            eventClick: function(info) {
+                showSnapshot(info.event);
+            },
+            dateClick: function(info) {
+                showQuickCreate(info.dateStr);
+            },
+            eventDidMount: function(info) {
+                // Color coding logic
+                const tags = info.event.extendedProps.tags;
+                if (tags && tags.length > 0) {
+                    const primaryTag = tags[0];
+                    if (!tagColorMap.has(primaryTag)) {
+                        // Assign a random color from palette based on hash or sequence
+                        const colorIndex = tagColorMap.size % tagColors.length;
+                        tagColorMap.set(primaryTag, tagColors[colorIndex]);
+                    }
+                    info.el.style.backgroundColor = tagColorMap.get(primaryTag);
+                    info.el.style.borderColor = tagColorMap.get(primaryTag);
+                    info.el.style.color = tagTextColors; // Dark text for pastel background
+                }
+                
+                info.el.title = info.event.title;
+            },
+            loading: function(isLoading) {
+                if (!isLoading) {
+                    // Data loaded
+                    // Use setTimeout to ensure getEvents returns data
+                    setTimeout(() => {
+                        const events = calendar.getEvents();
+                        console.log('Events loaded:', events.length);
+                        populateTagFilter(events);
+                    }, 100);
+                }
+            }
+        });
+        
+        calendar.render();
+        
+        // Tag Filter Logic
+        tagFilter.addEventListener('change', function() {
+            const selectedTag = this.value;
+            const currentEvents = calendar.getEvents();
+            currentEvents.forEach(e => {
+                const tags = e.extendedProps.tags || [];
+                let shouldShow = true;
+                if (selectedTag && !tags.includes(selectedTag)) {
+                    shouldShow = false;
+                }
+                e.setProp('display', shouldShow ? 'auto' : 'none');
+            });
+        });
+    });
+
+    function populateTagFilter(events) {
+        const tagFilter = document.getElementById('tag-filter');
+        
+        // Always rebuild to ensure we have all tags
+        // Save current selection
+        const currentSelection = tagFilter.value;
+        
+        // Clear existing options except first
+        while (tagFilter.options.length > 1) {
+            tagFilter.remove(1);
+        }
+        
+        const uniqueTags = new Set();
+        
+        events.forEach(e => {
+            const tags = e.extendedProps.tags || [];
+            tags.forEach(t => uniqueTags.add(t));
+        });
+        
+        console.log('Unique tags found:', uniqueTags);
+        
+        if (uniqueTags.size === 0) {
+            // Optional: add a disabled option saying "No tags found"
+            return;
+        }
+        
+        Array.from(uniqueTags).sort().forEach(tag => {
+            const option = document.createElement('option');
+            option.value = tag;
+            option.textContent = tag;
+            tagFilter.appendChild(option);
+        });
+        
+        // Restore selection if valid
+        if (currentSelection && uniqueTags.has(currentSelection)) {
+            tagFilter.value = currentSelection;
+        }
+    }
+
+    function showSnapshot(event) {
+        const modal = document.getElementById('note_snapshot_modal');
+        const contentDiv = document.getElementById('snapshot-content');
+        const viewBtn = document.getElementById('view-full-note');
+        const props = event.extendedProps;
+
+        viewBtn.href = `/book/notes/${event.id}`;
+        
+        let tagsHtml = '';
+        if (props.tags && props.tags.length > 0) {
+            tagsHtml = `<div class="flex gap-2 mt-2 mb-4">
+                ${props.tags.map(tag => {
+                    const color = tagColorMap.get(tag) || '#374151'; // Fallback color
+                    // Use style for custom color
+                    return `<span class="badge badge-sm border-0 text-white" style="background-color: ${color}">${tag}</span>`;
+                }).join('')}
+            </div>`;
+        }
+
+        contentDiv.innerHTML = `
+            <div class="text-sm text-base-content/50 mb-1">${props.created_at}</div>
+            <h3 class="text-2xl font-bold mb-2">${event.title}</h3>
+            ${tagsHtml}
+            <div class="p-4 bg-base-200/50 rounded-lg text-base-content/80 text-sm leading-relaxed max-h-60 overflow-y-auto">
+                ${props.content || '<span class="italic text-base-content/40">暂无预览内容</span>'}
+            </div>
+        `;
+
+        modal.showModal();
+    }
+    
+    function showQuickCreate(dateStr) {
+        const modal = document.getElementById('quick_create_modal');
+        const dateDisplay = document.getElementById('create-date-display');
+        const dateInput = document.getElementById('create-date-input');
+        const titleInput = document.getElementById('new-note-title');
+        
+        dateDisplay.textContent = dateStr;
+        dateInput.value = dateStr;
+        
+        // Pre-fill title with date
+        titleInput.value = `${dateStr} 随记`;
+        
+        modal.showModal();
+    }
+    
+    function submitQuickNote() {
+        const dateStr = document.getElementById('create-date-input').value;
+        const title = document.getElementById('new-note-title').value;
+        const content = document.getElementById('new-note-content').value;
+        
+        if (!title) {
+            alert('请输入标题');
+            return;
+        }
+        
+        // Reuse quick create endpoint but need to support custom title and content
+        // The current endpoint /book/notes/quick_create uses timestamp as title.
+        // Let's create a new one or modify existing?
+        // Let's use the standard new note endpoint or modify quick_create logic.
+        // Actually, quick_create_note in app.py takes content and generates title.
+        // Let's use /book/notes/new (POST) but it's form data and redirects.
+        // Better to add a JSON endpoint or update quick_create.
+        // Let's call a new endpoint logic via fetch using the existing /book/notes/quick_create 
+        // BUT wait, quick_create generates its own title.
+        // I should probably use the standard form submission via JS to /book/notes/new?
+        // Or modify app.py to accept title in quick_create?
+        
+        // Plan: Submit to /book/notes/new as form data using fetch to avoid redirect page load if possible,
+        // or just let it redirect.
+        // But user might want to stay on calendar.
+        // Let's update app.py to support title in quick_create_note.
+        
+        fetch('/book/notes/quick_create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title: title,
+                content: content
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Add event to calendar immediately
+                calendar.addEvent({
+                    id: data.note_id,
+                    title: title,
+                    start: dateStr,
+                    extendedProps: {
+                        content: content,
+                        tags: [], // No tags for quick create yet
+                        created_at: dateStr + ' ' + new Date().toTimeString().split(' ')[0].substring(0,5)
+                    }
+                });
+                
+                document.getElementById('quick_create_modal').close();
+                // Clear form
+                document.getElementById('new-note-title').value = '';
+                document.getElementById('new-note-content').value = '';
+            } else {
+                alert('创建失败: ' + data.error);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('创建失败，请重试');
+        });
+    }
+</script>
+{% endblock %}

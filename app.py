@@ -19,6 +19,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:/
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static/uploads")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB limit
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # Keep session for 30 days
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -270,11 +271,14 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
+        remember = request.form.get("remember") == "on"  # Get remember me checkbox
+        
         u = User.query.filter_by(username=username).first()
         if not u or not u.check_password(password):
             flash("用户名或密码错误")
             return redirect(url_for("login"))
-        login_user(u)
+            
+        login_user(u, remember=remember) # Use remember me
         return redirect(url_for("index"))
     return render_template("login.html")
 
@@ -1062,6 +1066,79 @@ def my_notes():
     
     return render_template("book/my_notes.html", notes=notes, stats=stats_formatted, q=q)
 
+@app.route("/api/stats/heatmap")
+@login_required
+def get_heatmap_data():
+    # Weights for different activities
+    WEIGHTS = {
+        'create': 5,  # Creating Note or Wiki History (Edit)
+        'comment': 3,
+        'session': 2,
+        'view': 1
+    }
+    
+    activity_counts = {}
+
+    def process_query(model, date_col, weight=1):
+        # Retrieve all history, not just one year
+        results = db.session.query(date_col).filter(
+            model.user_id == current_user.id
+        ).all()
+        for (dt,) in results:
+            if dt:
+                # Adjust to UTC+8 for correct date bucket
+                # Assuming stored dates are naive and represent UTC or already UTC+8?
+                # The app uses now_utc8() for defaults. 
+                # If the column is DateTime, SQLAlchemy returns Python datetime objects.
+                # If they were stored as UTC+8 (which they are per now_utc8), then the date part is correct.
+                d = dt.strftime("%Y-%m-%d")
+                activity_counts[d] = activity_counts.get(d, 0) + weight
+
+    # 1. Notes created (High weight)
+    process_query(Note, Note.created_at, WEIGHTS['create'])
+    
+    # 2. Comments (Medium weight)
+    process_query(Comment, Comment.created_at, WEIGHTS['comment'])
+    
+    # 3. Wiki Edits (High weight)
+    process_query(WikiPageHistory, WikiPageHistory.created_at, WEIGHTS['create'])
+    
+    # 4. Study Sessions (Medium weight)
+    process_query(StudySession, StudySession.start_time, WEIGHTS['session'])
+
+    # 5. Reading (Low weight)
+    process_query(WikiViewLog, WikiViewLog.timestamp, WEIGHTS['view'])
+    process_query(NoteViewLog, NoteViewLog.timestamp, WEIGHTS['view'])
+    
+    data = [[date, count] for date, count in activity_counts.items()]
+    return jsonify({"data": data})
+
+@app.route("/book/calendar")
+@login_required
+def book_calendar():
+    return render_template("book/calendar.html")
+
+@app.route("/api/notes/calendar")
+@login_required
+def get_calendar_notes():
+    notes = Note.query.filter_by(user_id=current_user.id).all()
+    events = []
+    for note in notes:
+        # Create a snippet from markdown content (strip basic md chars)
+        content_preview = note.content_md[:200] if note.content_md else ""
+        
+        events.append({
+            "id": note.id,
+            "title": note.title,
+            "start": note.created_at.strftime("%Y-%m-%d"),
+            "extendedProps": {
+                "content": content_preview,
+                "tags": [t.name for t in note.tags],
+                "created_at": note.created_at.strftime("%Y-%m-%d %H:%M")
+            }
+        })
+    return jsonify(events)
+
 @app.route("/book/notes/new", methods=["GET", "POST"])
 @login_required
 def new_note():
@@ -1200,6 +1277,27 @@ def share_note(note_id):
     db.session.commit()
     flash(f"已分享给 {count} 位用户")
     return redirect(url_for("view_note", note_id=n.id))
+
+@app.route("/book/notes/quick_create", methods=["POST"])
+@login_required
+def quick_create_note():
+    data = request.json
+    content = data.get("content", "").strip()
+    custom_title = data.get("title", "").strip()
+    
+    if not content and not custom_title:
+        return jsonify({"success": False, "error": "内容或标题不能为空"}), 400
+        
+    try:
+        # Title: YYYY-MM-DD HH:mm:ss if not provided
+        title = custom_title if custom_title else now_utc8().strftime("%Y-%m-%d %H:%M:%S")
+        n = Note(title=title, content_md=content, user_id=current_user.id)
+        db.session.add(n)
+        db.session.commit()
+        return jsonify({"success": True, "note_id": n.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/book/share/<int:share_id>/delete", methods=["POST"])
 @login_required

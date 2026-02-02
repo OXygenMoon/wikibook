@@ -2,6 +2,166 @@
 
 {% block title %}我的笔记{% endblock %}
 
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('heatmap-container');
+    const yearSelect = document.getElementById('heatmap-year-select');
+    
+    if (!container) return;
+    
+    let allData = [];
+    let charts = []; // Store chart instances
+    
+    // Fetch data
+    fetch('{{ url_for("get_heatmap_data") }}')
+        .then(response => response.json())
+        .then(res => {
+            allData = res.data;
+            
+            // Extract years
+            const years = new Set();
+            const currentYear = new Date().getFullYear();
+            
+            years.add(currentYear);
+            allData.forEach(item => {
+                const year = new Date(item[0]).getFullYear();
+                years.add(year);
+            });
+            
+            const sortedYears = Array.from(years).sort((a, b) => b - a);
+            
+            yearSelect.innerHTML = '';
+            sortedYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year + '年';
+                if (year === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            });
+            
+            if (sortedYears.length > 0) {
+                yearSelect.classList.remove('hidden');
+                initCharts(yearSelect.value);
+            }
+            
+            yearSelect.addEventListener('change', function() {
+                initCharts(this.value);
+            });
+            
+            window.addEventListener('resize', function() {
+                charts.forEach(c => c.resize());
+            });
+        })
+        .catch(err => console.error('Error loading heatmap data:', err));
+        
+    function initCharts(year) {
+        // Clear container and instances
+        container.innerHTML = '';
+        charts.forEach(c => c.dispose());
+        charts = [];
+        
+        // Create 12 months
+         for (let m = 1; m <= 12; m++) {
+             const monthDiv = document.createElement('div');
+             // Height enough for title + 5-6 weeks
+             // 5 weeks * 13px + gaps + title ~ 100px
+             // Width: max 6 weeks * (13 + 3) = 96px. Let's use 100px to be safe.
+             monthDiv.style.height = '120px'; 
+             monthDiv.style.width = '80px'; 
+             monthDiv.style.flex = '0 0 auto'; // Prevent shrinking/growing
+             container.appendChild(monthDiv);
+             
+             renderMonthChart(monthDiv, year, m);
+         }
+     }
+
+     function renderMonthChart(dom, year, month) {
+         const myChart = echarts.init(dom);
+         charts.push(myChart);
+         
+         // Calculate date range for this month
+         // Month is 1-based
+         const startDate = new Date(year, month - 1, 1);
+         const endDate = new Date(year, month, 0); // Last day of current month
+         
+         const startStr = echarts.format.formatTime('yyyy-MM-dd', startDate);
+         const endStr = echarts.format.formatTime('yyyy-MM-dd', endDate);
+         
+         // Prepare data
+         // Filter allData for this month only? No, ECharts calendar handles range automatically.
+         // But for better performance/logic, we pass filled data.
+         
+         // To ensure we fill 0s for the specific month
+         const dateMap = new Map(allData.map(item => [item[0], item[1]]));
+         const filledData = [];
+         
+         let curr = new Date(startDate);
+         while (curr <= endDate) {
+             const dateStr = echarts.format.formatTime('yyyy-MM-dd', curr);
+             const count = dateMap.get(dateStr) || 0;
+             filledData.push([dateStr, count]);
+             curr.setDate(curr.getDate() + 1);
+         }
+ 
+         const option = {
+             tooltip: {
+                 position: 'top',
+                 formatter: function (p) {
+                     const format = echarts.format.formatTime('yyyy-MM-dd', p.data[0]);
+                     return format + ': 活跃度 ' + p.data[1];
+                 }
+             },
+             visualMap: {
+                 min: 0,
+                 max: 20,
+                 calculable: false,
+                 show: false,
+                 inRange: {
+                     color: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39']
+                 }
+             },
+             calendar: {
+                 top: 20,
+                 left: 'center', // Center in the 100px box
+                 cellSize: [13, 13],
+                 range: [startStr, endStr],
+                 itemStyle: {
+                     borderWidth: 3,
+                     borderColor: '#fff',
+                     borderRadius: 2
+                 },
+                 yearLabel: { show: false },
+                 // Only show month name as title
+                 dayLabel: { show: false }, 
+                 monthLabel: { 
+                     show: true,
+                     nameMap: 'cn',
+                     position: 'start', // Put at top
+                     color: '#374151',
+                     fontSize: 14,
+                     fontWeight: 'bold',
+                     margin: 5
+                 },
+                 splitLine: { show: false }
+             },
+             series: {
+                 type: 'heatmap',
+                 coordinateSystem: 'calendar',
+                 data: filledData,
+                 itemStyle: {
+                     // Inherits from calendar.itemStyle
+                 }
+             }
+         };
+         
+         myChart.setOption(option);
+     }
+});
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-8">
     <!-- Header & Stats -->
@@ -51,6 +211,25 @@
             </div>
         </div>
         
+        <!-- Activity Heatmap -->
+        <div class="card bg-base-100 shadow-sm border border-base-200 mb-8">
+            <div class="card-body p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="card-title text-lg">学习活跃度</h3>
+                    <select id="heatmap-year-select" class="select select-sm select-bordered w-32 hidden">
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+                <!-- Responsive Flex Layout for Monthly Heatmaps -->
+                <!-- Use flex-wrap to allow wrapping on narrow screens.
+                     Gap set to 13px as requested.
+                     justify-start to align items to the left. -->
+                <div id="heatmap-container" class="flex flex-wrap gap-[1px] justify-center">
+                    <!-- 12 Divs will be injected here -->
+                </div>
+            </div>
+        </div>
+
         <!-- 详细学习时长统计 -->
         <div class="collapse collapse-arrow border border-base-200 bg-base-100 rounded-box mb-8">
             <input type="checkbox" /> 
@@ -89,15 +268,80 @@
                 全部笔记列表
                 <span class="badge badge-lg badge-ghost">{{ notes|length }}</span>
             </h2>
-            <form action="{{ url_for('my_notes') }}" method="get" class="relative group w-full md:w-80">
-                <input type="text" name="q" value="{{ q }}" 
-                    class="input input-bordered w-full pl-10 bg-base-100 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-xl transition-all" 
-                    placeholder="搜索我的笔记...">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-            </form>
+            
+            <!-- 整合的搜索与快速笔记栏 -->
+            <div class="relative group w-full md:w-96">
+                <input type="text" id="quickInput" name="q" value="{{ q }}" 
+                    class="input input-bordered w-full pl-4 pr-32 bg-base-100 focus:border-primary focus:ring-2 focus:ring-primary/10 rounded-xl transition-all" 
+                    placeholder="输入内容搜索或生成笔记...">
+                
+                <div class="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <button type="button" onclick="quickCreate()" class="btn btn-xs btn-ghost text-primary hover:bg-primary/10" title="生成快速笔记">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        <span class="hidden sm:inline">生成</span>
+                    </button>
+                    <div class="w-px h-4 bg-base-300"></div>
+                    <button type="button" onclick="doSearch()" class="btn btn-xs btn-ghost hover:bg-base-200" title="搜索">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <span class="hidden sm:inline">搜索</span>
+                    </button>
+                </div>
+            </div>
         </div>
+
+        <script>
+        function doSearch() {
+            const val = document.getElementById('quickInput').value.trim();
+            window.location.href = "{{ url_for('my_notes') }}?q=" + encodeURIComponent(val);
+        }
+
+        async function quickCreate() {
+            const val = document.getElementById('quickInput').value.trim();
+            if (!val) {
+                alert('请输入内容');
+                return;
+            }
+            
+            try {
+                const btn = event.currentTarget;
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span>';
+                
+                const response = await fetch("{{ url_for('quick_create_note') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content: val })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = "/book/notes/" + data.note_id;
+                } else {
+                    alert('创建失败: ' + (data.error || '未知错误'));
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('请求出错');
+                // Restore button state
+                const btn = event.currentTarget; // This might fail if event is lost, but simple alert is enough
+                window.location.reload();
+            }
+        }
+        
+        // Enter key handler
+        document.getElementById('quickInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                doSearch();
+            }
+        });
+        </script>
 
         {% if notes %}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

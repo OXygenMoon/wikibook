@@ -127,10 +127,8 @@ async function uploadFile() {
 }
 
 function copyMdCode(code) {
-    navigator.clipboard.writeText(code).then(() => {
-        // Simple toast or alert
-        // Using DaisyUI alert style if we wanted, but standard alert is fine or a custom toast
-        // Let's create a temporary toast element
+    // Helper to show toast
+    const showToast = () => {
         const toast = document.createElement('div');
         toast.className = 'toast toast-top toast-center z-50';
         toast.innerHTML = `
@@ -142,7 +140,47 @@ function copyMdCode(code) {
         setTimeout(() => {
             toast.remove();
         }, 2000);
-    });
+    };
+
+    // Try modern API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code)
+            .then(showToast)
+            .catch(err => {
+                console.error('Clipboard API failed:', err);
+                fallbackCopy(code, showToast);
+            });
+    } else {
+        fallbackCopy(code, showToast);
+    }
+}
+
+function fallbackCopy(text, onSuccess) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    
+    // Ensure textarea is not visible but part of DOM
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    
+    textarea.focus();
+    textarea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            onSuccess();
+        } else {
+            alert('复制失败，请手动复制: ' + text);
+        }
+    } catch (err) {
+        console.error('Fallback copy failed:', err);
+        alert('复制失败，请手动复制: ' + text);
+    }
+    
+    document.body.removeChild(textarea);
 }
 </script>
 {% endblock %}

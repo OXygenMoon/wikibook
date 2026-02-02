@@ -23,6 +23,14 @@
     .toc-h1 { margin-left: 0; }
     .toc-h2 { margin-left: 1rem; }
     .toc-h3 { margin-left: 2rem; }
+    .toc-ellipsis {
+        text-align: center;
+        color: #a8a29e;
+        font-size: 0.75rem;
+        line-height: 1rem;
+        padding: 0.25rem 0;
+        user-select: none;
+    }
 </style>
 {% endblock %}
 
@@ -219,7 +227,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
                         本页目录
                     </h3>
-                    <nav id="toc-container" class="space-y-1 max-h-[40vh] overflow-y-auto">
+                    <nav id="toc-container" class="space-y-1 overflow-hidden">
                         <!-- TOC will be injected here via JS -->
                     </nav>
                     
@@ -285,6 +293,14 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Initialize ellipses
+        const topEllipsis = document.createElement('div');
+        topEllipsis.className = 'toc-ellipsis hidden';
+        topEllipsis.textContent = '...';
+        tocContainer.appendChild(topEllipsis);
+
+        const tocLinks = [];
+
         headers.forEach((header, index) => {
             // Add ID to header if not present
             if (!header.id) {
@@ -300,26 +316,95 @@ document.addEventListener('DOMContentLoaded', function() {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 header.scrollIntoView({ behavior: 'smooth' });
-                // Update active state
-                document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
-                link.classList.add('active');
+                // We rely on observer to update UI, but instant feedback is nice
+                updateTOCVisibility(index);
             });
 
             tocContainer.appendChild(link);
+            tocLinks.push(link);
         });
+
+        const bottomEllipsis = document.createElement('div');
+        bottomEllipsis.className = 'toc-ellipsis hidden';
+        bottomEllipsis.textContent = '...';
+        tocContainer.appendChild(bottomEllipsis);
+
+        // Window size: number of items above/below active item to show
+        const WINDOW_SIZE = 5;
+
+        function updateTOCVisibility(activeIndex) {
+            const total = tocLinks.length;
+            
+            // Update active class
+            tocLinks.forEach((link, idx) => {
+                if (idx === activeIndex) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+
+            // If total items are few, show all
+            if (total <= (WINDOW_SIZE * 2 + 1)) {
+                tocLinks.forEach(link => link.style.display = 'block');
+                topEllipsis.classList.add('hidden');
+                bottomEllipsis.classList.add('hidden');
+                return;
+            }
+
+            // Calculate range
+            let start = activeIndex - WINDOW_SIZE;
+            let end = activeIndex + WINDOW_SIZE;
+
+            // Shift range if out of bounds
+            if (start < 0) {
+                end += Math.abs(start);
+                start = 0;
+            }
+            if (end >= total) {
+                start -= (end - total + 1);
+                end = total - 1;
+            }
+            
+            // Ensure bounds
+            start = Math.max(0, start);
+            end = Math.min(total - 1, end);
+
+            // Update visibility
+            tocLinks.forEach((link, idx) => {
+                if (idx >= start && idx <= end) {
+                    link.style.display = 'block';
+                } else {
+                    link.style.display = 'none';
+                }
+            });
+
+            // Update ellipses
+            if (start > 0) {
+                topEllipsis.classList.remove('hidden');
+            } else {
+                topEllipsis.classList.add('hidden');
+            }
+
+            if (end < total - 1) {
+                bottomEllipsis.classList.remove('hidden');
+            } else {
+                bottomEllipsis.classList.add('hidden');
+            }
+        }
+
+        // Initialize with first item
+        updateTOCVisibility(0);
 
         // Scroll spy
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const id = entry.target.id;
-                    document.querySelectorAll('.toc-link').forEach(link => {
-                        if (link.getAttribute('href') === '#' + id) {
-                            link.classList.add('active');
-                        } else {
-                            link.classList.remove('active');
-                        }
-                    });
+                    const index = Array.from(headers).findIndex(h => h.id === id);
+                    if (index !== -1) {
+                        updateTOCVisibility(index);
+                    }
                 }
             });
         }, { rootMargin: '-100px 0px -66%' });

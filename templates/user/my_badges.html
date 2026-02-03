@@ -3,107 +3,163 @@
 {% block title %}我的成就{% endblock %}
 
 {% block content %}
-<div class="flex justify-between items-center mb-8">
-    <div>
-        <h1 class="text-3xl font-bold text-base-content tracking-tight">我的成就墙</h1>
-        <p class="text-base-content/60 mt-2">记录您的每一个高光时刻</p>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary tracking-tight">我的成就墙</h1>
+        <p class="text-base-content/60 mt-3 text-lg">记录您的每一个高光时刻，见证成长的足迹</p>
     </div>
-</div>
 
-<!-- Earned Badges -->
-<h2 class="text-lg font-bold text-base-content/70 uppercase tracking-wide mb-4">已获得成就</h2>
-{% if user_badges %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
-        {% for ub in user_badges %}
-        {% if ub.badge %}
-        <div class="card bg-base-100 shadow-lg border border-primary/20 hover:border-primary transition-all duration-300 group relative overflow-hidden">
-            <!-- Glow effect -->
-            <div class="absolute -right-8 -top-8 w-24 h-24 bg-primary/10 rounded-full blur-xl group-hover:bg-primary/20 transition-all"></div>
+    <div class="flex items-center gap-3 mb-6">
+        <div class="p-2 bg-primary/10 rounded-lg text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </div>
+        <h2 class="text-xl font-bold text-base-content">已囊括的荣耀</h2>
+        <span class="badge badge-primary badge-outline">{{ user_badges|length if user_badges else 0 }}</span>
+    </div>
+
+    {% if user_badges %}
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-16">
+            {% for ub in user_badges %}
+            {% if ub.badge %}
+            {% set is_equipped = current_user.selected_badge_id == ub.badge.id %}
             
-            <div class="card-body p-5">
-                <div class="flex items-start gap-4">
-                    <div class="text-5xl drop-shadow-md transform group-hover:scale-110 transition-transform duration-300">{{ ub.badge.icon }}</div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-start">
-                            <h3 class="font-bold text-lg text-primary">{{ ub.badge.name }}</h3>
-                            {% if current_user.selected_badge_id == ub.badge.id %}
-                                <span class="badge badge-primary badge-sm">佩戴中</span>
-                            {% endif %}
+            <div class="card bg-base-100 shadow-xl border {{ 'border-primary ring-2 ring-primary/20' if is_equipped else 'border-base-200' }} hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 h-full">
+                <div class="card-body p-6 relative overflow-hidden">
+                    
+                    <div class="absolute -right-6 -top-6 w-32 h-32 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-2xl"></div>
+
+                    <div class="flex items-start gap-5 relative z-10">
+                        <div class="flex-shrink-0 w-16 h-16 rounded-2xl {{ 'bg-primary text-primary-content shadow-lg shadow-primary/30' if is_equipped else 'bg-base-200 text-base-content/80' }} flex items-center justify-center text-4xl transform transition-transform group-hover:scale-110">
+                            {{ ub.badge.icon }}
                         </div>
-                        <p class="text-sm text-base-content/60 mt-1">{{ ub.badge.description }}</p>
-                        <p class="text-xs text-base-content/40 mt-3">获得于 {{ ub.earned_at.strftime('%Y-%m-%d') }}</p>
+
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-lg {{ 'text-primary' if is_equipped else 'text-base-content' }} truncate pr-2">
+                                    {{ ub.badge.name }}
+                                </h3>
+                                {% if is_equipped %}
+                                    <span class="badge badge-primary badge-sm shadow-sm gap-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                        佩戴中
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <p class="text-sm text-base-content/70 mt-1 line-clamp-2 min-h-[2.5em]">{{ ub.badge.description }}</p>
+                            
+                            <div class="flex items-center justify-between mt-4 pt-4 border-t border-base-200/50">
+                                <span class="text-xs text-base-content/40 font-mono">
+                                    解锁于 {{ ub.earned_at.strftime('%Y-%m-%d') }}
+                                </span>
+                                
+                                <div class="card-actions">
+                                    {% if is_equipped %}
+                                        <button onclick="equipBadge(null)" class="btn btn-xs btn-ghost text-base-content/50 hover:text-error hover:bg-error/10 transition-colors">
+                                            卸下徽章
+                                        </button>
+                                    {% else %}
+                                        <button onclick="equipBadge({{ ub.badge.id }})" class="btn btn-sm btn-primary btn-outline gap-2 px-4">
+                                            佩戴
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="card-actions justify-end mt-4">
-                    {% if current_user.selected_badge_id == ub.badge.id %}
-                        <button onclick="equipBadge(null)" class="btn btn-sm btn-ghost text-base-content/50">卸下</button>
-                    {% else %}
-                        <button onclick="equipBadge({{ ub.badge.id }})" class="btn btn-sm btn-primary btn-outline">佩戴</button>
-                    {% endif %}
-                </div>
             </div>
+            {% endif %}
+            {% endfor %}
         </div>
-        {% endif %}
-        {% endfor %}
-    </div>
-{% else %}
-    <div class="alert bg-base-100 border-base-200 shadow-sm mb-12">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        <span>您暂时还没有获得任何徽章，继续加油！</span>
-    </div>
-{% endif %}
+    {% else %}
+        <div class="flex flex-col items-center justify-center py-16 bg-base-100 rounded-3xl border border-dashed border-base-300 mb-16">
+            <div class="w-24 h-24 bg-base-200 rounded-full flex items-center justify-center text-4xl mb-4 grayscale opacity-50">🏆</div>
+            <h3 class="text-lg font-bold text-base-content/70">暂无成就</h3>
+            <p class="text-base-content/50 text-sm mt-1">伟大的旅程始于足下，去探索并解锁您的第一个成就吧！</p>
+        </div>
+    {% endif %}
 
-<!-- Unearned Badges -->
-<h2 class="text-lg font-bold text-base-content/70 uppercase tracking-wide mb-4">待解锁成就</h2>
-{% if unearned_badges %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {% for badge in unearned_badges %}
-        <div class="card bg-base-100/50 border border-base-200 grayscale hover:grayscale-0 transition-all duration-500">
-            <div class="card-body p-5">
-                <div class="flex items-center gap-4">
-                    <div class="text-4xl opacity-50">{{ badge.icon if not badge.is_hidden else '❓' }}</div>
-                    <div>
-                        <h3 class="font-bold text-lg text-base-content/60">{{ badge.name if not badge.is_hidden else '???' }}</h3>
-                        <p class="text-sm text-base-content/40 mt-1">{{ badge.description if not badge.is_hidden else '这是一个隐藏成就，继续探索吧！' }}</p>
-                        <div class="mt-2 text-xs badge badge-ghost opacity-70">
+    <div class="flex items-center gap-3 mb-6">
+        <div class="p-2 bg-base-200 rounded-lg text-base-content/60">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+        </div>
+        <h2 class="text-xl font-bold text-base-content/70">探索中的奥秘</h2>
+        <span class="badge badge-ghost">{{ unearned_badges|length if unearned_badges else 0 }}</span>
+    </div>
+
+    {% if unearned_badges %}
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {% for badge in unearned_badges %}
+            <div class="card bg-base-100/40 border border-base-200 border-dashed hover:border-base-300 hover:bg-base-100 transition-all duration-300 group">
+                <div class="card-body p-5">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-xl bg-base-200/50 flex items-center justify-center text-3xl opacity-40 group-hover:opacity-60 transition-opacity grayscale group-hover:grayscale-0 relative">
+                            {{ badge.icon if not badge.is_hidden else '🔒' }}
                             {% if badge.is_hidden %}
-                                目标: ???
+                                <div class="absolute inset-0 flex items-center justify-center bg-base-300/80 rounded-xl backdrop-blur-[1px]">
+                                    <span class="text-xl">?</span>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-bold text-base text-base-content/60 group-hover:text-base-content/80 transition-colors">
+                                {{ badge.name if not badge.is_hidden else '神秘成就' }}
+                            </h3>
+                            
+                            {% if badge.is_hidden %}
+                                <div class="mt-2 text-xs text-base-content/40 italic">
+                                    这是一个隐藏成就，继续探索吧...
+                                </div>
                             {% else %}
-                                目标: 
-                                {% if badge.condition_type == 'streak_days' %}连续打卡 {{ badge.condition_value }} 天
-                                {% elif badge.condition_type == 'study_hours' %}学习 {{ badge.condition_value }} 小时
-                                {% elif badge.condition_type == 'note_count' %}创建 {{ badge.condition_value }} 篇笔记
-                                {% elif badge.condition_type == 'featured_count' %}获得 {{ badge.condition_value }} 次精选
-                                {% elif badge.condition_type == 'wiki_edit_count' %}编辑 Wiki {{ badge.condition_value }} 次
-                                {% elif badge.condition_type == 'wiki_create_count' %}创建 Wiki 词条 {{ badge.condition_value }} 个
-                                {% elif badge.condition_type == 'comment_count' %}发布 {{ badge.condition_value }} 条评论
-                                {% elif badge.condition_type == 'night_owl_sessions' %}深夜学习 {{ badge.condition_value }} 天
-                                {% elif badge.condition_type == 'early_bird' %}早起学习 {{ badge.condition_value }} 天
-                                {% elif badge.condition_type == 'weekend_warrior' %}周末累计学习 {{ badge.condition_value }} 小时
-                                {% elif badge.condition_type == 'long_session_count' %}深度专注(>2h) {{ badge.condition_value }} 次
-                                {% elif badge.condition_type == 'share_count' %}分享笔记 {{ badge.condition_value }} 次
-                                {% elif badge.condition_type == 'total_views_received' %}笔记被阅读 {{ badge.condition_value }} 次
-                                {% else %}{{ badge.condition_value }}{% endif %}
+                                <p class="text-sm text-base-content/40 mt-1 line-clamp-1">{{ badge.description }}</p>
+                                
+                                <div class="mt-3 inline-flex items-center px-2.5 py-1 rounded-md bg-base-200/60 text-xs font-medium text-base-content/60">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>
+                                    目标: 
+                                    {% if badge.condition_type == 'streak_days' %}连续打卡 {{ badge.condition_value }} 天
+                                    {% elif badge.condition_type == 'study_hours' %}学习 {{ badge.condition_value }} 小时
+                                    {% elif badge.condition_type == 'note_count' %}创建 {{ badge.condition_value }} 篇笔记
+                                    {% elif badge.condition_type == 'featured_count' %}获得 {{ badge.condition_value }} 次精选
+                                    {% elif badge.condition_type == 'wiki_edit_count' %}编辑 Wiki {{ badge.condition_value }} 次
+                                    {% elif badge.condition_type == 'wiki_create_count' %}创建 Wiki 词条 {{ badge.condition_value }} 个
+                                    {% elif badge.condition_type == 'comment_count' %}发布 {{ badge.condition_value }} 条评论
+                                    {% elif badge.condition_type == 'night_owl_sessions' %}深夜学习 {{ badge.condition_value }} 天
+                                    {% elif badge.condition_type == 'early_bird' %}早起学习 {{ badge.condition_value }} 天
+                                    {% elif badge.condition_type == 'weekend_warrior' %}周末累计学习 {{ badge.condition_value }} 小时
+                                    {% elif badge.condition_type == 'long_session_count' %}深度专注(>2h) {{ badge.condition_value }} 次
+                                    {% elif badge.condition_type == 'share_count' %}分享笔记 {{ badge.condition_value }} 次
+                                    {% elif badge.condition_type == 'total_views_received' %}笔记被阅读 {{ badge.condition_value }} 次
+                                    {% else %}{{ badge.condition_value }}{% endif %}
+                                </div>
                             {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
-{% else %}
-    <div class="alert bg-success/10 text-success border-success/20">
-        <span>太棒了！您已经解锁了所有成就！</span>
-    </div>
-{% endif %}
+    {% else %}
+        <div class="alert alert-success shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div>
+                <h3 class="font-bold">大满贯！</h3>
+                <div class="text-xs">太棒了！您已经解锁了当前版本的所有成就！</div>
+            </div>
+        </div>
+    {% endif %}
 
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 function equipBadge(badgeId) {
+    // 添加一个简单的加载状态反馈，虽然页面会刷新，但能防止误触
+    const btns = document.querySelectorAll('button');
+    btns.forEach(btn => btn.classList.add('loading', 'disabled'));
+
     fetch('/user/badges/equip', {
         method: 'POST',
         headers: {
@@ -114,14 +170,18 @@ function equipBadge(badgeId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // 使用 reload 可能会有些生硬，如果可以的话，建议后端返回新的HTML片段
+            // 但为了保持原有逻辑，这里维持 reload
             location.reload();
         } else {
             alert(data.error || '操作失败');
+            btns.forEach(btn => btn.classList.remove('loading', 'disabled'));
         }
     })
     .catch(err => {
         console.error(err);
         alert('网络错误');
+        btns.forEach(btn => btn.classList.remove('loading', 'disabled'));
     });
 }
 </script>

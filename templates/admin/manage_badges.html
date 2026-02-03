@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}徽章管理{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-base-content tracking-tight">徽章管理</h1>
+        <p class="text-base-content/60 mt-2">创建和管理成就徽章</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Badge List -->
+    <div class="lg:col-span-2 space-y-4">
+        {% if badges %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {% for badge in badges %}
+                <div class="card bg-base-100 shadow-sm border border-base-200">
+                    <div class="card-body p-5">
+                        <div class="flex items-start gap-4">
+                            <div class="text-4xl">{{ badge.icon }}</div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-lg">{{ badge.name }}</h3>
+                                <p class="text-sm text-base-content/60">{{ badge.description }}</p>
+                                <div class="mt-2 text-xs badge badge-ghost">
+                                    {{ badge.condition_type }}: {{ badge.condition_value }}
+                                    {% if badge.is_hidden %}
+                                    <span class="ml-2 badge badge-warning badge-outline badge-xs">隐藏</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <a href="{{ url_for('edit_badge', badge_id=badge.id) }}" class="btn btn-ghost btn-xs">编辑</a>
+                                <form method="post" action="{{ url_for('delete_badge', badge_id=badge.id) }}" onsubmit="return confirm('确定要删除这个徽章吗？')">
+                                    <button type="submit" class="btn btn-ghost btn-xs text-error">删除</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert">暂无徽章，请创建第一个徽章</div>
+        {% endif %}
+    </div>
+
+    <!-- Create Form -->
+    <div>
+        <div class="card bg-base-100 shadow-xl border border-base-200 sticky top-24">
+            <div class="card-body">
+                <h3 class="card-title text-lg mb-4">新建徽章</h3>
+                <form method="post" class="flex flex-col gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">徽章名称</span></label>
+                        <input type="text" name="name" class="input input-bordered" placeholder="例如：阅读达人" required />
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">图标 (Emoji)</span></label>
+                        <input type="text" name="icon" class="input input-bordered" placeholder="例如：📚" required />
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">描述</span></label>
+                        <textarea name="description" class="textarea textarea-bordered" placeholder="例如：累计阅读时间超过 100 小时"></textarea>
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">触发条件类型</span></label>
+                        <select name="condition_type" class="select select-bordered" required>
+                            <option value="streak_days">连续打卡天数</option>
+                            <option value="study_hours">累计学习小时数</option>
+                            <option value="note_count">累计笔记数量</option>
+                            <option value="featured_count">累计精选笔记数量</option>
+                            <option value="wiki_edit_count">Wiki 编辑次数 (百科贡献者)</option>
+                            <option value="wiki_create_count">Wiki 创建次数 (博学家)</option>
+                            <option value="comment_count">评论发布数量 (社区活跃)</option>
+                            <option value="night_owl_sessions">深夜学习天数 (23:00-04:00)</option>
+                            <option value="early_bird">早起鸟 (05:00-08:00)</option>
+                            <option value="weekend_warrior">周末卷王 (周六日累计小时)</option>
+                            <option value="long_session_count">深度专注次数 (单次>2小时)</option>
+                            <option value="share_count">分享笔记次数 (乐于分享)</option>
+                            <option value="total_views_received">笔记被阅读次数 (影响力)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">条件阈值</span></label>
+                        <input type="number" name="condition_value" class="input input-bordered" placeholder="例如：7" required />
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label cursor-pointer justify-start gap-2">
+                            <input type="checkbox" name="is_hidden" class="checkbox" />
+                            <span class="label-text">隐藏成就 (未获得时不显示条件)</span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-control mt-4">
+                        <button type="submit" class="btn btn-primary">创 建</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

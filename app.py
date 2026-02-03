@@ -45,16 +45,39 @@ class User(db.Model, UserMixin):
     department = db.Column(db.String(100))
     class_name = db.Column(db.String(100))
     
+    # Badge System
+    selected_badge_id = db.Column(db.Integer, db.ForeignKey("badge.id"), nullable=True)
+    selected_badge = db.relationship("Badge", foreign_keys=[selected_badge_id])
+    
     subscriptions = db.relationship("Subscription", backref="user", cascade="all, delete-orphan")
     editor_roles = db.relationship("WikiEditor", backref="user", cascade="all, delete-orphan")
     notes = db.relationship("Note", backref="user", cascade="all, delete-orphan")
     shared_notes = db.relationship("NoteShare", backref="user", cascade="all, delete-orphan")
+    earned_badges = db.relationship("UserBadge", backref="user", cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+class Badge(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    icon = db.Column(db.String(50), nullable=False) # Emoji or FontAwesome class
+    condition_type = db.Column(db.String(50), nullable=False) # streak_days, study_hours, featured_count, note_count
+    condition_value = db.Column(db.Integer, nullable=False)
+    is_hidden = db.Column(db.Boolean, default=False) # Hidden badges won't show conditions until earned
+    created_at = db.Column(db.DateTime, default=now_utc8)
+
+class UserBadge(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    badge_id = db.Column(db.Integer, db.ForeignKey("badge.id"), nullable=False)
+    earned_at = db.Column(db.DateTime, default=now_utc8)
+    
+    badge = db.relationship("Badge")
 
 class Wiki(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -396,6 +419,10 @@ def new_page(wiki_id):
         
         db.session.add(p)
         db.session.commit()
+        
+        # Check badges (Wiki Create Count, Wiki Edit Count)
+        check_and_award_badges(current_user)
+        
         return redirect(url_for("view_page", wiki_id=wiki_id, slug=slug))
     return render_template("wiki/new_page.html", wiki=w)
 
@@ -469,6 +496,10 @@ def edit_page(wiki_id, slug):
         p.comment_enabled = request.form.get("comment_enabled") == "on"
         
         db.session.commit()
+        
+        # Check badges
+        check_and_award_badges(current_user)
+        
         return redirect(url_for("view_page", wiki_id=wiki_id, slug=p.slug))
     return render_template("wiki/edit_page.html", wiki=w, page=p)
 
@@ -487,6 +518,10 @@ def comment_wiki_page(wiki_id, slug):
         c = Comment(content=content, user_id=current_user.id, wiki_page_id=p.id)
         db.session.add(c)
         db.session.commit()
+        
+        # Check badges
+        check_and_award_badges(current_user)
+        
         flash("评论已发表")
     else:
         flash("评论内容不能为空")
@@ -910,6 +945,250 @@ def update_user_role(user_id):
     flash(f"用户 {u.username} 权限已更新")
     return redirect(url_for("manage_users"))
 
+@app.route("/admin/badges", methods=["GET", "POST"])
+@login_required
+def manage_badges():
+    if not current_user.is_admin:
+        abort(403)
+        
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        icon = request.form.get("icon", "").strip()
+        condition_type = request.form.get("condition_type", "").strip()
+        try:
+            condition_value = int(request.form.get("condition_value", 0))
+        except ValueError:
+            condition_value = 0
+            
+        is_hidden = request.form.get("is_hidden") == "on"
+            
+        if not name or not icon or not condition_type:
+            flash("请填写完整信息")
+            return redirect(url_for("manage_badges"))
+            
+        b = Badge(
+            name=name,
+            description=description,
+            icon=icon,
+            condition_type=condition_type,
+            condition_value=condition_value,
+            is_hidden=is_hidden
+        )
+        db.session.add(b)
+        db.session.commit()
+        flash("徽章创建成功")
+        return redirect(url_for("manage_badges"))
+        
+    badges = Badge.query.order_by(Badge.created_at.desc()).all()
+    return render_template("admin/manage_badges.html", badges=badges)
+
+@app.route("/admin/badges/<int:badge_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_badge(badge_id):
+    if not current_user.is_admin:
+        abort(403)
+        
+    b = Badge.query.get_or_404(badge_id)
+    
+    if request.method == "POST":
+        b.name = request.form.get("name", "").strip()
+        b.description = request.form.get("description", "").strip()
+        b.icon = request.form.get("icon", "").strip()
+        b.condition_type = request.form.get("condition_type", "").strip()
+        try:
+            b.condition_value = int(request.form.get("condition_value", 0))
+        except ValueError:
+            b.condition_value = 0
+        b.is_hidden = request.form.get("is_hidden") == "on"
+        
+        db.session.commit()
+        
+        # Retroactive Check: Check this badge for all users
+        # This could be heavy, so ideally run in background task. 
+        # For now, we iterate all users.
+        users = User.query.all()
+        count = 0
+        for user in users:
+            # Re-verify condition for everyone (both existing holders and new ones)
+            # 1. Check if user meets condition now
+            meets_condition = False
+            
+            if b.condition_type == 'note_count':
+                count = Note.query.filter_by(user_id=user.id).count()
+                meets_condition = count >= b.condition_value
+            elif b.condition_type == 'featured_count':
+                count = Note.query.filter_by(user_id=user.id, is_featured=True).count()
+                meets_condition = count >= b.condition_value
+            elif b.condition_type == 'wiki_edit_count':
+                count = WikiPageHistory.query.filter_by(user_id=user.id).count()
+                meets_condition = count >= b.condition_value
+            elif b.condition_type == 'comment_count':
+                count = Comment.query.filter_by(user_id=user.id).count()
+                meets_condition = count >= b.condition_value
+            elif b.condition_type == 'night_owl_sessions':
+                # Re-calculate: Count DISTINCT "logical nights" (offset by -4 hours)
+                sessions = StudySession.query.filter_by(user_id=user.id).all()
+                night_days = set()
+                for s in sessions:
+                    h = s.start_time.hour
+                    if h >= 23 or h < 4:
+                        logical_date = (s.start_time - timedelta(hours=4)).date()
+                        night_days.add(logical_date)
+                meets_condition = len(night_days) >= b.condition_value
+            
+            elif b.condition_type == 'early_bird':
+                # Count distinct days with sessions between 05:00 and 08:00
+                sessions = StudySession.query.filter_by(user_id=user.id).all()
+                early_days = set()
+                for s in sessions:
+                    h = s.start_time.hour
+                    if 5 <= h < 8:
+                        early_days.add(s.start_time.date())
+                meets_condition = len(early_days) >= b.condition_value
+             
+            elif b.condition_type == 'weekend_warrior':
+                sessions = StudySession.query.filter_by(user_id=user.id).all()
+                total_seconds = 0
+                for s in sessions:
+                    if s.start_time.weekday() in [5, 6]:
+                        duration = (s.end_time - s.start_time).total_seconds()
+                        if duration > 0:
+                            total_seconds += duration
+                total_hours = total_seconds / 3600
+                meets_condition = total_hours >= b.condition_value
+             
+            elif b.condition_type == 'long_session_count':
+                # Count sessions > 2 hours (7200 seconds)
+                sessions = StudySession.query.filter_by(user_id=user.id).all()
+                long_count = 0
+                for s in sessions:
+                    duration = (s.end_time - s.start_time).total_seconds()
+                    if duration >= 7200:
+                        long_count += 1
+                meets_condition = long_count >= b.condition_value
+            
+            elif b.condition_type == 'share_count':
+                # We need sender. NoteShare definition: note_id, user_id (receiver).
+                # So we join Note to find sender.
+                count = NoteShare.query.join(Note).filter(Note.user_id == user.id).count()
+                meets_condition = count >= b.condition_value
+            
+            elif b.condition_type == 'total_views_received':
+                # Count total views on user's notes
+                count = NoteViewLog.query.join(Note).filter(Note.user_id == user.id).count()
+                meets_condition = count >= b.condition_value
+            
+            elif b.condition_type == 'wiki_create_count':
+                from sqlalchemy import func
+                subquery = db.session.query(func.min(WikiPageHistory.id)).group_by(WikiPageHistory.page_id)
+                count = WikiPageHistory.query.filter(WikiPageHistory.id.in_(subquery), WikiPageHistory.user_id == user.id).count()
+                meets_condition = count >= b.condition_value
+
+            elif b.condition_type == 'study_hours':
+                sessions = StudySession.query.filter_by(user_id=user.id).all()
+                total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+                total_hours = total_seconds / 3600
+                meets_condition = total_hours >= b.condition_value
+
+            elif b.condition_type == 'streak_days':
+                # Re-calculate streak
+                sessions = StudySession.query.filter_by(user_id=user.id).order_by(StudySession.start_time.desc()).all()
+                dates = sorted(list(set([s.start_time.date() for s in sessions])), reverse=True)
+                streak = 0
+                if dates:
+                    today = now_utc8().date()
+                    if dates[0] == today:
+                        streak = 1
+                        current = today
+                    elif dates[0] == today - timedelta(days=1):
+                        streak = 1
+                        current = today - timedelta(days=1)
+                    else:
+                        streak = 0
+                    if streak > 0:
+                        for i in range(1, len(dates)):
+                            if dates[i] == current - timedelta(days=1):
+                                streak += 1
+                                current = dates[i]
+                            else:
+                                break
+                meets_condition = streak >= b.condition_value
+
+            # 2. Update UserBadge status
+            existing_ub = UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first()
+            
+            if meets_condition:
+                if not existing_ub:
+                    # Award new badge
+                    ub = UserBadge(user_id=user.id, badge_id=b.id)
+                    db.session.add(ub)
+            else:
+                if existing_ub:
+                    # Revoke badge if no longer meets criteria
+                    # Also unequip if equipped
+                    if user.selected_badge_id == b.id:
+                        user.selected_badge_id = None
+                    db.session.delete(existing_ub)
+            
+        db.session.commit()
+        
+        flash("徽章已更新，并已重新检查所有用户的获得条件（包括撤销不满足条件的徽章）")
+        return redirect(url_for("manage_badges"))
+        
+    return render_template("admin/edit_badge.html", badge=b)
+
+@app.route("/admin/badges/<int:badge_id>/delete", methods=["POST"])
+@login_required
+def delete_badge(badge_id):
+    if not current_user.is_admin:
+        abort(403)
+    b = Badge.query.get_or_404(badge_id)
+    
+    # Cascade delete: Delete all UserBadges associated with this badge
+    UserBadge.query.filter_by(badge_id=b.id).delete()
+    
+    # Also clear selected_badge_id from users who equipped it
+    User.query.filter_by(selected_badge_id=b.id).update({"selected_badge_id": None})
+    
+    db.session.delete(b)
+    db.session.commit()
+    flash("徽章已删除")
+    return redirect(url_for("manage_badges"))
+
+@app.route("/user/badges")
+@login_required
+def my_badges():
+    # Earned badges
+    user_badges = UserBadge.query.filter_by(user_id=current_user.id).order_by(UserBadge.earned_at.desc()).all()
+    earned_badge_ids = [ub.badge_id for ub in user_badges]
+    
+    # Unearned badges
+    all_badges = Badge.query.all()
+    unearned_badges = [b for b in all_badges if b.id not in earned_badge_ids]
+    
+    return render_template("user/my_badges.html", user_badges=user_badges, unearned_badges=unearned_badges)
+
+@app.route("/user/badges/equip", methods=["POST"])
+@login_required
+def equip_badge():
+    badge_id = request.json.get("badge_id")
+    
+    if badge_id is None:
+        # Unequip
+        current_user.selected_badge_id = None
+        db.session.commit()
+        return jsonify({"success": True, "message": "已卸下徽章"})
+        
+    # Check if user owns this badge
+    ub = UserBadge.query.filter_by(user_id=current_user.id, badge_id=badge_id).first()
+    if not ub:
+        return jsonify({"success": False, "error": "您尚未获得该徽章"}), 403
+        
+    current_user.selected_badge_id = badge_id
+    db.session.commit()
+    return jsonify({"success": True, "message": "徽章佩戴成功"})
+
 # Book Module Routes
 @app.route("/book")
 @login_required
@@ -1158,6 +1437,10 @@ def new_note():
         
         db.session.add(n)
         db.session.commit()
+        
+        # Check badges
+        check_and_award_badges(current_user)
+        
         return redirect(url_for("view_note", note_id=n.id))
     return render_template("book/new_note.html")
 
@@ -1181,6 +1464,13 @@ def view_note(note_id):
             log = NoteViewLog(note_id=note_id, user_id=current_user.id)
             db.session.add(log)
             db.session.commit()
+            
+            # Check badges for NOTE OWNER (Influencer badge)
+            if not is_owner:
+                owner = User.query.get(n.user_id)
+                if owner:
+                    check_and_award_badges(owner)
+                    
     except Exception as e:
         # Ignore logging errors to not affect user experience
         print(f"Error logging view: {e}")
@@ -1213,6 +1503,12 @@ def edit_note(note_id):
             n.is_featured = request.form.get("is_featured") == "on"
             
         db.session.commit()
+        
+        # Check badges for note owner (if admin featured it)
+        owner = User.query.get(n.user_id)
+        if owner:
+            check_and_award_badges(owner)
+            
         return redirect(url_for("view_note", note_id=n.id))
     return render_template("book/edit_note.html", note=n)
 
@@ -1233,6 +1529,10 @@ def comment_note(note_id):
         c = Comment(content=content, user_id=current_user.id, note_id=n.id)
         db.session.add(c)
         db.session.commit()
+        
+        # Check badges
+        check_and_award_badges(current_user)
+        
         flash("评论已发表")
     else:
         flash("评论内容不能为空")
@@ -1275,6 +1575,10 @@ def share_note(note_id):
             continue
             
     db.session.commit()
+    
+    # Check badges for current user (Share count)
+    check_and_award_badges(current_user)
+    
     flash(f"已分享给 {count} 位用户")
     return redirect(url_for("view_note", note_id=n.id))
 
@@ -1294,6 +1598,10 @@ def quick_create_note():
         n = Note(title=title, content_md=content, user_id=current_user.id)
         db.session.add(n)
         db.session.commit()
+        
+        # Check badges
+        check_and_award_badges(current_user)
+        
         return jsonify({"success": True, "note_id": n.id})
     except Exception as e:
         db.session.rollback()
@@ -1475,7 +1783,20 @@ def heartbeat():
         db.session.add(session)
         
     db.session.commit()
+    
+    # Check badges
+    check_and_award_badges(current_user)
+    
     return {"status": "ok"}
+
+@app.route("/api/notes/new_view", methods=["POST"])
+@login_required
+def log_note_view():
+    # Hook for 'total_views_received' badge of the NOTE OWNER
+    # Triggered when someone views a note. 
+    # But currently view log is in view_note route (GET).
+    # We can check badges there.
+    pass
 
 @app.context_processor
 def inject_helpers():
@@ -1488,6 +1809,154 @@ def inject_helpers():
         can_edit_wiki=can_edit_wiki,
         online_user_count=online_count
     )
+
+# Badge Logic Service
+def check_and_award_badges(user):
+    # Get all badges not yet earned by user
+    earned_badge_ids = [ub.badge_id for ub in user.earned_badges]
+    available_badges = Badge.query.filter(Badge.id.notin_(earned_badge_ids)).all()
+    
+    awarded_count = 0
+    
+    for badge in available_badges:
+        earned = False
+        
+        if badge.condition_type == 'note_count':
+            count = Note.query.filter_by(user_id=user.id).count()
+            if count >= badge.condition_value:
+                earned = True
+                
+        elif badge.condition_type == 'featured_count':
+            count = Note.query.filter_by(user_id=user.id, is_featured=True).count()
+            if count >= badge.condition_value:
+                earned = True
+
+        elif badge.condition_type == 'wiki_edit_count':
+            # Count distinct WikiPageHistory entries by user
+            count = WikiPageHistory.query.filter_by(user_id=user.id).count()
+            if count >= badge.condition_value:
+                earned = True
+                
+        elif badge.condition_type == 'comment_count':
+            count = Comment.query.filter_by(user_id=user.id).count()
+            if count >= badge.condition_value:
+                earned = True
+                
+        elif badge.condition_type == 'night_owl_sessions':
+            # Count DISTINCT "logical nights" (offset by -4 hours)
+            # So 23:00 (D) to 03:59 (D+1) count as same day (D)
+            sessions = StudySession.query.filter_by(user_id=user.id).all()
+            night_days = set()
+            for s in sessions:
+                h = s.start_time.hour
+                if h >= 23 or h < 4:
+                    # Offset by -4 hours to group late night sessions to previous day
+                    logical_date = (s.start_time - timedelta(hours=4)).date()
+                    night_days.add(logical_date)
+            if len(night_days) >= badge.condition_value:
+                earned = True
+
+        elif badge.condition_type == 'early_bird':
+            # Count distinct days with sessions between 05:00 and 08:00
+            sessions = StudySession.query.filter_by(user_id=user.id).all()
+            early_days = set()
+            for s in sessions:
+                h = s.start_time.hour
+                if 5 <= h < 8:
+                    early_days.add(s.start_time.date())
+            if len(early_days) >= badge.condition_value:
+                earned = True
+
+        elif badge.condition_type == 'weekend_warrior':
+            # Calculate total study duration on Sat (5) and Sun (6)
+            sessions = StudySession.query.filter_by(user_id=user.id).all()
+            total_seconds = 0
+            for s in sessions:
+                # Check if start_time is on weekend
+                if s.start_time.weekday() in [5, 6]:
+                    duration = (s.end_time - s.start_time).total_seconds()
+                    if duration > 0:
+                        total_seconds += duration
+            total_hours = total_seconds / 3600
+            if total_hours >= badge.condition_value:
+                earned = True
+                
+        elif badge.condition_type == 'long_session_count':
+            sessions = StudySession.query.filter_by(user_id=user.id).all()
+            long_count = 0
+            for s in sessions:
+                duration = (s.end_time - s.start_time).total_seconds()
+                if duration >= 7200:
+                    long_count += 1
+            if long_count >= badge.condition_value:
+                earned = True
+                
+        elif badge.condition_type == 'share_count':
+            count = NoteShare.query.join(Note).filter(Note.user_id == user.id).count()
+            if count >= badge.condition_value:
+                earned = True
+                
+        elif badge.condition_type == 'total_views_received':
+            count = NoteViewLog.query.join(Note).filter(Note.user_id == user.id).count()
+            if count >= badge.condition_value:
+                earned = True
+                
+        elif badge.condition_type == 'wiki_create_count':
+            from sqlalchemy import func
+            subquery = db.session.query(func.min(WikiPageHistory.id)).group_by(WikiPageHistory.page_id)
+            count = WikiPageHistory.query.filter(WikiPageHistory.id.in_(subquery), WikiPageHistory.user_id == user.id).count()
+            if count >= badge.condition_value:
+                earned = True
+                
+        elif badge.condition_type == 'study_hours':
+            # Calculate total study duration in hours
+            sessions = StudySession.query.filter_by(user_id=user.id).all()
+            total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+            total_hours = total_seconds / 3600
+            if total_hours >= badge.condition_value:
+                earned = True
+                
+        elif badge.condition_type == 'streak_days':
+            # Calculate streak
+            # Get distinct dates of study sessions, sorted desc
+            # This is a bit heavy, optimize if needed
+            # Use SQL distinct date
+            sessions = StudySession.query.filter_by(user_id=user.id).order_by(StudySession.start_time.desc()).all()
+            dates = sorted(list(set([s.start_time.date() for s in sessions])), reverse=True)
+            
+            streak = 0
+            if dates:
+                # Check if today or yesterday is present to keep streak alive
+                today = now_utc8().date()
+                if dates[0] == today:
+                    streak = 1
+                    current = today
+                elif dates[0] == today - timedelta(days=1):
+                    streak = 1
+                    current = today - timedelta(days=1)
+                else:
+                    streak = 0 # Streak broken
+                
+                if streak > 0:
+                    # Check consecutive days
+                    for i in range(1, len(dates)):
+                        if dates[i] == current - timedelta(days=1):
+                            streak += 1
+                            current = dates[i]
+                        else:
+                            break
+            
+            if streak >= badge.condition_value:
+                earned = True
+        
+        if earned:
+            ub = UserBadge(user_id=user.id, badge_id=badge.id)
+            db.session.add(ub)
+            awarded_count += 1
+            flash(f"恭喜！您获得了新徽章：{badge.icon} {badge.name}")
+            
+    if awarded_count > 0:
+        db.session.commit()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5009")), debug=True)

@@ -17,7 +17,14 @@
                     </div>
                 </div>
                 <div>
-                    <h2 class="card-title text-base">{{ status.user.username }}</h2>
+                    <h2 class="card-title text-base flex items-center gap-1">
+                        {{ status.user.username }}
+                        {% if status.user.selected_badge %}
+                            <span class="tooltip" data-tip="{{ status.user.selected_badge.name }}">
+                                <span class="text-base filter drop-shadow-sm cursor-help">{{ status.user.selected_badge.icon }}</span>
+                            </span>
+                        {% endif %}
+                    </h2>
                     <p class="text-sm text-base-content/60">{{ status.current_action }}</p>
                     <p class="text-xs text-base-content/40 mt-1">最后活跃: {{ status.last_active_at.strftime('%H:%M:%S') }}</p>
                 </div>

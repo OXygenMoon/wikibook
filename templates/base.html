@@ -298,8 +298,15 @@
                         </div>
                     </div>
 
-                    <div class="flex-1 min-w-0 text-left">
-                        <p class="text-sm font-bold text-stone-700 truncate">{{ current_user.username }}</p>
+                    <div class="flex-1 min-w-0 text-left cursor-pointer" onclick="window.location.href='{{ url_for('my_badges') }}'" title="查看我的成就">
+                        <div class="flex items-center gap-1">
+                            <p class="text-sm font-bold text-stone-700 truncate">{{ current_user.username }}</p>
+                            {% if current_user.selected_badge %}
+                                <span class="tooltip tooltip-right" data-tip="{{ current_user.selected_badge.name }}">
+                                    <span class="text-lg filter drop-shadow-sm">{{ current_user.selected_badge.icon }}</span>
+                                </span>
+                            {% endif %}
+                        </div>
                         <p class="text-xs text-stone-400 truncate">{{ '管理员' if current_user.is_admin else '用户' }}</p>
                     </div>
                     <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-xs btn-square text-stone-400 hover:text-red-500" title="退出登录">

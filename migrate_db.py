@@ -68,6 +68,18 @@ def migrate_db():
                 FOREIGN KEY(user_id) REFERENCES user(id),
                 FOREIGN KEY(badge_id) REFERENCES badge(id)
             )
+        """,
+        "sticker_placement": """
+            CREATE TABLE IF NOT EXISTS sticker_placement (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                badge_id INTEGER NOT NULL,
+                x_position FLOAT NOT NULL,
+                y_position FLOAT NOT NULL,
+                created_at DATETIME,
+                FOREIGN KEY(user_id) REFERENCES user(id),
+                FOREIGN KEY(badge_id) REFERENCES badge(id)
+            )
         """
     }
 

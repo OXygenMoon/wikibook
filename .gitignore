@@ -2,6 +2,5 @@
 __pycache__/
 instance/
 .trae/
-*.db
 *.pyc
 .DS_Store

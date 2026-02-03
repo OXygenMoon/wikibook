@@ -79,6 +79,16 @@ class UserBadge(db.Model):
     
     badge = db.relationship("Badge")
 
+class StickerPlacement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    badge_id = db.Column(db.Integer, db.ForeignKey("badge.id"), nullable=False)
+    x_position = db.Column(db.Float, nullable=False) # Percentage (0.0 - 100.0)
+    y_position = db.Column(db.Float, nullable=False) # Percentage (0.0 - 100.0)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    
+    badge = db.relationship("Badge")
+
 class Wiki(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)

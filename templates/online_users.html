@@ -9,25 +9,76 @@
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for status in users %}
-        <div class="card bg-base-100 shadow-xl border border-base-200">
-            <div class="card-body flex-row items-center gap-4">
-                <div class="avatar placeholder">
-                    <div class="bg-neutral-focus text-neutral-content rounded-full w-12 h-12">
-                        <span class="text-xl">{{ status.user.username[0] | upper }}</span>
+        <div class="card bg-base-100 shadow-xl border border-base-200 transition-all hover:shadow-2xl">
+            <div class="card-body flex-row items-center gap-4 p-4">
+                <a href="{{ url_for('public_profile', user_id=status.user.id) }}" class="flex flex-1 items-center gap-4 group min-w-0">
+                    <div class="avatar placeholder">
+                        <div class="bg-neutral-focus text-neutral-content rounded-full w-12 h-12 transition-transform group-hover:scale-110">
+                            <span class="text-xl">{{ status.user.username[0] | upper }}</span>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <h2 class="card-title text-base flex items-center gap-1">
-                        {{ status.user.username }}
-                        {% if status.user.selected_badge %}
-                            <span class="tooltip" data-tip="{{ status.user.selected_badge.name }}">
-                                <span class="text-base filter drop-shadow-sm cursor-help">{{ status.user.selected_badge.icon }}</span>
-                            </span>
+                    <div class="min-w-0 flex-1">
+                        <h2 class="card-title text-base flex items-center gap-1 group-hover:text-primary transition-colors">
+                            <span class="truncate">{{ status.user.username }}</span>
+                            {% if status.user.selected_badge %}
+                                <div class="group/badge relative shrink-0">
+                                    <div class="badge-icon-container w-5 h-5 cursor-help">
+                                        {% set _icon = status.user.selected_badge.icon %}
+                                        {% if _icon|is_image_icon %}
+                                            <img src="{{ _icon|badge_icon_url }}" alt="{{ status.user.selected_badge.name }}">
+                                        {% else %}
+                                            <span class="text-xs filter drop-shadow-sm cursor-help">{{ _icon }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <!-- Rich Tooltip -->
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-white rounded-lg shadow-xl border border-stone-200 p-4 invisible group-hover/badge:visible z-50 transition-all duration-200 opacity-0 group-hover/badge:opacity-100 transform scale-95 group-hover/badge:scale-100 pointer-events-none text-center">
+                                        <div class="flex flex-col items-center gap-2">
+                                            <div class="w-12 h-12 flex items-center justify-center bg-stone-50 rounded-lg">
+                                                {% if _icon|is_image_icon %}
+                                                    <img src="{{ _icon|badge_icon_url }}" class="w-10 h-10 object-contain" alt="{{ status.user.selected_badge.name }}">
+                                                {% else %}
+                                                    <span class="text-3xl">{{ _icon }}</span>
+                                                {% endif %}
+                                            </div>
+                                            <div>
+                                                <h3 class="font-bold text-stone-800">{{ status.user.selected_badge.name }}</h3>
+                                                <p class="text-xs text-stone-500 mt-1 font-normal">{{ status.user.selected_badge.description }}</p>
+                                            </div>
+                                            {% set user_badge = status.user.get_selected_user_badge() %}
+                                            {% if user_badge %}
+                                            <div class="text-[10px] text-stone-400 bg-stone-50 px-2 py-1 rounded-full mt-1 font-normal">
+                                                获得于 {{ user_badge.earned_at.strftime('%Y-%m-%d') }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <!-- Arrow -->
+                                        <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-white border-r border-b border-stone-200 rotate-45"></div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </h2>
+                        <p class="text-sm text-base-content/60 truncate">{{ status.current_action }}</p>
+                        <p class="text-xs text-base-content/40 mt-1">最后活跃: {{ status.last_active_at.strftime('%H:%M:%S') }}</p>
+                    </div>
+                </a>
+
+                {% if status.user.id != current_user.id %}
+                    <div class="shrink-0">
+                        {% if current_user.is_following(status.user) %}
+                            <form action="{{ url_for('unfollow_user', user_id=status.user.id) }}" method="POST">
+                                <button class="btn btn-sm btn-ghost text-error btn-circle tooltip tooltip-left" data-tip="取消关注">
+                                    <i class="fas fa-user-minus"></i>
+                                </button>
+                            </form>
+                        {% else %}
+                            <form action="{{ url_for('follow_user', user_id=status.user.id) }}" method="POST">
+                                <button class="btn btn-sm btn-primary btn-circle tooltip tooltip-left" data-tip="关注">
+                                    <i class="fas fa-user-plus"></i>
+                                </button>
+                            </form>
                         {% endif %}
-                    </h2>
-                    <p class="text-sm text-base-content/60">{{ status.current_action }}</p>
-                    <p class="text-xs text-base-content/40 mt-1">最后活跃: {{ status.last_active_at.strftime('%H:%M:%S') }}</p>
-                </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
         {% else %}

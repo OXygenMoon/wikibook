@@ -11,15 +11,24 @@
 
     <div class="card bg-base-100 shadow-xl border border-base-200">
         <div class="card-body">
-            <form method="post" class="flex flex-col gap-4">
+            <form method="post" class="flex flex-col gap-4" enctype="multipart/form-data">
                 <div class="form-control">
                     <label class="label"><span class="label-text">徽章名称</span></label>
                     <input type="text" name="name" class="input input-bordered" value="{{ badge.name }}" required />
                 </div>
                 
                 <div class="form-control">
-                    <label class="label"><span class="label-text">图标 (Emoji)</span></label>
-                    <input type="text" name="icon" class="input input-bordered" value="{{ badge.icon }}" required />
+                    <label class="label"><span class="label-text">图标（请选择图片文件）</span></label>
+                    {% if badge.icon and '/' in badge.icon %}
+                    <div class="mb-2">
+                        <img src="{{ badge.icon }}" alt="当前图标" class="w-12 h-12 object-contain border rounded p-1 bg-base-200">
+                        <p class="text-xs text-base-content/60 mt-1">当前图标</p>
+                    </div>
+                    {% endif %}
+                    <input type="file" name="icon_file" accept="image/*" class="file-input file-input-bordered w-full" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">留空则保持原图标不变</span>
+                    </label>
                 </div>
                 
                 <div class="form-control">
@@ -29,7 +38,10 @@
                 
                 <div class="form-control">
                     <label class="label"><span class="label-text">触发条件类型</span></label>
-                    <select name="condition_type" class="select select-bordered" required>
+                    <select name="condition_type" class="select select-bordered" required onchange="toggleConditionInputs(this)">
+                        <option value="manual" {% if badge.condition_type == 'manual' %}selected{% endif %}>手动发放 (管理员分配)</option>
+                        <option value="all_users" {% if badge.condition_type == 'all_users' %}selected{% endif %}>全员获取 (新老用户)</option>
+                        <option value="login_days_in_range" {% if badge.condition_type == 'login_days_in_range' %}selected{% endif %}>限时登录天数 (指定时间段内)</option>
                         <option value="streak_days" {% if badge.condition_type == 'streak_days' %}selected{% endif %}>连续打卡天数</option>
                         <option value="study_hours" {% if badge.condition_type == 'study_hours' %}selected{% endif %}>累计学习小时数</option>
                         <option value="note_count" {% if badge.condition_type == 'note_count' %}selected{% endif %}>累计笔记数量</option>
@@ -46,9 +58,17 @@
                     </select>
                 </div>
                 
-                <div class="form-control">
+                <div class="form-control" id="condition_value_group">
                     <label class="label"><span class="label-text">条件阈值</span></label>
-                    <input type="number" name="condition_value" class="input input-bordered" value="{{ badge.condition_value }}" required />
+                    <input type="number" name="condition_value" class="input input-bordered" value="{{ badge.condition_value }}" />
+                </div>
+
+                <div class="form-control hidden" id="time_range_group">
+                    <label class="label"><span class="label-text">时间范围</span></label>
+                    <div class="flex gap-2">
+                        <input type="date" name="start_time" class="input input-bordered w-1/2" value="{{ badge.start_time.strftime('%Y-%m-%d') if badge.start_time else '' }}" />
+                        <input type="date" name="end_time" class="input input-bordered w-1/2" value="{{ badge.end_time.strftime('%Y-%m-%d') if badge.end_time else '' }}" />
+                    </div>
                 </div>
                 
                 <div class="form-control">
@@ -70,4 +90,31 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleConditionInputs(select) {
+    const val = select.value;
+    const timeGroup = document.getElementById('time_range_group');
+    const valueGroup = document.getElementById('condition_value_group');
+    
+    if (val === 'login_days_in_range') {
+        timeGroup.classList.remove('hidden');
+        valueGroup.classList.remove('hidden');
+    } else if (val === 'all_users') {
+        timeGroup.classList.add('hidden');
+        valueGroup.classList.add('hidden');
+    } else {
+        timeGroup.classList.add('hidden');
+        valueGroup.classList.remove('hidden');
+    }
+}
+
+// Initial state
+document.addEventListener('DOMContentLoaded', () => {
+    const select = document.querySelector('select[name="condition_type"]');
+    if (select) toggleConditionInputs(select);
+});
+</script>
 {% endblock %}

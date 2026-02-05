@@ -1,0 +1,251 @@
+
+/* Sticker FAB */
+.sticker-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+    transition: transform 0.2s ease;
+}
+.sticker-fab:hover {
+    transform: scale(1.1);
+}
+
+/* Sticker Canvas */
+#sticker-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Let clicks pass through to content by default */
+    z-index: 50;
+    overflow: hidden;
+}
+
+.sticker-item {
+    position: absolute;
+    cursor: grab;
+    pointer-events: none; /* Disable interaction by default */
+    touch-action: none;
+    user-select: none;
+    transform-origin: center center;
+    will-change: transform;
+    width: max-content; /* Prevent shrinking near edges */
+}
+
+/* Enable interaction only when editing mode is active */
+#sticker-canvas.editing .sticker-item {
+    pointer-events: auto;
+}
+
+.sticker-item img, .sticker-item .sticker-text {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    display: block;
+    max-width: none; /* Override global max-width: 100% */
+}
+.sticker-item.active {
+    cursor: grabbing;
+    z-index: 1000 !important;
+}
+
+/* Selection Frame */
+.sticker-item.selected::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid #3b82f6;
+    border-radius: 4px;
+    pointer-events: none;
+}
+/* Controls */
+.sticker-control-handle {
+    display: none;
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border: 2px solid #3b82f6;
+    border-radius: 50%;
+    z-index: 1001;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.sticker-item.selected .sticker-control-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Rotate Handle (Top Center) */
+.sticker-handle-rotate {
+    top: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: grab;
+}
+/* Connector line for rotate handle */
+.sticker-item.selected::before {
+    content: '';
+    position: absolute;
+    top: -32px;
+    left: 50%;
+    width: 2px;
+    height: 32px;
+    background: #3b82f6;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+
+/* Scale Handles (Corners) */
+.sticker-handle-scale-tl {
+    top: -12px;
+    left: -12px;
+    cursor: nwse-resize;
+}
+.sticker-handle-scale-bl {
+    bottom: -12px;
+    left: -12px;
+    cursor: nesw-resize;
+}
+.sticker-handle-scale-br {
+    bottom: -12px;
+    right: -12px;
+    cursor: nwse-resize;
+}
+
+.sticker-handle-icon {
+    width: 12px;
+    height: 12px;
+    color: #3b82f6;
+}
+
+/* Delete Button (Top Right) */
+.sticker-delete-btn {
+    display: none;
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 24px;
+    height: 24px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    z-index: 1001;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.sticker-item.selected .sticker-delete-btn {
+    display: flex;
+}
+
+/* Sticker Drawer */
+.sticker-drawer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(0,0,0,0.1);
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+    z-index: 2147483647; /* Maximum possible z-index */
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 320px;
+    display: flex;
+    flex-direction: column;
+}
+.sticker-drawer.open {
+    transform: translateY(0);
+}
+
+.sticker-drawer.partial {
+    transform: translateY(calc(100% - 64px));
+}
+.sticker-drawer-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+.sticker-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+.sticker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 20px;
+}
+.sticker-option {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.2s;
+    background: rgba(0,0,0,0.02);
+    border: 2px solid transparent;
+}
+.sticker-option:hover {
+    background: rgba(0,0,0,0.05);
+    transform: translateY(-2px);
+}
+.sticker-option.placed {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+}
+.sticker-option-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sticker-option-icon img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+.sticker-option-name {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 绿色边框样式：当贴纸位于 Drop Zone 时激活 */
+.sticker-item.sticker-valid::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 3px solid #22c55e; /* green-500 */
+    border-radius: 8px;
+    pointer-events: none;
+    animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}

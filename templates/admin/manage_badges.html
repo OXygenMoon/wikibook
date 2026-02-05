@@ -19,18 +19,29 @@
                 <div class="card bg-base-100 shadow-sm border border-base-200">
                     <div class="card-body p-5">
                         <div class="flex items-start gap-4">
-                            <div class="text-4xl">{{ badge.icon }}</div>
+                            <div class="text-4xl">
+                                {% set _icon = badge.icon %}
+                                {% if _icon|is_image_icon %}
+                                    <img src="{{ _icon|badge_icon_url }}" class="w-10 h-10 object-contain" alt="{{ badge.name }}">
+                                {% else %}
+                                    {{ _icon }}
+                                {% endif %}
+                            </div>
                             <div class="flex-1">
                                 <h3 class="font-bold text-lg">{{ badge.name }}</h3>
                                 <p class="text-sm text-base-content/60">{{ badge.description }}</p>
-                                <div class="mt-2 text-xs badge badge-ghost">
+                                <div class="mt-2 text-xs badge badge-ghost h-auto py-1">
                                     {{ badge.condition_type }}: {{ badge.condition_value }}
+                                    <span class="ml-2 border-l border-base-content/20 pl-2">{{ badge.users.count() }} 人获得</span>
                                     {% if badge.is_hidden %}
                                     <span class="ml-2 badge badge-warning badge-outline badge-xs">隐藏</span>
                                     {% endif %}
                                 </div>
                             </div>
                             <div class="flex flex-col gap-2">
+                                {% if badge.condition_type == 'manual' %}
+                                <button onclick="openAwardModal({{ badge.id }}, '{{ badge.name }}')" class="btn btn-primary btn-xs">发放</button>
+                                {% endif %}
                                 <a href="{{ url_for('edit_badge', badge_id=badge.id) }}" class="btn btn-ghost btn-xs">编辑</a>
                                 <form method="post" action="{{ url_for('delete_badge', badge_id=badge.id) }}" onsubmit="return confirm('确定要删除这个徽章吗？')">
                                     <button type="submit" class="btn btn-ghost btn-xs text-error">删除</button>
@@ -51,25 +62,28 @@
         <div class="card bg-base-100 shadow-xl border border-base-200 sticky top-24">
             <div class="card-body">
                 <h3 class="card-title text-lg mb-4">新建徽章</h3>
-                <form method="post" class="flex flex-col gap-4">
-                    <div class="form-control">
-                        <label class="label"><span class="label-text">徽章名称</span></label>
-                        <input type="text" name="name" class="input input-bordered" placeholder="例如：阅读达人" required />
-                    </div>
-                    
-                    <div class="form-control">
-                        <label class="label"><span class="label-text">图标 (Emoji)</span></label>
-                        <input type="text" name="icon" class="input input-bordered" placeholder="例如：📚" required />
-                    </div>
-                    
-                    <div class="form-control">
-                        <label class="label"><span class="label-text">描述</span></label>
-                        <textarea name="description" class="textarea textarea-bordered" placeholder="例如：累计阅读时间超过 100 小时"></textarea>
-                    </div>
+        <form method="post" class="flex flex-col gap-4" enctype="multipart/form-data">
+            <div class="form-control">
+                <label class="label"><span class="label-text">徽章名称</span></label>
+                <input type="text" name="name" class="input input-bordered" placeholder="例如：阅读达人" required />
+            </div>
+            
+            <div class="form-control">
+                <label class="label"><span class="label-text">图标（请选择图片文件）</span></label>
+                <input type="file" name="icon_file" accept="image/*" class="file-input file-input-bordered w-full" required />
+            </div>
+            
+            <div class="form-control">
+                <label class="label"><span class="label-text">描述</span></label>
+                <textarea name="description" class="textarea textarea-bordered" placeholder="例如：累计阅读时间超过 100 小时"></textarea>
+            </div>
                     
                     <div class="form-control">
                         <label class="label"><span class="label-text">触发条件类型</span></label>
-                        <select name="condition_type" class="select select-bordered" required>
+                        <select name="condition_type" class="select select-bordered" required onchange="toggleConditionInputs(this)">
+                            <option value="manual">手动发放 (管理员分配)</option>
+                            <option value="all_users">全员获取 (新老用户)</option>
+                            <option value="login_days_in_range">限时登录天数 (指定时间段内)</option>
                             <option value="streak_days">连续打卡天数</option>
                             <option value="study_hours">累计学习小时数</option>
                             <option value="note_count">累计笔记数量</option>
@@ -86,9 +100,17 @@
                         </select>
                     </div>
                     
-                    <div class="form-control">
+                    <div class="form-control" id="condition_value_group">
                         <label class="label"><span class="label-text">条件阈值</span></label>
-                        <input type="number" name="condition_value" class="input input-bordered" placeholder="例如：7" required />
+                        <input type="number" name="condition_value" class="input input-bordered" placeholder="例如：7" />
+                    </div>
+
+                    <div class="form-control hidden" id="time_range_group">
+                        <label class="label"><span class="label-text">时间范围</span></label>
+                        <div class="flex gap-2">
+                            <input type="date" name="start_time" class="input input-bordered w-1/2" />
+                            <input type="date" name="end_time" class="input input-bordered w-1/2" />
+                        </div>
                     </div>
                     
                     <div class="form-control">
@@ -106,4 +128,82 @@
         </div>
     </div>
 </div>
+<!-- Award Modal -->
+<dialog id="award_modal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg">发放徽章: <span id="award_badge_name"></span></h3>
+    <p class="py-4">选择要发放的用户:</p>
+    <div class="form-control h-60 overflow-y-auto border rounded p-2">
+        {% for user in users %}
+        <label class="label cursor-pointer justify-start gap-2">
+            <input type="checkbox" class="checkbox user-checkbox" value="{{ user.id }}" />
+            <span class="label-text">{{ user.username }}</span>
+        </label>
+        {% endfor %}
+    </div>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">取消</button>
+      </form>
+      <button class="btn btn-primary" onclick="submitAward()">确认发放</button>
+    </div>
+  </div>
+</dialog>
+
+{% block scripts %}
+<script>
+function toggleConditionInputs(select) {
+    const val = select.value;
+    const timeGroup = document.getElementById('time_range_group');
+    const valueGroup = document.getElementById('condition_value_group');
+    
+    if (val === 'login_days_in_range') {
+        timeGroup.classList.remove('hidden');
+        valueGroup.classList.remove('hidden');
+    } else if (val === 'all_users') {
+        timeGroup.classList.add('hidden');
+        valueGroup.classList.add('hidden');
+    } else {
+        timeGroup.classList.add('hidden');
+        valueGroup.classList.remove('hidden');
+    }
+}
+
+let currentBadgeId = null;
+
+function openAwardModal(badgeId, badgeName) {
+    currentBadgeId = badgeId;
+    document.getElementById('award_badge_name').innerText = badgeName;
+    // Clear selections
+    document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('award_modal').showModal();
+}
+
+async function submitAward() {
+    if (!currentBadgeId) return;
+    const selectedUsers = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+    if (!selectedUsers.length) {
+        alert('请至少选择一个用户');
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/admin/badges/${currentBadgeId}/award`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_ids: selectedUsers })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(`成功发放给 ${data.count} 位用户`);
+            location.reload();
+        } else {
+            alert(data.error || '发放失败');
+        }
+    } catch (e) {
+        alert('操作失败');
+    }
+}
+</script>
+{% endblock %}
 {% endblock %}

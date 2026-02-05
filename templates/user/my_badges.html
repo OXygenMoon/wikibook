@@ -31,7 +31,12 @@
 
                     <div class="flex items-start gap-5 relative z-10">
                         <div class="flex-shrink-0 w-16 h-16 rounded-2xl {{ 'bg-primary text-primary-content shadow-lg shadow-primary/30' if is_equipped else 'bg-base-200 text-base-content/80' }} flex items-center justify-center text-4xl transform transition-transform group-hover:scale-110">
-                            {{ ub.badge.icon }}
+                            {% set _icon = ub.badge.icon %}
+                            {% if _icon|is_image_icon %}
+                                <img src="{{ _icon|badge_icon_url }}" class="w-12 h-12 object-contain" alt="{{ ub.badge.name }}">
+                            {% else %}
+                                {{ _icon }}
+                            {% endif %}
                         </div>
 
                         <div class="flex-1 min-w-0">
@@ -95,7 +100,16 @@
                 <div class="card-body p-5">
                     <div class="flex items-center gap-4">
                         <div class="w-14 h-14 rounded-xl bg-base-200/50 flex items-center justify-center text-3xl opacity-40 group-hover:opacity-60 transition-opacity grayscale group-hover:grayscale-0 relative">
-                            {{ badge.icon if not badge.is_hidden else '🔒' }}
+                            {% if not badge.is_hidden %}
+                                {% set _icon = badge.icon %}
+                                {% if _icon|is_image_icon %}
+                                    <img src="{{ _icon|badge_icon_url }}" class="w-10 h-10 object-contain" alt="{{ badge.name }}">
+                                {% else %}
+                                    {{ _icon }}
+                                {% endif %}
+                            {% else %}
+                                🔒
+                            {% endif %}
                             {% if badge.is_hidden %}
                                 <div class="absolute inset-0 flex items-center justify-center bg-base-300/80 rounded-xl backdrop-blur-[1px]">
                                     <span class="text-xl">?</span>

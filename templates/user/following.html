@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}我的社交圈{% endblock %}
+
+{% block content %}
+<!-- Animated Background -->
+<div class="fixed inset-0 -z-10 overflow-hidden bg-base-100">
+    <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] animate-blob mix-blend-multiply opacity-30"></div>
+    <div class="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[100px] animate-blob animation-delay-4000 mix-blend-multiply opacity-30"></div>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 py-10 animate-fade-in space-y-12">
+    
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-4 w-full md:w-auto">
+            <a href="{{ url_for('public_profile', user_id=current_user.id) }}" class="btn btn-circle btn-ghost hover:bg-base-200">
+                <i class="fas fa-arrow-left text-lg"></i>
+            </a>
+            <div>
+                <h1 class="text-3xl font-black text-base-content tracking-tight">我的社交圈</h1>
+                <p class="text-sm text-base-content/60 mt-1">管理您的学友和关注列表</p>
+            </div>
+        </div>
+
+        <!-- Search Filter -->
+        <div class="relative w-full md:w-72">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-base-content/40">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" id="user-search" placeholder="搜索用户..." class="input input-bordered w-full pl-10 pr-10 rounded-xl bg-base-100/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all">
+            <button id="clear-search" class="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/40 hover:text-base-content hidden cursor-pointer transition-colors">
+                <i class="fas fa-times-circle"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 1. Study Partners Section (VIP Area) -->
+    <div class="space-y-6">
+        <div class="flex items-center gap-3 pb-2 border-b border-base-content/5">
+            <div class="p-2 bg-gradient-to-br from-amber-100 to-amber-50 text-amber-600 rounded-lg shadow-sm">
+                <i class="fas fa-crown"></i>
+            </div>
+            <h2 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-orange-600">我的学友</h2>
+            <span class="badge badge-warning badge-sm font-mono shadow-sm">{{ partners|length }}</span>
+        </div>
+        
+        {% if partners %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="partners-grid">
+            {% for user in partners %}
+            <!-- VIP Partner Card -->
+            <div class="card bg-base-100/80 backdrop-blur-xl border border-amber-500/20 shadow-lg hover:shadow-xl hover:-translate-y-1 hover:border-amber-500/40 transition-all duration-300 group user-card relative overflow-hidden" data-username="{{ user.username }}">
+                <!-- Golden Glow -->
+                <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                
+                <div class="card-body p-6">
+                    <div class="flex items-start justify-between gap-4">
+                        <!-- Rainbow Avatar -->
+                        <a href="{{ url_for('public_profile', user_id=user.id) }}" class="relative">
+                            <div class="avatar placeholder">
+                                {% set avatar_styles = [
+                                    'bg-gradient-to-br from-rose-100 to-rose-200 text-rose-600',
+                                    'bg-gradient-to-br from-orange-100 to-orange-200 text-orange-600',
+                                    'bg-gradient-to-br from-emerald-100 to-emerald-200 text-emerald-600',
+                                    'bg-gradient-to-br from-cyan-100 to-cyan-200 text-cyan-600',
+                                    'bg-gradient-to-br from-blue-100 to-blue-200 text-blue-600',
+                                    'bg-gradient-to-br from-violet-100 to-violet-200 text-violet-600',
+                                    'bg-gradient-to-br from-fuchsia-100 to-fuchsia-200 text-fuchsia-600'
+                                ] %}
+                                {% set style_class = avatar_styles[(user.id) % 7] %}
+                                <div class="w-16 h-16 rounded-full ring-4 ring-base-100 shadow-md {{ style_class }} grid place-items-center text-2xl font-black group-hover:rotate-6 transition-transform">
+                                    {{ user.username[0] | upper }}
+                                </div>
+                            </div>
+                            <!-- Online Status Ring -->
+                            <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-base-100 rounded-full flex items-center justify-center">
+                                <span class="relative flex h-3 w-3">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-3 w-3 bg-success"></span>
+                                </span>
+                            </div>
+                        </a>
+
+                        <!-- Actions Dropdown -->
+                        <div class="dropdown dropdown-end">
+                            <label tabindex="0" class="btn btn-ghost btn-sm btn-circle text-base-content/40 hover:text-base-content hover:bg-base-200">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </label>
+                            <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-xl w-40 border border-base-content/5 z-20">
+                                <li>
+                                    <form action="{{ url_for('unfollow_user', user_id=user.id) }}" method="POST" onsubmit="return confirm('取消关注后，你们将不再是学友关系。确定吗？');" class="w-full">
+                                        <button type="submit" class="text-error hover:bg-error/10 w-full text-left flex gap-2">
+                                            <i class="fas fa-user-minus"></i> 取消关注
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="mt-3">
+                        <div class="flex items-center gap-2">
+                            <a href="{{ url_for('public_profile', user_id=user.id) }}" class="font-extrabold text-xl truncate hover:text-primary transition-colors">{{ user.username }}</a>
+                            <span class="badge badge-sm badge-ghost font-mono opacity-60">Lv.{{ (user.badges|length // 3) + 1 }}</span>
+                        </div>
+                        
+                        <!-- Status Line -->
+                        <div class="text-xs font-medium mt-2 flex items-center gap-2">
+                            {% if user.is_online %}
+                                <div class="flex items-center gap-1.5 text-success bg-success/10 px-2 py-0.5 rounded-full border border-success/20">
+                                    <span class="relative flex h-2 w-2">
+                                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                                      <span class="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
+                                    </span>
+                                    <span>在线 · 今日专注 {{ user.study_time_today_human }}</span>
+                                </div>
+                            {% else %}
+                                <div class="flex items-center gap-1.5 text-base-content/50 bg-base-200/50 px-2 py-0.5 rounded-full border border-base-content/5">
+                                    <span class="w-2 h-2 rounded-full bg-base-300"></span>
+                                    <span>离线 · {{ user.last_active_human }}活跃</span>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Recent Achievement -->
+                        {% if user.latest_earned_badge %}
+                        <div class="mt-4 flex items-center gap-3 bg-base-100/50 rounded-xl p-2 border border-base-content/5 group/badge hover:bg-white hover:shadow-sm transition-all cursor-default">
+                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 flex items-center justify-center shrink-0">
+                                {% if user.latest_earned_badge.badge.icon|is_image_icon %}
+                                    <img src="{{ user.latest_earned_badge.badge.icon|badge_icon_url }}" class="w-6 h-6 object-contain">
+                                {% else %}
+                                    <span class="text-lg">{{ user.latest_earned_badge.badge.icon }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="text-[10px] text-base-content/40 uppercase font-bold leading-none mb-1">近期成就</div>
+                                <div class="text-xs font-bold truncate text-base-content/80 group-hover/badge:text-primary transition-colors">{{ user.latest_earned_badge.badge.name }}</div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="mt-4 h-[58px]"></div> <!-- Spacer to align cards if no achievement -->
+                        {% endif %}
+                    </div>
+
+                    <!-- Detailed Stats -->
+                    <div class="grid grid-cols-3 gap-2 mt-4 p-3 bg-base-50/50 rounded-xl border border-base-content/5">
+                        <div class="flex flex-col items-center">
+                            <span class="text-[10px] text-base-content/40 uppercase font-bold">徽章</span>
+                            <span class="font-mono font-bold text-lg text-base-content/80">{{ user.badges|length }}</span>
+                        </div>
+                        <div class="flex flex-col items-center border-l border-base-content/5">
+                            <span class="text-[10px] text-base-content/40 uppercase font-bold">笔记</span>
+                            <span class="font-mono font-bold text-lg text-base-content/80">{{ user.notes|length }}</span>
+                        </div>
+                        <div class="flex flex-col items-center border-l border-base-content/5">
+                            <span class="text-[10px] text-base-content/40 uppercase font-bold">获赞</span>
+                            <span class="font-mono font-bold text-lg text-base-content/80">{{ user.wikis|length * 5 + user.notes|length * 2 }}</span> <!-- Simple calc for demo -->
+                        </div>
+                    </div>
+
+                    <!-- Call to Actions -->
+                    <div class="mt-5 grid grid-cols-2 gap-3">
+                        <a href="{{ url_for('index', user_id=user.id) }}" class="btn btn-sm btn-ghost bg-base-200/50 hover:bg-base-200 gap-2 group/btn">
+                            <i class="fas fa-shapes text-base-content/40 group-hover/btn:text-primary transition-colors"></i> 参观贴纸
+                        </a>
+                        <a href="{{ url_for('public_profile', user_id=user.id) }}" class="btn btn-sm btn-ghost bg-base-200/50 hover:bg-base-200 gap-2 group/btn">
+                            <i class="fas fa-chart-line text-base-content/40 group-hover/btn:text-primary transition-colors"></i> 详细动态
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-16 bg-base-50/50 rounded-2xl border border-dashed border-base-content/10 text-base-content/40">
+            <div class="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4 text-2xl text-amber-500">
+                <i class="fas fa-crown opacity-50"></i>
+            </div>
+            <p class="font-medium">还没有互相关注的学友</p>
+            <p class="text-xs mt-1 opacity-60">找到志同道合的伙伴，一起进步</p>
+            <a href="{{ url_for('online_users') }}" class="btn btn-sm btn-primary btn-outline mt-4 gap-2">
+                <i class="fas fa-search"></i> 发现学友
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 2. Following Section (Compact List) -->
+    <div class="space-y-6">
+        <div class="flex items-center gap-3 pb-2 border-b border-base-content/5">
+            <div class="p-2 bg-base-200 text-base-content/70 rounded-lg">
+                <i class="fas fa-eye"></i>
+            </div>
+            <h2 class="text-xl font-bold">关注列表</h2>
+            <span class="badge badge-ghost badge-sm font-mono">{{ following|length }}</span>
+        </div>
+        
+        {% if following %}
+        <div class="flex flex-col gap-3" id="following-list">
+            {% for user in following %}
+            <!-- Compact Following Row -->
+            <div class="group flex items-center gap-4 p-3 rounded-xl bg-base-100/40 border border-base-content/5 hover:bg-white hover:shadow-md hover:border-base-content/10 transition-all duration-200 user-card" data-username="{{ user.username }}">
+                <!-- Small Rainbow Avatar -->
+                <a href="{{ url_for('public_profile', user_id=user.id) }}" class="avatar placeholder shrink-0">
+                    {% set avatar_styles = [
+                        'bg-gradient-to-br from-rose-100 to-rose-200 text-rose-600',
+                        'bg-gradient-to-br from-orange-100 to-orange-200 text-orange-600',
+                        'bg-gradient-to-br from-emerald-100 to-emerald-200 text-emerald-600',
+                        'bg-gradient-to-br from-cyan-100 to-cyan-200 text-cyan-600',
+                        'bg-gradient-to-br from-blue-100 to-blue-200 text-blue-600',
+                        'bg-gradient-to-br from-violet-100 to-violet-200 text-violet-600',
+                        'bg-gradient-to-br from-fuchsia-100 to-fuchsia-200 text-fuchsia-600'
+                    ] %}
+                    {% set style_class = avatar_styles[(user.id) % 7] %}
+                    <div class="w-10 h-10 rounded-full {{ style_class }} text-sm font-bold grid place-items-center">
+                        {{ user.username[0] | upper }}
+                    </div>
+                </a>
+                
+                <div class="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <a href="{{ url_for('public_profile', user_id=user.id) }}" class="font-bold hover:text-primary transition-colors truncate">{{ user.username }}</a>
+                        <div class="text-xs text-base-content/40 truncate font-mono">
+                            关注于 {{ user.created_at.strftime('%Y-%m-%d') }}
+                        </div>
+                    </div>
+                    
+                    <!-- Twitter-style Unfollow Button -->
+                    <form action="{{ url_for('unfollow_user', user_id=user.id) }}" method="POST" onsubmit="event.stopPropagation(); return confirm('确定取消关注吗？');">
+                        <button type="submit" class="btn btn-sm w-24 btn-outline border-base-content/20 hover:border-error hover:bg-error hover:text-white group/btn transition-all">
+                            <span class="group-hover/btn:hidden text-xs font-bold text-base-content/60">Following</span>
+                            <span class="hidden group-hover/btn:inline text-xs font-bold">Unfollow</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12 bg-base-50/50 rounded-2xl border border-dashed border-base-content/10 text-base-content/40">
+            <p>暂无其他关注</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Empty Search State -->
+    <div id="search-empty-state" class="hidden flex-col items-center justify-center py-20 text-center animate-fade-in">
+        <div class="w-24 h-24 bg-base-200/50 rounded-full flex items-center justify-center mb-6">
+            <i class="fas fa-search text-4xl text-base-content/20"></i>
+        </div>
+        <h3 class="text-lg font-bold text-base-content/60">没有找到相关用户</h3>
+        <p class="text-sm text-base-content/40 mt-2">换个关键词试试看？</p>
+        <button onclick="document.getElementById('clear-search').click()" class="btn btn-ghost btn-sm text-primary mt-4">清除搜索</button>
+    </div>
+</div>
+
+<script>
+    // Enhanced Search Logic
+    const searchInput = document.getElementById('user-search');
+    const clearBtn = document.getElementById('clear-search');
+    const emptyState = document.getElementById('search-empty-state');
+    const partnersSection = document.querySelector('.space-y-6:nth-of-type(2)'); // Adjust selector based on DOM
+    const followingSection = document.querySelector('.space-y-6:nth-of-type(3)');
+
+    searchInput.addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.user-card');
+        let hasVisible = false;
+        
+        // Toggle Clear Button
+        if (term.length > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+        }
+
+        cards.forEach(card => {
+            const username = card.getAttribute('data-username').toLowerCase();
+            if (username.includes(term)) {
+                card.style.display = ''; // Reset to default (block/flex)
+                card.classList.remove('hidden');
+                hasVisible = true;
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        // Show/Hide Empty State
+        if (!hasVisible && term.length > 0) {
+            emptyState.classList.remove('hidden');
+            emptyState.style.display = 'flex';
+        } else {
+            emptyState.classList.add('hidden');
+            emptyState.style.display = 'none';
+        }
+    });
+
+    // Clear Search
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+        searchInput.focus();
+    });
+</script>
+{% endblock %}

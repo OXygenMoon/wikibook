@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} 的个人空间{% endblock %}
+
+{% block content %}
+<!-- Animated Background -->
+<div class="fixed inset-0 -z-10 overflow-hidden bg-base-100">
+    <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] animate-blob mix-blend-multiply opacity-30"></div>
+    <div class="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[100px] animate-blob animation-delay-2000 mix-blend-multiply opacity-30"></div>
+    <div class="absolute bottom-[-20%] left-[20%] w-[500px] h-[500px] bg-accent/10 rounded-full blur-[100px] animate-blob animation-delay-4000 mix-blend-multiply opacity-30"></div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-fade-in">
+
+    <!-- 1. Header Card -->
+    <div class="relative w-full rounded-3xl bg-white/60 dark:bg-base-200/60 backdrop-blur-xl border border-base-content/5 shadow-sm hover:shadow-md transition-all p-6 md:p-10 flex flex-col md:flex-row items-start gap-8 group">
+        <!-- Internal Gloss -->
+        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/40 to-transparent pointer-events-none"></div>
+        
+        <!-- Left Info Section -->
+        <div class="relative z-10 w-full md:w-1/3 flex flex-col gap-6">
+            <!-- Top: Avatar + Basic Info -->
+            <div class="flex flex-row items-center gap-6">
+                <!-- Avatar -->
+                <div class="relative group shrink-0">
+                    <div class="avatar placeholder">
+                        <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full ring-4 ring-white dark:ring-base-100 shadow-xl bg-primary/10 text-primary grid place-items-center text-4xl sm:text-5xl font-black transition-transform duration-500 group-hover:rotate-6 select-none">
+                            {{ user.username[0] | upper }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Basic Info -->
+                <div class="flex flex-col gap-2 min-w-0">
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-3xl font-extrabold text-base-content tracking-tight drop-shadow-sm truncate">{{ user.username }}</h1>
+                        
+                        <!-- Equipped Badge (Next to Name) -->
+                        {% if user.selected_badge %}
+                            <div class="tooltip tooltip-bottom" data-tip="{{ user.selected_badge.name }}">
+                                <div class="w-6 h-6 flex items-center justify-center">
+                                    {% if user.selected_badge.icon|is_image_icon %}
+                                        <img src="{{ user.selected_badge.icon|badge_icon_url }}" class="w-full h-full object-contain drop-shadow-sm" alt="{{ user.selected_badge.name }}">
+                                    {% else %}
+                                        <span class="text-lg">{{ user.selected_badge.icon }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        {% if user.is_admin %}
+                            <span class="badge badge-primary badge-sm gap-1 shadow-sm shrink-0 opacity-80">
+                                <i class="fas fa-shield-alt text-[10px]"></i> ADMIN
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Join Date -->
+                    <div class="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+                        JOINED {{ user.created_at.strftime('%Y-%m-%d') }}
+                    </div>
+                    
+                    {% if user.real_name or user.department or user.class_name %}
+                    <div class="text-xs text-base-content/50 truncate">
+                        {{ user.real_name }} {{ user.department }} {{ user.class_name }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Social Stats (Capsule) -->
+                    <div class="flex items-center gap-3 mt-1">
+                        <a href="{{ url_for('my_following') if user.id == current_user.id else '#' }}" class="px-3 py-1 rounded-full bg-base-200/50 hover:bg-base-200 transition-colors text-xs font-bold text-base-content/60 flex items-center gap-2 {{ 'cursor-pointer' if user.id == current_user.id else 'cursor-default' }}">
+                            <span><span class="font-black text-base-content">{{ stats.following_count }}</span> 关注</span>
+                            <span class="w-px h-3 bg-base-content/10"></span>
+                            <span><span class="font-black text-base-content">{{ stats.follower_count }}</span> 粉丝</span>
+                        </a>
+                        
+                        <!-- Follow Button -->
+                        {% if user.id != current_user.id %}
+                            {% if is_following %}
+                                <form action="{{ url_for('unfollow_user', user_id=user.id) }}" method="POST" class="inline">
+                                    <button type="submit" class="btn btn-xs btn-outline btn-error gap-1 active:scale-95 transition-transform">
+                                        取消关注
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form action="{{ url_for('follow_user', user_id=user.id) }}" method="POST" class="inline">
+                                    <button type="submit" class="btn btn-xs btn-primary gap-1 active:scale-95 transition-transform">
+                                        关注
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% else %}
+                             <a href="{{ url_for('my_following') }}" class="btn btn-xs btn-ghost gap-1 opacity-50 hover:opacity-100 active:scale-95 transition-transform">
+                                <i class="fas fa-cog"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Heatmap Section -->
+        <div class="relative z-10 w-full md:w-2/3 border-l border-base-200/50 pl-0 md:pl-8">
+            {% include "partials/notes_heatmap.html" %}
+        </div>
+    </div>
+
+    <!-- 2. Combined Stats & Habits Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in" style="animation-delay: 0.1s;">
+        
+        <!-- Card 1: Level & Identity -->
+        <div class="card bg-gradient-to-br from-primary to-secondary text-primary-content shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden group border border-white/10">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity duration-500">
+                <i class="fas fa-crown text-9xl transform translate-x-4 -translate-y-4 rotate-12"></i>
+            </div>
+            <div class="card-body p-5 relative z-10 flex flex-col justify-between h-full">
+                <div>
+                    <div class="text-xs font-bold opacity-60 uppercase tracking-wider">当前等级</div>
+                    <div class="text-4xl font-black mt-1 font-mono">Lv.{{ (user_badges|length // 3) + 1 }}</div>
+                </div>
+                <div class="flex items-center gap-2 mt-4">
+                    <div class="badge badge-white/20 border-0 text-white backdrop-blur-sm">
+                        <i class="fas fa-medal mr-1.5 text-xs"></i> <span class="font-mono">{{ user_badges|length }}</span> 徽章
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Study Activity -->
+        <div class="card bg-base-100/50 backdrop-blur-md border border-base-content/5 shadow-sm hover:shadow-md hover:border-base-content/10 hover:-translate-y-1 transition-all duration-300 group">
+            <div class="card-body p-0 flex flex-col h-full">
+                <!-- Top: Hours -->
+                <div class="flex-1 p-5 border-b border-base-content/5 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">累计学习</div>
+                        <div class="text-2xl font-black text-base-content mt-0.5 font-mono">{{ stats.study_hours }} <span class="text-xs font-medium text-base-content/40">h</span></div>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fas fa-stopwatch"></i>
+                    </div>
+                </div>
+                <!-- Bottom: Streak -->
+                <div class="flex-1 p-5 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">连续打卡</div>
+                        <div class="text-2xl font-black text-base-content mt-0.5 font-mono">{{ stats.streak_days }} <span class="text-xs font-medium text-base-content/40">天</span></div>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-secondary/10 text-secondary flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3: Contribution Matrix -->
+        <div class="card bg-base-100/50 backdrop-blur-md border border-base-content/5 shadow-sm hover:shadow-md hover:border-base-content/10 hover:-translate-y-1 transition-all duration-300 group">
+            <div class="card-body p-5 grid grid-cols-2 gap-4 h-full">
+                <!-- Wiki -->
+                <div class="flex flex-col justify-center">
+                    <div class="text-[10px] font-bold text-base-content/40 uppercase">Wiki 贡献</div>
+                    <div class="text-xl font-black text-base-content mt-0.5 font-mono">{{ stats.wiki_count }}</div>
+                </div>
+                <!-- Notes -->
+                <div class="flex flex-col justify-center border-l border-base-content/5 pl-4">
+                    <div class="text-[10px] font-bold text-base-content/40 uppercase">笔记数量</div>
+                    <div class="text-xl font-black text-base-content mt-0.5 font-mono">{{ stats.note_count }}</div>
+                </div>
+                <!-- Divider -->
+                <div class="col-span-2 h-px bg-base-content/5"></div>
+                <!-- Likes -->
+                <div class="flex flex-col justify-center">
+                    <div class="text-[10px] font-bold text-base-content/40 uppercase">获得赞赏</div>
+                    <div class="text-xl font-black text-base-content mt-0.5 font-mono">{{ stats.total_views_received }}</div>
+                </div>
+                <!-- Shares -->
+                <div class="flex flex-col justify-center border-l border-base-content/5 pl-4">
+                    <div class="text-[10px] font-bold text-base-content/40 uppercase">分享次数</div>
+                    <div class="text-xl font-black text-base-content mt-0.5 font-mono">{{ stats.share_count }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Learning Habits (Radar Chart) -->
+        <div class="card bg-base-100/50 backdrop-blur-md border border-base-content/5 shadow-sm hover:shadow-md hover:border-base-content/10 hover:-translate-y-1 transition-all duration-300 group">
+            <div class="card-body p-0 flex flex-col h-full relative">
+                <div class="absolute top-4 left-5 z-10">
+                    <div class="text-sm font-bold text-base-content/70">学习习惯</div>
+                </div>
+                <!-- ECharts Radar Container -->
+                <div id="habits-radar" class="w-full h-full min-h-[160px]"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Column: Content (8 cols) -->
+        <div class="lg:col-span-8 space-y-8">
+            
+            <!-- Recent Activity (Timeline Style) -->
+            <div class="card bg-base-100/50 backdrop-blur-md border border-base-content/5 shadow-sm">
+                <div class="card-body p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-2 bg-base-200 rounded-lg">
+                            <i class="fas fa-stream text-lg text-primary"></i>
+                        </div>
+                        <h2 class="card-title text-lg font-bold">最近动态</h2>
+                    </div>
+
+                    {% if recent_notes %}
+                        <div class="relative pl-4 border-l-2 border-base-200 space-y-8 ml-2">
+                            {% for note in recent_notes %}
+                            <div class="relative pl-6 group">
+                                <!-- Dot -->
+                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-base-100 border-2 border-base-300 group-hover:border-primary group-hover:scale-110 transition-all"></div>
+                                
+                                <a href="{{ url_for('view_note', note_id=note.id) }}" class="block -mt-1 transition-all group-hover:translate-x-1">
+                                    <div class="flex justify-between items-start">
+                                        <h3 class="font-bold text-base-content text-lg group-hover:text-primary transition-colors truncate pr-2">{{ note.title }}</h3>
+                                        <span class="text-xs font-mono text-base-content/40 whitespace-nowrap">{{ note.created_at.strftime('%m-%d') }}</span>
+                                    </div>
+                                    <p class="text-sm text-base-content/60 line-clamp-2 mt-1">{{ note.content | striptags }}</p>
+                                    <div class="flex items-center gap-4 mt-2 text-xs text-base-content/40 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span class="flex items-center gap-1"><i class="far fa-eye"></i> {{ note.view_count }}</span>
+                                        <span class="flex items-center gap-1"><i class="far fa-comment-alt"></i> {{ note.comments|length }}</span>
+                                    </div>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="flex flex-col items-center justify-center py-12 text-base-content/40 bg-base-50 rounded-2xl border border-dashed border-base-200">
+                            <i class="far fa-folder-open text-4xl mb-3 opacity-50"></i>
+                            <p>暂无公开动态</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Badges (4 cols) -->
+        <div class="lg:col-span-4 space-y-8">
+            
+            <div class="card bg-base-100/50 backdrop-blur-md border border-base-content/5 shadow-sm">
+                <div class="card-body p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                                <i class="fas fa-medal text-lg"></i>
+                            </div>
+                            <h2 class="card-title text-lg font-bold">荣誉墙</h2>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="flex items-center gap-2 mb-6">
+                        <progress class="progress progress-warning flex-1" value="{{ user_badges|length }}" max="{{ user_badges|length + unearned_badges|length }}"></progress>
+                        <span class="text-xs font-mono text-base-content/40">{{ user_badges|length }}/{{ user_badges|length + unearned_badges|length }}</span>
+                    </div>
+
+                    {% if user.id == current_user.id %}
+                        <div class="alert alert-info shadow-sm mb-4 py-2 px-3 text-xs flex items-center gap-2 bg-info/10 text-info border-info/20">
+                            <i class="fas fa-info-circle"></i>
+                            <span>点击徽章可快速佩戴</span>
+                        </div>
+                    {% endif %}
+
+                    <div class="grid grid-cols-4 gap-3">
+                        {% for ub in user_badges %}
+                            {% set is_equipped = (user.selected_badge_id == ub.badge.id) %}
+                            <div class="tooltip tooltip-top z-20" data-tip="{{ ub.badge.name }}">
+                                <button 
+                                    {% if user.id == current_user.id %}onclick="quickEquipBadge({{ ub.badge.id }}, this)"{% endif %}
+                                    class="w-full aspect-square rounded-xl flex items-center justify-center p-2 transition-all duration-300 border-2 relative group active:scale-95
+                                    {{ 'bg-primary/5 border-primary shadow-md scale-105' if is_equipped else 'bg-base-100 border-base-200 hover:border-base-300 hover:shadow-sm hover:-translate-y-1' }}
+                                    {{ 'cursor-pointer' if user.id == current_user.id else 'cursor-default' }}"
+                                >
+                                    {% if ub.badge.icon|is_image_icon %}
+                                        <img src="{{ ub.badge.icon|badge_icon_url }}" 
+                                             class="w-full h-full object-contain drop-shadow-sm transition-transform group-hover:scale-110" 
+                                             alt="{{ ub.badge.name }}"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline'">
+                                        <span class="text-2xl hidden">🏆</span>
+                                    {% else %}
+                                        <span class="text-2xl group-hover:scale-110 transition-transform">{{ ub.badge.icon }}</span>
+                                    {% endif %}
+                                    
+                                    <!-- Checkmark -->
+                                    <div class="absolute -top-2 -right-2 w-5 h-5 bg-primary text-primary-content rounded-full flex items-center justify-center text-[10px] shadow-sm ring-2 ring-white transition-all duration-300 {{ 'scale-100 opacity-100' if is_equipped else 'scale-0 opacity-0' }} check-indicator">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Unearned Preview (Foldable) -->
+                    {% if unearned_badges %}
+                        <div class="mt-6 pt-4 border-t border-base-content/5 relative">
+                            <div class="flex justify-between items-center mb-3">
+                                <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">待解锁</div>
+                            </div>
+                            
+                            <div class="grid grid-cols-4 gap-3" id="unearned-badges-container">
+                                {% for ub in unearned_badges[:8] %}
+                                    <div class="aspect-square rounded-xl bg-base-50 border border-base-200 flex items-center justify-center opacity-40 grayscale tooltip tooltip-top" data-tip="{{ ub.name if not ub.is_hidden else '???' }}">
+                                        {% if not ub.is_hidden %}
+                                            {% if ub.icon|is_image_icon %}
+                                                <img src="{{ ub.icon|badge_icon_url }}" class="w-6 h-6 object-contain" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline'">
+                                                <span class="text-lg hidden">🔒</span>
+                                            {% else %}
+                                                <span class="text-lg">{{ ub.icon }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-sm">🔒</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                                
+                                {% if unearned_badges|length > 8 %}
+                                    {% for ub in unearned_badges[8:] %}
+                                        <div class="aspect-square rounded-xl bg-base-50 border border-base-200 flex items-center justify-center opacity-40 grayscale tooltip tooltip-top hidden extra-badge" data-tip="{{ ub.name if not ub.is_hidden else '???' }}">
+                                            {% if not ub.is_hidden %}
+                                                {% if ub.icon|is_image_icon %}
+                                                    <img src="{{ ub.icon|badge_icon_url }}" class="w-6 h-6 object-contain" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline'">
+                                                    <span class="text-lg hidden">🔒</span>
+                                                {% else %}
+                                                    <span class="text-lg">{{ ub.icon }}</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-sm">🔒</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    
+                                    <!-- Show More Button -->
+                                    <button onclick="toggleUnearnedBadges(this)" class="aspect-square rounded-xl bg-base-50 border border-dashed border-base-200 flex items-center justify-center text-xs text-base-content/40 hover:bg-base-100 hover:text-primary transition-colors cursor-pointer col-span-1">
+                                        <div class="flex flex-col items-center">
+                                            <span class="font-bold">+{{ unearned_badges|length - 8 }}</span>
+                                            <i class="fas fa-chevron-down mt-1"></i>
+                                        </div>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<div id="toast-container" class="toast toast-top toast-center z-50"></div>
+
+<style>
+    @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0px, 0px) scale(1); }
+    }
+    .animate-blob {
+        animation: blob 7s infinite;
+    }
+    .animation-delay-2000 {
+        animation-delay: 2s;
+    }
+    .animation-delay-4000 {
+        animation-delay: 4s;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+        animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .mask-fade-right {
+        mask-image: linear-gradient(to right, black 80%, transparent 100%);
+    }
+</style>
+
+<script>
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const alertDiv = document.createElement('div');
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+        const iconClass = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+        
+        alertDiv.className = `alert ${alertClass} shadow-lg mb-2 rounded-2xl animate-fade-in`;
+        alertDiv.innerHTML = `
+            <div class="flex items-center gap-2">
+                <i class="fas ${iconClass}"></i>
+                <span class="font-bold">${message}</span>
+            </div>
+        `;
+        
+        container.appendChild(alertDiv);
+        setTimeout(() => {
+            alertDiv.style.opacity = '0';
+            alertDiv.style.transform = 'translateY(-10px)';
+            alertDiv.style.transition = 'all 0.3s ease';
+            setTimeout(() => alertDiv.remove(), 300);
+        }, 2000);
+    }
+
+    function quickEquipBadge(badgeId, btnElement) {
+        // Visual feedback
+        btnElement.style.transform = 'scale(0.9)';
+        setTimeout(() => btnElement.style.transform = '', 150);
+
+        fetch('/user/badges/equip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ badge_id: badgeId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('佩戴成功！', 'success');
+                updateBadgeUI(badgeId, btnElement);
+            } else {
+                showToast(data.message || '操作失败', 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast('网络错误', 'error');
+        });
+    }
+
+    function updateBadgeUI(badgeId, activeBtn) {
+        // 1. Reset all badges in grid
+        document.querySelectorAll('.check-indicator').forEach(el => {
+            el.classList.remove('scale-100', 'opacity-100');
+            el.classList.add('scale-0', 'opacity-0');
+        });
+        document.querySelectorAll('button[onclick^="quickEquipBadge"]').forEach(btn => {
+            btn.classList.remove('bg-primary/5', 'border-primary', 'shadow-md', 'scale-105');
+            btn.classList.add('bg-base-100', 'border-base-200');
+        });
+
+        // 2. Activate clicked badge
+        activeBtn.classList.remove('bg-base-100', 'border-base-200');
+        activeBtn.classList.add('bg-primary/5', 'border-primary', 'shadow-md', 'scale-105');
+        const check = activeBtn.querySelector('.check-indicator');
+        if (check) {
+            check.classList.remove('scale-0', 'opacity-0');
+            check.classList.add('scale-100', 'opacity-100');
+        }
+
+        // 3. Update Header Avatar
+        const headerBadgeDisplay = document.getElementById('current-badge-display');
+        const headerBadgeImg = document.getElementById('current-badge-img');
+        const headerBadgeIcon = document.getElementById('current-badge-icon');
+        
+        const sourceImg = activeBtn.querySelector('img');
+        const sourceIcon = activeBtn.querySelector('span:not(.hidden)'); // visible span
+
+        if (sourceImg && sourceImg.style.display !== 'none') {
+            headerBadgeImg.src = sourceImg.src;
+            headerBadgeImg.classList.remove('hidden');
+            if (headerBadgeIcon) headerBadgeIcon.classList.add('hidden');
+        } else if (sourceIcon) {
+            if (headerBadgeIcon) {
+                headerBadgeIcon.innerText = sourceIcon.innerText;
+                headerBadgeIcon.classList.remove('hidden');
+            }
+            headerBadgeImg.classList.add('hidden');
+        }
+
+        headerBadgeDisplay.classList.remove('scale-0', 'opacity-0');
+        headerBadgeDisplay.classList.add('scale-100', 'opacity-100');
+        
+        // Bounce animation
+        headerBadgeDisplay.classList.add('scale-125');
+        setTimeout(() => headerBadgeDisplay.classList.remove('scale-125'), 200);
+    }
+    function toggleUnearnedBadges(btn) {
+        const container = document.getElementById('unearned-badges-container');
+        const hiddenBadges = container.querySelectorAll('.extra-badge');
+        const isExpanded = btn.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // Collapse
+            hiddenBadges.forEach(el => el.classList.add('hidden'));
+            btn.innerHTML = `
+                <div class="flex flex-col items-center">
+                    <span class="font-bold">+{{ unearned_badges|length - 8 }}</span>
+                    <i class="fas fa-chevron-down mt-1"></i>
+                </div>
+            `;
+            btn.classList.remove('expanded');
+        } else {
+            // Expand
+            hiddenBadges.forEach(el => el.classList.remove('hidden'));
+            btn.innerHTML = `
+                <div class="flex flex-col items-center">
+                    <i class="fas fa-chevron-up"></i>
+                </div>
+            `;
+            btn.classList.add('expanded');
+        }
+    }
+</script>
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Radar Chart
+    const radarDom = document.getElementById('habits-radar');
+    if (radarDom) {
+        const radarChart = echarts.init(radarDom);
+        const option = {
+            radar: {
+                indicator: [
+                    { name: '深夜学者', max: 10 },
+                    { name: '晨间鸟', max: 10 },
+                    { name: '深度专注', max: 10 },
+                ],
+                center: ['50%', '50%'],
+                radius: '65%',
+                splitNumber: 4,
+                splitArea: {
+                    areaStyle: {
+                        color: ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.2)'],
+                        shadowColor: 'rgba(0, 0, 0, 0.1)',
+                        shadowBlur: 10
+                    }
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: 'rgba(0,0,0,0.1)'
+                    }
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: 'rgba(0,0,0,0.1)'
+                    }
+                }
+            },
+            series: [{
+                type: 'radar',
+                data: [
+                    {
+                        value: [
+                            {{ stats.night_owl_days }},
+                            {{ stats.early_bird_days }},
+                            {{ stats.long_sessions }}
+                        ],
+                        name: 'Habits',
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
+                                offset: 0,
+                                color: 'rgba(99, 102, 241, 0.6)'
+                            }, {
+                                offset: 1,
+                                color: 'rgba(168, 85, 247, 0.3)'
+                            }])
+                        },
+                        itemStyle: {
+                            color: '#6366f1'
+                        }
+                    }
+                ]
+            }]
+        };
+        radarChart.setOption(option);
+        
+        window.addEventListener('resize', () => {
+            radarChart.resize();
+        });
+    }
+
+    // 2. Heatmap Logic
+    const container = document.getElementById('heatmap-container');
+    const yearSelect = document.getElementById('heatmap-year-select');
+    
+    if (!container) return;
+    
+    let allData = [];
+    let charts = [];
+    
+    fetch('{{ url_for("get_heatmap_data") }}')
+        .then(response => response.json())
+        .then(res => {
+            allData = res.data;
+            const years = new Set();
+            const currentYear = new Date().getFullYear();
+            years.add(currentYear);
+            allData.forEach(item => {
+                const year = new Date(item[0]).getFullYear();
+                years.add(year);
+            });
+            const sortedYears = Array.from(years).sort((a, b) => b - a);
+            yearSelect.innerHTML = '';
+            sortedYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year + '年';
+                if (year === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            });
+            if (sortedYears.length > 0) {
+                yearSelect.classList.remove('hidden');
+                initCharts(yearSelect.value);
+            }
+            yearSelect.addEventListener('change', function() {
+                initCharts(this.value);
+            });
+            window.addEventListener('resize', function() {
+                charts.forEach(c => c.resize());
+            });
+        })
+        .catch(err => console.error('Error loading heatmap data:', err));
+        
+    function initCharts(year) {
+        container.innerHTML = '';
+        charts.forEach(c => c.dispose());
+        charts = [];
+        for (let m = 1; m <= 12; m++) {
+            const monthDiv = document.createElement('div');
+            monthDiv.style.height = '120px';
+            monthDiv.style.width = '80px';
+            monthDiv.style.flex = '0 0 auto';
+            container.appendChild(monthDiv);
+            renderMonthChart(monthDiv, year, m);
+        }
+    }
+
+    function renderMonthChart(dom, year, month) {
+        const myChart = echarts.init(dom);
+        charts.push(myChart);
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0);
+        const startStr = echarts.format.formatTime('yyyy-MM-dd', startDate);
+        const endStr = echarts.format.formatTime('yyyy-MM-dd', endDate);
+        const dateMap = new Map(allData.map(item => [item[0], item[1]]));
+        const filledData = [];
+        let curr = new Date(startDate);
+        while (curr <= endDate) {
+            const dateStr = echarts.format.formatTime('yyyy-MM-dd', curr);
+            const count = dateMap.get(dateStr) || 0;
+            filledData.push([dateStr, count]);
+            curr.setDate(curr.getDate() + 1);
+        }
+        const option = {
+            tooltip: {
+                position: 'top',
+                formatter: function (p) {
+                    const format = echarts.format.formatTime('yyyy-MM-dd', p.data[0]);
+                    return format + ': 活跃度 ' + p.data[1];
+                }
+            },
+            visualMap: {
+                min: 0,
+                max: 20,
+                calculable: false,
+                show: false,
+                inRange: {
+                    color: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39']
+                }
+            },
+            calendar: {
+                top: 20,
+                left: 'center',
+                cellSize: [13, 13],
+                range: [startStr, endStr],
+                itemStyle: {
+                    borderWidth: 3,
+                    borderColor: '#fff',
+                    borderRadius: 2
+                },
+                yearLabel: { show: false },
+                dayLabel: { show: false }, 
+                monthLabel: { 
+                    show: true,
+                    nameMap: 'cn',
+                    position: 'start',
+                    color: '#374151',
+                    fontSize: 14,
+                    fontWeight: 'bold',
+                    margin: 5
+                },
+                splitLine: { show: false }
+            },
+            series: {
+                type: 'heatmap',
+                coordinateSystem: 'calendar',
+                data: filledData,
+                itemStyle: {}
+            }
+        };
+        myChart.setOption(option);
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

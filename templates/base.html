@@ -146,6 +146,28 @@
         
         .mode-wiki .text-wiki { color: white; }
         .mode-book .text-book { color: white; }
+
+        /* Badge Icon Container */
+        .badge-icon-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 6px;
+            overflow: hidden;
+            vertical-align: middle;
+            transition: transform 0.2s;
+            line-height: 1;
+        }
+        .badge-icon-container:hover {
+            transform: scale(1.1);
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        .badge-icon-container img {
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -298,13 +320,44 @@
                         </div>
                     </div>
 
-                    <div class="flex-1 min-w-0 text-left cursor-pointer" onclick="window.location.href='{{ url_for('my_badges') }}'" title="查看我的成就">
+                    <div class="flex-1 min-w-0 text-left cursor-pointer" onclick="window.location.href='{{ url_for('user_profile') }}'" title="查看个人主页">
                         <div class="flex items-center gap-1">
                             <p class="text-sm font-bold text-stone-700 truncate">{{ current_user.username }}</p>
                             {% if current_user.selected_badge %}
-                                <span class="tooltip tooltip-right" data-tip="{{ current_user.selected_badge.name }}">
-                                    <span class="text-lg filter drop-shadow-sm">{{ current_user.selected_badge.icon }}</span>
-                                </span>
+                                <div class="group relative">
+                                    <div class="badge-icon-container w-6 h-6 cursor-help">
+                                        {% set _icon = current_user.selected_badge.icon %}
+                                        {% if _icon|is_image_icon %}
+                                            <img src="{{ _icon|badge_icon_url }}" alt="{{ current_user.selected_badge.name }}">
+                                        {% else %}
+                                            <span class="text-sm filter drop-shadow-sm">{{ _icon }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <!-- Rich Tooltip -->
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-white rounded-lg shadow-xl border border-stone-200 p-4 invisible group-hover:visible z-50 transition-all duration-200 opacity-0 group-hover:opacity-100 transform scale-95 group-hover:scale-100 pointer-events-none">
+                                        <div class="flex flex-col items-center text-center gap-2">
+                                            <div class="w-12 h-12 flex items-center justify-center bg-stone-50 rounded-lg">
+                                                {% if _icon|is_image_icon %}
+                                                    <img src="{{ _icon|badge_icon_url }}" class="w-10 h-10 object-contain" alt="{{ current_user.selected_badge.name }}">
+                                                {% else %}
+                                                    <span class="text-3xl">{{ _icon }}</span>
+                                                {% endif %}
+                                            </div>
+                                            <div>
+                                                <h3 class="font-bold text-stone-800">{{ current_user.selected_badge.name }}</h3>
+                                                <p class="text-xs text-stone-500 mt-1">{{ current_user.selected_badge.description }}</p>
+                                            </div>
+                                            {% set user_badge = current_user.get_selected_user_badge() %}
+                                            {% if user_badge %}
+                                            <div class="text-[10px] text-stone-400 bg-stone-50 px-2 py-1 rounded-full mt-1">
+                                                获得于 {{ user_badge.earned_at.strftime('%Y-%m-%d') }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <!-- Arrow -->
+                                        <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-white border-r border-b border-stone-200 rotate-45"></div>
+                                    </div>
+                                </div>
                             {% endif %}
                         </div>
                         <p class="text-xs text-stone-400 truncate">{{ '管理员' if current_user.is_admin else '用户' }}</p>
@@ -330,18 +383,18 @@
         {% endif %}
         
         <div class="p-4 sm:p-6 lg:p-8">
-            <!-- Flash Messages -->
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    <div class="toast toast-top toast-center z-50">
+            <!-- Flash Messages & Notifications -->
+            <div id="global-toast-container" class="toast toast-top toast-center z-50">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
                         {% for message in messages %}
-                        <div class="alert alert-info">
+                        <div class="alert alert-info shadow-lg mb-2">
                             <span>{{ message }}</span>
                         </div>
                         {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
+                    {% endif %}
+                {% endwith %}
+            </div>
 
             {% block content %}{% endblock %}
         </div>
@@ -365,6 +418,40 @@
         }
         mobileMenuBtn?.addEventListener('click', toggleSidebar);
         overlay?.addEventListener('click', toggleSidebar);
+        
+        // Global Notification Toast
+        function showGlobalToast(message, type = 'info', link = null) {
+            const container = document.getElementById('global-toast-container');
+            if (!container) return;
+            
+            const alertDiv = document.createElement('div');
+            let alertClass = 'alert-info';
+            if (type === 'success') alertClass = 'alert-success';
+            if (type === 'error') alertClass = 'alert-error';
+            if (type === 'warning') alertClass = 'alert-warning';
+            
+            alertDiv.className = `alert ${alertClass} shadow-lg mb-2 rounded-xl animate-fade-in cursor-pointer hover:scale-105 transition-transform`;
+            
+            if (link) {
+                alertDiv.onclick = () => window.location.href = link;
+            }
+            
+            alertDiv.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-bell"></i>
+                    <span class="font-bold">${message}</span>
+                </div>
+            `;
+            
+            container.appendChild(alertDiv);
+            
+            // Auto remove after 5s
+            setTimeout(() => {
+                alertDiv.style.opacity = '0';
+                alertDiv.style.transform = 'translateY(-20px)';
+                setTimeout(() => alertDiv.remove(), 300);
+            }, 5000);
+        }
     </script>
     {% block scripts %}{% endblock %}
 
@@ -382,7 +469,17 @@
                 })
             })
             .then(response => response.json())
-            .then(data => console.log('Heartbeat:', data))
+            .then(data => {
+                // Handle Notifications
+                if (data.notifications && data.notifications.length > 0) {
+                    data.notifications.forEach(n => {
+                        showGlobalToast(n.message, 'info', n.link);
+                    });
+                    
+                    // Mark all as read
+                    fetch('/api/notifications/read/all', { method: 'POST' });
+                }
+            })
             .catch(console.error);
         }
         

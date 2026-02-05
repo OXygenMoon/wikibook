@@ -2,9 +2,51 @@
 
 {% block title %}Book 首页{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/sticker.css') }}">
+{% endblock %}
+
 {% block content %}
+<!-- Sticker System -->
+<div id="sticker-canvas"></div>
+
+<button id="sticker-fab" class="sticker-fab btn btn-circle btn-primary btn-lg shadow-lg">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+</button>
+
+<div id="sticker-drawer" class="sticker-drawer">
+    <div class="sticker-drawer-header">
+        <h3 class="font-bold text-lg">我的贴纸库</h3>
+        <div class="flex gap-2">
+            <button id="sticker-save-btn" class="btn btn-primary btn-sm">保存</button>
+            <button id="sticker-close-btn" class="btn btn-ghost btn-sm btn-circle">✕</button>
+        </div>
+    </div>
+    <div class="sticker-drawer-body">
+        <div class="sticker-grid">
+            {% for ub in current_user.earned_badges %}
+            <div class="sticker-option" 
+                 data-badge-id="{{ ub.badge.id }}" 
+                 data-badge-icon="{{ ub.badge.icon | badge_icon_url }}"
+                 title="{{ ub.badge.name }}">
+                <div class="sticker-option-icon">
+                    {% if ub.badge.icon | is_image_icon %}
+                        <img src="{{ ub.badge.icon | badge_icon_url }}" alt="{{ ub.badge.name }}">
+                    {% else %}
+                        {{ ub.badge.icon }}
+                    {% endif %}
+                </div>
+                <div class="sticker-option-name">{{ ub.badge.name }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
 <!-- Hero Section with Search -->
-<div class="text-center space-y-8 py-16 bg-gradient-to-b from-primary/5 to-transparent rounded-3xl mb-12">
+<div class="text-center space-y-8 py-16 bg-gradient-to-b from-primary/5 to-transparent rounded-3xl mb-12 relative z-10">
     <div class="space-y-4">
         <h1 class="text-4xl lg:text-5xl font-extrabold text-base-content tracking-tight">
             知识笔记库 <span class="text-primary">WikiBook</span>
@@ -39,6 +81,13 @@
     </div>
 </div>
 
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/sticker.js') }}?v={{ range(1, 10000) | random }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        new StickerManager('book');
+    });
+</script>
 <script>
 function doSearch() {
     const val = document.getElementById('quickInput').value.trim();
@@ -90,6 +139,7 @@ document.getElementById('quickInput').addEventListener('keypress', function(e) {
     }
 });
 </script>
+{% endblock %}
 
 <div class="flex justify-between items-center mb-6 px-1">
     <h2 class="text-xl font-bold text-base-content flex items-center gap-2">

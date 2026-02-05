@@ -31,6 +31,37 @@ markdown = mistune.create_markdown(escape=False, plugins=["strikethrough", "tabl
 def now_utc8():
     return datetime.utcnow() + timedelta(hours=8)
 
+def is_image_icon(s):
+    if not s:
+        return False
+    v = s.strip().lower()
+    if v.startswith("http://") or v.startswith("https://") or v.startswith("/"):
+        return v.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"))
+    if "." in v:
+        ext = v.rsplit(".", 1)[-1]
+        return ext in ["png", "jpg", "jpeg", "gif", "svg", "webp"]
+    return False
+
+def badge_icon_url(s):
+    if not s:
+        return ""
+    v = s.strip()
+    if v.startswith("http://") or v.startswith("https://") or v.startswith("/"):
+        return v
+    if is_image_icon(v):
+        if v.startswith("uploads/"):
+             return url_for("static", filename=v)
+        return url_for("static", filename=f"uploads/{v}")
+    return ""
+
+app.jinja_env.filters["is_image_icon"] = is_image_icon
+app.jinja_env.filters["badge_icon_url"] = badge_icon_url
+
+followers = db.Table('followers',
+    db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('followed_id', db.Integer, db.ForeignKey('user.id'))
+)
+
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -55,37 +86,224 @@ class User(db.Model, UserMixin):
     shared_notes = db.relationship("NoteShare", backref="user", cascade="all, delete-orphan")
     earned_badges = db.relationship("UserBadge", backref="user", cascade="all, delete-orphan")
 
+    followed = db.relationship(
+        'User', secondary=followers,
+        primaryjoin=(followers.c.follower_id == id),
+        secondaryjoin=(followers.c.followed_id == id),
+        backref=db.backref('followers', lazy='dynamic'),
+        lazy='dynamic'
+    )
+
+    def follow(self, user):
+        if not self.is_following(user):
+            self.followed.append(user)
+
+    def unfollow(self, user):
+        if self.is_following(user):
+            self.followed.remove(user)
+
+    def is_following(self, user):
+        return self.followed.filter(followers.c.followed_id == user.id).count() > 0
+
+    def is_followed_by(self, user):
+        return self.followers.filter(followers.c.follower_id == user.id).count() > 0
+
+    @property
+    def is_online(self):
+        if not self.active_status or not self.active_status.last_active_at:
+            return False
+        return self.active_status.last_active_at > (now_utc8() - timedelta(minutes=5))
+
+    @property
+    def last_active_human(self):
+        if not self.active_status or not self.active_status.last_active_at:
+            return "从未上线"
+        diff = now_utc8() - self.active_status.last_active_at
+        seconds = diff.total_seconds()
+        if seconds < 60:
+            return "刚刚"
+        minutes = seconds / 60
+        if minutes < 60:
+            return f"{int(minutes)}分钟前"
+        hours = minutes / 60
+        if hours < 24:
+            return f"{int(hours)}小时前"
+        days = hours / 24
+        if days < 7:
+            return f"{int(days)}天前"
+        if days < 30:
+            return f"{int(days/7)}周前"
+        if days < 365:
+            return f"{int(days/30)}个月前"
+        return f"{int(days/365)}年前"
+
+    @property
+    def study_time_today_human(self):
+        now = now_utc8()
+        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        sessions = StudySession.query.filter(
+            StudySession.user_id == self.id,
+            StudySession.start_time >= start_of_day
+        ).all()
+        total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+        
+        if total_seconds < 60:
+            return "少于1分钟"
+        m, s = divmod(total_seconds, 60)
+        h, m = divmod(m, 60)
+        if h > 0:
+            return f"{int(h)}小时 {int(m)}分钟"
+        else:
+            return f"{int(m)}分钟"
+
+    @property
+    def latest_earned_badge(self):
+        return UserBadge.query.filter_by(user_id=self.id).order_by(UserBadge.earned_at.desc()).first()
+
+    @property
+    def badges(self):
+        return self.earned_badges
+
+    @property
+    def wikis(self):
+        return Wiki.query.filter_by(created_by_id=self.id).all()
+
+    @property
+    def study_partners(self):
+        """Return a query for users that are mutually following each other."""
+        # Users I follow who also follow me
+        # Subquery: IDs of people who follow me
+        subquery = db.session.query(followers.c.follower_id).filter(followers.c.followed_id == self.id)
+        # Filter my followed list by that subquery
+        return self.followed.filter(User.id.in_(subquery))
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    def get_selected_user_badge(self):
+        if not self.selected_badge_id:
+            return None
+        return UserBadge.query.filter_by(user_id=self.id, badge_id=self.selected_badge_id).first()
+
+    def calculate_stats(self):
+        """Calculate all detailed statistics for the user."""
+        stats = {
+            "wiki_count": Wiki.query.filter_by(created_by_id=self.id).count(),
+            "note_count": Note.query.filter_by(user_id=self.id).count(),
+            "badge_count": len(self.earned_badges),
+            "study_partner_count": self.study_partners.count(),
+            "following_count": self.followed.count(),
+            "follower_count": self.followers.count(),
+            "comment_count": Comment.query.filter_by(user_id=self.id).count(),
+            "wiki_edit_count": WikiPageHistory.query.filter_by(user_id=self.id).count(),
+            "streak_days": 0,
+            "study_hours": 0.0,
+            "night_owl_days": 0,
+            "early_bird_days": 0,
+            "weekend_study_hours": 0.0,
+            "long_sessions": 0,
+            "total_views_received": NoteViewLog.query.join(Note).filter(Note.user_id == self.id).count(),
+            "share_count": NoteShare.query.join(Note).filter(Note.user_id == self.id).count()
+        }
+
+        # Study Session Analysis
+        sessions = StudySession.query.filter_by(user_id=self.id).all()
+        
+        # 1. Study Hours
+        total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+        stats["study_hours"] = round(total_seconds / 3600, 1)
+
+        # 2. Streak
+        sorted_sessions = sorted(sessions, key=lambda x: x.start_time, reverse=True)
+        dates = sorted(list(set([s.start_time.date() for s in sorted_sessions])), reverse=True)
+        streak = 0
+        if dates:
+            today = now_utc8().date()
+            if dates[0] == today:
+                streak = 1
+                current = today
+            elif dates[0] == today - timedelta(days=1):
+                streak = 1
+                current = today - timedelta(days=1)
+            else:
+                streak = 0
+            if streak > 0:
+                for i in range(1, len(dates)):
+                    if dates[i] == current - timedelta(days=1):
+                        streak += 1
+                        current = dates[i]
+                    else:
+                        break
+        stats["streak_days"] = streak
+
+        # 3. Time Patterns
+        night_days = set()
+        early_days = set()
+        weekend_seconds = 0
+        long_count = 0
+
+        for s in sessions:
+            # Night Owl
+            h = s.start_time.hour
+            if h >= 23 or h < 4:
+                logical_date = (s.start_time - timedelta(hours=4)).date()
+                night_days.add(logical_date)
+            
+            # Early Bird
+            if 5 <= h < 8:
+                early_days.add(s.start_time.date())
+            
+            # Weekend
+            if s.start_time.weekday() in [5, 6]:
+                duration = (s.end_time - s.start_time).total_seconds()
+                if duration > 0:
+                    weekend_seconds += duration
+            
+            # Long Session
+            duration = (s.end_time - s.start_time).total_seconds()
+            if duration >= 7200:
+                long_count += 1
+        
+        stats["night_owl_days"] = len(night_days)
+        stats["early_bird_days"] = len(early_days)
+        stats["weekend_study_hours"] = round(weekend_seconds / 3600, 1)
+        stats["long_sessions"] = long_count
+
+        return stats
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.String(500), nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    type = db.Column(db.String(50), default='system') # system, friend_login, friend_achievement
+    link = db.Column(db.String(200), nullable=True)
+
+    user = db.relationship("User", backref=db.backref("notifications", lazy="dynamic", cascade="all, delete-orphan"))
+
 class Badge(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(255), nullable=False)
-    icon = db.Column(db.String(50), nullable=False) # Emoji or FontAwesome class
+    icon = db.Column(db.String(255), nullable=False) # Emoji or FontAwesome class
     condition_type = db.Column(db.String(50), nullable=False) # streak_days, study_hours, featured_count, note_count
     condition_value = db.Column(db.Integer, nullable=False)
     is_hidden = db.Column(db.Boolean, default=False) # Hidden badges won't show conditions until earned
+    start_time = db.Column(db.DateTime, nullable=True) # For time-limited badges
+    end_time = db.Column(db.DateTime, nullable=True) # For time-limited badges
     created_at = db.Column(db.DateTime, default=now_utc8)
+    
+    users = db.relationship("UserBadge", backref="badge_info", lazy="dynamic")
 
 class UserBadge(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     badge_id = db.Column(db.Integer, db.ForeignKey("badge.id"), nullable=False)
     earned_at = db.Column(db.DateTime, default=now_utc8)
-    
-    badge = db.relationship("Badge")
-
-class StickerPlacement(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    badge_id = db.Column(db.Integer, db.ForeignKey("badge.id"), nullable=False)
-    x_position = db.Column(db.Float, nullable=False) # Percentage (0.0 - 100.0)
-    y_position = db.Column(db.Float, nullable=False) # Percentage (0.0 - 100.0)
-    created_at = db.Column(db.DateTime, default=now_utc8)
     
     badge = db.relationship("Badge")
 
@@ -190,6 +408,10 @@ class Note(db.Model):
     tags = db.relationship('Tag', secondary='note_tags', backref=db.backref('notes', lazy='dynamic'))
     comments = db.relationship('Comment', backref='note', cascade="all, delete-orphan", order_by="desc(Comment.created_at)")
 
+    @property
+    def view_count(self):
+        return NoteViewLog.query.filter_by(note_id=self.id).count()
+
 class NoteShare(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     note_id = db.Column(db.Integer, db.ForeignKey("note.id"), nullable=False)
@@ -229,6 +451,33 @@ class NoteViewLog(db.Model):
     note_id = db.Column(db.Integer, db.ForeignKey("note.id"), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     timestamp = db.Column(db.DateTime, default=now_utc8)
+
+class UserSticker(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    badge_id = db.Column(db.Integer, db.ForeignKey("badge.id"), nullable=False)
+    page_type = db.Column(db.String(20), nullable=False) # 'wiki' or 'book'
+    x = db.Column(db.Float, default=50.0) # Percentage
+    y = db.Column(db.Float, default=50.0) # Percentage
+    rotation = db.Column(db.Float, default=0.0) # Degrees
+    scale = db.Column(db.Float, default=1.0)
+    z_index = db.Column(db.Integer, default=1)
+    
+    badge = db.relationship("Badge")
+    user = db.relationship("User", backref="stickers")
+
+class StickerBoardSnapshot(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    page_type = db.Column(db.String(20), nullable=False)
+    title = db.Column(db.String(100), nullable=True)
+    caption = db.Column(db.Text, nullable=True)
+    visibility = db.Column(db.String(20), default='private') # private, followers, public
+    data_json = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    likes_count = db.Column(db.Integer, default=0)
+    
+    user = db.relationship("User", backref="sticker_snapshots")
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -279,6 +528,41 @@ def ensure_db():
 @app.route("/")
 def index():
     q = request.args.get("q", "").strip()
+    user_id = request.args.get("user_id")
+    target_user = None
+    if user_id:
+        if not current_user.is_authenticated:
+            # 未登录用户不允许查看其他人的贴纸，重定向到登录页或返回主页
+            # 这里选择忽略 user_id，直接按默认首页（无 target_user）处理
+            # 也可以选择: return redirect(url_for('login'))
+            pass 
+        else:
+            try:
+                potential_target = User.query.get(int(user_id))
+                if potential_target:
+                    # 检查权限：是自己，或者是学友（互相关注）
+                    # 注意：原始需求是“学友”，即互相关注。
+                    # 如果只是关注（follower），使用 current_user.is_following(potential_target)
+                    # 如果必须互相关注，需检查双向。
+                    # 根据上下文，之前的API检查是 is_following。
+                    # 用户新需求："应该同时存在登录用户和被查看用户的id在url中，且要计算是否是对方的学友"
+                    # 我们定义“学友”为互相关注。
+                    
+                    if potential_target.id == current_user.id:
+                        target_user = potential_target
+                    else:
+                        # 检查是否互相关注 (is_friend / study_partner)
+                        # User模型没有直接的 is_friend 方法，但我们可以检查双向关注
+                        # A follows B AND B follows A
+                        if current_user.is_following(potential_target) and potential_target.is_following(current_user):
+                            target_user = potential_target
+                        else:
+                            # 不是学友，不允许查看，target_user 保持 None
+                            # 可选：flash("您和该用户不是学友关系，无法参观贴纸板")
+                            pass
+            except:
+                pass
+            
     if q:
         # 搜索 Wiki 标题
         wikis = Wiki.query.filter(Wiki.title.contains(q)).order_by(Wiki.created_at.desc()).all()
@@ -291,7 +575,7 @@ def index():
         wikis = Wiki.query.order_by(Wiki.created_at.desc()).all()
         pages = []
         
-    return render_template("index.html", wikis=wikis, pages=pages, q=q)
+    return render_template("index.html", wikis=wikis, pages=pages, q=q, target_user=target_user)
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -808,7 +1092,8 @@ def upload_file():
              return {"error": f"File type '{ext}' not allowed. Allowed: jpg, png, gif, webp"}, 400
         unique_filename = str(uuid.uuid4()) + ext
         file.save(os.path.join(app.config["UPLOAD_FOLDER"], unique_filename))
-        return {"data": {"filePath": url_for("static", filename=f"uploads/{unique_filename}")}}
+        # EasyMDE expects: {"success": 1, "url": "..."}
+        return {"success": 1, "url": url_for("static", filename=f"uploads/{unique_filename}")}
 
 @app.route("/admin/users")
 @login_required
@@ -964,7 +1249,27 @@ def manage_badges():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         description = request.form.get("description", "").strip()
-        icon = request.form.get("icon", "").strip()
+        # icon = request.form.get("icon", "").strip()
+        
+        # Handle file upload
+        icon = ""
+        if "icon_file" in request.files:
+            file = request.files["icon_file"]
+            if file and file.filename:
+                # Validate extension (optional, but good practice)
+                if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                    flash("不支持的文件格式")
+                    return redirect(url_for("manage_badges"))
+                
+                # Save file
+                filename = str(uuid.uuid4()) + os.path.splitext(file.filename)[1]
+                save_dir = os.path.join(app.root_path, "static/uploads/badges")
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
+                
+                file.save(os.path.join(save_dir, filename))
+                icon = f"/static/uploads/badges/{filename}"
+        
         condition_type = request.form.get("condition_type", "").strip()
         try:
             condition_value = int(request.form.get("condition_value", 0))
@@ -972,9 +1277,23 @@ def manage_badges():
             condition_value = 0
             
         is_hidden = request.form.get("is_hidden") == "on"
+        
+        # Parse dates
+        start_time = None
+        end_time = None
+        if request.form.get("start_time"):
+            try:
+                start_time = datetime.strptime(request.form.get("start_time"), "%Y-%m-%d")
+            except ValueError:
+                pass
+        if request.form.get("end_time"):
+            try:
+                end_time = datetime.strptime(request.form.get("end_time"), "%Y-%m-%d")
+            except ValueError:
+                pass
             
         if not name or not icon or not condition_type:
-            flash("请填写完整信息")
+            flash("请填写完整信息（包括上传图标）")
             return redirect(url_for("manage_badges"))
             
         b = Badge(
@@ -983,15 +1302,27 @@ def manage_badges():
             icon=icon,
             condition_type=condition_type,
             condition_value=condition_value,
-            is_hidden=is_hidden
+            is_hidden=is_hidden,
+            start_time=start_time,
+            end_time=end_time
         )
         db.session.add(b)
         db.session.commit()
+        
+        # Check 'all_users' immediately
+        if b.condition_type == 'all_users':
+            users = User.query.all()
+            for user in users:
+                if not UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first():
+                    db.session.add(UserBadge(user_id=user.id, badge_id=b.id))
+            db.session.commit()
+            
         flash("徽章创建成功")
         return redirect(url_for("manage_badges"))
         
     badges = Badge.query.order_by(Badge.created_at.desc()).all()
-    return render_template("admin/manage_badges.html", badges=badges)
+    users = User.query.all()
+    return render_template("admin/manage_badges.html", badges=badges, users=users)
 
 @app.route("/admin/badges/<int:badge_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -1004,7 +1335,38 @@ def edit_badge(badge_id):
     if request.method == "POST":
         b.name = request.form.get("name", "").strip()
         b.description = request.form.get("description", "").strip()
-        b.icon = request.form.get("icon", "").strip()
+        # b.icon = request.form.get("icon", "").strip()
+        
+        # Handle file upload
+        if "icon_file" in request.files:
+            file = request.files["icon_file"]
+            if file and file.filename:
+                # Validate extension
+                if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                    flash("不支持的文件格式")
+                    return render_template("admin/edit_badge.html", badge=b)
+                
+                # Save new file
+                filename = str(uuid.uuid4()) + os.path.splitext(file.filename)[1]
+                save_dir = os.path.join(app.root_path, "static/uploads/badges")
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
+                
+                new_path = os.path.join(save_dir, filename)
+                file.save(new_path)
+                
+                # Delete old file if it exists and is a local file
+                if b.icon and b.icon.startswith("/static/uploads/badges/"):
+                    old_filename = b.icon.split("/")[-1]
+                    old_path = os.path.join(save_dir, old_filename)
+                    if os.path.exists(old_path):
+                        try:
+                            os.remove(old_path)
+                        except OSError:
+                            pass # Ignore errors during deletion
+                
+                b.icon = f"/static/uploads/badges/{filename}"
+
         b.condition_type = request.form.get("condition_type", "").strip()
         try:
             b.condition_value = int(request.form.get("condition_value", 0))
@@ -1012,141 +1374,215 @@ def edit_badge(badge_id):
             b.condition_value = 0
         b.is_hidden = request.form.get("is_hidden") == "on"
         
+        # Parse dates
+        if request.form.get("start_time"):
+            try:
+                b.start_time = datetime.strptime(request.form.get("start_time"), "%Y-%m-%d")
+            except ValueError:
+                pass
+        else:
+            b.start_time = None
+            
+        if request.form.get("end_time"):
+            try:
+                b.end_time = datetime.strptime(request.form.get("end_time"), "%Y-%m-%d")
+            except ValueError:
+                pass
+        else:
+            b.end_time = None
+        
         db.session.commit()
+        
+        # Check 'all_users' immediately
+        if b.condition_type == 'all_users':
+            users = User.query.all()
+            for user in users:
+                if not UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first():
+                    db.session.add(UserBadge(user_id=user.id, badge_id=b.id))
+            db.session.commit()
         
         # Retroactive Check: Check this badge for all users
         # This could be heavy, so ideally run in background task. 
         # For now, we iterate all users.
-        users = User.query.all()
-        count = 0
-        for user in users:
-            # Re-verify condition for everyone (both existing holders and new ones)
-            # 1. Check if user meets condition now
-            meets_condition = False
-            
-            if b.condition_type == 'note_count':
-                count = Note.query.filter_by(user_id=user.id).count()
-                meets_condition = count >= b.condition_value
-            elif b.condition_type == 'featured_count':
-                count = Note.query.filter_by(user_id=user.id, is_featured=True).count()
-                meets_condition = count >= b.condition_value
-            elif b.condition_type == 'wiki_edit_count':
-                count = WikiPageHistory.query.filter_by(user_id=user.id).count()
-                meets_condition = count >= b.condition_value
-            elif b.condition_type == 'comment_count':
-                count = Comment.query.filter_by(user_id=user.id).count()
-                meets_condition = count >= b.condition_value
-            elif b.condition_type == 'night_owl_sessions':
-                # Re-calculate: Count DISTINCT "logical nights" (offset by -4 hours)
-                sessions = StudySession.query.filter_by(user_id=user.id).all()
-                night_days = set()
-                for s in sessions:
-                    h = s.start_time.hour
-                    if h >= 23 or h < 4:
-                        logical_date = (s.start_time - timedelta(hours=4)).date()
-                        night_days.add(logical_date)
-                meets_condition = len(night_days) >= b.condition_value
-            
-            elif b.condition_type == 'early_bird':
-                # Count distinct days with sessions between 05:00 and 08:00
-                sessions = StudySession.query.filter_by(user_id=user.id).all()
-                early_days = set()
-                for s in sessions:
-                    h = s.start_time.hour
-                    if 5 <= h < 8:
-                        early_days.add(s.start_time.date())
-                meets_condition = len(early_days) >= b.condition_value
-             
-            elif b.condition_type == 'weekend_warrior':
-                sessions = StudySession.query.filter_by(user_id=user.id).all()
-                total_seconds = 0
-                for s in sessions:
-                    if s.start_time.weekday() in [5, 6]:
+        
+        # Skip retroactive check for manual badges
+        if b.condition_type != 'manual':
+            users = User.query.all()
+            for user in users:
+                # Use the centralized check logic
+                # But check_and_award_badges only awards, doesn't revoke.
+                # So we need custom logic here if we want to support revocation.
+                # However, re-implementing logic is error-prone.
+                # For now, let's fix the missing types in this loop.
+                
+                meets_condition = False
+                
+                if b.condition_type == 'all_users':
+                    meets_condition = True
+                    
+                elif b.condition_type == 'login_days_in_range':
+                    if b.start_time and b.end_time:
+                        sessions = StudySession.query.filter(
+                            StudySession.user_id == user.id,
+                            StudySession.start_time >= b.start_time,
+                            StudySession.start_time <= b.end_time
+                        ).all()
+                        login_days = set([s.start_time.date() for s in sessions])
+                        meets_condition = len(login_days) >= b.condition_value
+                
+                elif b.condition_type == 'note_count':
+                    count = Note.query.filter_by(user_id=user.id).count()
+                    meets_condition = count >= b.condition_value
+                elif b.condition_type == 'featured_count':
+                    count = Note.query.filter_by(user_id=user.id, is_featured=True).count()
+                    meets_condition = count >= b.condition_value
+                elif b.condition_type == 'wiki_edit_count':
+                    count = WikiPageHistory.query.filter_by(user_id=user.id).count()
+                    meets_condition = count >= b.condition_value
+                elif b.condition_type == 'comment_count':
+                    count = Comment.query.filter_by(user_id=user.id).count()
+                    meets_condition = count >= b.condition_value
+                elif b.condition_type == 'night_owl_sessions':
+                    # Re-calculate: Count DISTINCT "logical nights" (offset by -4 hours)
+                    sessions = StudySession.query.filter_by(user_id=user.id).all()
+                    night_days = set()
+                    for s in sessions:
+                        h = s.start_time.hour
+                        if h >= 23 or h < 4:
+                            logical_date = (s.start_time - timedelta(hours=4)).date()
+                            night_days.add(logical_date)
+                    meets_condition = len(night_days) >= b.condition_value
+                
+                elif b.condition_type == 'early_bird':
+                    # Count distinct days with sessions between 05:00 and 08:00
+                    sessions = StudySession.query.filter_by(user_id=user.id).all()
+                    early_days = set()
+                    for s in sessions:
+                        h = s.start_time.hour
+                        if 5 <= h < 8:
+                            early_days.add(s.start_time.date())
+                    meets_condition = len(early_days) >= b.condition_value
+                 
+                elif b.condition_type == 'weekend_warrior':
+                    sessions = StudySession.query.filter_by(user_id=user.id).all()
+                    total_seconds = 0
+                    for s in sessions:
+                        if s.start_time.weekday() in [5, 6]:
+                            duration = (s.end_time - s.start_time).total_seconds()
+                            if duration > 0:
+                                total_seconds += duration
+                    total_hours = total_seconds / 3600
+                    meets_condition = total_hours >= b.condition_value
+                 
+                elif b.condition_type == 'long_session_count':
+                    # Count sessions > 2 hours (7200 seconds)
+                    sessions = StudySession.query.filter_by(user_id=user.id).all()
+                    long_count = 0
+                    for s in sessions:
                         duration = (s.end_time - s.start_time).total_seconds()
-                        if duration > 0:
-                            total_seconds += duration
-                total_hours = total_seconds / 3600
-                meets_condition = total_hours >= b.condition_value
-             
-            elif b.condition_type == 'long_session_count':
-                # Count sessions > 2 hours (7200 seconds)
-                sessions = StudySession.query.filter_by(user_id=user.id).all()
-                long_count = 0
-                for s in sessions:
-                    duration = (s.end_time - s.start_time).total_seconds()
-                    if duration >= 7200:
-                        long_count += 1
-                meets_condition = long_count >= b.condition_value
-            
-            elif b.condition_type == 'share_count':
-                # We need sender. NoteShare definition: note_id, user_id (receiver).
-                # So we join Note to find sender.
-                count = NoteShare.query.join(Note).filter(Note.user_id == user.id).count()
-                meets_condition = count >= b.condition_value
-            
-            elif b.condition_type == 'total_views_received':
-                # Count total views on user's notes
-                count = NoteViewLog.query.join(Note).filter(Note.user_id == user.id).count()
-                meets_condition = count >= b.condition_value
-            
-            elif b.condition_type == 'wiki_create_count':
-                from sqlalchemy import func
-                subquery = db.session.query(func.min(WikiPageHistory.id)).group_by(WikiPageHistory.page_id)
-                count = WikiPageHistory.query.filter(WikiPageHistory.id.in_(subquery), WikiPageHistory.user_id == user.id).count()
-                meets_condition = count >= b.condition_value
+                        if duration >= 7200:
+                            long_count += 1
+                    meets_condition = long_count >= b.condition_value
+                
+                elif b.condition_type == 'share_count':
+                    # We need sender. NoteShare definition: note_id, user_id (receiver).
+                    # So we join Note to find sender.
+                    count = NoteShare.query.join(Note).filter(Note.user_id == user.id).count()
+                    meets_condition = count >= b.condition_value
+                    
+                elif b.condition_type == 'total_views_received':
+                    # Count total views on user's notes
+                    count = NoteViewLog.query.join(Note).filter(Note.user_id == user.id).count()
+                    meets_condition = count >= b.condition_value
+                
+                elif b.condition_type == 'wiki_create_count':
+                    from sqlalchemy import func
+                    subquery = db.session.query(func.min(WikiPageHistory.id)).group_by(WikiPageHistory.page_id)
+                    count = WikiPageHistory.query.filter(WikiPageHistory.id.in_(subquery), WikiPageHistory.user_id == user.id).count()
+                    meets_condition = count >= b.condition_value
 
-            elif b.condition_type == 'study_hours':
-                sessions = StudySession.query.filter_by(user_id=user.id).all()
-                total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
-                total_hours = total_seconds / 3600
-                meets_condition = total_hours >= b.condition_value
+                elif b.condition_type == 'study_hours':
+                    sessions = StudySession.query.filter_by(user_id=user.id).all()
+                    total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+                    total_hours = total_seconds / 3600
+                    meets_condition = total_hours >= b.condition_value
 
-            elif b.condition_type == 'streak_days':
-                # Re-calculate streak
-                sessions = StudySession.query.filter_by(user_id=user.id).order_by(StudySession.start_time.desc()).all()
-                dates = sorted(list(set([s.start_time.date() for s in sessions])), reverse=True)
-                streak = 0
-                if dates:
-                    today = now_utc8().date()
-                    if dates[0] == today:
-                        streak = 1
-                        current = today
-                    elif dates[0] == today - timedelta(days=1):
-                        streak = 1
-                        current = today - timedelta(days=1)
-                    else:
-                        streak = 0
-                    if streak > 0:
-                        for i in range(1, len(dates)):
-                            if dates[i] == current - timedelta(days=1):
-                                streak += 1
-                                current = dates[i]
-                            else:
-                                break
-                meets_condition = streak >= b.condition_value
+                elif b.condition_type == 'streak_days':
+                    # Re-calculate streak
+                    sessions = StudySession.query.filter_by(user_id=user.id).order_by(StudySession.start_time.desc()).all()
+                    dates = sorted(list(set([s.start_time.date() for s in sessions])), reverse=True)
+                    streak = 0
+                    if dates:
+                        today = now_utc8().date()
+                        if dates[0] == today:
+                            streak = 1
+                            current = today
+                        elif dates[0] == today - timedelta(days=1):
+                            streak = 1
+                            current = today - timedelta(days=1)
+                        else:
+                            streak = 0
+                        if streak > 0:
+                            for i in range(1, len(dates)):
+                                if dates[i] == current - timedelta(days=1):
+                                    streak += 1
+                                    current = dates[i]
+                                else:
+                                    break
+                    meets_condition = streak >= b.condition_value
 
             # 2. Update UserBadge status
-            existing_ub = UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first()
+                existing_ub = UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first()
+                
+                if meets_condition:
+                    if not existing_ub:
+                        # Award new badge
+                        ub = UserBadge(user_id=user.id, badge_id=b.id)
+                        db.session.add(ub)
+                else:
+                    if existing_ub:
+                        # Revoke badge if no longer meets criteria
+                        # Also unequip if equipped
+                        if user.selected_badge_id == b.id:
+                            user.selected_badge_id = None
+                        db.session.delete(existing_ub)
             
-            if meets_condition:
-                if not existing_ub:
-                    # Award new badge
-                    ub = UserBadge(user_id=user.id, badge_id=b.id)
-                    db.session.add(ub)
-            else:
-                if existing_ub:
-                    # Revoke badge if no longer meets criteria
-                    # Also unequip if equipped
-                    if user.selected_badge_id == b.id:
-                        user.selected_badge_id = None
-                    db.session.delete(existing_ub)
+            db.session.commit()
             
-        db.session.commit()
-        
-        flash("徽章已更新，并已重新检查所有用户的获得条件（包括撤销不满足条件的徽章）")
+            flash("徽章已更新，并已重新检查所有用户的获得条件（包括撤销不满足条件的徽章）")
+        else:
+            flash("徽章已更新 (手动发放类型不进行自动检查)")
+            
         return redirect(url_for("manage_badges"))
         
     return render_template("admin/edit_badge.html", badge=b)
+
+@app.route("/admin/badges/<int:badge_id>/award", methods=["POST"])
+@login_required
+def award_badge_manually(badge_id):
+    if not current_user.is_admin:
+        abort(403)
+        
+    b = Badge.query.get_or_404(badge_id)
+    if b.condition_type != 'manual':
+        return jsonify({"error": "Only manual badges can be manually awarded"}), 400
+        
+    user_ids = request.json.get("user_ids", [])
+    if not user_ids:
+        return jsonify({"error": "No users selected"}), 400
+        
+    count = 0
+    for uid in user_ids:
+        user = User.query.get(uid)
+        if user:
+            # Check if already has badge
+            if not UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first():
+                ub = UserBadge(user_id=user.id, badge_id=b.id)
+                db.session.add(ub)
+                count += 1
+                
+    db.session.commit()
+    return jsonify({"success": True, "count": count})
 
 @app.route("/admin/badges/<int:badge_id>/delete", methods=["POST"])
 @login_required
@@ -1161,10 +1597,119 @@ def delete_badge(badge_id):
     # Also clear selected_badge_id from users who equipped it
     User.query.filter_by(selected_badge_id=b.id).update({"selected_badge_id": None})
     
+    # Delete icon file if it's a local upload
+    if b.icon and b.icon.startswith("/static/uploads/badges/"):
+        filename = b.icon.split("/")[-1]
+        file_path = os.path.join(app.root_path, "static/uploads/badges", filename)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+
     db.session.delete(b)
     db.session.commit()
     flash("徽章已删除")
     return redirect(url_for("manage_badges"))
+
+@app.route("/user/profile")
+@login_required
+def user_profile():
+    return redirect(url_for('public_profile', user_id=current_user.id))
+
+@app.route("/user/<int:user_id>")
+@login_required
+def public_profile(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # Stats
+    stats = user.calculate_stats()
+    
+    # Badges
+    user_badges = UserBadge.query.filter_by(user_id=user.id).order_by(UserBadge.earned_at.desc()).all()
+    earned_badge_ids = [ub.badge_id for ub in user_badges]
+    all_badges = Badge.query.all()
+    unearned_badges = [b for b in all_badges if b.id not in earned_badge_ids]
+    
+    # Recent Activity (Notes)
+    recent_notes = Note.query.filter_by(user_id=user.id).order_by(Note.created_at.desc()).limit(5).all()
+
+    # Check follow status
+    is_following = current_user.is_following(user)
+    is_study_partner = current_user.is_following(user) and user.is_following(current_user)
+
+    return render_template("user/profile.html", user=user, stats=stats, user_badges=user_badges, unearned_badges=unearned_badges, recent_notes=recent_notes, is_following=is_following, is_study_partner=is_study_partner)
+
+@app.route("/user/<int:user_id>/follow", methods=["POST"])
+@login_required
+def follow_user(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.id == current_user.id:
+        return jsonify({"error": "不能关注自己"}), 400
+        
+    if not current_user.is_following(user):
+        current_user.follow(user)
+        db.session.commit()
+        
+        # Check for study partner (mutual follow)
+        if user.is_following(current_user):
+            # Notify both
+            n1 = Notification(
+                user_id=current_user.id,
+                message=f"你和 {user.username} 成为了学友！",
+                type='system',
+                link=url_for('public_profile', user_id=user.id)
+            )
+            n2 = Notification(
+                user_id=user.id,
+                message=f"你和 {current_user.username} 成为了学友！",
+                type='system',
+                link=url_for('public_profile', user_id=current_user.id)
+            )
+            db.session.add_all([n1, n2])
+            db.session.commit()
+            flash(f"关注成功！你和 {user.username} 现在是学友了！")
+        else:
+            flash(f"已关注 {user.username}")
+            
+    return redirect(request.referrer or url_for('public_profile', user_id=user.id))
+
+@app.route("/user/<int:user_id>/unfollow", methods=["POST"])
+@login_required
+def unfollow_user(user_id):
+    user = User.query.get_or_404(user_id)
+    if current_user.is_following(user):
+        current_user.unfollow(user)
+        db.session.commit()
+        flash(f"已取消关注 {user.username}")
+        
+    return redirect(request.referrer or url_for('public_profile', user_id=user.id))
+
+@app.route("/user/following")
+@login_required
+def my_following():
+    # List of users I follow
+    # We can also separate "Study Partners" vs "Just Following"
+    
+    # Study Partners (Mutual)
+    partners = current_user.study_partners.all()
+    partner_ids = [u.id for u in partners]
+    
+    # Following (excluding partners)
+    following_all = current_user.followed.all()
+    following_only = [u for u in following_all if u.id not in partner_ids]
+    
+    # Followers (who I don't follow back) - Optional, user didn't explicitly ask to see list, but good to have
+    # Requirement: "自己的关注列表是可以点击查看的" -> My Following List
+    
+    return render_template("user/following.html", partners=partners, following=following_only)
+
+@app.route("/api/notifications/read/all", methods=["POST"])
+@login_required
+def read_all_notifications():
+    current_user.notifications.filter_by(is_read=False).update({"is_read": True})
+    db.session.commit()
+    return jsonify({"success": True})
 
 @app.route("/user/badges")
 @login_required
@@ -1773,9 +2318,31 @@ def heartbeat():
         status = UserActiveStatus(user_id=current_user.id)
         db.session.add(status)
     
+    # Check if user was offline (active > 5 mins ago)
+    was_offline = False
+    online_threshold = now - timedelta(minutes=5)
+    if status.last_active_at and status.last_active_at < online_threshold:
+        was_offline = True
+    elif status.last_active_at is None:
+        was_offline = True
+    
     status.last_active_at = now
     status.current_path = path
     status.current_action = action
+    
+    # Notify study partners if came online
+    if was_offline:
+        partners = current_user.study_partners.all()
+        for p in partners:
+            # Avoid duplicate notifications if multiple heartbeats fire quickly?
+            # Or just rely on 5 min threshold.
+            n = Notification(
+                user_id=p.id,
+                message=f"你的学友 {current_user.username} 上线了",
+                type='friend_login',
+                link=url_for('public_profile', user_id=current_user.id)
+            )
+            db.session.add(n)
     
     # 2. Update StudySession
     # Find latest session
@@ -1797,7 +2364,19 @@ def heartbeat():
     # Check badges
     check_and_award_badges(current_user)
     
-    return {"status": "ok"}
+    # Get unread notifications
+    notifications = []
+    unread_notifs = current_user.notifications.filter_by(is_read=False).order_by(Notification.created_at.desc()).all()
+    for n in unread_notifs:
+        notifications.append({
+            "id": n.id,
+            "message": n.message,
+            "type": n.type,
+            "link": n.link,
+            "created_at": n.created_at.strftime("%H:%M")
+        })
+
+    return {"status": "ok", "notifications": notifications}
 
 @app.route("/api/notes/new_view", methods=["POST"])
 @login_required
@@ -1829,9 +2408,16 @@ def check_and_award_badges(user):
     awarded_count = 0
     
     for badge in available_badges:
+        # Skip manual badges
+        if badge.condition_type == 'manual':
+            continue
+            
         earned = False
         
-        if badge.condition_type == 'note_count':
+        if badge.condition_type == 'all_users':
+            earned = True
+            
+        elif badge.condition_type == 'note_count':
             count = Note.query.filter_by(user_id=user.id).count()
             if count >= badge.condition_value:
                 earned = True
@@ -1958,6 +2544,21 @@ def check_and_award_badges(user):
             
             if streak >= badge.condition_value:
                 earned = True
+
+        elif badge.condition_type == 'login_days_in_range':
+            # Count distinct days user logged in (had a session) within range
+            if badge.start_time and badge.end_time:
+                # Filter sessions within range
+                sessions = StudySession.query.filter(
+                    StudySession.user_id == user.id,
+                    StudySession.start_time >= badge.start_time,
+                    StudySession.start_time <= badge.end_time
+                ).all()
+                
+                # Count distinct dates
+                login_days = set([s.start_time.date() for s in sessions])
+                if len(login_days) >= badge.condition_value:
+                    earned = True
         
         if earned:
             ub = UserBadge(user_id=user.id, badge_id=badge.id)
@@ -1965,8 +2566,242 @@ def check_and_award_badges(user):
             awarded_count += 1
             flash(f"恭喜！您获得了新徽章：{badge.icon} {badge.name}")
             
+            # Notify study partners
+            partners = user.study_partners.all()
+            for p in partners:
+                n = Notification(
+                    user_id=p.id,
+                    message=f"你的学友 {user.username} 获得了 {badge.name} 徽章！",
+                    type='friend_achievement',
+                    link=url_for('public_profile', user_id=user.id)
+                )
+                db.session.add(n)
+            
     if awarded_count > 0:
         db.session.commit()
 
+# Sticker API
+@app.route("/api/stickers/<page_type>", methods=["GET", "POST"])
+@login_required
+def api_stickers(page_type):
+    if page_type not in ['wiki', 'book', 'profile']:
+        return jsonify({"error": "Invalid page type"}), 400
+        
+    if request.method == "GET":
+        target_user_id = current_user.id
+        user_id_param = request.args.get('user_id')
+        if user_id_param:
+            try:
+                target_user_id = int(user_id_param)
+            except ValueError:
+                pass
+        
+        # Permission Check for Live Board
+        if target_user_id != current_user.id:
+            target_user = User.query.get(target_user_id)
+            if not target_user:
+                return jsonify({"error": "User not found"}), 404
+            
+            # Check if follower (assuming Live Board is visible to followers)
+            # Using is_following method: current_user.is_following(target_user)
+            # BUT for Study Partner logic, we might want mutual follow?
+            # User requirement: "should compute if they are study partners (mutual follow)"
+            # If the index route only allows mutual follow, the API should probably enforce the same or similar.
+            # Currently the index route enforces mutual follow.
+            # The API currently enforces "I follow Target".
+            # If I follow Target but Target doesn't follow me back (not study partner),
+            # Index route sets target_user=None, so banner doesn't show.
+            # BUT sticker.js might still try to load stickers?
+            # StickerManager only inits if target_user is present in DOM.
+            # So if Index route is strict, API being loose is okay-ish (just security in depth).
+            # But let's align API to be strict too if that's what user implies.
+            # "且要计算是否是对方的学友" -> This was for the index route logic.
+            # Let's keep API as is (one-way follow is usually enough for "viewing", mutual is for "interaction")
+            # OR, update API to match index route policy: Mutual Follow required?
+            # Let's update API to require Mutual Follow to be safe and consistent.
+            
+            is_mutual = current_user.is_following(target_user) and target_user.is_following(current_user)
+            if not is_mutual:
+                 # Strict privacy for Live Board: Only self and study partners can see
+                 return jsonify({"error": "Permission denied: Not study partners"}), 403
+
+        stickers = UserSticker.query.filter_by(user_id=target_user_id, page_type=page_type).all()
+        return jsonify({
+            "stickers": [{
+                "id": s.id,
+                "badge_id": s.badge_id,
+                "badge_icon": badge_icon_url(s.badge.icon) if s.badge else "",
+                "x": s.x,
+                "y": s.y,
+                "rotation": s.rotation,
+                "scale": s.scale,
+                "z_index": s.z_index
+            } for s in stickers]
+        })
+        
+    elif request.method == "POST":
+        data = request.json
+        stickers_data = data.get("stickers", [])
+        
+        # Full replacement strategy for simplicity
+        UserSticker.query.filter_by(user_id=current_user.id, page_type=page_type).delete()
+        
+        for s in stickers_data:
+            badge_id = s.get("badge_id")
+            # Verify user owns this badge
+            ub = UserBadge.query.filter_by(user_id=current_user.id, badge_id=badge_id).first()
+            if ub:
+                new_sticker = UserSticker(
+                    user_id=current_user.id,
+                    badge_id=badge_id,
+                    page_type=page_type,
+                    x=s.get("x", 50),
+                    y=s.get("y", 50),
+                    rotation=s.get("rotation", 0),
+                    scale=s.get("scale", 1),
+                    z_index=s.get("z_index", 1)
+                )
+                db.session.add(new_sticker)
+        
+        db.session.commit()
+        return jsonify({"success": True})
+
+@app.route("/api/stickers/<page_type>/publish", methods=["POST"])
+@login_required
+def api_publish_sticker_snapshot(page_type):
+    if page_type not in ['wiki', 'book', 'profile']:
+        return jsonify({"error": "Invalid page type"}), 400
+        
+    data = request.json
+    if not data:
+         return jsonify({"error": "无效的请求数据，请确保Content-Type为application/json"}), 400
+
+    title = data.get("title", f"{current_user.username}的{page_type}板")
+    caption = data.get("caption", "")
+    visibility = data.get("visibility", "followers") # Default to followers
+    
+    # Get current live stickers
+    current_stickers = UserSticker.query.filter_by(user_id=current_user.id, page_type=page_type).all()
+    
+    if not current_stickers:
+        return jsonify({"error": "Cannot publish empty board"}), 400
+        
+    stickers_data = [{
+        "badge_id": s.badge_id,
+        "badge_icon": badge_icon_url(s.badge.icon) if s.badge else "",
+        "x": s.x,
+        "y": s.y,
+        "rotation": s.rotation,
+        "scale": s.scale,
+        "z_index": s.z_index
+    } for s in current_stickers]
+    
+    snapshot = StickerBoardSnapshot(
+        user_id=current_user.id,
+        page_type=page_type,
+        title=title,
+        caption=caption,
+        visibility=visibility,
+        data_json=stickers_data
+    )
+    
+    try:
+        db.session.add(snapshot)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"数据库错误: {str(e)}"}), 500
+    
+    return jsonify({"success": True, "snapshot_id": snapshot.id})
+
+@app.route("/api/stickers/snapshots", methods=["GET"])
+@login_required
+def api_sticker_snapshots():
+    user_id_param = request.args.get('user_id')
+    target_user_id = current_user.id
+    if user_id_param:
+        try:
+            target_user_id = int(user_id_param)
+        except ValueError:
+            pass
+            
+    query = StickerBoardSnapshot.query.filter_by(user_id=target_user_id).order_by(StickerBoardSnapshot.created_at.desc())
+    
+    # Permission Check
+    if target_user_id != current_user.id:
+        # Filter based on visibility
+        # If I am a follower, I can see 'followers' and 'public'
+        # If I am just a stranger, I can only see 'public'
+        target_user = User.query.get(target_user_id)
+        if not target_user:
+            return jsonify({"error": "User not found"}), 404
+            
+        if current_user.is_following(target_user):
+            query = query.filter(StickerBoardSnapshot.visibility.in_(['followers', 'public']))
+        else:
+            query = query.filter(StickerBoardSnapshot.visibility == 'public')
+            
+    snapshots = query.all()
+    
+    return jsonify({
+        "snapshots": [{
+            "id": s.id,
+            "page_type": s.page_type,
+            "title": s.title,
+            "caption": s.caption,
+            "created_at": s.created_at.isoformat(),
+            "likes_count": s.likes_count,
+            "preview_count": len(s.data_json)
+        } for s in snapshots]
+    })
+
+@app.route("/api/stickers/snapshots/<int:snapshot_id>", methods=["GET"])
+@login_required
+def api_sticker_snapshot_detail(snapshot_id):
+    snapshot = StickerBoardSnapshot.query.get_or_404(snapshot_id)
+    
+    # Permission Check
+    if snapshot.user_id != current_user.id:
+        if snapshot.visibility == 'private':
+            return jsonify({"error": "Permission denied"}), 403
+        if snapshot.visibility == 'followers':
+            target_user = User.query.get(snapshot.user_id)
+            if not current_user.is_following(target_user):
+                 return jsonify({"error": "Permission denied"}), 403
+                 
+    return jsonify({
+        "id": snapshot.id,
+        "user_id": snapshot.user_id,
+        "user_name": snapshot.user.username if snapshot.user else "Unknown",
+        "page_type": snapshot.page_type,
+        "title": snapshot.title,
+        "caption": snapshot.caption,
+        "created_at": snapshot.created_at.isoformat(),
+        "stickers": snapshot.data_json
+    })
+
+def upgrade_db():
+    """Upgrade database schema manually"""
+    with app.app_context():
+        # Check if Badge table has start_time column
+        inspector = db.inspect(db.engine)
+        columns = [c['name'] for c in inspector.get_columns('badge')]
+        
+        if 'start_time' not in columns:
+            print("Upgrading Badge table: Adding start_time column...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE badge ADD COLUMN start_time DATETIME"))
+                conn.commit()
+                
+        if 'end_time' not in columns:
+            print("Upgrading Badge table: Adding end_time column...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE badge ADD COLUMN end_time DATETIME"))
+                conn.commit()
+
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
+        upgrade_db() # Run upgrade check
+        
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5009")), debug=True)

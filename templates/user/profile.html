@@ -36,17 +36,18 @@
                         <h1 class="text-3xl font-extrabold text-base-content tracking-tight drop-shadow-sm truncate">{{ user.username }}</h1>
                         
                         <!-- Equipped Badge (Next to Name) -->
-                        {% if user.selected_badge %}
-                            <div class="tooltip tooltip-bottom" data-tip="{{ user.selected_badge.name }}">
-                                <div class="w-6 h-6 flex items-center justify-center">
-                                    {% if user.selected_badge.icon|is_image_icon %}
-                                        <img src="{{ user.selected_badge.icon|badge_icon_url }}" class="w-full h-full object-contain drop-shadow-sm" alt="{{ user.selected_badge.name }}">
-                                    {% else %}
-                                        <span class="text-lg">{{ user.selected_badge.icon }}</span>
-                                    {% endif %}
-                                </div>
+                        <div id="current-badge-display" class="tooltip tooltip-bottom transition-all duration-300 {{ '' if user.selected_badge else 'hidden scale-0 opacity-0' }}" data-tip="{{ user.selected_badge.name if user.selected_badge else '' }}">
+                            <div class="w-6 h-6 flex items-center justify-center">
+                                <img id="current-badge-img" 
+                                     src="{{ user.selected_badge.icon|badge_icon_url if user.selected_badge and user.selected_badge.icon|is_image_icon else '' }}" 
+                                     class="w-full h-full object-contain drop-shadow-sm {{ 'hidden' if not user.selected_badge or not user.selected_badge.icon|is_image_icon else '' }}" 
+                                     alt="Badge">
+                                
+                                <span id="current-badge-icon" class="text-lg {{ 'hidden' if not user.selected_badge or user.selected_badge.icon|is_image_icon else '' }}">
+                                    {{ user.selected_badge.icon if user.selected_badge and not user.selected_badge.icon|is_image_icon else '' }}
+                                </span>
                             </div>
-                        {% endif %}
+                        </div>
 
                         {% if user.is_admin %}
                             <span class="badge badge-primary badge-sm gap-1 shadow-sm shrink-0 opacity-80">
@@ -351,8 +352,6 @@
     </div>
 </div>
 
-<div id="toast-container" class="toast toast-top toast-center z-50"></div>
-
 <style>
     @keyframes blob {
         0% { transform: translate(0px, 0px) scale(1); }
@@ -389,29 +388,6 @@
 </style>
 
 <script>
-    function showToast(message, type = 'success') {
-        const container = document.getElementById('toast-container');
-        const alertDiv = document.createElement('div');
-        const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
-        const iconClass = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
-        
-        alertDiv.className = `alert ${alertClass} shadow-lg mb-2 rounded-2xl animate-fade-in`;
-        alertDiv.innerHTML = `
-            <div class="flex items-center gap-2">
-                <i class="fas ${iconClass}"></i>
-                <span class="font-bold">${message}</span>
-            </div>
-        `;
-        
-        container.appendChild(alertDiv);
-        setTimeout(() => {
-            alertDiv.style.opacity = '0';
-            alertDiv.style.transform = 'translateY(-10px)';
-            alertDiv.style.transition = 'all 0.3s ease';
-            setTimeout(() => alertDiv.remove(), 300);
-        }, 2000);
-    }
-
     function quickEquipBadge(badgeId, btnElement) {
         // Visual feedback
         btnElement.style.transform = 'scale(0.9)';
@@ -425,15 +401,15 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showToast('佩戴成功！', 'success');
+                showGlobalToast('佩戴成功！', 'success');
                 updateBadgeUI(badgeId, btnElement);
             } else {
-                showToast(data.message || '操作失败', 'error');
+                showGlobalToast(data.message || '操作失败', 'error');
             }
         })
         .catch(err => {
             console.error(err);
-            showToast('网络错误', 'error');
+            showGlobalToast('网络错误', 'error');
         });
     }
 
@@ -462,23 +438,33 @@
         const headerBadgeImg = document.getElementById('current-badge-img');
         const headerBadgeIcon = document.getElementById('current-badge-icon');
         
+        // Safety check
+        if (!headerBadgeDisplay || !headerBadgeImg || !headerBadgeIcon) {
+            console.warn('Badge header elements not found');
+            return;
+        }
+
+        // Update Tooltip Name
+        // Get badge name from the button's tooltip parent or dataset
+        const tooltipParent = activeBtn.closest('.tooltip');
+        if (tooltipParent) {
+            headerBadgeDisplay.setAttribute('data-tip', tooltipParent.getAttribute('data-tip'));
+        }
+
         const sourceImg = activeBtn.querySelector('img');
-        const sourceIcon = activeBtn.querySelector('span:not(.hidden)'); // visible span
+        const sourceIcon = activeBtn.querySelector('span:not(.hidden):not(.check-indicator)'); 
 
         if (sourceImg && sourceImg.style.display !== 'none') {
             headerBadgeImg.src = sourceImg.src;
             headerBadgeImg.classList.remove('hidden');
-            if (headerBadgeIcon) headerBadgeIcon.classList.add('hidden');
+            headerBadgeIcon.classList.add('hidden');
         } else if (sourceIcon) {
-            if (headerBadgeIcon) {
-                headerBadgeIcon.innerText = sourceIcon.innerText;
-                headerBadgeIcon.classList.remove('hidden');
-            }
+            headerBadgeIcon.innerText = sourceIcon.innerText;
+            headerBadgeIcon.classList.remove('hidden');
             headerBadgeImg.classList.add('hidden');
         }
 
-        headerBadgeDisplay.classList.remove('scale-0', 'opacity-0');
-        headerBadgeDisplay.classList.add('scale-100', 'opacity-100');
+        headerBadgeDisplay.classList.remove('hidden', 'scale-0', 'opacity-0');
         
         // Bounce animation
         headerBadgeDisplay.classList.add('scale-125');

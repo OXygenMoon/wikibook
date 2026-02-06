@@ -383,22 +383,35 @@
         {% endif %}
         
         <div class="p-4 sm:p-6 lg:p-8">
-            <!-- Flash Messages & Notifications -->
-            <div id="global-toast-container" class="toast toast-top toast-center z-50">
-                {% with messages = get_flashed_messages() %}
-                    {% if messages %}
-                        {% for message in messages %}
-                        <div class="alert alert-info shadow-lg mb-2">
-                            <span>{{ message }}</span>
-                        </div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-            </div>
-
             {% block content %}{% endblock %}
         </div>
     </main>
+
+    <!-- Global Toast Container (Bottom Right) -->
+    <div id="global-toast-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <!-- Server-side Flash Message -->
+                <div class="toast-card pointer-events-auto bg-stone-900/60 backdrop-blur-md text-white border border-white/10 ring-1 ring-white/5 shadow-2xl rounded-2xl p-4 min-w-[320px] max-w-[400px] flex items-start gap-3 transform transition-all duration-500 translate-y-10 opacity-0 animate-slide-up-fade" role="alert">
+                    <div class="mt-0.5">
+                        {% if category == 'success' %}
+                            <i class="fas fa-check-circle text-green-400 text-lg"></i>
+                        {% elif category == 'error' %}
+                            <i class="fas fa-times-circle text-red-400 text-lg"></i>
+                        {% elif category == 'warning' %}
+                            <i class="fas fa-exclamation-triangle text-yellow-400 text-lg"></i>
+                        {% else %}
+                            <i class="fas fa-info-circle text-blue-400 text-lg"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1 text-sm font-medium text-white/90 pt-0.5">{{ message }}</div>
+                    <button onclick="this.parentElement.remove()" class="btn btn-xs btn-ghost btn-circle -mr-2 -mt-2 text-white/40 hover:text-white hover:bg-white/10 transition-colors">✕</button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
 
     <script>
         // 侧栏控制逻辑
@@ -424,41 +437,108 @@
             const container = document.getElementById('global-toast-container');
             if (!container) return;
             
-            const alertDiv = document.createElement('div');
-            let alertClass = 'alert-info';
-            if (type === 'success') alertClass = 'alert-success';
-            if (type === 'error') alertClass = 'alert-error';
-            if (type === 'warning') alertClass = 'alert-warning';
+            const toast = document.createElement('div');
             
-            alertDiv.className = `alert ${alertClass} shadow-lg mb-2 rounded-xl animate-fade-in cursor-pointer hover:scale-105 transition-transform`;
+            // Icon Selection
+            let iconClass = 'fa-info-circle text-blue-400';
+            if (type === 'success') iconClass = 'fa-check-circle text-green-400';
+            if (type === 'error') iconClass = 'fa-times-circle text-red-400';
+            if (type === 'warning') iconClass = 'fa-exclamation-triangle text-yellow-400';
+            
+            // Modern Card Style
+            toast.className = `toast-card pointer-events-auto bg-stone-900/60 backdrop-blur-md text-white border border-white/10 ring-1 ring-white/5 shadow-2xl rounded-2xl p-4 min-w-[320px] max-w-[400px] flex items-start gap-3 transform transition-all duration-500 translate-y-10 opacity-0`;
             
             if (link) {
-                alertDiv.onclick = () => window.location.href = link;
+                toast.classList.add('cursor-pointer', 'hover:bg-white/5');
+                toast.onclick = (e) => {
+                    if (!e.target.closest('button')) window.location.href = link;
+                };
             }
             
-            alertDiv.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-bell"></i>
-                    <span class="font-bold">${message}</span>
+            toast.innerHTML = `
+                <div class="mt-0.5">
+                    <i class="fas ${iconClass} text-lg"></i>
                 </div>
+                <div class="flex-1 text-sm font-medium text-white/90 pt-0.5 leading-relaxed">${message}</div>
+                <button class="btn btn-xs btn-ghost btn-circle -mr-2 -mt-2 text-white/40 hover:text-white hover:bg-white/10 transition-colors z-10">✕</button>
             `;
             
-            container.appendChild(alertDiv);
+            // Close Button Logic
+            const closeBtn = toast.querySelector('button');
+            closeBtn.onclick = (e) => {
+                e.stopPropagation();
+                dismissToast(toast);
+            };
             
-            // Auto remove after 5s
+            container.appendChild(toast);
+            
+            // Trigger Animation (Next Frame)
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            });
+            
+            // Auto Dismiss (3s)
             setTimeout(() => {
-                alertDiv.style.opacity = '0';
-                alertDiv.style.transform = 'translateY(-20px)';
-                setTimeout(() => alertDiv.remove(), 300);
-            }, 5000);
+                dismissToast(toast);
+            }, 3000);
         }
+
+        function dismissToast(toast) {
+            if (!toast || toast.isDismissed) return;
+            toast.isDismissed = true;
+            
+            // Exit Animation
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px) scale(0.95)';
+            
+            // Remove DOM
+            setTimeout(() => {
+                if (toast.parentElement) toast.remove();
+            }, 300);
+        }
+
+        // Auto-dismiss server-side flash messages on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const serverToasts = document.querySelectorAll('.toast-card.animate-slide-up-fade');
+            serverToasts.forEach((toast, index) => {
+                // Staggered entrance fix if needed, but CSS handles it. 
+                // Just remove the initial hidden classes if they exist in HTML (we used animate-slide-up-fade instead)
+                // Actually, let's just set the timeout for removal.
+                
+                // Ensure they are visible (our HTML has opacity-0 + animate class, assuming animate class handles keyframes)
+                // If animate-slide-up-fade is not defined in Tailwind, we should manually trigger transition like JS does.
+                // Let's manually trigger transition for consistency with JS toasts.
+                toast.classList.remove('animate-slide-up-fade'); // Remove CSS animation if any conflicts
+                requestAnimationFrame(() => {
+                    toast.classList.remove('translate-y-10', 'opacity-0');
+                });
+
+                setTimeout(() => {
+                    dismissToast(toast);
+                }, 3000 + (index * 500)); // Stagger dismiss slightly
+            });
+        });
     </script>
     {% block scripts %}{% endblock %}
 
     {% if current_user.is_authenticated %}
     <script>
-        // Send heartbeat
+        // Interactive Heartbeat Logic
+        let lastHeartbeatTime = 0;
+        const HEARTBEAT_INTERVAL = 30000; // 30 seconds throttle
+
         function sendHeartbeat() {
+            // Don't send if tab is hidden
+            if (document.hidden) return;
+
+            const now = Date.now();
+            // Throttle: Only send if enough time passed
+            if (now - lastHeartbeatTime < HEARTBEAT_INTERVAL) {
+                return;
+            }
+
+            lastHeartbeatTime = now;
+
             fetch('/api/heartbeat', {
                 method: 'POST',
                 headers: {
@@ -483,15 +563,35 @@
             .catch(console.error);
         }
         
-        // Send immediately on load
+        // Initial heartbeat
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', sendHeartbeat);
+            document.addEventListener('DOMContentLoaded', () => {
+                lastHeartbeatTime = 0; // Ensure first one fires
+                sendHeartbeat();
+            });
         } else {
+            lastHeartbeatTime = 0;
             sendHeartbeat();
         }
         
-        // Send every 30 seconds
-        setInterval(sendHeartbeat, 30000);
+        // Bind Activity Listeners
+        // We listen for any interaction, and try to send heartbeat (which is throttled)
+        const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+        
+        activityEvents.forEach(eventType => {
+            window.addEventListener(eventType, () => {
+                sendHeartbeat();
+            }, { passive: true });
+        });
+
+        // Visibility Change: Send immediately when user comes back
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // Force send by resetting timer
+                lastHeartbeatTime = 0; 
+                sendHeartbeat();
+            }
+        });
     </script>
     {% endif %}
 </body>

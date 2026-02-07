@@ -129,23 +129,44 @@
                             {% else %}
                                 <p class="text-sm text-base-content/40 mt-1 line-clamp-1">{{ badge.description }}</p>
                                 
-                                <div class="mt-3 inline-flex items-center px-2.5 py-1 rounded-md bg-base-200/60 text-xs font-medium text-base-content/60">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>
-                                    目标: 
-                                    {% if badge.condition_type == 'streak_days' %}连续打卡 {{ badge.condition_value }} 天
-                                    {% elif badge.condition_type == 'study_hours' %}学习 {{ badge.condition_value }} 小时
-                                    {% elif badge.condition_type == 'note_count' %}创建 {{ badge.condition_value }} 篇笔记
-                                    {% elif badge.condition_type == 'featured_count' %}获得 {{ badge.condition_value }} 次精选
-                                    {% elif badge.condition_type == 'wiki_edit_count' %}编辑 Wiki {{ badge.condition_value }} 次
-                                    {% elif badge.condition_type == 'wiki_create_count' %}创建 Wiki 词条 {{ badge.condition_value }} 个
-                                    {% elif badge.condition_type == 'comment_count' %}发布 {{ badge.condition_value }} 条评论
-                                    {% elif badge.condition_type == 'night_owl_sessions' %}深夜学习 {{ badge.condition_value }} 天
-                                    {% elif badge.condition_type == 'early_bird' %}早起学习 {{ badge.condition_value }} 天
-                                    {% elif badge.condition_type == 'weekend_warrior' %}周末累计学习 {{ badge.condition_value }} 小时
-                                    {% elif badge.condition_type == 'long_session_count' %}深度专注(>2h) {{ badge.condition_value }} 次
-                                    {% elif badge.condition_type == 'share_count' %}分享笔记 {{ badge.condition_value }} 次
-                                    {% elif badge.condition_type == 'total_views_received' %}笔记被阅读 {{ badge.condition_value }} 次
-                                    {% else %}{{ badge.condition_value }}{% endif %}
+                                <div class="flex flex-wrap gap-2 mt-3">
+                                    <div class="inline-flex items-center px-2.5 py-1 rounded-md bg-base-200/60 text-xs font-medium text-base-content/60">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>
+                                        目标: 
+                                        {% if badge.condition_type == 'streak_days' %}连续打卡 {{ badge.condition_value }} 天
+                                        {% elif badge.condition_type == 'study_hours' %}学习 {{ badge.condition_value }} 小时
+                                        {% elif badge.condition_type == 'note_count' %}创建 {{ badge.condition_value }} 篇笔记
+                                        {% elif badge.condition_type == 'featured_count' %}获得 {{ badge.condition_value }} 次精选
+                                        {% elif badge.condition_type == 'wiki_edit_count' %}编辑 Wiki {{ badge.condition_value }} 次
+                                        {% elif badge.condition_type == 'wiki_create_count' %}创建 Wiki 词条 {{ badge.condition_value }} 个
+                                        {% elif badge.condition_type == 'comment_count' %}发布 {{ badge.condition_value }} 条评论
+                                        {% elif badge.condition_type == 'night_owl_sessions' %}深夜学习 {{ badge.condition_value }} 天
+                                        {% elif badge.condition_type == 'early_bird' %}早起学习 {{ badge.condition_value }} 天
+                                        {% elif badge.condition_type == 'weekend_warrior' %}周末累计学习 {{ badge.condition_value }} 小时
+                                        {% elif badge.condition_type == 'long_session_count' %}深度专注(>2h) {{ badge.condition_value }} 次
+                                        {% elif badge.condition_type == 'share_count' %}分享笔记 {{ badge.condition_value }} 次
+                                        {% elif badge.condition_type == 'total_views_received' %}笔记被阅读 {{ badge.condition_value }} 次
+                                        {% else %}{{ badge.condition_value }}{% endif %}
+                                    </div>
+                                    
+                                    {% if badge.total_limit is not none %}
+                                        {% set remaining = badge.total_limit - badge.issued_count %}
+                                        <div class="inline-flex items-center px-2.5 py-1 rounded-md {{ 'bg-error/10 text-error' if remaining <= 0 else 'bg-warning/10 text-warning' }} text-xs font-medium">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            {% if remaining <= 0 %}
+                                                已抢光 ({{ badge.issued_count }}/{{ badge.total_limit }})
+                                            {% else %}
+                                                剩余: {{ remaining }}
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if badge.sticker_count > 1 %}
+                                    <div class="inline-flex items-center px-2.5 py-1 rounded-md bg-info/10 text-info text-xs font-medium">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                                        x{{ badge.sticker_count }} 贴纸
+                                    </div>
+                                    {% endif %}
                                 </div>
                             {% endif %}
                         </div>

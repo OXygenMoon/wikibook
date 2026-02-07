@@ -14,12 +14,62 @@ if (typeof StickerManager === 'undefined') {
         this.isDrawerOpen = false;
         this.isEditing = false;
         
+        // Track usage limits
+        this.badgeBaseUsage = {}; // badgeId -> (Total DB Usage - Current Page DB Usage)
+        this.badgeLimits = {}; // badgeId -> Limit
+        
+        this.REFERENCE_WIDTH = 1200; // Baseline width for relative scaling
+        
         this.init();
+    }
+
+    getResponsiveScaleFactor() {
+        if (!this.canvas) return 1;
+        // Calculate scale factor relative to reference width
+        // We limit the factor to be at least 0.2 to avoid invisible stickers on tiny screens (unlikely)
+        // and maybe limit max? No, let it scale up on huge screens.
+        return Math.max(0.1, this.canvas.offsetWidth / this.REFERENCE_WIDTH);
+    }
+
+    updateStickerTransform(el, sticker) {
+        const factor = this.getResponsiveScaleFactor();
+        el.style.transform = `translate(-50%, -50%) rotate(${sticker.rotation}deg) scale(${sticker.scale * factor})`;
     }
 
     async init() {
         this.bindEvents();
+        this.initBadgeData(); // Parse HTML data first
         await this.loadStickers();
+        this.updateBaseUsage(); // Update base usage after loading current page stickers
+        this.renderDrawer(); // Initial render to bind events and show counts
+    }
+    
+    initBadgeData() {
+        const options = document.querySelectorAll('.sticker-option');
+        options.forEach(opt => {
+            const bid = parseInt(opt.dataset.badgeId);
+            const limit = parseInt(opt.dataset.stickerLimit || 1);
+            const totalUsage = parseInt(opt.dataset.usedCount || 0);
+            
+            this.badgeLimits[bid] = limit;
+            // Temporarily store total usage, will adjust after loadStickers
+            this.badgeBaseUsage[bid] = totalUsage; 
+        });
+    }
+    
+    updateBaseUsage() {
+        // Calculate current page usage from DB (loaded stickers)
+        // And subtract from total to get "other pages usage"
+        const currentPageCounts = {};
+        this.stickers.forEach(s => {
+            currentPageCounts[s.badge_id] = (currentPageCounts[s.badge_id] || 0) + 1;
+        });
+        
+        for (const [bid, total] of Object.entries(this.badgeBaseUsage)) {
+            const pageCount = currentPageCounts[bid] || 0;
+            // Ensure we don't go negative (race conditions?)
+            this.badgeBaseUsage[bid] = Math.max(0, total - pageCount);
+        }
     }
 
     bindEvents() {
@@ -78,6 +128,17 @@ if (typeof StickerManager === 'undefined') {
         
         // Canvas Drag Over (Optional: prevent default)
         this.canvas.addEventListener('dragover', e => e.preventDefault());
+        
+        // Window Resize - Update all sticker transforms
+        window.addEventListener('resize', () => {
+            requestAnimationFrame(() => {
+                this.stickers.forEach(s => {
+                    if (s.element) {
+                        this.updateStickerTransform(s.element, s);
+                    }
+                });
+            });
+        });
     }
 
     toggleDrawer() {
@@ -192,47 +253,75 @@ if (typeof StickerManager === 'undefined') {
     }
 
     renderDrawer() {
-        // Available badges are injected via template or fetched
-        // Assuming they are available in a global variable `EARNED_BADGES` or similar
-        // For now, let's assume we can find the list in the drawer container's data attribute or fetch it
-        // But to simplify, we rely on the server rendering the list in the drawer HTML initially?
-        // Actually, let's update the class state based on placed stickers
-        
         const options = document.querySelectorAll('.sticker-option');
+        
+        // Calculate current on-canvas counts
+        const currentCanvasCounts = {};
+        this.stickers.forEach(s => {
+            currentCanvasCounts[s.badge_id] = (currentCanvasCounts[s.badge_id] || 0) + 1;
+        });
+        
         options.forEach(opt => {
             const badgeId = parseInt(opt.dataset.badgeId);
-            const isPlaced = this.stickers.some(s => s.badge_id === badgeId);
-            if (isPlaced) {
-                opt.classList.add('placed');
-            } else {
-                opt.classList.remove('placed');
+            const limit = this.badgeLimits[badgeId] || 1;
+            const baseUsage = this.badgeBaseUsage[badgeId] || 0;
+            const currentUsage = currentCanvasCounts[badgeId] || 0;
+            const totalUsage = baseUsage + currentUsage;
+            
+            // Update Counter Badge
+            const countBadge = opt.querySelector('.sticker-count-badge');
+            if (countBadge) {
+                countBadge.textContent = `${totalUsage}/${limit}`;
+                if (totalUsage >= limit) {
+                    countBadge.classList.add('badge-error');
+                    countBadge.classList.remove('badge-neutral');
+                } else {
+                    countBadge.classList.remove('badge-error');
+                    countBadge.classList.add('badge-neutral');
+                }
             }
             
-            // Re-bind click event (or use delegation)
-            opt.onclick = () => this.handleBadgeClick(badgeId, opt.dataset.badgeIcon);
+            // Visual feedback
+            if (totalUsage >= limit) {
+                opt.classList.add('opacity-50');
+                // opt.style.pointerEvents = 'none'; // REMOVED: Allow clicking to show feedback
+                // opt.style.pointerEvents = '';
+            } else {
+                opt.classList.remove('opacity-50');
+            }
+            
+            // Re-bind click event
+            opt.onclick = () => this.handleBadgeClick(opt, badgeId, opt.dataset.badgeIcon, totalUsage, limit);
         });
     }
 
-    handleBadgeClick(badgeId, badgeIcon) {
-        const existingIndex = this.stickers.findIndex(s => s.badge_id === badgeId);
+    handleBadgeClick(element, badgeId, badgeIcon, currentUsage, limit) {
+        // Re-calculate usage to be safe (race condition with rapid clicks?)
+        // Relying on currentUsage passed from renderDrawer is okay because renderDrawer is called after every add.
+        // BUT, since we want to allow rapid clicking, let's trust the passed value but we need to increment it locally if we don't re-render fast enough?
+        // Actually, renderDrawer is sync, so it should be fine.
         
-        if (existingIndex !== -1) {
-            // Remove
-            this.removeSticker(this.stickers[existingIndex]);
-        } else {
-            // Add
-            const newSticker = {
-                id: null, // New sticker
-                badge_id: badgeId,
-                badge_icon: badgeIcon,
-                x: 50, // Center
-                y: 50,
-                rotation: 0,
-                scale: 1,
-                z_index: this.getNextZIndex()
-            };
-            this.addStickerToCanvas(newSticker, true);
+        if (currentUsage >= limit) {
+            // Visual feedback: Red border flash
+            element.classList.add('ring-2', 'ring-error', 'ring-offset-2');
+            setTimeout(() => {
+                element.classList.remove('ring-2', 'ring-error', 'ring-offset-2');
+            }, 1000);
+            return;
         }
+        
+        // Add
+        const newSticker = {
+            id: null, // New sticker
+            badge_id: badgeId,
+            badge_icon: badgeIcon,
+            x: 50, // Center
+            y: 50,
+            rotation: 0,
+            scale: 0.5,
+            z_index: this.getNextZIndex()
+        };
+        this.addStickerToCanvas(newSticker, true);
         this.renderDrawer();
     }
 
@@ -242,7 +331,7 @@ if (typeof StickerManager === 'undefined') {
         el.style.left = `${stickerData.x}%`;
         el.style.top = `${stickerData.y}%`;
         el.style.zIndex = stickerData.z_index;
-        el.style.transform = `translate(-50%, -50%) rotate(${stickerData.rotation}deg) scale(${stickerData.scale})`;
+        this.updateStickerTransform(el, stickerData);
         
         // Content
         // Directly check if it looks like an image URL, otherwise treat as text/emoji
@@ -483,7 +572,7 @@ if (typeof StickerManager === 'undefined') {
              const curAngle = Math.atan2(curY - state.centerY, curX - state.centerX);
              const angleDeg = (curAngle - state.startAngle) * (180 / Math.PI);
              sticker.rotation = state.startRotation + angleDeg;
-             el.style.transform = `translate(-50%, -50%) rotate(${sticker.rotation}deg) scale(${sticker.scale})`;
+             this.updateStickerTransform(el, sticker);
          };
 
          // Mouse Rotate
@@ -538,7 +627,7 @@ if (typeof StickerManager === 'undefined') {
              const curDist = Math.hypot(curX - state.centerX, curY - state.centerY);
              const scaleRatio = curDist / state.startDist;
              sticker.scale = Math.max(0.2, state.startScale * scaleRatio);
-             el.style.transform = `translate(-50%, -50%) rotate(${sticker.rotation}deg) scale(${sticker.scale})`;
+             this.updateStickerTransform(el, sticker);
         };
 
         // Mouse Scale

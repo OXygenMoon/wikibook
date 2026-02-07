@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{% if announcement %}编辑通知{% else %}发布新通知{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto card bg-base-100 shadow border border-stone-200">
+  <div class="card-body">
+    <h2 class="card-title text-2xl mb-4">{% if announcement %}编辑通知{% else %}发布新通知{% endif %}</h2>
+    <form method="post" class="flex flex-col gap-6">
+      <div class="form-control">
+          <label class="label">
+              <span class="label-text font-bold">通知标题</span>
+          </label>
+          <input class="input input-bordered w-full" name="title" value="{{ announcement.title if announcement else '' }}" placeholder="输入标题" required>
+      </div>
+      
+      {% if announcement %}
+      <div class="form-control">
+        <label class="label cursor-pointer justify-start gap-4">
+          <span class="label-text font-bold">状态</span> 
+          <input type="checkbox" name="is_active" class="toggle toggle-success" {% if announcement.is_active %}checked{% endif %} />
+          <span class="label-text text-stone-500">启用 (停用后用户无法看到)</span>
+        </label>
+      </div>
+      {% endif %}
+
+      <div class="form-control">
+          <label class="label">
+              <span class="label-text font-bold">通知内容</span>
+          </label>
+          <textarea id="md-editor" name="content" placeholder="输入Markdown内容">{{ announcement.content if announcement else '' }}</textarea>
+      </div>
+      
+      <div class="flex justify-between items-center mt-4">
+          <button class="btn btn-primary px-8" type="submit">{% if announcement %}保存更新{% else %}立即发布{% endif %}</button>
+          <a class="btn btn-ghost" href="{{ url_for('manage_announcements') }}">返回列表</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const easyMDE = new EasyMDE({
+    element: document.getElementById('md-editor'),
+    minHeight: "400px",
+    uploadImage: true,
+    imageUploadEndpoint: "{{ url_for('upload_file') }}",
+    imagePathAbsolute: true,
+    imageMaxSize: 1024 * 1024 * 16, // 16MB
+    imageAccept: "image/png, image/jpeg, image/gif, image/webp",
+    imageTexts: {
+        sbInit: "拖拽图片到这里或点击上传",
+        sbOnDragEnter: "松开上传",
+        sbOnDragLeave: "拖拽图片到这里或点击上传",
+        sbProgress: "上传中...",
+        sbOnUploaded: "上传成功",
+        sizeUnits: "b,kb,mb"
+    },
+    errorCallback: function(errorMessage) {
+        alert("上传失败: " + errorMessage);
+    }
+  });
+</script>
+{% endblock %}

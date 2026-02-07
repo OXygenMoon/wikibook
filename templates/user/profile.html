@@ -1,693 +1,510 @@
 {% extends "base.html" %}
 
-{% block title %}{{ user.username }} 的个人空间{% endblock %}
+{% block title %}{{ user.username }} 的主页{% endblock %}
 
-{% block content %}
-<!-- Animated Background -->
-<div class="fixed inset-0 -z-10 overflow-hidden bg-base-100">
-    <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] animate-blob mix-blend-multiply opacity-30"></div>
-    <div class="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[100px] animate-blob animation-delay-2000 mix-blend-multiply opacity-30"></div>
-    <div class="absolute bottom-[-20%] left-[20%] w-[500px] h-[500px] bg-accent/10 rounded-full blur-[100px] animate-blob animation-delay-4000 mix-blend-multiply opacity-30"></div>
-</div>
-
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 animate-fade-in">
-
-    <!-- 1. Header Card -->
-    <div class="relative w-full rounded-3xl bg-white/60 dark:bg-base-200/60 backdrop-blur-xl border border-base-content/5 shadow-sm hover:shadow-md transition-all p-6 md:p-10 flex flex-col md:flex-row items-start gap-8 group">
-        <!-- Internal Gloss -->
-        <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/40 to-transparent pointer-events-none"></div>
-        
-        <!-- Left Info Section -->
-        <div class="relative z-10 w-full md:w-1/3 flex flex-col gap-6">
-            <!-- Top: Avatar + Basic Info -->
-            <div class="flex flex-row items-center gap-6">
-                <!-- Avatar -->
-                <div class="relative group shrink-0">
-                    <div class="avatar placeholder">
-                        <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full ring-4 ring-white dark:ring-base-100 shadow-xl bg-primary/10 text-primary grid place-items-center text-4xl sm:text-5xl font-black transition-transform duration-500 group-hover:rotate-6 select-none">
-                            {{ user.username[0] | upper }}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Basic Info -->
-                <div class="flex flex-col gap-2 min-w-0">
-                    <div class="flex items-center gap-3">
-                        <h1 class="text-3xl font-extrabold text-base-content tracking-tight drop-shadow-sm truncate">{{ user.username }}</h1>
-                        
-                        <!-- Equipped Badge (Next to Name) -->
-                        <div id="current-badge-display" class="tooltip tooltip-bottom transition-all duration-300 {{ '' if user.selected_badge else 'hidden scale-0 opacity-0' }}" data-tip="{{ user.selected_badge.name if user.selected_badge else '' }}">
-                            <div class="w-6 h-6 flex items-center justify-center">
-                                <img id="current-badge-img" 
-                                     src="{{ user.selected_badge.icon|badge_icon_url if user.selected_badge and user.selected_badge.icon|is_image_icon else '' }}" 
-                                     class="w-full h-full object-contain drop-shadow-sm {{ 'hidden' if not user.selected_badge or not user.selected_badge.icon|is_image_icon else '' }}" 
-                                     alt="Badge">
-                                
-                                <span id="current-badge-icon" class="text-lg {{ 'hidden' if not user.selected_badge or user.selected_badge.icon|is_image_icon else '' }}">
-                                    {{ user.selected_badge.icon if user.selected_badge and not user.selected_badge.icon|is_image_icon else '' }}
-                                </span>
-                            </div>
-                        </div>
-
-                        {% if user.is_admin %}
-                            <span class="badge badge-primary badge-sm gap-1 shadow-sm shrink-0 opacity-80">
-                                <i class="fas fa-shield-alt text-[10px]"></i> ADMIN
-                            </span>
-                        {% endif %}
-                    </div>
-
-                    <!-- Join Date -->
-                    <div class="text-xs font-medium text-base-content/40 uppercase tracking-wide">
-                        JOINED {{ user.created_at.strftime('%Y-%m-%d') }}
-                    </div>
-                    
-                    {% if user.real_name or user.department or user.class_name %}
-                    <div class="text-xs text-base-content/50 truncate">
-                        {{ user.real_name }} {{ user.department }} {{ user.class_name }}
-                    </div>
-                    {% endif %}
-
-                    <!-- Social Stats (Capsule) -->
-                    <div class="flex items-center gap-3 mt-1">
-                        <a href="{{ url_for('my_following') if user.id == current_user.id else '#' }}" class="px-3 py-1 rounded-full bg-base-200/50 hover:bg-base-200 transition-colors text-xs font-bold text-base-content/60 flex items-center gap-2 {{ 'cursor-pointer' if user.id == current_user.id else 'cursor-default' }}">
-                            <span><span class="font-black text-base-content">{{ stats.following_count }}</span> 关注</span>
-                            <span class="w-px h-3 bg-base-content/10"></span>
-                            <span><span class="font-black text-base-content">{{ stats.follower_count }}</span> 粉丝</span>
-                        </a>
-                        
-                        <!-- Follow Button -->
-                        {% if user.id != current_user.id %}
-                            {% if is_following %}
-                                <form action="{{ url_for('unfollow_user', user_id=user.id) }}" method="POST" class="inline">
-                                    <button type="submit" class="btn btn-xs btn-outline btn-error gap-1 active:scale-95 transition-transform">
-                                        取消关注
-                                    </button>
-                                </form>
-                            {% else %}
-                                <form action="{{ url_for('follow_user', user_id=user.id) }}" method="POST" class="inline">
-                                    <button type="submit" class="btn btn-xs btn-primary gap-1 active:scale-95 transition-transform">
-                                        关注
-                                    </button>
-                                </form>
-                            {% endif %}
-                        {% else %}
-                             <a href="{{ url_for('my_following') }}" class="btn btn-xs btn-ghost gap-1 opacity-50 hover:opacity-100 active:scale-95 transition-transform">
-                                <i class="fas fa-cog"></i>
-                            </a>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Heatmap Section -->
-        <div class="relative z-10 w-full md:w-2/3 border-l border-base-200/50 pl-0 md:pl-8">
-            {% include "partials/notes_heatmap.html" %}
-        </div>
-    </div>
-
-    <!-- 2. Combined Stats & Habits Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in" style="animation-delay: 0.1s;">
-        
-        <!-- Card 1: Level & Identity -->
-        <div class="card bg-gradient-to-br from-primary to-secondary text-primary-content shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all relative overflow-hidden group border border-white/10">
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity duration-500">
-                <i class="fas fa-crown text-9xl transform translate-x-4 -translate-y-4 rotate-12"></i>
-            </div>
-            <div class="card-body p-5 relative z-10 flex flex-col justify-between h-full">
-                <div>
-                    <div class="text-xs font-bold opacity-60 uppercase tracking-wider">当前等级</div>
-                    <div class="text-4xl font-black mt-1 font-mono">Lv.{{ (user_badges|length // 3) + 1 }}</div>
-                </div>
-                <div class="flex items-center gap-2 mt-4">
-                    <div class="badge badge-white/20 border-0 text-white backdrop-blur-sm">
-                        <i class="fas fa-medal mr-1.5 text-xs"></i> <span class="font-mono">{{ user_badges|length }}</span> 徽章
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Card 2: Study Activity -->
-        <div class="card bg-base-100/50 backdrop-blur-md border border-base-content/5 shadow-sm hover:shadow-md hover:border-base-content/10 hover:-translate-y-1 transition-all duration-300 group">
-            <div class="card-body p-0 flex flex-col h-full">
-                <!-- Top: Hours -->
-                <div class="flex-1 p-5 border-b border-base-content/5 flex items-center justify-between">
-                    <div>
-                        <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">累计学习</div>
-                        <div class="text-2xl font-black text-base-content mt-0.5 font-mono">{{ stats.study_hours }} <span class="text-xs font-medium text-base-content/40">h</span></div>
-                    </div>
-                    <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <i class="fas fa-stopwatch"></i>
-                    </div>
-                </div>
-                <!-- Bottom: Streak -->
-                <div class="flex-1 p-5 flex items-center justify-between">
-                    <div>
-                        <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">连续打卡</div>
-                        <div class="text-2xl font-black text-base-content mt-0.5 font-mono">{{ stats.streak_days }} <span class="text-xs font-medium text-base-content/40">天</span></div>
-                    </div>
-                    <div class="w-10 h-10 rounded-full bg-secondary/10 text-secondary flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <i class="fas fa-fire"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Card 3: Contribution Matrix -->
-        <div class="card bg-base-100/50 backdrop-blur-md border border-base-content/5 shadow-sm hover:shadow-md hover:border-base-content/10 hover:-translate-y-1 transition-all duration-300 group">
-            <div class="card-body p-5 grid grid-cols-2 gap-4 h-full">
-                <!-- Wiki -->
-                <div class="flex flex-col justify-center">
-                    <div class="text-[10px] font-bold text-base-content/40 uppercase">Wiki 贡献</div>
-                    <div class="text-xl font-black text-base-content mt-0.5 font-mono">{{ stats.wiki_count }}</div>
-                </div>
-                <!-- Notes -->
-                <div class="flex flex-col justify-center border-l border-base-content/5 pl-4">
-                    <div class="text-[10px] font-bold text-base-content/40 uppercase">笔记数量</div>
-                    <div class="text-xl font-black text-base-content mt-0.5 font-mono">{{ stats.note_count }}</div>
-                </div>
-                <!-- Divider -->
-                <div class="col-span-2 h-px bg-base-content/5"></div>
-                <!-- Likes -->
-                <div class="flex flex-col justify-center">
-                    <div class="text-[10px] font-bold text-base-content/40 uppercase">获得赞赏</div>
-                    <div class="text-xl font-black text-base-content mt-0.5 font-mono">{{ stats.total_views_received }}</div>
-                </div>
-                <!-- Shares -->
-                <div class="flex flex-col justify-center border-l border-base-content/5 pl-4">
-                    <div class="text-[10px] font-bold text-base-content/40 uppercase">分享次数</div>
-                    <div class="text-xl font-black text-base-content mt-0.5 font-mono">{{ stats.share_count }}</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Card 4: Learning Habits (Radar Chart) -->
-        <div class="card bg-base-100/50 backdrop-blur-md border border-base-content/5 shadow-sm hover:shadow-md hover:border-base-content/10 hover:-translate-y-1 transition-all duration-300 group">
-            <div class="card-body p-0 flex flex-col h-full relative">
-                <div class="absolute top-4 left-5 z-10">
-                    <div class="text-sm font-bold text-base-content/70">学习习惯</div>
-                </div>
-                <!-- ECharts Radar Container -->
-                <div id="habits-radar" class="w-full h-full min-h-[160px]"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        <!-- Left Column: Content (8 cols) -->
-        <div class="lg:col-span-8 space-y-8">
-            
-            <!-- Recent Activity (Timeline Style) -->
-            <div class="card bg-base-100/50 backdrop-blur-md border border-base-content/5 shadow-sm">
-                <div class="card-body p-6">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="p-2 bg-base-200 rounded-lg">
-                            <i class="fas fa-stream text-lg text-primary"></i>
-                        </div>
-                        <h2 class="card-title text-lg font-bold">最近动态</h2>
-                    </div>
-
-                    {% if recent_notes %}
-                        <div class="relative pl-4 border-l-2 border-base-200 space-y-8 ml-2">
-                            {% for note in recent_notes %}
-                            <div class="relative pl-6 group">
-                                <!-- Dot -->
-                                <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-base-100 border-2 border-base-300 group-hover:border-primary group-hover:scale-110 transition-all"></div>
-                                
-                                <a href="{{ url_for('view_note', note_id=note.id) }}" class="block -mt-1 transition-all group-hover:translate-x-1">
-                                    <div class="flex justify-between items-start">
-                                        <h3 class="font-bold text-base-content text-lg group-hover:text-primary transition-colors truncate pr-2">{{ note.title }}</h3>
-                                        <span class="text-xs font-mono text-base-content/40 whitespace-nowrap">{{ note.created_at.strftime('%m-%d') }}</span>
-                                    </div>
-                                    <p class="text-sm text-base-content/60 line-clamp-2 mt-1">{{ note.content | striptags }}</p>
-                                    <div class="flex items-center gap-4 mt-2 text-xs text-base-content/40 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <span class="flex items-center gap-1"><i class="far fa-eye"></i> {{ note.view_count }}</span>
-                                        <span class="flex items-center gap-1"><i class="far fa-comment-alt"></i> {{ note.comments|length }}</span>
-                                    </div>
-                                </a>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="flex flex-col items-center justify-center py-12 text-base-content/40 bg-base-50 rounded-2xl border border-dashed border-base-200">
-                            <i class="far fa-folder-open text-4xl mb-3 opacity-50"></i>
-                            <p>暂无公开动态</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Column: Badges (4 cols) -->
-        <div class="lg:col-span-4 space-y-8">
-            
-            <div class="card bg-base-100/50 backdrop-blur-md border border-base-content/5 shadow-sm">
-                <div class="card-body p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-amber-100 text-amber-600 rounded-lg">
-                                <i class="fas fa-medal text-lg"></i>
-                            </div>
-                            <h2 class="card-title text-lg font-bold">荣誉墙</h2>
-                        </div>
-                    </div>
-
-                    <!-- Progress Bar -->
-                    <div class="flex items-center gap-2 mb-6">
-                        <progress class="progress progress-warning flex-1" value="{{ user_badges|length }}" max="{{ user_badges|length + unearned_badges|length }}"></progress>
-                        <span class="text-xs font-mono text-base-content/40">{{ user_badges|length }}/{{ user_badges|length + unearned_badges|length }}</span>
-                    </div>
-
-                    {% if user.id == current_user.id %}
-                        <div class="alert alert-info shadow-sm mb-4 py-2 px-3 text-xs flex items-center gap-2 bg-info/10 text-info border-info/20">
-                            <i class="fas fa-info-circle"></i>
-                            <span>点击徽章可快速佩戴</span>
-                        </div>
-                    {% endif %}
-
-                    <div class="grid grid-cols-4 gap-3">
-                        {% for ub in user_badges %}
-                            {% set is_equipped = (user.selected_badge_id == ub.badge.id) %}
-                            <div class="tooltip tooltip-top z-20" data-tip="{{ ub.badge.name }}">
-                                <button 
-                                    {% if user.id == current_user.id %}onclick="quickEquipBadge({{ ub.badge.id }}, this)"{% endif %}
-                                    class="w-full aspect-square rounded-xl flex items-center justify-center p-2 transition-all duration-300 border-2 relative group active:scale-95
-                                    {{ 'bg-primary/5 border-primary shadow-md scale-105' if is_equipped else 'bg-base-100 border-base-200 hover:border-base-300 hover:shadow-sm hover:-translate-y-1' }}
-                                    {{ 'cursor-pointer' if user.id == current_user.id else 'cursor-default' }}"
-                                >
-                                    {% if ub.badge.icon|is_image_icon %}
-                                        <img src="{{ ub.badge.icon|badge_icon_url }}" 
-                                             class="w-full h-full object-contain drop-shadow-sm transition-transform group-hover:scale-110" 
-                                             alt="{{ ub.badge.name }}"
-                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline'">
-                                        <span class="text-2xl hidden">🏆</span>
-                                    {% else %}
-                                        <span class="text-2xl group-hover:scale-110 transition-transform">{{ ub.badge.icon }}</span>
-                                    {% endif %}
-                                    
-                                    <!-- Checkmark -->
-                                    <div class="absolute -top-2 -right-2 w-5 h-5 bg-primary text-primary-content rounded-full flex items-center justify-center text-[10px] shadow-sm ring-2 ring-white transition-all duration-300 {{ 'scale-100 opacity-100' if is_equipped else 'scale-0 opacity-0' }} check-indicator">
-                                        <i class="fas fa-check"></i>
-                                    </div>
-                                </button>
-                            </div>
-                        {% endfor %}
-                    </div>
-                    
-                    <!-- Unearned Preview (Foldable) -->
-                    {% if unearned_badges %}
-                        <div class="mt-6 pt-4 border-t border-base-content/5 relative">
-                            <div class="flex justify-between items-center mb-3">
-                                <div class="text-xs font-bold text-base-content/40 uppercase tracking-wider">待解锁</div>
-                            </div>
-                            
-                            <div class="grid grid-cols-4 gap-3" id="unearned-badges-container">
-                                {% for ub in unearned_badges[:8] %}
-                                    <div class="aspect-square rounded-xl bg-base-50 border border-base-200 flex items-center justify-center opacity-40 grayscale tooltip tooltip-top" data-tip="{{ ub.name if not ub.is_hidden else '???' }}">
-                                        {% if not ub.is_hidden %}
-                                            {% if ub.icon|is_image_icon %}
-                                                <img src="{{ ub.icon|badge_icon_url }}" class="w-6 h-6 object-contain" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline'">
-                                                <span class="text-lg hidden">🔒</span>
-                                            {% else %}
-                                                <span class="text-lg">{{ ub.icon }}</span>
-                                            {% endif %}
-                                        {% else %}
-                                            <span class="text-sm">🔒</span>
-                                        {% endif %}
-                                    </div>
-                                {% endfor %}
-                                
-                                {% if unearned_badges|length > 8 %}
-                                    {% for ub in unearned_badges[8:] %}
-                                        <div class="aspect-square rounded-xl bg-base-50 border border-base-200 flex items-center justify-center opacity-40 grayscale tooltip tooltip-top hidden extra-badge" data-tip="{{ ub.name if not ub.is_hidden else '???' }}">
-                                            {% if not ub.is_hidden %}
-                                                {% if ub.icon|is_image_icon %}
-                                                    <img src="{{ ub.icon|badge_icon_url }}" class="w-6 h-6 object-contain" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline'">
-                                                    <span class="text-lg hidden">🔒</span>
-                                                {% else %}
-                                                    <span class="text-lg">{{ ub.icon }}</span>
-                                                {% endif %}
-                                            {% else %}
-                                                <span class="text-sm">🔒</span>
-                                            {% endif %}
-                                        </div>
-                                    {% endfor %}
-                                    
-                                    <!-- Show More Button -->
-                                    <button onclick="toggleUnearnedBadges(this)" class="aspect-square rounded-xl bg-base-50 border border-dashed border-base-200 flex items-center justify-center text-xs text-base-content/40 hover:bg-base-100 hover:text-primary transition-colors cursor-pointer col-span-1">
-                                        <div class="flex flex-col items-center">
-                                            <span class="font-bold">+{{ unearned_badges|length - 8 }}</span>
-                                            <i class="fas fa-chevron-down mt-1"></i>
-                                        </div>
-                                    </button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-            
-        </div>
-    </div>
-</div>
-
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/sticker.css') }}">
 <style>
-    @keyframes blob {
-        0% { transform: translate(0px, 0px) scale(1); }
-        33% { transform: translate(30px, -50px) scale(1.1); }
-        66% { transform: translate(-20px, 20px) scale(0.9); }
-        100% { transform: translate(0px, 0px) scale(1); }
+    /* === 1. 贴纸装饰区动效 === */
+    #profile-sticker-header {
+        position: relative;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+        background-size: 20px 20px;
     }
-    .animate-blob {
-        animation: blob 7s infinite;
+    
+    /* 贴纸画布绝对定位 */
+    #sticker-canvas {
+        position: absolute !important; 
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 20;
+        pointer-events: auto;
+        overflow: hidden;
     }
-    .animation-delay-2000 {
-        animation-delay: 2s;
+
+    /* 拖拽激活时的视觉反馈 */
+    #profile-sticker-header.drag-active {
+        background-color: #f5f5f4;
+        border-color: #818cf8;
+        box-shadow: inset 0 0 30px rgba(79, 70, 229, 0.05);
     }
-    .animation-delay-4000 {
-        animation-delay: 4s;
+    #profile-sticker-header.drag-active .drop-hint {
+        opacity: 1;
+        transform: scale(1);
     }
+
+    /* === 2. 徽章网格 (6列 x 3行 = 18个) === */
+    .badge-grid-page {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr); 
+        grid-template-rows: repeat(3, 1fr);    
+        gap: 0.5rem;
+        width: 100%;
+        height: 100%;
+        animation: fadeIn 0.3s ease-out;
+    }
+
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
+        from { opacity: 0; transform: translateY(5px); }
         to { opacity: 1; transform: translateY(0); }
     }
     .animate-fade-in {
-        animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-    }
-    .scrollbar-hide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-    .mask-fade-right {
-        mask-image: linear-gradient(to right, black 80%, transparent 100%);
+        animation: fadeIn 0.5s ease-out forwards;
     }
 </style>
+{% endblock %}
 
+{% block content %}
+
+<div id="profile-sticker-header" class="relative w-full h-[220px] sm:h-[300px] lg:h-[380px] -mt-6 mb-8 group z-0 overflow-hidden bg-white border-b border-stone-200">
+    
+    <div class="drop-hint absolute inset-6 border-2 border-dashed border-indigo-400 rounded-3xl flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-30 opacity-0 transform scale-95 transition-all duration-300 pointer-events-none text-indigo-500">
+        <i class="fas fa-magic text-5xl mb-3 animate-bounce"></i>
+        <span class="font-bold tracking-widest uppercase text-lg">松开鼠标放置贴纸</span>
+    </div>
+    
+    <div class="absolute inset-0 flex items-center justify-center opacity-30 group-hover:opacity-0 transition-opacity duration-500 pointer-events-none z-10">
+        <span class="text-xs font-bold tracking-[0.3em] text-stone-400 uppercase">STICKER DECORATION ZONE</span>
+    </div>
+    
+    <div id="sticker-canvas"></div>
+
+    <div class="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-stone-50 via-stone-50/80 to-transparent z-10 pointer-events-none"></div>
+</div>
+
+<div class="max-w-[1400px] mx-auto px-6 pb-12 relative z-40 animate-fade-in -mt-12 lg:-mt-20">
+    
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <aside class="lg:col-span-3 space-y-6">
+            
+            <div class="bg-white rounded-[2rem] p-8 border border-stone-200 shadow-xl shadow-stone-200/40 flex flex-col items-center relative overflow-hidden">
+                <div class="avatar placeholder mb-5 transform transition-transform hover:scale-105 duration-300">
+                    <div class="w-36 h-36 rounded-full bg-stone-50 text-stone-300 ring-4 ring-white shadow-lg grid place-items-center text-6xl font-black select-none">
+                        <span>{{ user.username[0] | upper }}</span>
+                    </div>
+                    <div class="absolute bottom-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center">
+                        <div class="w-5 h-5 bg-emerald-500 rounded-full border-[3px] border-white animate-pulse"></div>
+                    </div>
+                </div>
+                
+                <h1 class="text-2xl font-black text-stone-800 tracking-tight">{{ user.username }}</h1>
+                <p class="text-stone-400 font-bold text-sm mt-1 bg-stone-50 px-3 py-1 rounded-full">@{{ user.username }}</p>
+            </div>
+
+            <div class="bg-white rounded-[2rem] border border-stone-200 shadow-sm overflow-hidden">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="text-center flex-1 cursor-pointer group" onclick="window.location.href='{{ url_for('my_following') }}'">
+                            <div class="text-xl font-black text-stone-800 group-hover:text-indigo-600 transition-colors">{{ stats.study_partner_count }}</div>
+                            <div class="text-[10px] text-stone-400 font-bold uppercase mt-1">学友</div>
+                        </div>
+                        <div class="w-px h-8 bg-stone-100"></div>
+                        <div class="text-center flex-1 cursor-pointer group" onclick="window.location.href='{{ url_for('my_following') }}'">
+                            <div class="text-xl font-black text-stone-800 group-hover:text-indigo-600 transition-colors">{{ stats.following_count }}</div>
+                            <div class="text-[10px] text-stone-400 font-bold uppercase mt-1">关注</div>
+                        </div>
+                        <div class="w-px h-8 bg-stone-100"></div>
+                        <div class="text-center flex-1 cursor-pointer group" onclick="window.location.href='{{ url_for('my_following') }}'">
+                            <div class="text-xl font-black text-stone-800 group-hover:text-indigo-600 transition-colors">{{ stats.follower_count }}</div>
+                            <div class="text-[10px] text-stone-400 font-bold uppercase mt-1">粉丝</div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-stone-100">
+                    {% if user.id != current_user.id %}
+                        {% if is_following %}
+                            <form action="{{ url_for('unfollow_user', user_id=user.id) }}" method="POST">
+                                <button type="submit" class="btn btn-block btn-outline border-stone-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200 text-stone-500 h-11 min-h-0 rounded-xl font-bold">取消关注</button>
+                            </form>
+                        {% else %}
+                            <form action="{{ url_for('follow_user', user_id=user.id) }}" method="POST">
+                                <button type="submit" class="btn btn-block btn-primary text-white shadow-lg shadow-primary/20 h-11 min-h-0 rounded-xl font-bold">关注</button>
+                            </form>
+                        {% endif %}
+                    {% else %}
+                        <a href="{{ url_for('my_following') }}" class="btn btn-block btn-neutral bg-stone-800 hover:bg-stone-700 text-white border-none h-11 min-h-0 rounded-xl font-bold">管理关注</a>
+                    {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[2rem] p-6 border border-stone-200 shadow-sm">
+                <div class="flex items-center gap-2 mb-5 pb-2 border-b border-stone-100">
+                    <div class="w-1.5 h-4 bg-indigo-500 rounded-full"></div>
+                    <h3 class="font-bold text-stone-800 text-sm">学习数据</h3>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-stone-50 p-3 rounded-2xl border border-stone-100 text-center group hover:bg-white hover:shadow-md transition-all duration-300">
+                        <div class="text-[10px] text-stone-400 uppercase font-bold mb-1">等级</div>
+                        <div class="text-xl font-black text-stone-700 group-hover:text-indigo-600">Lv.{{ (user_badges|length // 3) + 1 }}</div>
+                    </div>
+                    <div class="bg-stone-50 p-3 rounded-2xl border border-stone-100 text-center group hover:bg-white hover:shadow-md transition-all duration-300">
+                        <div class="text-[10px] text-stone-400 uppercase font-bold mb-1">连续打卡</div>
+                        <div class="text-xl font-black text-stone-700 group-hover:text-orange-500">{{ stats.streak_days }} <span class="text-xs font-normal text-stone-400">天</span></div>
+                    </div>
+                    <div class="bg-stone-50 p-3 rounded-2xl border border-stone-100 text-center group hover:bg-white hover:shadow-md transition-all duration-300">
+                        <div class="text-[10px] text-stone-400 uppercase font-bold mb-1">学习时长</div>
+                        <div class="text-xl font-black text-stone-700 group-hover:text-emerald-600">{{ stats.study_hours }} <span class="text-xs font-normal text-stone-400">h</span></div>
+                    </div>
+                    <div class="bg-stone-50 p-3 rounded-2xl border border-stone-100 text-center group hover:bg-white hover:shadow-md transition-all duration-300">
+                        <div class="text-[10px] text-stone-400 uppercase font-bold mb-1">贡献度</div>
+                        <div class="text-xl font-black text-stone-700 group-hover:text-blue-600">{{ stats.wiki_edit_count }}</div>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <main class="lg:col-span-9 space-y-6">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <div class="lg:col-span-4 bg-white rounded-[2rem] border border-stone-200 shadow-sm p-8 flex flex-col h-[400px] relative overflow-hidden">
+                    <div class="absolute -top-4 -right-4 p-8 opacity-[0.04]">
+                        <i class="fas fa-quote-right text-9xl text-black"></i>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-1.5 h-6 bg-stone-800 rounded-full"></div>
+                        <h3 class="font-bold text-stone-800 text-lg">学习概况</h3>
+                    </div>
+
+                    <div class="relative z-10 flex-1 flex flex-col">
+                        <div class="text-stone-600 space-y-6 leading-relaxed">
+                            <div>
+                                <p class="text-3xl font-bold text-stone-800 mb-2">Hello! 👋</p>
+                                <p class="text-sm text-stone-500">这里是 <strong>{{ user.username }}</strong> 的知识库。</p>
+                            </div>
+                            <div class="space-y-3 pt-4">
+                                <div class="space-y-1">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-stone-400 font-medium">笔记创作</span>
+                                        <span class="font-bold text-stone-800">{{ stats.note_count }} 篇</span>
+                                    </div>
+                                    <div class="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+                                        <div class="bg-indigo-500 h-2 rounded-full" style="width: {{ [stats.note_count, 100]|min }}%"></div>
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-stone-400 font-medium">Wiki 参与</span>
+                                        <span class="font-bold text-stone-800">{{ stats.wiki_count }} 个</span>
+                                    </div>
+                                    <div class="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+                                        <div class="bg-emerald-500 h-2 rounded-full" style="width: {{ [stats.wiki_count * 5, 100]|min }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 bg-white rounded-[2rem] border border-stone-200 shadow-sm p-8 flex flex-col h-[400px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-6 bg-orange-500 rounded-full"></div>
+                            <h3 class="font-bold text-stone-800 text-lg">成就徽章</h3>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="badge badge-sm badge-ghost font-mono text-stone-400">{{ user_badges|length }} 获得</span>
+                            <div class="flex gap-1" id="badge-controls">
+                                <button onclick="changeBadgePage(-1)" class="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-800 hover:text-white transition-all flex items-center justify-center disabled:opacity-20">
+                                    <i class="fas fa-chevron-left text-[10px]"></i>
+                                </button>
+                                <button onclick="changeBadgePage(1)" class="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-800 hover:text-white transition-all flex items-center justify-center disabled:opacity-20">
+                                    <i class="fas fa-chevron-right text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="relative flex-1 w-full overflow-hidden">
+                        <div id="badge-pages-container" class="w-full h-full">
+                            {% for ub in user_badges %}
+                                <div class="badge-item hidden" 
+                                     data-id="{{ ub.badge.id }}"
+                                     data-name="{{ ub.badge.name }}"
+                                     data-icon="{{ ub.badge.icon }}"
+                                     data-icon-is-image="{{ ub.badge.icon|is_image_icon }}"
+                                     data-icon-url="{{ ub.badge.icon|badge_icon_url }}"
+                                     data-is-equipped="{{ 1 if user.selected_badge_id == ub.badge.id else 0 }}">
+                                </div>
+                            {% endfor %}
+                            {% if not user_badges %}
+                                <div class="flex h-full items-center justify-center text-stone-400 text-sm bg-stone-50/50 rounded-2xl border border-dashed border-stone-200 flex-col gap-3">
+                                    <i class="fas fa-medal text-4xl opacity-20"></i>
+                                    <span>暂无成就，继续加油！</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-2 text-center">
+                        <div id="badge-page-dots" class="inline-flex gap-1.5 justify-center"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[2rem] border border-stone-200 shadow-sm p-8">
+                <div class="flex items-center justify-between mb-6 border-b border-stone-50 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-1.5 h-6 bg-stone-800 rounded-full"></div>
+                        <h3 class="font-bold text-stone-800 text-lg">热门笔记</h3>
+                    </div>
+                    <a href="{{ url_for('book_index') }}" class="text-xs font-bold text-stone-400 hover:text-indigo-600 transition-colors bg-stone-50 px-3 py-1 rounded-full">查看全部</a>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% if recent_notes %}
+                        {% for note in recent_notes[:6] %}
+                        <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-stone-50/50 hover:bg-white hover:shadow-lg hover:shadow-indigo-100/50 border border-stone-100 hover:border-indigo-100 transition-all duration-300 group rounded-2xl">
+                            <div class="card-body p-5">
+                                <div class="flex justify-between items-start mb-3">
+                                    <div class="flex items-center gap-3 w-full overflow-hidden">
+                                        <div class="w-8 h-8 rounded-lg bg-white text-stone-400 flex items-center justify-center shadow-sm group-hover:text-indigo-500 group-hover:scale-110 transition-transform">
+                                            <i class="far fa-file-alt"></i>
+                                        </div>
+                                        <h4 class="font-bold text-stone-700 group-hover:text-indigo-600 truncate flex-1 transition-colors">{{ note.title }}</h4>
+                                    </div>
+                                    {% if note.is_featured %}
+                                        <span class="badge badge-xs badge-warning uppercase text-[9px] font-bold shrink-0">精选</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <p class="text-sm text-stone-500 line-clamp-2 h-10 leading-relaxed font-normal mb-2 opacity-80">
+                                    {{ note.content_md | striptags | truncate(80) or '暂无预览内容...' }}
+                                </p>
+                                
+                                <div class="flex items-center justify-between mt-auto pt-3 border-t border-stone-200/50">
+                                    <div class="flex items-center gap-1.5 text-xs text-stone-400 font-mono bg-white px-2 py-1 rounded border border-stone-100">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
+                                        <span>Markdown</span>
+                                    </div>
+                                    <div class="flex items-center gap-4 text-xs text-stone-400 font-medium">
+                                        <span class="flex items-center gap-1 group-hover:text-indigo-600 transition-colors">
+                                            <i class="far fa-eye"></i> 阅读 {{ note.view_count }}
+                                        </span>
+                                        <span class="flex items-center gap-1 group-hover:text-indigo-600 transition-colors">
+                                            <i class="fas fa-share-alt"></i> 分享 {{ note.shares|length }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                        <div class="col-span-full py-16 text-center border-2 border-dashed border-stone-200 rounded-2xl bg-stone-50/30">
+                            <i class="far fa-folder-open text-3xl text-stone-300 mb-2"></i>
+                            <p class="text-stone-400 font-medium">暂无公开笔记</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+{% if current_user.is_authenticated %}
+<button id="sticker-fab" class="sticker-fab btn btn-circle btn-lg fixed bottom-8 right-8 z-50 bg-stone-900/90 backdrop-blur-md text-white shadow-2xl border border-white/10 hover:scale-110 transition-all duration-300">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+</button>
+<div id="sticker-drawer" class="sticker-drawer">
+    <div class="sticker-drawer-header">
+        <h3 class="font-bold text-lg">我的贴纸库</h3>
+        <div class="flex gap-2">
+            <button id="sticker-publish-btn" class="btn btn-secondary btn-sm">发布快照</button>
+            <button id="sticker-save-btn" class="btn btn-primary btn-sm">保存</button>
+            <button id="sticker-close-btn" class="btn btn-ghost btn-sm btn-circle">✕</button>
+        </div>
+    </div>
+    <div class="sticker-drawer-body">
+        <div class="sticker-grid">
+            {% for ub in current_user.earned_badges %}
+                {% set usage = get_badge_usage(current_user.id, ub.badge.id) %}
+                {% set limit = ub.badge.sticker_count %}
+                <div class="sticker-option p-2 rounded-lg hover:bg-base-200 cursor-pointer transition-all flex flex-col items-center gap-2 group relative"
+                     data-badge-id="{{ ub.badge.id }}"
+                     data-badge-icon="{{ ub.badge.icon|badge_icon_url if ub.badge.icon|is_image_icon else ub.badge.icon }}"
+                     data-sticker-limit="{{ limit }}"
+                     data-used-count="{{ usage }}">
+                    <div class="text-3xl transition-transform group-hover:scale-110 relative">
+                    {% if ub.badge.icon|is_image_icon %}
+                    <img src="{{ ub.badge.icon|badge_icon_url }}" class="w-10 h-10 object-contain drop-shadow-sm" alt="{{ ub.badge.name }}">
+                    {% else %}
+                    {{ ub.badge.icon }}
+                    {% endif %}
+                    
+                    <!-- Usage Badge -->
+                    <div class="absolute -bottom-2 -right-2 badge badge-xs badge-neutral bg-opacity-90 border-none text-[10px] px-1 scale-90 sticker-count-badge">
+                        {{ usage }}/{{ limit }}
+                    </div>
+                </div>
+                <span class="text-xs text-center w-full truncate px-1 opacity-70 group-hover:opacity-100">{{ ub.badge.name }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/sticker.js') }}"></script>
 <script>
+    // === 1. 贴纸区域交互逻辑 ===
+    const stickerHeader = document.getElementById('profile-sticker-header');
+    if(stickerHeader) {
+        stickerHeader.addEventListener('dragenter', () => stickerHeader.classList.add('drag-active'));
+        stickerHeader.addEventListener('dragleave', (e) => {
+            if (!stickerHeader.contains(e.relatedTarget)) stickerHeader.classList.remove('drag-active');
+        });
+        stickerHeader.addEventListener('drop', () => stickerHeader.classList.remove('drag-active'));
+    }
+    
+    // 初始化贴纸管理器 (Profile 模式)
+    document.addEventListener('DOMContentLoaded', () => {
+        {% if user.id != current_user.id %}
+             // Visitor Mode: View target user's stickers (Read-Only)
+             new StickerManager('profile', {{ user.id }}, true);
+        {% else %}
+             // Owner Mode: View/Edit my own stickers
+             new StickerManager('profile');
+        {% endif %}
+    });
+
+    // === 2. 徽章翻页逻辑 (6列 x 3行 = 18个) ===
+    const ITEMS_PER_PAGE = 18; 
+    let currentBadgePage = 1;
+    let totalBadgePages = 1;
+    let badgeData = [];
+
+    function initBadges() {
+        const items = document.querySelectorAll('.badge-item');
+        items.forEach(item => {
+            badgeData.push({
+                id: item.dataset.id,
+                name: item.dataset.name,
+                icon: item.dataset.icon,
+                isImage: item.dataset.iconIsImage === 'True',
+                url: item.dataset.iconUrl,
+                isEquipped: item.dataset.isEquipped === '1'
+            });
+        });
+
+        totalBadgePages = Math.ceil(badgeData.length / ITEMS_PER_PAGE) || 1;
+        if (badgeData.length > 0) renderBadgePage(1);
+        updateBadgeControls();
+    }
+
+    function renderBadgePage(page) {
+        currentBadgePage = page;
+        const container = document.getElementById('badge-pages-container');
+        const dotsContainer = document.getElementById('badge-page-dots');
+        
+        container.innerHTML = '';
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'badge-grid-page';
+
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE;
+        const pageItems = badgeData.slice(start, end);
+
+        pageItems.forEach(badge => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tooltip w-full h-full';
+            wrapper.setAttribute('data-tip', badge.name);
+            
+            let content = badge.isImage 
+                ? `<img src="${badge.url}" class="w-2/3 h-2/3 object-contain drop-shadow-sm transition-transform group-hover:scale-110">`
+                : `<span class="text-xl transition-transform group-hover:scale-110">${badge.icon}</span>`;
+
+            let equippedIndicator = badge.isEquipped ? 
+                `<div class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-600 rounded-full border-2 border-white check-indicator shadow-sm"></div>` : '';
+
+            const isOwner = {{ 'true' if user.id == current_user.id else 'false' }};
+            const clickAttr = isOwner ? `onclick="quickEquipBadge(${badge.id}, this)"` : '';
+            
+            wrapper.innerHTML = `
+                <button ${clickAttr} 
+                    class="w-full h-full rounded-xl bg-stone-50 border border-stone-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all relative group flex items-center justify-center cursor-${isOwner ? 'pointer' : 'default'}">
+                    ${content}
+                    ${equippedIndicator}
+                </button>
+            `;
+            pageDiv.appendChild(wrapper);
+        });
+
+        // 补全空白网格保持布局稳定
+        const remaining = ITEMS_PER_PAGE - pageItems.length;
+        for (let i = 0; i < remaining; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'w-full h-full rounded-xl bg-stone-50/20 border border-dashed border-stone-100';
+            pageDiv.appendChild(empty);
+        }
+
+        container.appendChild(pageDiv);
+        
+        if (dotsContainer) {
+            dotsContainer.innerHTML = '';
+            for(let i=1; i<=totalBadgePages; i++) {
+                const dot = document.createElement('div');
+                dot.className = `w-1.5 h-1.5 rounded-full transition-colors ${i === currentBadgePage ? 'bg-stone-800' : 'bg-stone-300'}`;
+                dotsContainer.appendChild(dot);
+            }
+        }
+        updateBadgeControls();
+    }
+
+    function changeBadgePage(delta) {
+        const newPage = currentBadgePage + delta;
+        if (newPage >= 1 && newPage <= totalBadgePages) renderBadgePage(newPage);
+    }
+
+    function updateBadgeControls() {
+        const prevBtn = document.querySelector('#badge-controls button:first-child');
+        const nextBtn = document.querySelector('#badge-controls button:last-child');
+        if (prevBtn) prevBtn.disabled = currentBadgePage === 1;
+        if (nextBtn) nextBtn.disabled = currentBadgePage === totalBadgePages;
+    }
+
     function quickEquipBadge(badgeId, btnElement) {
-        // Visual feedback
-        btnElement.style.transform = 'scale(0.9)';
-        setTimeout(() => btnElement.style.transform = '', 150);
+        const btn = btnElement.querySelector('button') || btnElement;
+        btn.style.transform = 'scale(0.9)';
+        setTimeout(() => btn.style.transform = '', 150);
 
         fetch('/user/badges/equip', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ badge_id: badgeId })
-        })
-        .then(response => response.json())
-        .then(data => {
+        }).then(res => res.json()).then(data => {
             if (data.success) {
-                showGlobalToast('佩戴成功！', 'success');
-                updateBadgeUI(badgeId, btnElement);
-            } else {
-                showGlobalToast(data.message || '操作失败', 'error');
+                if(typeof showGlobalToast === 'function') showGlobalToast('徽章佩戴成功！', 'success');
+                setTimeout(() => window.location.reload(), 300);
             }
-        })
-        .catch(err => {
-            console.error(err);
-            showGlobalToast('网络错误', 'error');
         });
     }
 
-    function updateBadgeUI(badgeId, activeBtn) {
-        // 1. Reset all badges in grid
-        document.querySelectorAll('.check-indicator').forEach(el => {
-            el.classList.remove('scale-100', 'opacity-100');
-            el.classList.add('scale-0', 'opacity-0');
-        });
-        document.querySelectorAll('button[onclick^="quickEquipBadge"]').forEach(btn => {
-            btn.classList.remove('bg-primary/5', 'border-primary', 'shadow-md', 'scale-105');
-            btn.classList.add('bg-base-100', 'border-base-200');
-        });
+    document.addEventListener('DOMContentLoaded', initBadges);
 
-        // 2. Activate clicked badge
-        activeBtn.classList.remove('bg-base-100', 'border-base-200');
-        activeBtn.classList.add('bg-primary/5', 'border-primary', 'shadow-md', 'scale-105');
-        const check = activeBtn.querySelector('.check-indicator');
-        if (check) {
-            check.classList.remove('scale-0', 'opacity-0');
-            check.classList.add('scale-100', 'opacity-100');
-        }
-
-        // 3. Update Header Avatar
-        const headerBadgeDisplay = document.getElementById('current-badge-display');
-        const headerBadgeImg = document.getElementById('current-badge-img');
-        const headerBadgeIcon = document.getElementById('current-badge-icon');
+    // === 修复贴纸按钮定位问题 ===
+    document.addEventListener("DOMContentLoaded", function() {
+        // 获取按钮和抽屉元素
+        const fab = document.getElementById('sticker-fab');
+        const drawer = document.getElementById('sticker-drawer');
         
-        // Safety check
-        if (!headerBadgeDisplay || !headerBadgeImg || !headerBadgeIcon) {
-            console.warn('Badge header elements not found');
-            return;
-        }
-
-        // Update Tooltip Name
-        // Get badge name from the button's tooltip parent or dataset
-        const tooltipParent = activeBtn.closest('.tooltip');
-        if (tooltipParent) {
-            headerBadgeDisplay.setAttribute('data-tip', tooltipParent.getAttribute('data-tip'));
-        }
-
-        const sourceImg = activeBtn.querySelector('img');
-        const sourceIcon = activeBtn.querySelector('span:not(.hidden):not(.check-indicator)'); 
-
-        if (sourceImg && sourceImg.style.display !== 'none') {
-            headerBadgeImg.src = sourceImg.src;
-            headerBadgeImg.classList.remove('hidden');
-            headerBadgeIcon.classList.add('hidden');
-        } else if (sourceIcon) {
-            headerBadgeIcon.innerText = sourceIcon.innerText;
-            headerBadgeIcon.classList.remove('hidden');
-            headerBadgeImg.classList.add('hidden');
-        }
-
-        headerBadgeDisplay.classList.remove('hidden', 'scale-0', 'opacity-0');
-        
-        // Bounce animation
-        headerBadgeDisplay.classList.add('scale-125');
-        setTimeout(() => headerBadgeDisplay.classList.remove('scale-125'), 200);
-    }
-    function toggleUnearnedBadges(btn) {
-        const container = document.getElementById('unearned-badges-container');
-        const hiddenBadges = container.querySelectorAll('.extra-badge');
-        const isExpanded = btn.classList.contains('expanded');
-        
-        if (isExpanded) {
-            // Collapse
-            hiddenBadges.forEach(el => el.classList.add('hidden'));
-            btn.innerHTML = `
-                <div class="flex flex-col items-center">
-                    <span class="font-bold">+{{ unearned_badges|length - 8 }}</span>
-                    <i class="fas fa-chevron-down mt-1"></i>
-                </div>
-            `;
-            btn.classList.remove('expanded');
-        } else {
-            // Expand
-            hiddenBadges.forEach(el => el.classList.remove('hidden'));
-            btn.innerHTML = `
-                <div class="flex flex-col items-center">
-                    <i class="fas fa-chevron-up"></i>
-                </div>
-            `;
-            btn.classList.add('expanded');
-        }
-    }
+        // 将它们移动到 document.body 的最末尾，脱离任何可能有 transform 的父容器
+        if (fab) document.body.appendChild(fab);
+        if (drawer) document.body.appendChild(drawer);
+    });
 </script>
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. Radar Chart
-    const radarDom = document.getElementById('habits-radar');
-    if (radarDom) {
-        const radarChart = echarts.init(radarDom);
-        const option = {
-            radar: {
-                indicator: [
-                    { name: '深夜学者', max: 10 },
-                    { name: '晨间鸟', max: 10 },
-                    { name: '深度专注', max: 10 },
-                ],
-                center: ['50%', '50%'],
-                radius: '65%',
-                splitNumber: 4,
-                splitArea: {
-                    areaStyle: {
-                        color: ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.2)'],
-                        shadowColor: 'rgba(0, 0, 0, 0.1)',
-                        shadowBlur: 10
-                    }
-                },
-                axisLine: {
-                    lineStyle: {
-                        color: 'rgba(0,0,0,0.1)'
-                    }
-                },
-                splitLine: {
-                    lineStyle: {
-                        color: 'rgba(0,0,0,0.1)'
-                    }
-                }
-            },
-            series: [{
-                type: 'radar',
-                data: [
-                    {
-                        value: [
-                            {{ stats.night_owl_days }},
-                            {{ stats.early_bird_days }},
-                            {{ stats.long_sessions }}
-                        ],
-                        name: 'Habits',
-                        areaStyle: {
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
-                                offset: 0,
-                                color: 'rgba(99, 102, 241, 0.6)'
-                            }, {
-                                offset: 1,
-                                color: 'rgba(168, 85, 247, 0.3)'
-                            }])
-                        },
-                        itemStyle: {
-                            color: '#6366f1'
-                        }
-                    }
-                ]
-            }]
-        };
-        radarChart.setOption(option);
-        
-        window.addEventListener('resize', () => {
-            radarChart.resize();
-        });
-    }
-
-    // 2. Heatmap Logic
-    const container = document.getElementById('heatmap-container');
-    const yearSelect = document.getElementById('heatmap-year-select');
-    
-    if (!container) return;
-    
-    let allData = [];
-    let charts = [];
-    
-    fetch('{{ url_for("get_heatmap_data") }}')
-        .then(response => response.json())
-        .then(res => {
-            allData = res.data;
-            const years = new Set();
-            const currentYear = new Date().getFullYear();
-            years.add(currentYear);
-            allData.forEach(item => {
-                const year = new Date(item[0]).getFullYear();
-                years.add(year);
-            });
-            const sortedYears = Array.from(years).sort((a, b) => b - a);
-            yearSelect.innerHTML = '';
-            sortedYears.forEach(year => {
-                const option = document.createElement('option');
-                option.value = year;
-                option.textContent = year + '年';
-                if (year === currentYear) option.selected = true;
-                yearSelect.appendChild(option);
-            });
-            if (sortedYears.length > 0) {
-                yearSelect.classList.remove('hidden');
-                initCharts(yearSelect.value);
-            }
-            yearSelect.addEventListener('change', function() {
-                initCharts(this.value);
-            });
-            window.addEventListener('resize', function() {
-                charts.forEach(c => c.resize());
-            });
-        })
-        .catch(err => console.error('Error loading heatmap data:', err));
-        
-    function initCharts(year) {
-        container.innerHTML = '';
-        charts.forEach(c => c.dispose());
-        charts = [];
-        for (let m = 1; m <= 12; m++) {
-            const monthDiv = document.createElement('div');
-            monthDiv.style.height = '120px';
-            monthDiv.style.width = '80px';
-            monthDiv.style.flex = '0 0 auto';
-            container.appendChild(monthDiv);
-            renderMonthChart(monthDiv, year, m);
-        }
-    }
-
-    function renderMonthChart(dom, year, month) {
-        const myChart = echarts.init(dom);
-        charts.push(myChart);
-        const startDate = new Date(year, month - 1, 1);
-        const endDate = new Date(year, month, 0);
-        const startStr = echarts.format.formatTime('yyyy-MM-dd', startDate);
-        const endStr = echarts.format.formatTime('yyyy-MM-dd', endDate);
-        const dateMap = new Map(allData.map(item => [item[0], item[1]]));
-        const filledData = [];
-        let curr = new Date(startDate);
-        while (curr <= endDate) {
-            const dateStr = echarts.format.formatTime('yyyy-MM-dd', curr);
-            const count = dateMap.get(dateStr) || 0;
-            filledData.push([dateStr, count]);
-            curr.setDate(curr.getDate() + 1);
-        }
-        const option = {
-            tooltip: {
-                position: 'top',
-                formatter: function (p) {
-                    const format = echarts.format.formatTime('yyyy-MM-dd', p.data[0]);
-                    return format + ': 活跃度 ' + p.data[1];
-                }
-            },
-            visualMap: {
-                min: 0,
-                max: 20,
-                calculable: false,
-                show: false,
-                inRange: {
-                    color: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39']
-                }
-            },
-            calendar: {
-                top: 20,
-                left: 'center',
-                cellSize: [13, 13],
-                range: [startStr, endStr],
-                itemStyle: {
-                    borderWidth: 3,
-                    borderColor: '#fff',
-                    borderRadius: 2
-                },
-                yearLabel: { show: false },
-                dayLabel: { show: false }, 
-                monthLabel: { 
-                    show: true,
-                    nameMap: 'cn',
-                    position: 'start',
-                    color: '#374151',
-                    fontSize: 14,
-                    fontWeight: 'bold',
-                    margin: 5
-                },
-                splitLine: { show: false }
-            },
-            series: {
-                type: 'heatmap',
-                coordinateSystem: 'calendar',
-                data: filledData,
-                itemStyle: {}
-            }
-        };
-        myChart.setOption(option);
-    }
-});
-</script>
-{% endblock %}
 {% endblock %}

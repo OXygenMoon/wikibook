@@ -12,6 +12,9 @@ import mistune
 import uuid
 import requests
 from bs4 import BeautifulSoup
+import json
+import shutil
+import time
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
@@ -285,6 +288,35 @@ class Notification(db.Model):
 
     user = db.relationship("User", backref=db.backref("notifications", lazy="dynamic", cascade="all, delete-orphan"))
 
+class SystemAnnouncement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False) # Markdown
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
+    is_active = db.Column(db.Boolean, default=True)
+
+    creator = db.relationship("User", backref="created_announcements")
+
+class UserAnnouncementConfirmation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    announcement_id = db.Column(db.Integer, db.ForeignKey('system_announcement.id'), nullable=False)
+    confirmed_at = db.Column(db.DateTime, default=now_utc8)
+    
+    user = db.relationship("User", backref="announcement_confirmations")
+    announcement = db.relationship("SystemAnnouncement", backref="confirmations")
+
+class AnnouncementFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=now_utc8)
+    
+    uploader = db.relationship("User", backref="uploaded_announcement_files")
+
 class Badge(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -293,6 +325,9 @@ class Badge(db.Model):
     condition_type = db.Column(db.String(50), nullable=False) # streak_days, study_hours, featured_count, note_count
     condition_value = db.Column(db.Integer, nullable=False)
     is_hidden = db.Column(db.Boolean, default=False) # Hidden badges won't show conditions until earned
+    sticker_count = db.Column(db.Integer, default=1) # Number of stickers this badge provides
+    total_limit = db.Column(db.Integer, nullable=True) # Max number of users who can earn this badge (Null = infinite)
+    issued_count = db.Column(db.Integer, default=0) # Current number of users who earned this
     start_time = db.Column(db.DateTime, nullable=True) # For time-limited badges
     end_time = db.Column(db.DateTime, nullable=True) # For time-limited badges
     created_at = db.Column(db.DateTime, default=now_utc8)
@@ -516,6 +551,108 @@ def process_tags(tag_string):
         tags.append(tag)
     return tags
 
+def backup_wiki(wiki_id):
+    """
+    Backup wiki data to a JSON file and copy associated files.
+    Returns the backup directory path.
+    """
+    w = Wiki.query.get(wiki_id)
+    if not w:
+        return None
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_root = os.path.join(app.root_path, "backups")
+    backup_dir = os.path.join(backup_root, f"wiki_{wiki_id}_{timestamp}")
+    
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+
+    # 1. Backup Metadata and Structure
+    data = {
+        "wiki": {
+            "id": w.id,
+            "title": w.title,
+            "description": w.description,
+            "created_by_id": w.created_by_id,
+            "created_at": w.created_at.isoformat() if w.created_at else None
+        },
+        "pages": [],
+        "files": [],
+        "editors": [e.user_id for e in w.editors],
+        "subscribers": [s.user_id for s in w.subscriptions]
+    }
+
+    # Pages
+    for p in w.pages:
+        page_data = {
+            "id": p.id,
+            "title": p.title,
+            "slug": p.slug,
+            "content_md": p.content_md,
+            "view_count": p.view_count,
+            "updated_at": p.updated_at.isoformat() if p.updated_at else None,
+            "tags": [t.name for t in p.tags],
+            "comments": [
+                {
+                    "user_id": c.user_id,
+                    "content": c.content,
+                    "created_at": c.created_at.isoformat() if c.created_at else None
+                } for c in p.comments
+            ],
+            "history": [
+                {
+                    "user_id": h.user_id,
+                    "title": h.title,
+                    "slug": h.slug,
+                    "content_md": h.content_md,
+                    "created_at": h.created_at.isoformat() if h.created_at else None
+                } for h in p.history
+            ]
+        }
+        data["pages"].append(page_data)
+
+    # Files
+    files_dir = os.path.join(backup_dir, "files")
+    if not os.path.exists(files_dir):
+        os.makedirs(files_dir)
+
+    for f in w.files:
+        file_data = {
+            "id": f.id,
+            "filename": f.filename,
+            "file_path": f.file_path,
+            "uploaded_by_id": f.uploaded_by_id,
+            "uploaded_at": f.uploaded_at.isoformat() if f.uploaded_at else None
+        }
+        data["files"].append(file_data)
+        
+        # Copy physical file
+        # Assuming f.filename matches the file in UPLOAD_FOLDER
+        # However, upload logic uses unique_filename. 
+        # In upload_wiki_file: 
+        # unique_filename = str(uuid.uuid4()) + ext
+        # file.save(os.path.join(upload_dir, unique_filename))
+        # wf = WikiFile(..., filename=filename, ...) <- This stores original filename!
+        # Wait, the physical filename is NOT stored in WikiFile directly?
+        # file_path stores url_for("static", filename=f"uploads/{unique_filename}")
+        # So we need to extract unique_filename from file_path.
+        
+        try:
+            # f.file_path is like /static/uploads/UUID.ext
+            if "/static/uploads/" in f.file_path:
+                unique_filename = f.file_path.split("/static/uploads/")[-1]
+                src_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_filename)
+                if os.path.exists(src_path):
+                    shutil.copy2(src_path, os.path.join(files_dir, unique_filename))
+        except Exception as e:
+            print(f"Error copying file {f.id}: {e}")
+
+    # Write JSON
+    with open(os.path.join(backup_dir, "data.json"), "w", encoding="utf-8") as json_file:
+        json.dump(data, json_file, indent=4, ensure_ascii=False)
+
+    return backup_dir
+
 @app.before_request
 def ensure_db():
     with app.app_context():
@@ -619,6 +756,26 @@ def create_wiki():
         w = Wiki(title=title, description=description, created_by_id=current_user.id)
         db.session.add(w)
         db.session.commit()
+        
+        # Check initialization options
+        init_home = request.form.get("init_home") == "on"
+        if init_home:
+            home_page = WikiPage(
+                wiki_id=w.id,
+                title="欢迎",
+                slug="home",
+                content_md=f"# 欢迎来到 {w.title}\n\n{w.description or '这是一个新的 Wiki 知识库。'}\n\n## 开始使用\n\n- 点击右上角的编辑按钮修改此页面\n- 点击侧边栏的“新建页面”添加更多内容\n"
+            )
+            db.session.add(home_page)
+            db.session.commit()
+            
+            # Create a view log for the creator
+            log = WikiViewLog(wiki_id=w.id, user_id=current_user.id)
+            db.session.add(log)
+            db.session.commit()
+            
+            return redirect(url_for("view_page", wiki_id=w.id, slug="home"))
+            
         return redirect(url_for("wiki_detail", wiki_id=w.id))
     return render_template("admin/create_wiki.html")
 
@@ -671,6 +828,36 @@ def edit_wiki(wiki_id):
         flash("Wiki 信息已更新")
         return redirect(url_for("wiki_detail", wiki_id=w.id))
     return render_template("admin/edit_wiki.html", wiki=w)
+
+@app.route("/admin/wikis/<int:wiki_id>/delete", methods=["POST"])
+@login_required
+def delete_wiki(wiki_id):
+    if not current_user.is_admin:
+        abort(403)
+        
+    w = Wiki.query.get_or_404(wiki_id)
+    
+    # Backup first
+    try:
+        backup_path = backup_wiki(wiki_id)
+        if not backup_path:
+             flash("备份失败，操作取消")
+             return redirect(url_for("edit_wiki", wiki_id=wiki_id))
+    except Exception as e:
+        flash(f"备份过程中出错: {str(e)}")
+        return redirect(url_for("edit_wiki", wiki_id=wiki_id))
+        
+    # Delete Wiki
+    try:
+        db.session.delete(w)
+        db.session.commit()
+        flash(f"Wiki 已删除。备份已保存至: {backup_path}")
+        return redirect(url_for("index"))
+    except Exception as e:
+        db.session.rollback()
+        flash(f"删除失败: {str(e)}")
+        return redirect(url_for("edit_wiki", wiki_id=wiki_id))
+
 
 @app.route("/wikis/<int:wiki_id>/subscribe", methods=["POST"])
 @login_required
@@ -1276,6 +1463,19 @@ def manage_badges():
         except ValueError:
             condition_value = 0
             
+        try:
+            sticker_count = int(request.form.get("sticker_count", 1))
+        except ValueError:
+            sticker_count = 1
+            
+        total_limit_str = request.form.get("total_limit", "").strip()
+        total_limit = None
+        if total_limit_str:
+            try:
+                total_limit = int(total_limit_str)
+            except ValueError:
+                pass
+            
         is_hidden = request.form.get("is_hidden") == "on"
         
         # Parse dates
@@ -1302,6 +1502,8 @@ def manage_badges():
             icon=icon,
             condition_type=condition_type,
             condition_value=condition_value,
+            sticker_count=sticker_count,
+            total_limit=total_limit,
             is_hidden=is_hidden,
             start_time=start_time,
             end_time=end_time
@@ -1312,9 +1514,20 @@ def manage_badges():
         # Check 'all_users' immediately
         if b.condition_type == 'all_users':
             users = User.query.all()
+            # Check limit before batch add? Or just loop.
+            current_count = 0
+            limit_reached = False
+            
             for user in users:
+                if b.total_limit is not None and b.issued_count >= b.total_limit:
+                    limit_reached = True
+                    break
+                    
                 if not UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first():
                     db.session.add(UserBadge(user_id=user.id, badge_id=b.id))
+                    b.issued_count += 1
+                    current_count += 1
+                    
             db.session.commit()
             
         flash("徽章创建成功")
@@ -1372,6 +1585,21 @@ def edit_badge(badge_id):
             b.condition_value = int(request.form.get("condition_value", 0))
         except ValueError:
             b.condition_value = 0
+            
+        try:
+            b.sticker_count = int(request.form.get("sticker_count", 1))
+        except ValueError:
+            b.sticker_count = 1
+            
+        total_limit_str = request.form.get("total_limit", "").strip()
+        if total_limit_str:
+            try:
+                b.total_limit = int(total_limit_str)
+            except ValueError:
+                pass
+        else:
+            b.total_limit = None
+            
         b.is_hidden = request.form.get("is_hidden") == "on"
         
         # Parse dates
@@ -1397,8 +1625,11 @@ def edit_badge(badge_id):
         if b.condition_type == 'all_users':
             users = User.query.all()
             for user in users:
+                if b.total_limit is not None and b.issued_count >= b.total_limit:
+                    break
                 if not UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first():
                     db.session.add(UserBadge(user_id=user.id, badge_id=b.id))
+                    b.issued_count += 1
             db.session.commit()
         
         # Retroactive Check: Check this badge for all users
@@ -1536,9 +1767,14 @@ def edit_badge(badge_id):
                 
                 if meets_condition:
                     if not existing_ub:
+                        # Check limit
+                        if b.total_limit is not None and b.issued_count >= b.total_limit:
+                            continue # Skip this user, limit reached
+                            
                         # Award new badge
                         ub = UserBadge(user_id=user.id, badge_id=b.id)
                         db.session.add(ub)
+                        b.issued_count += 1
                 else:
                     if existing_ub:
                         # Revoke badge if no longer meets criteria
@@ -1546,6 +1782,10 @@ def edit_badge(badge_id):
                         if user.selected_badge_id == b.id:
                             user.selected_badge_id = None
                         db.session.delete(existing_ub)
+                        # Should we decrement issued_count?
+                        # Usually yes, if it's a dynamic count.
+                        if b.issued_count > 0:
+                            b.issued_count -= 1
             
             db.session.commit()
             
@@ -1575,13 +1815,20 @@ def award_badge_manually(badge_id):
     for uid in user_ids:
         user = User.query.get(uid)
         if user:
+            # Check limit
+            if b.total_limit is not None and b.issued_count >= b.total_limit:
+                break
+
             # Check if already has badge
             if not UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first():
                 ub = UserBadge(user_id=user.id, badge_id=b.id)
                 db.session.add(ub)
+                b.issued_count += 1
                 count += 1
                 
     db.session.commit()
+    if b.total_limit is not None and b.issued_count >= b.total_limit:
+        return jsonify({"success": True, "count": count, "message": "Badge limit reached"})
     return jsonify({"success": True, "count": count})
 
 @app.route("/admin/badges/<int:badge_id>/delete", methods=["POST"])
@@ -2393,10 +2640,14 @@ def inject_helpers():
     online_threshold = now_utc8() - timedelta(minutes=5)
     online_count = UserActiveStatus.query.filter(UserActiveStatus.last_active_at > online_threshold).count()
     
+    def get_badge_usage(user_id, badge_id):
+        return UserSticker.query.filter_by(user_id=user_id, badge_id=badge_id).count()
+    
     return dict(
         can_view_wiki=can_view_wiki, 
         can_edit_wiki=can_edit_wiki,
-        online_user_count=online_count
+        online_user_count=online_count,
+        get_badge_usage=get_badge_usage
     )
 
 # Badge Logic Service
@@ -2412,6 +2663,10 @@ def check_and_award_badges(user):
         if badge.condition_type == 'manual':
             continue
             
+        # Check limit
+        if badge.total_limit is not None and badge.issued_count >= badge.total_limit:
+            continue
+
         earned = False
         
         if badge.condition_type == 'all_users':
@@ -2563,6 +2818,7 @@ def check_and_award_badges(user):
         if earned:
             ub = UserBadge(user_id=user.id, badge_id=badge.id)
             db.session.add(ub)
+            badge.issued_count += 1
             awarded_count += 1
             flash(f"恭喜！您获得了新徽章：{badge.icon} {badge.name}")
             
@@ -2646,11 +2902,22 @@ def api_stickers(page_type):
         # Full replacement strategy for simplicity
         UserSticker.query.filter_by(user_id=current_user.id, page_type=page_type).delete()
         
+        # Validate counts
+        badge_counts = {}
+        
         for s in stickers_data:
             badge_id = s.get("badge_id")
             # Verify user owns this badge
             ub = UserBadge.query.filter_by(user_id=current_user.id, badge_id=badge_id).first()
             if ub:
+                # Check limit
+                badge = ub.badge
+                current_count = badge_counts.get(badge_id, 0)
+                if current_count >= badge.sticker_count:
+                    continue # Skip if limit reached
+                    
+                badge_counts[badge_id] = current_count + 1
+                
                 new_sticker = UserSticker(
                     user_id=current_user.id,
                     badge_id=badge_id,
@@ -2780,6 +3047,231 @@ def api_sticker_snapshot_detail(snapshot_id):
         "stickers": snapshot.data_json
     })
 
+# System Announcement Routes
+
+@app.route("/admin/announcements")
+@login_required
+def manage_announcements():
+    if not current_user.is_admin:
+        abort(403)
+    announcements = SystemAnnouncement.query.order_by(SystemAnnouncement.created_at.desc()).all()
+    return render_template("admin/manage_announcements.html", announcements=announcements)
+
+@app.route("/admin/announcements/new", methods=["GET", "POST"])
+@login_required
+def new_announcement():
+    if not current_user.is_admin:
+        abort(403)
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        content = request.form.get("content", "")
+        if not title:
+            flash("标题不能为空")
+            return redirect(url_for("new_announcement"))
+        
+        sa = SystemAnnouncement(
+            title=title, 
+            content=content, 
+            created_by_id=current_user.id
+        )
+        db.session.add(sa)
+        db.session.commit()
+        flash("通知已发布")
+        return redirect(url_for("manage_announcements"))
+    return render_template("admin/edit_announcement.html", announcement=None)
+
+@app.route("/admin/announcements/<int:id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_announcement_route(id):
+    if not current_user.is_admin:
+        abort(403)
+    sa = SystemAnnouncement.query.get_or_404(id)
+    if request.method == "POST":
+        sa.title = request.form.get("title", "").strip()
+        sa.content = request.form.get("content", "")
+        sa.is_active = request.form.get("is_active") == "on"
+        db.session.commit()
+        flash("通知已更新")
+        return redirect(url_for("manage_announcements"))
+    return render_template("admin/edit_announcement.html", announcement=sa)
+
+@app.route("/admin/announcements/<int:id>/delete", methods=["POST"])
+@login_required
+def delete_announcement(id):
+    if not current_user.is_admin:
+        abort(403)
+    sa = SystemAnnouncement.query.get_or_404(id)
+    # Cascade delete confirmations
+    UserAnnouncementConfirmation.query.filter_by(announcement_id=id).delete()
+    db.session.delete(sa)
+    db.session.commit()
+    flash("通知已删除")
+    return redirect(url_for("manage_announcements"))
+
+@app.route("/admin/announcements/<int:id>/stats")
+@login_required
+def announcement_stats(id):
+    if not current_user.is_admin:
+        abort(403)
+    sa = SystemAnnouncement.query.get_or_404(id)
+    confirmations = UserAnnouncementConfirmation.query.filter_by(announcement_id=id).all()
+    confirmed_user_ids = [c.user_id for c in confirmations]
+    
+    all_users = User.query.all()
+    confirmed_users = []
+    unconfirmed_users = []
+    
+    for u in all_users:
+        if u.id in confirmed_user_ids:
+            # Attach confirmed time
+            c = next((x for x in confirmations if x.user_id == u.id), None)
+            u.confirmed_at = c.confirmed_at if c else None
+            confirmed_users.append(u)
+        else:
+            unconfirmed_users.append(u)
+            
+    return render_template("admin/announcement_stats.html", announcement=sa, confirmed_users=confirmed_users, unconfirmed_users=unconfirmed_users)
+
+@app.route("/api/announcements/check")
+@login_required
+def check_announcements():
+    # 1. Find all active announcements
+    active_anns = SystemAnnouncement.query.filter_by(is_active=True).order_by(SystemAnnouncement.created_at.desc()).all()
+    
+    if not active_anns:
+        return jsonify({"has_unconfirmed": False, "has_history": False})
+        
+    # 2. Check confirmations
+    confirmed_ids = [c.announcement_id for c in current_user.announcement_confirmations]
+    
+    # 3. Find first unconfirmed
+    unconfirmed = None
+    for ann in active_anns:
+        if ann.id not in confirmed_ids:
+            unconfirmed = ann
+            break # Just need the latest one or the first one? usually show latest first.
+            
+    has_history = len(active_anns) > 0 # Basically if any exist, history is valid.
+    
+    if unconfirmed:
+        html = markdown(unconfirmed.content or "")
+        return jsonify({
+            "has_unconfirmed": True,
+            "has_history": has_history,
+            "announcement": {
+                "id": unconfirmed.id,
+                "title": unconfirmed.title,
+                "html": html,
+                "created_at": unconfirmed.created_at.strftime("%Y-%m-%d")
+            }
+        })
+    else:
+        return jsonify({
+            "has_unconfirmed": False,
+            "has_history": has_history
+        })
+
+@app.route("/api/announcements/<int:id>/confirm", methods=["POST"])
+@login_required
+def confirm_announcement(id):
+    sa = SystemAnnouncement.query.get_or_404(id)
+    if not sa.is_active:
+        return jsonify({"error": "Announcement is not active"}), 400
+        
+    exists = UserAnnouncementConfirmation.query.filter_by(user_id=current_user.id, announcement_id=id).first()
+    if not exists:
+        conf = UserAnnouncementConfirmation(user_id=current_user.id, announcement_id=id)
+        db.session.add(conf)
+        db.session.commit()
+        
+    return jsonify({"success": True})
+
+@app.route("/api/announcements/history")
+@login_required
+def announcement_history():
+    # Return list of all active announcements
+    anns = SystemAnnouncement.query.filter_by(is_active=True).order_by(SystemAnnouncement.created_at.desc()).all()
+    
+    data = []
+    for ann in anns:
+        # Check if confirmed
+        is_confirmed = UserAnnouncementConfirmation.query.filter_by(user_id=current_user.id, announcement_id=ann.id).first() is not None
+        html = markdown(ann.content or "")
+        data.append({
+            "id": ann.id,
+            "title": ann.title,
+            "html": html,
+            "created_at": ann.created_at.strftime("%Y-%m-%d"),
+            "is_confirmed": is_confirmed
+        })
+        
+    return jsonify({"announcements": data})
+
+@app.route("/admin/announcements/files", methods=["GET"])
+@login_required
+def manage_announcement_files():
+    if not current_user.is_admin:
+        abort(403)
+    files = AnnouncementFile.query.order_by(AnnouncementFile.uploaded_at.desc()).all()
+    return render_template("admin/announcement_files.html", files=files)
+
+@app.route("/admin/announcements/files/upload", methods=["POST"])
+@login_required
+def upload_announcement_file():
+    if not current_user.is_admin:
+        return {"error": "Permission denied"}, 403
+        
+    if "image" not in request.files:
+        return {"error": "No file part"}, 400
+    file = request.files["image"]
+    if file.filename == "":
+        return {"error": "No selected file"}, 400
+    if file:
+        filename = secure_filename(file.filename)
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+             return {"error": f"File type '{ext}' not allowed. Allowed: jpg, png, gif, webp"}, 400
+        unique_filename = str(uuid.uuid4()) + ext
+        
+        # Ensure uploads directory exists
+        upload_dir = os.path.join(app.config["UPLOAD_FOLDER"], "announcements")
+        if not os.path.exists(upload_dir):
+            os.makedirs(upload_dir)
+            
+        file.save(os.path.join(upload_dir, unique_filename))
+        
+        file_path = url_for("static", filename=f"uploads/announcements/{unique_filename}")
+        
+        # Record in DB
+        af = AnnouncementFile(
+            filename=filename, 
+            file_path=file_path, 
+            uploaded_by_id=current_user.id
+        )
+        db.session.add(af)
+        db.session.commit()
+        
+        return {"data": {"filePath": file_path, "filename": filename}}
+
+@app.route("/admin/announcements/files/<int:file_id>/delete", methods=["POST"])
+@login_required
+def delete_announcement_file(file_id):
+    if not current_user.is_admin:
+        abort(403)
+        
+    af = AnnouncementFile.query.get_or_404(file_id)
+    
+    # Optional: Delete actual file from disk
+    # filename = af.file_path.split("/")[-1]
+    # file_path = os.path.join(app.config["UPLOAD_FOLDER"], "announcements", filename)
+    # if os.path.exists(file_path):
+    #     os.remove(file_path)
+    
+    db.session.delete(af)
+    db.session.commit()
+    flash("文件已删除")
+    return redirect(url_for("manage_announcement_files"))
+
 def upgrade_db():
     """Upgrade database schema manually"""
     with app.app_context():
@@ -2799,9 +3291,63 @@ def upgrade_db():
                 conn.execute(db.text("ALTER TABLE badge ADD COLUMN end_time DATETIME"))
                 conn.commit()
 
+        if 'sticker_count' not in columns:
+            print("Upgrading Badge table: Adding sticker_count column...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE badge ADD COLUMN sticker_count INTEGER DEFAULT 1"))
+                conn.commit()
+
+        if 'total_limit' not in columns:
+            print("Upgrading Badge table: Adding total_limit column...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE badge ADD COLUMN total_limit INTEGER"))
+                conn.commit()
+
+        if 'issued_count' not in columns:
+            print("Upgrading Badge table: Adding issued_count column...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE badge ADD COLUMN issued_count INTEGER DEFAULT 0"))
+                conn.commit()
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
         upgrade_db() # Run upgrade check
         
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5009")), debug=True)
+
+@app.route('/service/wiki/pages')
+@login_required
+def service_wiki_pages():
+    wiki_id = request.args.get('wiki_id', type=int)
+    ns = request.args.get('ns', default=None)
+    
+    if not wiki_id:
+        return jsonify({'error': 'wiki_id is required'}), 400
+        
+    wiki = Wiki.query.get_or_404(wiki_id)
+    
+    if not can_view_wiki(wiki.id):
+        return jsonify({'error': 'Permission denied'}), 403
+
+    query = WikiPage.query.filter_by(wiki_id=wiki_id)
+    
+    if ns:
+        query = query.filter(WikiPage.title.like(f"{ns}:%"))
+        
+    pages = query.order_by(WikiPage.updated_at.desc()).all()
+    
+    pages_data = []
+    for p in pages:
+        parts = p.title.split(':', 1)
+        namespace = parts[0] if len(parts) > 1 else 'Main'
+        
+        pages_data.append({
+            'id': p.id,
+            'title': p.title,
+            'slug': p.slug,
+            'namespace': namespace,
+            'updated_at': p.updated_at.isoformat() if p.updated_at else None
+        })
+        
+    return jsonify({'pages': pages_data})

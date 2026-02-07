@@ -174,14 +174,16 @@
 <body class="bg-base-200 text-base-content font-sans">
 
     <!-- Mobile Navbar -->
-    <div class="lg:hidden navbar bg-base-100 shadow-md fixed top-0 w-full z-40">
+    <div id="mobile-navbar" class="lg:hidden navbar bg-base-100 shadow-md fixed top-0 w-full transition-transform duration-300" style="z-index: 100000;">
         <div class="navbar-start">
             <button id="mobile-menu-btn" class="btn btn-ghost btn-circle">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
         </div>
-        <div class="navbar-center">
-            <a href="{{ url_for('index') }}" class="text-xl font-bold bg-gradient-to-r {% if is_book_mode %}from-indigo-500 to-purple-600{% else %}from-amber-500 to-orange-600{% endif %} bg-clip-text text-transparent">WikiBook</a>
+        <div class="navbar-center" id="mobile-navbar-title">
+            <a href="{{ url_for('index') }}" class="text-xl font-bold bg-gradient-to-r {% if is_book_mode %}from-indigo-500 to-purple-600{% else %}from-amber-500 to-orange-600{% endif %} bg-clip-text text-transparent group relative">
+                W<span class="relative inline-block">i<span id="announcement-dot" class="absolute -top-0.5 right-[1px] w-2 h-2 bg-red-500 rounded-full hidden cursor-pointer z-50 pointer-events-auto shadow-sm ring-1 ring-white" onclick="showHistoryModal(event)" title="系统公告"></span></span>kiBook
+            </a>
         </div>
         <div class="navbar-end">
             {% if current_user.is_authenticated %}
@@ -194,10 +196,10 @@
         </div>
     </div>
 
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-45 hidden lg:hidden transition-opacity"></div>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 hidden lg:hidden transition-opacity" style="z-index: 100001;"></div>
 
     <!-- Sidebar -->
-    <aside id="sidebar" style="background-color: {% if is_book_mode %}#f5f7fa{% else %}#faf7f5{% endif %};" class="fixed left-0 top-0 h-screen w-64 border-r border-stone-200/60 shadow-xl z-50 sidebar-transition transform -translate-x-full lg:translate-x-0 flex flex-col">
+    <aside id="sidebar" style="background-color: {% if is_book_mode %}#f5f7fa{% else %}#faf7f5{% endif %}; z-index: 100002;" class="fixed left-0 top-0 h-screen w-64 border-r border-stone-200/60 shadow-xl sidebar-transition transform -translate-x-full lg:translate-x-0 flex flex-col">
 
         <div class="h-20 flex items-center px-6 border-b border-stone-200/50">
             <div class="w-full">
@@ -243,6 +245,12 @@
                     {% if current_user.is_admin %}
                     <div class="menu-section-title">管理</div>
                     <ul class="space-y-1">
+                        <li>
+                            <a href="{{ url_for('manage_announcements') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'manage_announcements' else '' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
+                                <span>系统通知</span>
+                            </a>
+                        </li>
                         <li>
                             <a href="{{ url_for('manage_users') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'manage_users' else '' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -372,23 +380,31 @@
         </div>
     </aside>
 
-    <main class="min-h-screen main-content pt-16 lg:pt-0 transition-all duration-300 relative">
+    <main class="min-h-screen main-content pt-16 lg:pt-0 transition-all duration-300 relative flex flex-col">
         {% if current_user.is_authenticated %}
-        <div class="hidden lg:flex fixed top-4 right-6 z-50">
-            <a href="{{ url_for('online_users') }}" class="btn btn-sm gap-2 normal-case glass shadow-sm text-stone-600 bg-white/80 hover:bg-white" title="查看在线用户">
-                <div class="badge badge-success badge-xs"></div>
+        <div class="hidden lg:flex fixed top-6 right-8 z-50">
+            <a href="{{ url_for('online_users') }}" class="btn btn-sm gap-2 normal-case glass shadow-md text-stone-600 bg-white/90 hover:bg-white border-white/50" title="查看在线用户">
+                <div class="badge badge-success badge-xs animate-pulse"></div>
                 <span>{{ online_user_count }} 人在线</span>
             </a>
         </div>
         {% endif %}
         
-        <div class="p-4 sm:p-6 lg:p-8">
-            {% block content %}{% endblock %}
+        <!-- Nested Frame Container -->
+        <div class="flex-1 p-2 lg:p-4">
+            <div class="min-h-[calc(100vh-6rem)] lg:min-h-[calc(100vh-2rem)] bg-white/40 border border-white/60 shadow-xl shadow-stone-200/20 rounded-[2.5rem] relative backdrop-blur-xl overflow-hidden ring-1 ring-white/40">
+                <!-- Inner Gradient Decoration -->
+                <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/40 to-transparent pointer-events-none"></div>
+                
+                <div class="p-4 sm:p-6 lg:p-10 relative z-10">
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
         </div>
     </main>
 
     <!-- Global Toast Container (Bottom Right) -->
-    <div id="global-toast-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none">
+    <div id="global-toast-container" class="fixed bottom-6 right-6 flex flex-col gap-3 pointer-events-none" style="z-index: 100003;">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -418,6 +434,39 @@
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileNavbar = document.getElementById('mobile-navbar');
+        const mobileNavbarTitle = document.getElementById('mobile-navbar-title');
+
+        // Mobile Navbar Toggle Logic
+        if (mobileNavbar) {
+            // Click outside buttons to toggle
+            mobileNavbar.addEventListener('click', (e) => {
+                if (e.target.closest('button') || e.target.closest('a')) return;
+                
+                if (mobileNavbar.classList.contains('-translate-y-full')) {
+                    mobileNavbar.classList.remove('-translate-y-full');
+                } else {
+                    mobileNavbar.classList.add('-translate-y-full');
+                    showNavbarTrigger();
+                }
+            });
+        }
+        
+        // Helper to show a trigger when navbar is hidden
+        function showNavbarTrigger() {
+            let trigger = document.getElementById('navbar-trigger');
+            if (!trigger) {
+                trigger = document.createElement('div');
+                trigger.id = 'navbar-trigger';
+                trigger.className = 'fixed top-0 left-0 w-full h-4 cursor-pointer';
+                trigger.style.zIndex = '100000';
+                trigger.onclick = () => {
+                    mobileNavbar.classList.remove('-translate-y-full');
+                    trigger.remove();
+                };
+                document.body.appendChild(trigger);
+            }
+        }
 
         function toggleSidebar() {
             if (!sidebar || !overlay) return;
@@ -591,6 +640,159 @@
                 lastHeartbeatTime = 0; 
                 sendHeartbeat();
             }
+        });
+    </script>
+    {% endif %}
+    <!-- System Announcement Modal -->
+    <dialog id="announcement_modal" class="modal">
+        <div class="modal-box w-11/12 max-w-3xl border border-stone-200 shadow-2xl">
+            <h3 id="ann_modal_title" class="font-bold text-2xl mb-4 text-stone-800"></h3>
+            <div id="ann_modal_content" class="prose max-w-none text-stone-600"></div>
+            <div class="modal-action">
+                <button class="btn btn-primary" onclick="confirmAnnouncement()">我已收到</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Announcement History Modal -->
+    <dialog id="history_modal" class="modal">
+        <div class="modal-box w-11/12 max-w-3xl border border-stone-200 shadow-2xl h-[80vh] flex flex-col p-0">
+            <div class="p-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                <h3 class="font-bold text-xl text-stone-800 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    历史公告
+                </h3>
+                <form method="dialog">
+                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                </form>
+            </div>
+            
+            <div id="history_list" class="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+                <!-- Dynamic Content -->
+                <div class="flex flex-col items-center justify-center h-full text-stone-400">
+                    <span class="loading loading-spinner loading-md"></span>
+                </div>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    {% if current_user.is_authenticated %}
+    <script>
+        // System Announcement Logic
+        let currentAnnouncementId = null;
+
+        function showHistoryModal(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            document.getElementById('history_modal').showModal();
+            const list = document.getElementById('history_list');
+            list.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-stone-400"><span class="loading loading-spinner loading-md"></span></div>';
+            
+            // Fetch history
+            fetch('/api/announcements/history')
+                .then(res => res.json())
+                .then(data => {
+                    list.innerHTML = '';
+                    
+                    if (!data.announcements || data.announcements.length === 0) {
+                        list.innerHTML = `
+                            <div class="flex flex-col items-center justify-center h-40 text-stone-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 opacity-20 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                                <p>暂无历史公告</p>
+                            </div>
+                        `;
+                    } else {
+                        data.announcements.forEach(ann => {
+                            const item = document.createElement('div');
+                            item.className = 'collapse collapse-arrow bg-white border border-stone-200 shadow-sm rounded-xl overflow-hidden';
+                            // Checked by default if it's the latest? No, all collapsed.
+                            item.innerHTML = `
+                                <input type="checkbox" name="history-accordion" /> 
+                                <div class="collapse-title text-base font-medium flex justify-between items-center pr-12 py-4">
+                                    <span class="text-stone-800">${ann.title}</span>
+                                    <div class="flex items-center gap-2">
+                                        ${!ann.is_confirmed ? '<span class="badge badge-xs badge-error">未读</span>' : ''}
+                                        <span class="text-xs font-normal text-stone-400 font-mono">${ann.created_at}</span>
+                                    </div>
+                                </div>
+                                <div class="collapse-content prose max-w-none bg-stone-50/50 pt-4 border-t border-stone-100 text-sm">
+                                    ${ann.html}
+                                </div>
+                            `;
+                            list.appendChild(item);
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    list.innerHTML = '<p class="text-center text-error py-8">加载失败，请重试</p>';
+                });
+        }
+
+        function confirmAnnouncement() {
+            if (!currentAnnouncementId) return;
+            
+            const btn = document.querySelector('#announcement_modal .btn-primary');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '确认中...';
+            
+            fetch(`/api/announcements/${currentAnnouncementId}/confirm`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('announcement_modal').close();
+                        // Show dot
+                        document.getElementById('announcement-dot').classList.remove('hidden');
+                        showGlobalToast('已确认收到通知', 'success');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showGlobalToast('确认失败，请重试', 'error');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                });
+        }
+
+        function checkAnnouncements() {
+            fetch('/api/announcements/check')
+                .then(res => res.json())
+                .then(data => {
+                    const dot = document.getElementById('announcement-dot');
+                    if (dot) {
+                        if (data.has_history) {
+                            dot.classList.remove('hidden');
+                        } else {
+                            dot.classList.add('hidden');
+                        }
+                    }
+                    
+                    if (data.has_unconfirmed) {
+                        currentAnnouncementId = data.announcement.id;
+                        document.getElementById('ann_modal_title').textContent = data.announcement.title;
+                        document.getElementById('ann_modal_content').innerHTML = data.announcement.html;
+                        
+                        // Delay slightly to ensure DOM is ready and avoid conflicts
+                        setTimeout(() => {
+                            document.getElementById('announcement_modal').showModal();
+                        }, 1000);
+                    }
+                })
+                .catch(console.error);
+        }
+
+        // Run on load
+        window.addEventListener('load', () => {
+            checkAnnouncements();
         });
     </script>
     {% endif %}

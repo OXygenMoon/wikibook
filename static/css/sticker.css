@@ -1,11 +1,13 @@
 
 /* Sticker FAB */
 .sticker-fab {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 1000;
-    transition: transform 0.2s ease;
+    position: fixed !important;
+    bottom: 2rem !important;
+    right: 2rem !important;
+    left: auto !important;   /* 强制取消可能的 left 干扰 */
+    top: auto !important;    /* 强制取消可能的 top 干扰 */
+    z-index: 9999 !important;
+    transform: none !important; /* 除非 hover，否则不允许有 transform 干扰初始定位 */
 }
 .sticker-fab:hover {
     transform: scale(1.1);

@@ -5,31 +5,34 @@
 <style>
     .toc-link {
         display: block;
-        padding: 0.25rem 0.5rem;
-        font-size: 0.875rem;
-        color: #57534e;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.85rem;
+        color: #78716c; /* stone-500 */
         border-left: 2px solid transparent;
         transition: all 0.2s;
+        margin-left: -1px; /* Overlap border */
     }
     .toc-link:hover {
-        color: #ea580c;
-        background-color: #faf7f5;
+        color: #1c1917; /* stone-900 */
+        border-left-color: #d6d3d1; /* stone-300 */
     }
     .toc-link.active {
-        color: #ea580c;
+        color: #ea580c; /* primary */
         border-left-color: #ea580c;
         font-weight: 500;
+        background-color: transparent;
     }
-    .toc-h1 { margin-left: 0; }
-    .toc-h2 { margin-left: 1rem; }
-    .toc-h3 { margin-left: 2rem; }
-    .toc-ellipsis {
-        text-align: center;
-        color: #a8a29e;
-        font-size: 0.75rem;
-        line-height: 1rem;
-        padding: 0.25rem 0;
-        user-select: none;
+    .toc-h1 { padding-left: 0.5rem; }
+    .toc-h2 { padding-left: 1rem; }
+    .toc-h3 { padding-left: 2rem; }
+    
+    /* 隐藏滚动条但保留功能 */
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
     }
 </style>
 {% endblock %}
@@ -41,10 +44,8 @@
 {% block content %}
 <div class="flex flex-col lg:flex-row gap-6 h-full">
     
-    <!-- 左侧主体区域 -->
     <div class="flex-1 min-w-0 flex flex-col gap-6">
         
-        <!-- Wiki 信息卡片（置顶） -->
         <div class="card bg-base-100 shadow-sm border border-stone-100">
             <div class="card-body p-5 flex-row items-start justify-between gap-4">
                 <div class="flex-1 min-w-0 group relative">
@@ -52,7 +53,6 @@
                     <p class="text-sm text-stone-500 mt-1 line-clamp-1 group-hover:line-clamp-none transition-all duration-300 bg-base-100 z-10">
                         {{ wiki.description }}
                     </p>
-                    <!-- Tooltip fallback for long descriptions -->
                     {% if wiki.description|length > 50 %}
                     <div class="hidden group-hover:block absolute top-full left-0 mt-2 p-3 bg-stone-800 text-white text-xs rounded shadow-lg z-50 max-w-md">
                         {{ wiki.description }}
@@ -62,7 +62,6 @@
             </div>
         </div>
 
-        <!-- 正文内容卡片 -->
         <div class="card bg-base-100 shadow-sm border border-stone-100 min-h-[70vh]">
             <div class="card-body p-6 lg:p-10">
                 {% if page %}
@@ -123,7 +122,6 @@
                           {{ html|safe }}
                         </div>
                         
-                        <!-- 评论区 -->
                         {% if page.comment_enabled %}
                         <div class="border-t border-stone-100 mt-12 pt-8">
                             <h3 class="text-lg font-bold text-stone-700 mb-6 flex items-center gap-2">
@@ -196,51 +194,37 @@
         
     </div>
 
-    <!-- 右侧导航区域：页面列表 + 目录 -->
-    <div class="w-full lg:w-72 flex-shrink-0">
-        <div class="sticky top-6 flex flex-col gap-6 max-h-[calc(100vh-3rem)] overflow-y-auto hide-scrollbar">
+    <aside class="hidden xl:block w-72 flex-shrink-0 sticky top-6 self-start max-h-[calc(100vh-3rem)] overflow-y-auto hide-scrollbar">
+        <div class="flex flex-col gap-8 pr-2">
             
-            <!-- 页面列表卡片 -->
-            <div class="card bg-base-100 shadow-sm border border-stone-100 flex-shrink-0">
-                <div class="card-body p-4">
-                    <h3 class="font-bold text-stone-700 mb-2 px-2 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-                        页面列表
-                    </h3>
-                    <ul class="menu menu-sm bg-base-100 w-full rounded-box p-0 max-h-[30vh] overflow-y-auto">
-                        {% for p in pages %}
-                        <li class="mb-1">
-                            <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="{{ 'active' if page and p.slug == page.slug else '' }} truncate block py-2" title="{{ p.title }}">
-                                {{ p.title }}
-                            </a>
-                        </li>
-                        {% endfor %}
-                    </ul>
+            <div>
+                <div class="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 px-2 flex items-center justify-between">
+                    <span>页面列表</span>
+                    <span class="text-[10px] bg-stone-100 px-1.5 py-0.5 rounded-md">{{ pages|length }}</span>
                 </div>
+                <ul class="space-y-0.5">
+                    {% for p in pages %}
+                    <li>
+                        <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="block px-3 py-2 rounded-lg text-sm truncate transition-all duration-200 {{ 'bg-primary/10 text-primary font-medium' if page and p.slug == page.slug else 'text-stone-600 hover:bg-stone-100 hover:text-stone-900' }}" title="{{ p.title }}">
+                            {{ p.title }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
 
-            <!-- 本页目录卡片 -->
             {% if page %}
-            <div class="card bg-base-100 shadow-sm border border-stone-100 flex-shrink-0">
-                <div class="card-body p-4">
-                    <h3 class="font-bold text-stone-700 mb-2 px-2 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-                        本页目录
-                    </h3>
-                    <nav id="toc-container" class="space-y-1 overflow-hidden">
-                        <!-- TOC will be injected here via JS -->
-                    </nav>
-                    
-                    <!-- 字数统计 -->
-                    <div class="border-t border-stone-100 mt-4 pt-3 px-2 flex items-center gap-2 text-xs text-stone-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        <span>字数: {{ page.content_md|length }} 字</span>
-                    </div>
+            <div>
+                <div class="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 px-2">
+                    本页目录
                 </div>
+                <nav id="toc-container" class="relative pl-2 text-sm text-stone-600 border-l border-stone-100 ml-2 space-y-1">
+                    </nav>
             </div>
             {% endif %}
+
         </div>
-    </div>
+    </aside>
 </div>
 {% endblock %}
 
@@ -293,12 +277,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Initialize ellipses
-        const topEllipsis = document.createElement('div');
-        topEllipsis.className = 'toc-ellipsis hidden';
-        topEllipsis.textContent = '...';
-        tocContainer.appendChild(topEllipsis);
-
         const tocLinks = [];
 
         headers.forEach((header, index) => {
@@ -316,7 +294,6 @@ document.addEventListener('DOMContentLoaded', function() {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 header.scrollIntoView({ behavior: 'smooth' });
-                // We rely on observer to update UI, but instant feedback is nice
                 updateTOCVisibility(index);
             });
 
@@ -324,18 +301,8 @@ document.addEventListener('DOMContentLoaded', function() {
             tocLinks.push(link);
         });
 
-        const bottomEllipsis = document.createElement('div');
-        bottomEllipsis.className = 'toc-ellipsis hidden';
-        bottomEllipsis.textContent = '...';
-        tocContainer.appendChild(bottomEllipsis);
-
-        // Window size: number of items above/below active item to show
-        const WINDOW_SIZE = 5;
-
         function updateTOCVisibility(activeIndex) {
-            const total = tocLinks.length;
-            
-            // Update active class
+            // Update active class only
             tocLinks.forEach((link, idx) => {
                 if (idx === activeIndex) {
                     link.classList.add('active');
@@ -343,54 +310,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     link.classList.remove('active');
                 }
             });
-
-            // If total items are few, show all
-            if (total <= (WINDOW_SIZE * 2 + 1)) {
-                tocLinks.forEach(link => link.style.display = 'block');
-                topEllipsis.classList.add('hidden');
-                bottomEllipsis.classList.add('hidden');
-                return;
-            }
-
-            // Calculate range
-            let start = activeIndex - WINDOW_SIZE;
-            let end = activeIndex + WINDOW_SIZE;
-
-            // Shift range if out of bounds
-            if (start < 0) {
-                end += Math.abs(start);
-                start = 0;
-            }
-            if (end >= total) {
-                start -= (end - total + 1);
-                end = total - 1;
-            }
-            
-            // Ensure bounds
-            start = Math.max(0, start);
-            end = Math.min(total - 1, end);
-
-            // Update visibility
-            tocLinks.forEach((link, idx) => {
-                if (idx >= start && idx <= end) {
-                    link.style.display = 'block';
-                } else {
-                    link.style.display = 'none';
-                }
-            });
-
-            // Update ellipses
-            if (start > 0) {
-                topEllipsis.classList.remove('hidden');
-            } else {
-                topEllipsis.classList.add('hidden');
-            }
-
-            if (end < total - 1) {
-                bottomEllipsis.classList.remove('hidden');
-            } else {
-                bottomEllipsis.classList.add('hidden');
-            }
         }
 
         // Initialize with first item

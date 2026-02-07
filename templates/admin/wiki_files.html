@@ -1,186 +1,240 @@
 {% extends "base.html" %}
 
-{% block title %}文件管理 - {{ wiki.title }}{% endblock %}
+{% block title %}媒体库 - {{ wiki.title }}{% endblock %}
 
 {% block sidebar_menu %}
     {% include "wiki/sidebar.html" %}
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto">
+<div class="fixed inset-0 -z-10 overflow-hidden bg-base-100 pointer-events-none">
+    <div class="absolute top-[20%] right-[10%] w-[400px] h-[400px] bg-primary/5 rounded-full blur-[80px] animate-blob mix-blend-multiply opacity-60"></div>
+    <div class="absolute bottom-[10%] left-[20%] w-[400px] h-[400px] bg-secondary/5 rounded-full blur-[80px] animate-blob animation-delay-2000 mix-blend-multiply opacity-60"></div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 py-8 animate-fade-in">
     <div class="flex items-center justify-between mb-8">
-        <h1 class="text-3xl font-bold">Wiki 文件管理</h1>
-        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost btn-sm">返回 Wiki</a>
+        <div>
+            <h1 class="text-3xl font-black tracking-tight flex items-center gap-2">
+                <i class="fas fa-images text-primary/80"></i>
+                媒体库
+            </h1>
+            <p class="text-sm text-base-content/50 mt-1 font-mono">Wiki: {{ wiki.title }} (共 {{ files|length }} 个文件)</p>
+        </div>
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost gap-2 group">
+            <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
+            返回文档
+        </a>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- 上传区域 -->
-        <div class="lg:col-span-1 space-y-6">
-            <div class="card bg-base-100 shadow-xl border border-base-200">
-                <div class="card-body">
-                    <h2 class="card-title text-lg mb-4">上传新文件</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <div class="lg:col-span-4 lg:sticky lg:top-8 z-10">
+            <div class="card bg-base-100/60 backdrop-blur-xl border border-base-content/5 shadow-xl overflow-hidden">
+                <div class="card-body p-6">
+                    <h2 class="font-bold text-lg mb-4 flex items-center gap-2">
+                        <span class="w-2 h-6 bg-primary rounded-full"></span>
+                        上传新素材
+                    </h2>
                     
                     <div class="form-control w-full">
-                        <input type="file" id="fileInput" class="file-input file-input-bordered w-full" accept="image/*" />
+                        <label for="fileInput" id="dropZone" class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-base-content/20 rounded-2xl cursor-pointer bg-base-50/50 hover:bg-base-100 hover:border-primary transition-all duration-300 group">
+                            <div id="uploadPrompt" class="flex flex-col items-center justify-center pt-5 pb-6 text-center">
+                                <div class="p-3 bg-base-200 rounded-full mb-3 group-hover:scale-110 transition-transform text-primary">
+                                    <i class="fas fa-cloud-upload-alt text-2xl"></i>
+                                </div>
+                                <p class="mb-1 text-sm font-bold text-base-content/70">点击或拖拽文件至此</p>
+                                <p class="text-xs text-base-content/40">支持 JPG, PNG, GIF, WEBP</p>
+                            </div>
+                            <div id="previewContainer" class="hidden w-full h-full p-2 relative">
+                                <img id="imagePreview" class="w-full h-full object-contain rounded-xl" />
+                                <div class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl opacity-0 hover:opacity-100 transition-opacity">
+                                    <span class="text-white text-xs font-bold">点击更换</span>
+                                </div>
+                            </div>
+                            <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="handleFileSelect(this)" />
+                        </label>
                     </div>
                     
-                    <button id="uploadBtn" class="btn btn-secondary w-full mt-4" onclick="uploadFile()">
-                        上传文件
-                    </button>
-                    
-                    <div id="uploadProgress" class="hidden w-full bg-gray-200 rounded-full h-2.5 mt-4">
-                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                    <div class="mt-4 space-y-3">
+                        <div id="uploadProgress" class="w-full bg-base-200 rounded-full h-1.5 overflow-hidden hidden">
+                            <div id="progressBar" class="bg-primary h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+
+                        <button id="uploadBtn" class="btn btn-primary w-full shadow-lg shadow-primary/20" onclick="uploadFile()" disabled>
+                            <i class="fas fa-upload"></i> 开始上传
+                        </button>
                     </div>
 
-                    <div class="alert alert-info shadow-sm text-sm mt-4">
-                        <div>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current flex-shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <span>支持 JPG, PNG, GIF, WEBP 格式图片。上传后点击右侧"复制引用"即可在文章中使用。</span>
-                        </div>
+                    <div class="mt-4 p-3 bg-blue-50/50 text-blue-600 rounded-xl text-xs flex gap-2 items-start border border-blue-100">
+                        <i class="fas fa-lightbulb mt-0.5"></i>
+                        <span>提示：上传后，鼠标悬停图片即可看到复制按钮。</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 文件列表 -->
-        <div class="lg:col-span-2">
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-8">
+            {% if files %}
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {% for file in files %}
-                <div class="card bg-base-100 shadow-sm border border-base-200 group">
-                    <figure class="px-4 pt-4 bg-base-200/50 h-32 flex items-center justify-center relative overflow-hidden">
-                        <img src="{{ file.file_path }}" alt="{{ file.filename }}" class="max-h-full max-w-full object-contain transition-transform group-hover:scale-105" />
-                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <a href="{{ file.file_path }}" target="_blank" class="btn btn-circle btn-sm btn-ghost text-white" title="查看原图">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                            </a>
-                        </div>
-                    </figure>
-                    <div class="card-body p-4">
-                        <h3 class="font-bold text-sm truncate mb-1" title="{{ file.filename }}">{{ file.filename }}</h3>
-                        <p class="text-xs text-base-content/60 mb-3">
-                            {{ file.uploaded_at.strftime('%Y-%m-%d') }} by {{ file.uploader.username }}
-                        </p>
+                <div class="group relative aspect-square rounded-2xl overflow-hidden bg-base-200 border border-base-content/5 shadow-sm hover:shadow-xl transition-all duration-300">
+                    
+                    <img src="{{ file.file_path }}" alt="{{ file.filename }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                    
+                    <div class="absolute top-2 left-2 z-20">
+                        <span class="badge badge-xs font-mono bg-black/40 text-white border-none backdrop-blur-md">
+                            {{ file.uploaded_at.strftime('%Y-%m-%d') }}
+                        </span>
+                    </div>
+
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end">
                         
-                        <div class="flex items-center justify-between">
-                            <button type="button" class="btn btn-xs btn-outline btn-primary gap-1" onclick="copyMdCode('![{{ file.filename }}]({{ file.file_path }})')">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                                引用
-                            </button>
-                            
-                            <form action="{{ url_for('delete_wiki_file', wiki_id=wiki.id, file_id=file.id) }}" method="post" onsubmit="return confirm('确定要删除这个文件吗？引用该文件的页面可能会显示错误。');">
-                                <button type="submit" class="btn btn-xs btn-ghost text-error" title="删除">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <div class="p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                            <div class="mb-3 px-1">
+                                <p class="text-xs text-white/90 font-bold truncate" title="{{ file.filename }}">{{ file.filename }}</p>
+                                <p class="text-[10px] text-white/60 truncate">by {{ file.uploader.username }}</p>
+                            </div>
+
+                            <div class="flex gap-2">
+                                <button onclick="copyMdCode('![{{ file.filename }}]({{ file.file_path }})')" class="btn btn-sm btn-primary flex-1 gap-2 shadow-lg border-none text-white font-bold">
+                                    <i class="fas fa-link"></i> 复制引用
                                 </button>
-                            </form>
+                                
+                                <form action="{{ url_for('delete_wiki_file', wiki_id=wiki.id, file_id=file.id) }}" method="post" onsubmit="return confirm('⚠️ 警告：删除后，所有引用此图片的地方都将失效。\n\n确定要删除吗？');">
+                                    <button type="submit" class="btn btn-sm btn-square btn-error bg-red-500 border-none text-white hover:bg-red-600" title="删除文件">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
-                {% else %}
-                <div class="col-span-full text-center py-12 text-base-content/40 bg-base-200/50 rounded-lg border border-dashed border-base-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    <p>暂无文件，请从左侧上传</p>
-                </div>
                 {% endfor %}
             </div>
+            {% else %}
+            <div class="flex flex-col items-center justify-center h-96 bg-base-100/50 rounded-3xl border-2 border-dashed border-base-content/10">
+                <div class="w-20 h-20 bg-base-200 rounded-full flex items-center justify-center mb-4">
+                    <i class="far fa-images text-3xl text-base-content/30"></i>
+                </div>
+                <h3 class="font-bold text-base-content/60">媒体库为空</h3>
+                <p class="text-sm text-base-content/40 mt-1">从左侧上传您的第一张图片</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <script>
-async function uploadFile() {
+    // 1. File Selection & Preview Logic
     const fileInput = document.getElementById('fileInput');
     const uploadBtn = document.getElementById('uploadBtn');
-    const file = fileInput.files[0];
-    
-    if (!file) {
-        alert('请先选择文件');
-        return;
-    }
+    const previewContainer = document.getElementById('previewContainer');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const imagePreview = document.getElementById('imagePreview');
 
-    const formData = new FormData();
-    formData.append('image', file);
-
-    try {
-        uploadBtn.disabled = true;
-        uploadBtn.textContent = '上传中...';
-        
-        const response = await fetch("{{ url_for('upload_wiki_file', wiki_id=wiki.id) }}", {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            // Reload page to show new file
-            window.location.reload();
-        } else {
-            alert('上传失败: ' + (result.error || '未知错误'));
+    function handleFileSelect(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                uploadPrompt.classList.add('hidden');
+                previewContainer.classList.remove('hidden');
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = `<i class="fas fa-upload"></i> 确认上传 (${(input.files[0].size / 1024).toFixed(1)} KB)`;
+            }
+            reader.readAsDataURL(input.files[0]);
         }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('上传出错，请重试');
-    } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = '上传文件';
     }
-}
 
-function copyMdCode(code) {
-    // Helper to show toast
-    const showToast = () => {
-        const toast = document.createElement('div');
-        toast.className = 'toast toast-top toast-center z-50';
-        toast.innerHTML = `
-            <div class="alert alert-success">
-                <span>已复制引用代码！</span>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        setTimeout(() => {
-            toast.remove();
-        }, 2000);
-    };
+    // Drag and Drop Support
+    const dropZone = document.getElementById('dropZone');
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
 
-    // Try modern API first
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(code)
-            .then(showToast)
-            .catch(err => {
-                console.error('Clipboard API failed:', err);
-                fallbackCopy(code, showToast);
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('border-primary', 'bg-primary/5'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('border-primary', 'bg-primary/5'), false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        fileInput.files = files;
+        handleFileSelect(fileInput);
+    }, false);
+
+    // 2. Upload Logic
+    async function uploadFile() {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('image', file);
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('uploadProgress');
+
+        try {
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> 上传中...';
+            progressContainer.classList.remove('hidden');
+            
+            progressBar.style.width = '70%';
+
+            const response = await fetch("{{ url_for('upload_wiki_file', wiki_id=wiki.id) }}", {
+                method: 'POST',
+                body: formData
             });
-    } else {
-        fallbackCopy(code, showToast);
-    }
-}
-
-function fallbackCopy(text, onSuccess) {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    
-    // Ensure textarea is not visible but part of DOM
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    textarea.style.top = '0';
-    document.body.appendChild(textarea);
-    
-    textarea.focus();
-    textarea.select();
-    
-    try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            onSuccess();
-        } else {
-            alert('复制失败，请手动复制: ' + text);
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                progressBar.style.width = '100%';
+                setTimeout(() => window.location.reload(), 500);
+            } else {
+                showGlobalToast(result.error || '上传失败', 'error');
+                resetUploadUI();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showGlobalToast('网络错误', 'error');
+            resetUploadUI();
         }
-    } catch (err) {
-        console.error('Fallback copy failed:', err);
-        alert('复制失败，请手动复制: ' + text);
+
     }
-    
-    document.body.removeChild(textarea);
-}
+
+    function resetUploadUI() {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="fas fa-upload"></i> 重试上传';
+        document.getElementById('uploadProgress').classList.add('hidden');
+    }
+
+    // 3. Copy & Toast Logic
+    // showToast Removed: Using global showGlobalToast from base.html
+
+    function copyMdCode(code) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(code)
+                .then(() => showGlobalToast('已复制 Markdown 引用代码', 'success'))
+                .catch(() => showGlobalToast('复制失败', 'error'));
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = code;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showGlobalToast('已复制 Markdown 引用代码', 'success');
+        }
+    }
 </script>
 {% endblock %}

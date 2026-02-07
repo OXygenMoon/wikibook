@@ -1,91 +1,153 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-8 flex items-center gap-2">
-        <div class="w-3 h-3 rounded-full bg-success"></div>
-        在线用户 ({{ users|length }})
-    </h1>
+<div class="fixed inset-0 -z-10 overflow-hidden bg-base-100">
+    <div class="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] animate-blob mix-blend-multiply opacity-40"></div>
+    <div class="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[100px] animate-blob animation-delay-4000 mix-blend-multiply opacity-40"></div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 animate-fade-in">
     
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="flex items-center justify-between mb-10">
+        <div>
+            <h1 class="text-3xl font-black tracking-tight flex items-center gap-3">
+                在线大厅
+                <div class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-success"></span>
+                </div>
+            </h1>
+            <p class="text-base-content/60 mt-1 font-medium">此刻共有 <span class="text-primary font-bold font-mono text-lg">{{ users|length }}</span> 位学友在线</p>
+        </div>
+        
+        <a href="{{ url_for('online_users') }}" class="btn btn-ghost btn-circle hover:bg-base-200 hover:rotate-180 transition-transform duration-500">
+            <i class="fas fa-sync-alt"></i>
+        </a>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {% for status in users %}
-        <div class="card bg-base-100 shadow-xl border border-base-200 transition-all hover:shadow-2xl">
-            <div class="card-body flex-row items-center gap-4 p-4">
-                <a href="{{ url_for('public_profile', user_id=status.user.id) }}" class="flex flex-1 items-center gap-4 group min-w-0">
-                    <div class="avatar placeholder">
-                        <div class="bg-neutral-focus text-neutral-content rounded-full w-12 h-12 transition-transform group-hover:scale-110">
-                            <span class="text-xl">{{ status.user.username[0] | upper }}</span>
-                        </div>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <h2 class="card-title text-base flex items-center gap-1 group-hover:text-primary transition-colors">
-                            <span class="truncate">{{ status.user.username }}</span>
-                            {% if status.user.selected_badge %}
-                                <div class="group/badge relative shrink-0">
-                                    <div class="badge-icon-container w-5 h-5 cursor-help">
-                                        {% set _icon = status.user.selected_badge.icon %}
+        <div class="group relative rounded-2xl transition-all duration-300 hover:-translate-y-1">
+            <div class="absolute -inset-0.5 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm"></div>
+            
+            <div class="relative h-full card bg-base-100/60 backdrop-blur-xl border border-white/10 dark:border-white/5 shadow-sm group-hover:shadow-xl transition-all overflow-visible">
+                <div class="card-body p-5">
+                    
+                    <div class="flex justify-between items-start">
+                        <a href="{{ url_for('public_profile', user_id=status.user.id) }}" class="relative inline-block">
+                            <div class="avatar placeholder">
+                                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-white dark:from-base-300 dark:to-base-100 text-base-content shadow-inner border border-white/20 group-hover:scale-105 transition-transform duration-300">
+                                    <span class="text-xl font-black">{{ status.user.username[0] | upper }}</span>
+                                </div>
+                            </div>
+                            <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-success border-2 border-white dark:border-base-100 rounded-full"></div>
+                        </a>
+
+                        {% if status.user.selected_badge %}
+                        <div class="group/badge relative">
+                            <div class="w-8 h-8 rounded-full bg-base-200/50 flex items-center justify-center cursor-help transition-transform hover:scale-110 hover:bg-base-200">
+                                {% set _icon = status.user.selected_badge.icon %}
+                                {% if _icon|is_image_icon %}
+                                    <img src="{{ _icon|badge_icon_url }}" class="w-5 h-5 object-contain" alt="badge">
+                                {% else %}
+                                    <span class="text-base">{{ _icon }}</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="absolute right-0 top-full mt-2 w-64 p-0 bg-white dark:bg-base-200 rounded-xl shadow-2xl border border-base-200 invisible opacity-0 translate-y-2 group-hover/badge:visible group-hover/badge:opacity-100 group-hover/badge:translate-y-0 transition-all duration-200 z-50">
+                                <div class="p-4 text-center">
+                                    <div class="w-12 h-12 mx-auto bg-base-100 rounded-full flex items-center justify-center mb-2 shadow-sm">
                                         {% if _icon|is_image_icon %}
-                                            <img src="{{ _icon|badge_icon_url }}" alt="{{ status.user.selected_badge.name }}">
+                                            <img src="{{ _icon|badge_icon_url }}" class="w-8 h-8 object-contain">
                                         {% else %}
-                                            <span class="text-xs filter drop-shadow-sm cursor-help">{{ _icon }}</span>
+                                            <span class="text-2xl">{{ _icon }}</span>
                                         {% endif %}
                                     </div>
-                                    <!-- Rich Tooltip -->
-                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-white rounded-lg shadow-xl border border-stone-200 p-4 invisible group-hover/badge:visible z-50 transition-all duration-200 opacity-0 group-hover/badge:opacity-100 transform scale-95 group-hover/badge:scale-100 pointer-events-none text-center">
-                                        <div class="flex flex-col items-center gap-2">
-                                            <div class="w-12 h-12 flex items-center justify-center bg-stone-50 rounded-lg">
-                                                {% if _icon|is_image_icon %}
-                                                    <img src="{{ _icon|badge_icon_url }}" class="w-10 h-10 object-contain" alt="{{ status.user.selected_badge.name }}">
-                                                {% else %}
-                                                    <span class="text-3xl">{{ _icon }}</span>
-                                                {% endif %}
-                                            </div>
-                                            <div>
-                                                <h3 class="font-bold text-stone-800">{{ status.user.selected_badge.name }}</h3>
-                                                <p class="text-xs text-stone-500 mt-1 font-normal">{{ status.user.selected_badge.description }}</p>
-                                            </div>
-                                            {% set user_badge = status.user.get_selected_user_badge() %}
-                                            {% if user_badge %}
-                                            <div class="text-[10px] text-stone-400 bg-stone-50 px-2 py-1 rounded-full mt-1 font-normal">
-                                                获得于 {{ user_badge.earned_at.strftime('%Y-%m-%d') }}
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                                        <!-- Arrow -->
-                                        <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-white border-r border-b border-stone-200 rotate-45"></div>
-                                    </div>
+                                    <h3 class="font-bold text-base-content">{{ status.user.selected_badge.name }}</h3>
+                                    <p class="text-xs text-base-content/60 mt-1">{{ status.user.selected_badge.description }}</p>
                                 </div>
-                            {% endif %}
-                        </h2>
-                        <p class="text-sm text-base-content/60 truncate">{{ status.current_action }}</p>
-                        <p class="text-xs text-base-content/40 mt-1">最后活跃: {{ status.last_active_at.strftime('%H:%M:%S') }}</p>
-                    </div>
-                </a>
-
-                {% if status.user.id != current_user.id %}
-                    <div class="shrink-0">
-                        {% if current_user.is_following(status.user) %}
-                            <form action="{{ url_for('unfollow_user', user_id=status.user.id) }}" method="POST">
-                                <button class="btn btn-sm btn-ghost text-error btn-circle tooltip tooltip-left" data-tip="取消关注">
-                                    <i class="fas fa-user-minus"></i>
-                                </button>
-                            </form>
-                        {% else %}
-                            <form action="{{ url_for('follow_user', user_id=status.user.id) }}" method="POST">
-                                <button class="btn btn-sm btn-primary btn-circle tooltip tooltip-left" data-tip="关注">
-                                    <i class="fas fa-user-plus"></i>
-                                </button>
-                            </form>
+                                <div class="h-1 w-full bg-gradient-to-r from-primary/50 to-secondary/50 rounded-b-xl"></div>
+                            </div>
+                        </div>
                         {% endif %}
                     </div>
-                {% endif %}
+
+                    <div class="mt-3">
+                        <a href="{{ url_for('public_profile', user_id=status.user.id) }}" class="block group-hover:text-primary transition-colors">
+                            <h2 class="text-lg font-bold truncate">{{ status.user.username }}</h2>
+                        </a>
+                        
+                        <div class="mt-2 inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-base-200/50 border border-base-200/50 max-w-full">
+                            <div class="w-1.5 h-1.5 rounded-full bg-primary/50 animate-pulse"></div>
+                            <span class="text-xs font-medium text-base-content/70 truncate max-w-[120px]" title="{{ status.current_action }}">
+                                {{ status.current_action or '发呆中...' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 pt-4 border-t border-base-content/5 flex items-center justify-between">
+                        <div class="text-xs text-base-content/40 font-mono flex items-center gap-1" title="最后活跃时间">
+                            <i class="far fa-clock"></i>
+                            {{ status.last_active_at.strftime('%H:%M') }}
+                        </div>
+
+                        {% if status.user.id != current_user.id %}
+                            <div class="flex items-center">
+                                {% if current_user.is_following(status.user) %}
+                                    <form action="{{ url_for('unfollow_user', user_id=status.user.id) }}" method="POST">
+                                        <button class="btn btn-xs btn-ghost text-base-content/40 hover:text-error hover:bg-error/10 gap-1 transition-all">
+                                            <span class="text-xs">已关注</span>
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <form action="{{ url_for('follow_user', user_id=status.user.id) }}" method="POST">
+                                        <button class="btn btn-xs btn-primary btn-outline gap-1 hover:shadow-md hover:scale-105 transition-all">
+                                            <i class="fas fa-plus text-[10px]"></i> 关注
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                             <span class="badge badge-xs badge-ghost opacity-50">我</span>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
         {% else %}
-        <div class="col-span-full text-center py-12 text-base-content/40">
-            暂无其他在线用户
+        <div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+            <div class="w-24 h-24 bg-base-200/50 rounded-full flex items-center justify-center mb-4">
+                <i class="fas fa-wind text-4xl text-base-content/20"></i>
+            </div>
+            <h3 class="text-lg font-bold text-base-content/60">暂时没有人在线</h3>
+            <p class="text-sm text-base-content/40 mt-1">也许大家都去睡觉了...</p>
         </div>
         {% endfor %}
     </div>
 </div>
+
+<style>
+    /* 简单的淡入动画 */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+        animation: fadeIn 0.6s ease-out forwards;
+    }
+    
+    /* 背景动画 (复用) */
+    @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0px, 0px) scale(1); }
+    }
+    .animate-blob {
+        animation: blob 7s infinite;
+    }
+    .animation-delay-4000 {
+        animation-delay: 4s;
+    }
+</style>
 {% endblock %}

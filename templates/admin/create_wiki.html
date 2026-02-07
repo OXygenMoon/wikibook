@@ -1,13 +1,111 @@
 {% extends "base.html" %}
+
+{% block title %}创建 Wiki{% endblock %}
+
 {% block content %}
-<div class="max-w-2xl mx-auto card bg-base-100 shadow">
-  <div class="card-body">
-    <h2 class="card-title">创建Wiki</h2>
-    <form method="post" class="flex flex-col gap-4">
-      <input class="input input-bordered" name="title" placeholder="标题">
-      <textarea class="textarea textarea-bordered min-h-40" name="description" placeholder="描述"></textarea>
-      <button class="btn btn-primary" type="submit">创建</button>
-    </form>
-  </div>
+<div class="max-w-3xl mx-auto animate-fade-in">
+    <!-- Breadcrumb -->
+    <div class="text-sm breadcrumbs mb-6 text-stone-500">
+        <ul>
+            <li><a href="{{ url_for('index') }}">首页</a></li>
+            <li>管理</li>
+            <li class="font-bold text-stone-700">创建 Wiki</li>
+        </ul>
+    </div>
+
+    <div class="card bg-white border border-stone-200 shadow-xl shadow-stone-200/20 overflow-hidden">
+        <!-- Header -->
+        <div class="px-8 py-6 border-b border-stone-100 bg-stone-50/30 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <i class="fas fa-book-medical text-2xl"></i>
+            </div>
+            <div>
+                <h2 class="card-title text-2xl text-stone-800">创建新的知识库</h2>
+                <p class="text-sm text-stone-500 mt-1">创建一个全新的 Wiki 空间来组织和分享文档</p>
+            </div>
+        </div>
+
+        <div class="card-body p-8">
+            <form method="post" class="space-y-6">
+                <!-- Title Input -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-bold text-stone-700">Wiki 名称</span>
+                        <span class="label-text-alt text-error">* 必填</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" name="title" placeholder="例如：Python 进阶教程" 
+                               class="input input-bordered w-full pl-10 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" 
+                               required autofocus />
+                        <i class="fas fa-heading absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400"></i>
+                    </div>
+                    <label class="label">
+                        <span class="label-text-alt text-stone-400">起一个简短且具有描述性的名称</span>
+                    </label>
+                </div>
+
+                <!-- Description Input -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-bold text-stone-700">简介描述</span>
+                    </label>
+                    <div class="relative">
+                        <textarea name="description" 
+                                  class="textarea textarea-bordered h-32 w-full pl-10 pt-3 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-base leading-relaxed" 
+                                  placeholder="简要介绍这个 Wiki 的主要内容和目标受众..."></textarea>
+                        <i class="fas fa-align-left absolute left-3.5 top-3.5 text-stone-400"></i>
+                    </div>
+                </div>
+
+                <!-- Initialization Options -->
+                <div class="bg-stone-50 rounded-xl p-4 border border-stone-100">
+                    <h3 class="text-sm font-bold text-stone-600 mb-3 flex items-center gap-2">
+                        <i class="fas fa-magic text-amber-500"></i> 初始化选项
+                    </h3>
+                    <div class="form-control">
+                        <label class="label cursor-pointer justify-start gap-3">
+                            <input type="checkbox" name="init_home" class="checkbox checkbox-primary checkbox-sm" checked />
+                            <span class="label-text text-stone-600">自动创建首页 (Home)</span>
+                        </label>
+                        <p class="text-xs text-stone-400 pl-8">勾选后将自动创建一个包含简介内容的初始页面。</p>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="card-actions justify-end pt-4 mt-4 border-t border-stone-100">
+                    <a href="{{ url_for('index') }}" class="btn btn-ghost text-stone-500 hover:bg-stone-100">取消</a>
+                    <button type="submit" class="btn btn-primary px-8 gap-2 shadow-lg shadow-primary/20">
+                        <i class="fas fa-plus"></i>
+                        立即创建
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Tips -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+        <div class="p-4 rounded-xl bg-white border border-stone-100 shadow-sm">
+            <div class="w-8 h-8 mx-auto bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-2">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <h4 class="text-sm font-bold text-stone-700">结构化组织</h4>
+            <p class="text-xs text-stone-400 mt-1">支持多级目录和标签分类</p>
+        </div>
+        <div class="p-4 rounded-xl bg-white border border-stone-100 shadow-sm">
+            <div class="w-8 h-8 mx-auto bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-2">
+                <i class="fas fa-users"></i>
+            </div>
+            <h4 class="text-sm font-bold text-stone-700">协作编辑</h4>
+            <p class="text-xs text-stone-400 mt-1">邀请他人共同维护文档</p>
+        </div>
+        <div class="p-4 rounded-xl bg-white border border-stone-100 shadow-sm">
+            <div class="w-8 h-8 mx-auto bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mb-2">
+                <i class="fab fa-markdown"></i>
+            </div>
+            <h4 class="text-sm font-bold text-stone-700">Markdown</h4>
+            <p class="text-xs text-stone-400 mt-1">支持标准的 Markdown 语法</p>
+        </div>
+    </div>
 </div>
 {% endblock %}

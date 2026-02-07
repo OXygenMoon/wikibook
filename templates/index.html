@@ -59,7 +59,7 @@
         </div>
     </div>
     <!-- 搜索结果或 Wiki 列表 -->
-    <div class="relative z-[9999] bg-white rounded-3xl shadow-sm border border-stone-100 p-8 lg:p-12 pointer-events-auto">
+    <div class="relative z-30 bg-white rounded-3xl shadow-sm border border-stone-100 p-8 lg:p-12 pointer-events-auto">
         {% if q %}
             <!-- 搜索结果展示 -->
             <div class="space-y-12">
@@ -183,87 +183,10 @@
     </div>
 </div>
 
-<!-- Sticker System -->
-<div id="sticker-canvas"></div>
-
-{% if current_user.is_authenticated %}
-<button id="sticker-fab" class="sticker-fab btn btn-circle btn-lg fixed bottom-8 right-8 z-50 bg-stone-900/60 backdrop-blur-md text-white shadow-2xl border border-white/10 ring-1 ring-white/5 hover:bg-stone-800/80 transition-all duration-300">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-</button>
-
-<div id="sticker-drawer" class="sticker-drawer">
-    <div class="sticker-drawer-header">
-        <h3 class="font-bold text-lg">我的贴纸库</h3>
-        <div class="flex gap-2">
-            <button id="sticker-publish-btn" class="btn btn-secondary btn-sm">发布快照</button>
-            <button id="sticker-save-btn" class="btn btn-primary btn-sm">保存</button>
-            <button id="sticker-close-btn" class="btn btn-ghost btn-sm btn-circle">✕</button>
-        </div>
-    </div>
-    <div class="sticker-drawer-body">
-        <div class="sticker-grid">
-            {% for ub in current_user.earned_badges %}
-            <div class="sticker-option" 
-                 data-badge-id="{{ ub.badge.id }}" 
-                 data-badge-icon="{{ ub.badge.icon | badge_icon_url }}"
-                 title="{{ ub.badge.name }}">
-                <div class="sticker-option-icon">
-                    {% if ub.badge.icon | is_image_icon %}
-                        <img src="{{ ub.badge.icon | badge_icon_url }}" alt="{{ ub.badge.name }}">
-                    {% else %}
-                        {{ ub.badge.icon }}
-                    {% endif %}
-                </div>
-                <div class="sticker-option-name">{{ ub.badge.name }}</div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-{% endif %}
+<!-- Sticker System Removed from Index -->
 
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/sticker.js') }}"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        {% if target_user %}
-            // Visitor Mode (Strictly for authenticated study partners or self)
-            new StickerManager('wiki', {{ target_user.id }}, true);
-        {% else %}
-            {% if current_user.is_authenticated %}
-                // Default Owner Mode
-                new StickerManager('wiki');
-            {% endif %}
-        {% endif %}
-    });
-    
-    // Publish Button Logic
-    const publishBtn = document.getElementById('sticker-publish-btn');
-    if (publishBtn) {
-        publishBtn.addEventListener('click', async () => {
-            const title = prompt("为你的贴纸板起个标题 (例如: 2026新年限定):", "我的 Wiki 贴纸板");
-            if (title) {
-                try {
-                    const res = await fetch('/api/stickers/wiki/publish', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ title: title, visibility: 'followers' })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        alert('发布成功！快照已保存。');
-                    } else {
-                        alert('发布失败: ' + (data.error || '未知错误'));
-                    }
-                } catch (e) {
-                    alert('发布失败: ' + e);
-                }
-            }
-        });
-    }
-</script>
+<!-- Sticker Script Removed -->
 {% endblock %}

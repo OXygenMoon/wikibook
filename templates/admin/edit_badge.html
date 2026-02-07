@@ -35,6 +35,19 @@
                     <label class="label"><span class="label-text">描述</span></label>
                     <textarea name="description" class="textarea textarea-bordered">{{ badge.description }}</textarea>
                 </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">贴纸数量</span></label>
+                        <input type="number" name="sticker_count" class="input input-bordered" value="{{ badge.sticker_count or 1 }}" min="1" />
+                        <label class="label"><span class="label-text-alt">获得此成就可得到的贴纸数</span></label>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">发行限量</span></label>
+                        <input type="number" name="total_limit" class="input input-bordered" value="{{ badge.total_limit if badge.total_limit is not none else '' }}" placeholder="留空为无限量" />
+                        <label class="label"><span class="label-text-alt">当前已发放: {{ badge.issued_count }}</span></label>
+                    </div>
+                </div>
                 
                 <div class="form-control">
                     <label class="label"><span class="label-text">触发条件类型</span></label>

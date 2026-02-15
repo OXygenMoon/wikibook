@@ -33,6 +33,72 @@
                             <textarea name="description" class="textarea textarea-bordered h-32" placeholder="简短描述这个 Wiki 的内容...">{{ wiki.description }}</textarea>
                         </div>
 
+                        <!-- Appearance Settings -->
+                        <div class="bg-base-200/50 rounded-xl p-4 border border-base-200">
+                            <h3 class="text-sm font-bold text-base-content/70 mb-3 flex items-center gap-2">
+                                <i class="fas fa-palette text-purple-500"></i> 外观设置
+                            </h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-control">
+                                    <label class="label"><span class="label-text font-medium">背景颜色</span></label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="color" name="bg_color" value="{{ wiki.bg_color or '#ffffff' }}" class="h-10 w-full cursor-pointer rounded-lg border border-base-300 p-1" />
+                                    </div>
+                                </div>
+                                <div class="form-control">
+                                    <label class="label"><span class="label-text font-medium">前景/纹理颜色</span></label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="color" name="fg_color" value="{{ wiki.fg_color or '#1f2937' }}" class="h-10 w-full cursor-pointer rounded-lg border border-base-300 p-1" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                <div class="form-control">
+                                    <label class="label"><span class="label-text font-medium">渐变颜色 (可选)</span></label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="color" name="gradient_color" value="{{ wiki.gradient_color or wiki.bg_color or '#ffffff' }}" class="h-10 w-full cursor-pointer rounded-lg border border-base-300 p-1" />
+                                    </div>
+                                    <p class="text-xs text-base-content/60 mt-1">设置背景渐变的第二种颜色。</p>
+                                </div>
+                                <div class="form-control">
+                                    <label class="label"><span class="label-text font-medium">渐变方向/类型</span></label>
+                                    <select name="gradient_direction" class="select select-bordered w-full h-10 min-h-0">
+                                        <option value="to bottom right" {% if wiki.gradient_direction == 'to bottom right' %}selected{% endif %}>↘ 右下 (默认)</option>
+                                        <option value="to right" {% if wiki.gradient_direction == 'to right' %}selected{% endif %}>→ 向右</option>
+                                        <option value="to bottom" {% if wiki.gradient_direction == 'to bottom' %}selected{% endif %}>↓ 向下</option>
+                                        <option value="to bottom left" {% if wiki.gradient_direction == 'to bottom left' %}selected{% endif %}>↙ 左下</option>
+                                        <option value="to left" {% if wiki.gradient_direction == 'to left' %}selected{% endif %}>← 向左</option>
+                                        <option value="to top left" {% if wiki.gradient_direction == 'to top left' %}selected{% endif %}>↖ 左上</option>
+                                        <option value="to top" {% if wiki.gradient_direction == 'to top' %}selected{% endif %}>↑ 向上</option>
+                                        <option value="to top right" {% if wiki.gradient_direction == 'to top right' %}selected{% endif %}>↗ 右上</option>
+                                        <option value="circle at center" {% if wiki.gradient_direction == 'circle at center' %}selected{% endif %}>◉ 径向 (中心)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-control mt-4">
+                                <label class="label"><span class="label-text font-medium">背景模糊度 (高斯模糊)</span></label>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-xs text-base-content/60">清晰</span>
+                                    <input type="range" name="blur_level" min="0" max="100" step="1" value="{{ wiki.blur_level }}" class="range range-primary range-sm" />
+                                    <span class="text-xs text-base-content/60">模糊</span>
+                                </div>
+                                <p class="text-xs text-base-content/60 mt-2">调整卡片背景的高斯模糊程度。</p>
+                            </div>
+
+                            <div class="form-control mt-4">
+                                <label class="label"><span class="label-text font-medium">Arc 风格颗粒度</span></label>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-xs text-base-content/60">细腻</span>
+                                    <input type="range" name="pattern" min="0" max="0.3" step="0.01" value="{{ wiki.pattern if wiki.pattern and wiki.pattern[0].isdigit() else '0.05' }}" class="range range-primary range-sm" />
+                                    <span class="text-xs text-base-content/60">粗糙</span>
+                                </div>
+                                <p class="text-xs text-base-content/60 mt-2">调整表面噪点的强度，营造 Arc 浏览器的纸质/磨砂质感。</p>
+                            </div>
+                        </div>
+
                         <div class="card-actions justify-end mt-4">
                             <button type="submit" class="btn btn-primary">保存修改</button>
                         </div>

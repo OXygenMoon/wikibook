@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ wiki.title }} - 贡献者{% endblock %}
+
+{% block sidebar_menu %}
+    {% include "wiki/sidebar.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="flex items-center gap-4 mb-8">
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-circle btn-ghost">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        </a>
+        <h1 class="text-3xl font-bold text-stone-800">贡献者列表</h1>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Author Card -->
+        <div class="card bg-white shadow-sm border border-stone-200">
+            <div class="card-body">
+                <h2 class="card-title text-sm uppercase text-stone-400 mb-2">创建者 (Author)</h2>
+                <div class="flex items-center gap-4">
+                    <div class="avatar placeholder">
+                        <div class="bg-primary text-primary-content rounded-full w-16 h-16 text-2xl font-bold">
+                            {{ wiki.created_by.username[0]|upper if wiki.created_by and wiki.created_by.username else '?' }}
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold">{{ wiki.created_by.username if wiki.created_by else 'Unknown' }}</h3>
+                        <p class="text-stone-500 text-sm">创建于 {{ wiki.created_at.strftime('%Y-%m-%d') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Card -->
+        <div class="card bg-white shadow-sm border border-stone-200">
+            <div class="card-body">
+                <h2 class="card-title text-sm uppercase text-stone-400 mb-2">统计信息</h2>
+                <div class="stats stats-vertical lg:stats-horizontal shadow-none">
+                    <div class="stat px-0">
+                        <div class="stat-title">总贡献者</div>
+                        <div class="stat-value text-primary">{{ contributors|length }}</div>
+                    </div>
+                    <div class="stat px-0">
+                        <div class="stat-title">总编辑次数</div>
+                        <div class="stat-value">{{ contributors|map(attribute='edit_count')|sum }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="divider my-8">贡献排行</div>
+
+    <div class="overflow-x-auto bg-white rounded-2xl border border-stone-200 shadow-sm">
+        <table class="table w-full">
+            <thead>
+                <tr>
+                    <th class="w-16">排名</th>
+                    <th>用户</th>
+                    <th>编辑次数</th>
+                    <th>贡献占比</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set total_edits = contributors|map(attribute='edit_count')|sum %}
+                {% for c in contributors %}
+                <tr class="hover">
+                    <td class="font-bold text-stone-400">
+                        {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
+                    </td>
+                    <td>
+                        <div class="flex items-center gap-3">
+                            <div class="avatar placeholder">
+                                <div class="bg-stone-100 text-stone-600 rounded-full w-8 h-8 text-xs grid place-items-center">
+                                    {{ c[0].username[0]|upper if c[0] and c[0].username else '?' }}
+                                </div>
+                            </div>
+                            <span class="font-bold">{{ c[0].username if c[0] else 'Unknown' }}</span>
+                            {% if c[0] and wiki.created_by and c[0].id == wiki.created_by.id %}
+                            <span class="badge badge-xs badge-primary badge-outline">作者</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="font-mono">{{ c.edit_count }}</td>
+                    <td>
+                        {% if total_edits > 0 %}
+                        <div class="flex items-center gap-2">
+                            <progress class="progress progress-primary w-20" value="{{ c.edit_count }}" max="{{ total_edits }}"></progress>
+                            <span class="text-xs opacity-60">{{ (c.edit_count / total_edits * 100)|round(1) }}%</span>
+                        </div>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center py-8 text-stone-400">暂无编辑记录</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

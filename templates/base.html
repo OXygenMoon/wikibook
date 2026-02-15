@@ -1,210 +1,225 @@
 <!DOCTYPE html>
 {% set is_book_mode = request.path.startswith('/book') %}
-<html data-theme="{{ 'winter' if is_book_mode else 'cupcake' }}">
+<html data-theme="{{ 'winter' if is_book_mode else 'cupcake' }}" lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %} - WikiBook</title>
+
     <link href="{{ url_for('static', filename='css/daisyui.full.css') }}" rel="stylesheet" type="text/css" />
     <script src="{{ url_for('static', filename='js/tailwindcss.js') }}"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='css/easymde.min.css') }}">
     <script src="{{ url_for('static', filename='js/easymde.min.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/link-card.css') }}">
     <script src="{{ url_for('static', filename='js/link-card.js') }}"></script>
     
-    <!-- Highlight.js for code syntax highlighting -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/atom-one-dark.min.css') }}">
     <script src="{{ url_for('static', filename='js/highlight.min.js') }}"></script>
     <script>hljs.highlightAll();</script>
 
     <style>
-        /* EasyMDE Style Overrides */
-        .EasyMDEContainer {
-            background-color: white;
-            border-radius: 0.5rem;
-            overflow: hidden;
+        /* --- Theme Variables (CSS 变量代替硬编码 Jinja 判断) --- */
+        :root {
+            /* 默认 Wiki 模式 (Amber/Orange) */
+            --theme-primary: #ea580c; /* Orange-600 */
+            --theme-primary-hover: #d97706; /* Amber-600 */
+            --theme-bg-sidebar: #faf7f5;
+            --toggle-bg: #f59e0b;
         }
-        .editor-toolbar {
-            border-top-left-radius: 0.5rem;
-            border-top-right-radius: 0.5rem;
-            border-color: #d1d5db;
-        }
-        .CodeMirror {
-            border-color: #d1d5db;
-            border-bottom-left-radius: 0.5rem;
-            border-bottom-right-radius: 0.5rem;
-            min-height: 400px;
-        }
-        .editor-statusbar {
-            display: none; /* Hide status bar for cleaner look */
-        }
-        
-        /* 复用您提供的样式 */
-        .sidebar-content::-webkit-scrollbar { width: 4px; }
-        .sidebar-content::-webkit-scrollbar-track { background: transparent; }
-        .sidebar-content::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
-        .sidebar-transition { transition: transform 0.3s ease-in-out; }
 
+        /* 修复 CSS 语法错误：将 Jinja 逻辑移出 CSS 块或确保正确闭合 */
+        {% if is_book_mode %}
+        :root {
+            /* Book 模式 (Indigo/Purple) */
+            --theme-primary: #4f46e5; /* Indigo-600 */
+            --theme-primary-hover: #4338ca; /* Indigo-700 */
+            --theme-bg-sidebar: #f5f7fa;
+            --toggle-bg: #4f46e5;
+        }
+        {% endif %}
+
+        /* --- Scrollbar --- */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        /* --- EasyMDE Overrides --- */
+        .EasyMDEContainer { background-color: white; border-radius: 0.5rem; overflow: hidden; }
+        .editor-toolbar { border-color: #d1d5db; border-radius: 0.5rem 0.5rem 0 0; }
+        .CodeMirror { border-color: #d1d5db; border-radius: 0 0 0.5rem 0.5rem; min-height: 400px; }
+        .editor-statusbar { display: none; }
+
+        /* --- Sidebar Menu Items --- */
+        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
         .menu-item {
             position: relative;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 0.75rem;
-            margin-bottom: 4px;
-            font-weight: 500;
+            transition: all 0.2s ease;
             color: #57534e;
-            border: 1px solid transparent;
+            border-radius: 0.75rem;
         }
-
         .menu-item:hover {
             background-color: #ffffff;
-            color: {% if is_book_mode %}#4f46e5{% else %}#ea580c{% endif %}; /* Indigo-600 vs Orange-600 */
+            color: var(--theme-primary);
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
-
         .menu-item.active {
             background-color: #ffffff !important;
-            color: {% if is_book_mode %}#4338ca{% else %}#d97706{% endif %} !important; /* Indigo-700 vs Amber-600 */
+            color: var(--theme-primary-hover) !important;
             font-weight: 700;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            border-color: #fce7f3;
+        }
+        .menu-item.active::before {
+            content: ''; position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+            height: 6px; width: 6px; border-radius: 50%;
+            background-color: var(--theme-primary-hover);
+        }
+        .menu-section-title {
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+            color: #a8a29e; font-weight: 800; padding: 1.5rem 1rem 0.5rem 1rem;
         }
 
-        .menu-item.active::before {
+        /* --- Layout --- */
+        @media (min-width: 1024px) { .main-content { margin-left: 16rem; } }
+
+        /* --- Toggle Switch --- */
+        .mode-toggle-label {
+            position: relative; display: flex; align-items: center; justify-content: space-between;
+            width: 100%; height: 2rem; border-radius: 9999px;
+            background-color: #f3f4f6; border: 1px solid #e5e7eb; cursor: pointer; padding: 0.25rem;
+        }
+        .mode-toggle-slider {
+            position: absolute; top: 0.25rem; bottom: 0.25rem; left: 0.25rem;
+            width: calc(50% - 0.25rem); border-radius: 9999px;
+            background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, background-color 0.3s;
+        }
+        /* Logic handled by CSS variable for color, JS logic for position */
+        {% if is_book_mode %}
+        .mode-toggle-slider { transform: translateX(100%); background-color: var(--toggle-bg); }
+        .text-book { color: white !important; }
+        {% else %}
+        .mode-toggle-slider { transform: translateX(0); background-color: var(--toggle-bg); }
+        .text-wiki { color: white !important; }
+        {% endif %}
+
+        .mode-text { z-index: 10; flex: 1; text-align: center; font-size: 0.75rem; font-weight: 600; color: #6b7280; transition: color 0.3s; }
+
+        /* --- Badge & UI --- */
+        .badge-icon-container { transition: transform 0.2s; }
+        .badge-icon-container:hover { transform: scale(1.1); background-color: rgba(0,0,0,0.1); }
+
+        /* --- Arc-like Liquid Grain Card --- */
+        .liquid-card {
+            position: relative;
+            overflow: hidden;
+            background-color: var(--bg-color, #ffffff);
+            /* Important: background-image must override background-color if set */
+            background-image: var(--bg-image, none);
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s ease;
+            transform-style: preserve-3d;
+            isolation: isolate; /* Create new stacking context */
+        }
+        
+        .liquid-card::before, .liquid-card::after {
             content: '';
             position: absolute;
-            left: 0.75rem;
-            top: 50%;
-            transform: translateY(-50%);
-            height: 6px;
-            width: 6px;
-            background-color: {% if is_book_mode %}#4338ca{% else %}#d97706{% endif %};
             border-radius: 50%;
+            /* Use blur-level variable */
+            filter: blur(var(--blur-level, 60px));
+            z-index: -1;
+            transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+            pointer-events: none;
+            mix-blend-mode: normal;
+        }
+        /* Blob 1: Main Gradient Accent */
+        .liquid-card::before {
+            width: 140%;
+            height: 140%;
+            top: -20%;
+            left: -20%;
+            background: radial-gradient(circle at center, var(--blob-color-1, rgba(255, 100, 100, 0.15)), transparent 60%);
+            transform: translate(var(--blob-1-x, 0), var(--blob-1-y, 0));
         }
 
-        .menu-section-title {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #a8a29e;
-            font-weight: 800;
-            padding: 1.5rem 1rem 0.5rem 1rem;
+        /* Blob 2: Secondary Gradient Accent */
+        .liquid-card::after {
+            width: 140%;
+            height: 140%;
+            bottom: -20%;
+            right: -20%;
+            background: radial-gradient(circle at center, var(--blob-color-2, rgba(100, 100, 255, 0.15)), transparent 60%);
+            transform: translate(var(--blob-2-x, 0), var(--blob-2-y, 0));
         }
 
-        @media (min-width: 1024px) {
-            .main-content { margin-left: 16rem; }
-        }
-        
-        /* Toggle Switch Customization */
-        .mode-toggle-label {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            height: 2rem;
-            border-radius: 9999px;
-            background-color: #f3f4f6;
-            cursor: pointer;
-            padding: 0.25rem;
-            border: 1px solid #e5e7eb;
-        }
-        
-        .mode-toggle-slider {
+        /* High-Quality Grain Overlay (Arc-style) */
+        .liquid-noise {
             position: absolute;
-            left: 0.25rem;
-            top: 0.25rem;
-            bottom: 0.25rem;
-            width: calc(50% - 0.25rem);
-            border-radius: 9999px;
-            background-color: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
-        }
-        
-        .mode-book .mode-toggle-slider {
-            transform: translateX(100%);
-            background-color: #4f46e5; /* Indigo */
-        }
-        
-        .mode-wiki .mode-toggle-slider {
-            transform: translateX(0);
-            background-color: #f59e0b; /* Amber */
-        }
-        
-        .mode-text {
-            position: relative;
+            inset: 0;
             z-index: 10;
-            flex: 1;
-            text-align: center;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #6b7280;
-            transition: color 0.3s ease;
+            opacity: var(--grain-opacity, 0.05); /* Default lower for subtlety */
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+            pointer-events: none;
+            mix-blend-mode: overlay; /* Soft Light or Overlay for better blending */
+            filter: contrast(120%) brightness(100%); /* Enhance grain pop */
         }
-        
-        .mode-wiki .text-wiki { color: white; }
-        .mode-book .text-book { color: white; }
 
-        /* Badge Icon Container */
-        .badge-icon-container {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background-color: rgba(0, 0, 0, 0.05);
-            border-radius: 6px;
-            overflow: hidden;
-            vertical-align: middle;
-            transition: transform 0.2s;
-            line-height: 1;
-        }
-        .badge-icon-container:hover {
-            transform: scale(1.1);
-            background-color: rgba(0, 0, 0, 0.1);
-        }
-        .badge-icon-container img {
-            width: 80%;
-            height: 80%;
-            object-fit: contain;
+        .liquid-card:hover {
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.05); /* Subtle depth */
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-base-200 text-base-content font-sans">
+    {% macro render_menu_item(endpoint, label, icon_d, badge=None, extra_active_endpoints=[]) %}
+        {% set is_active = request.endpoint == endpoint or request.endpoint in extra_active_endpoints %}
+        <li>
+            <a href="{{ url_for(endpoint) }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if is_active else '' }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="{{ icon_d }}" />
+                </svg>
+                <span class="truncate flex-1">{{ label }}</span>
+                {% if badge %}
+                    <span class="badge badge-xs badge-ghost">{{ badge }}</span>
+                {% endif %}
+            </a>
+        </li>
+    {% endmacro %}
 
-    <!-- Mobile Navbar -->
-    <div id="mobile-navbar" class="lg:hidden navbar bg-base-100 shadow-md fixed top-0 w-full transition-transform duration-300" style="z-index: 100000;">
+    <div id="mobile-navbar" class="lg:hidden navbar bg-base-100/90 backdrop-blur-md shadow-sm fixed top-0 w-full transition-transform duration-300 z-50">
         <div class="navbar-start">
-            <button id="mobile-menu-btn" class="btn btn-ghost btn-circle">
+            <button id="mobile-menu-btn" class="btn btn-ghost btn-circle" aria-label="Menu">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
         </div>
-        <div class="navbar-center" id="mobile-navbar-title">
-            <a href="{{ url_for('index') }}" class="text-xl font-bold bg-gradient-to-r {% if is_book_mode %}from-indigo-500 to-purple-600{% else %}from-amber-500 to-orange-600{% endif %} bg-clip-text text-transparent group relative">
-                W<span class="relative inline-block">i<span id="announcement-dot" class="absolute -top-0.5 right-[1px] w-2 h-2 bg-red-500 rounded-full hidden cursor-pointer z-50 pointer-events-auto shadow-sm ring-1 ring-white" onclick="showHistoryModal(event)" title="系统公告"></span></span>kiBook
+        <div class="navbar-center">
+            <a href="{{ url_for('index') }}" class="text-xl font-bold bg-gradient-to-r {% if is_book_mode %}from-indigo-500 to-purple-600{% else %}from-amber-500 to-orange-600{% endif %} bg-clip-text text-transparent relative group">
+                W<span class="relative inline-block">i<span id="announcement-dot" class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full hidden cursor-pointer z-50 ring-1 ring-white" onclick="app.announcements.showHistory(event)"></span></span>kiBook
             </a>
         </div>
         <div class="navbar-end">
             {% if current_user.is_authenticated %}
-            <a href="{{ url_for('online_users') }}" class="btn btn-ghost btn-sm gap-2 normal-case" title="查看在线用户">
-                <div class="badge badge-success badge-xs"></div>
-                <span class="hidden sm:inline">{{ online_user_count }} 人在线</span>
-                <span class="sm:hidden">{{ online_user_count }}</span>
+            <a href="{{ url_for('online_users') }}" class="btn btn-ghost btn-sm gap-2 normal-case">
+                <div class="badge badge-success badge-xs animate-pulse"></div>
+                <span class="text-xs">{{ online_user_count }}</span>
             </a>
             {% endif %}
         </div>
     </div>
 
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 hidden lg:hidden transition-opacity" style="z-index: 100001;"></div>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden lg:hidden transition-opacity z-[51]"></div>
 
-    <!-- Sidebar -->
-    <aside id="sidebar" style="background-color: {% if is_book_mode %}#f5f7fa{% else %}#faf7f5{% endif %}; z-index: 100002;" class="fixed left-0 top-0 h-screen w-64 border-r border-stone-200/60 shadow-xl sidebar-transition transform -translate-x-full lg:translate-x-0 flex flex-col">
-
-        <div class="h-20 flex items-center px-6 border-b border-stone-200/50">
+    <aside id="sidebar" style="background-color: var(--theme-bg-sidebar);" class="fixed left-0 top-0 h-screen w-64 border-r-[3px] border-stone-200/60 shadow-xl sidebar-transition transform -translate-x-full lg:translate-x-0 flex flex-col z-[52]">
+        
+        <div class="h-20 flex items-center px-6 border-b border-stone-200/50 flex-shrink-0">
             <div class="w-full">
-                <!-- Toggle Switch -->
-                <div class="mode-toggle-label {% if is_book_mode %}mode-book{% else %}mode-wiki{% endif %}" onclick="window.location.href='{{ url_for('index') if is_book_mode else url_for('book_index') }}'">
+                <div class="mode-toggle-label" onclick="window.location.href='{{ url_for('index') if is_book_mode else url_for('book_index') }}'">
                     <div class="mode-toggle-slider"></div>
                     <span class="mode-text text-wiki">Wiki</span>
                     <span class="mode-text text-book">Book</span>
@@ -212,189 +227,151 @@
             </div>
         </div>
 
-        <nav class="flex-1 overflow-y-auto sidebar-content px-4 py-2">
+        <nav class="flex-1 overflow-y-auto sidebar-content px-4 py-4">
             {% block sidebar_menu %}
-            
-            {% if not is_book_mode %}
-                <!-- Wiki Mode Menu -->
-                <div class="menu-section-title">发现</div>
-                <ul class="space-y-1">
-                    <li>
-                        <a href="{{ url_for('index') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'index' else '' }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                            <span>Wiki 广场</span>
-                        </a>
-                    </li>
-                </ul>
-
-                {% if current_user.is_authenticated %}
-                    {% if current_user.subscriptions %}
-                    <div class="menu-section-title">我的订阅</div>
+                {% if not is_book_mode %}
+                    <div class="menu-section-title">发现</div>
                     <ul class="space-y-1">
-                        {% for sub in current_user.subscriptions %}
-                        <li>
-                            <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.view_args and request.view_args.get('wiki_id') == sub.wiki.id and request.endpoint in ['wiki_detail', 'view_page', 'edit_page', 'new_page'] else '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-                                <span class="truncate">{{ sub.wiki.title }}</span>
-                            </a>
-                        </li>
-                        {% endfor %}
+                        {{ render_menu_item('index', 'Wiki 广场', 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10') }}
                     </ul>
-                    {% endif %}
 
-                    {% if current_user.is_admin %}
-                    <div class="menu-section-title">管理</div>
-                    <ul class="space-y-1">
-                        <li>
-                            <a href="{{ url_for('manage_announcements') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'manage_announcements' else '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>
-                                <span>系统通知</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ url_for('manage_users') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'manage_users' else '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                                <span>用户管理</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ url_for('create_wiki') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'create_wiki' else '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" /></svg>
-                                <span>新建 Wiki</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ url_for('edit_markdown_css') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'edit_markdown_css' else '' }}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
-                                <span>Markdown 样式</span>
-                            </a>
-                        </li>
-                    </ul>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.subscriptions %}
+                        <div class="menu-section-title flex justify-between items-center group cursor-pointer">
+                            <span>我的订阅</span>
+                            <span class="badge badge-xs badge-ghost group-hover:bg-stone-200 transition-colors">{{ current_user.subscriptions|length }}</span>
+                        </div>
+
+                        <ul class="space-y-2 mt-1"> {% for sub in current_user.subscriptions %}
+                            {% set is_active = request.view_args and request.view_args.get('wiki_id') == sub.wiki.id and request.endpoint in ['wiki_detail', 'view_page', 'edit_page', 'new_page'] %}
+                            
+                            {% set bg_colors = ['bg-red-50 text-red-600', 'bg-orange-50 text-orange-600', 'bg-amber-50 text-amber-600', 'bg-green-50 text-green-600', 'bg-teal-50 text-teal-600', 'bg-blue-50 text-blue-600', 'bg-indigo-50 text-indigo-600', 'bg-purple-50 text-purple-600', 'bg-pink-50 text-pink-600'] %}
+                            {% set icon_bg = bg_colors[(sub.wiki.id) % 9] %}
+
+                            <li>
+                                <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" 
+                                class="group relative flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 border border-transparent 
+                                        {{ 'bg-white border-stone-200/60 shadow-sm' if is_active else 'hover:bg-white hover:shadow-sm hover:border-stone-100' }}">
+                                    
+                                    <div class="w-8 h-8 rounded-[0.6rem] shrink-0 grid place-items-center overflow-hidden border border-black/5 
+                                                {{ icon_bg if not sub.wiki.icon_url else 'bg-white' }} shadow-sm group-hover:scale-105 transition-transform duration-200">
+                                        
+                                        {% if sub.wiki.icon %}
+                                            {% if sub.wiki.icon.startswith('http') or sub.wiki.icon.startswith('/') %}
+                                                <img src="{{ sub.wiki.icon }}" class="w-full h-full object-cover" alt="icon">
+                                            {% else %}
+                                                <span class="text-sm font-bold select-none">{{ sub.wiki.icon }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-xs font-bold select-none">{{ sub.wiki.title[0] }}</span>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="flex-1 min-w-0 flex flex-col justify-center h-8">
+                                        <span class="text-[0.85rem] leading-tight font-medium text-stone-600 group-hover:text-stone-900 
+                                                    {{ 'text-stone-900 font-bold' if is_active else '' }}
+                                                    line-clamp-2 break-words" 
+                                            title="{{ sub.wiki.title }}">
+                                            {{ sub.wiki.title }}
+                                        </span>
+                                    </div>
+
+                                    {% if is_active %}
+                                    <div class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-1 h-4 bg-primary rounded-r-full"></div>
+                                    {% endif %}
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+
+                        {% if current_user.is_admin %}
+                            {% set admin_endpoints = ['manage_announcements', 'manage_users', 'create_wiki', 'edit_markdown_css'] %}
+                            {% set is_admin_expanded = request.endpoint in admin_endpoints %}
+
+                            <details class="group" {{ 'open' if is_admin_expanded else '' }}>
+                                
+                                <summary class="menu-section-title flex items-center justify-between cursor-pointer select-none list-none hover:text-stone-600 transition-colors">
+                                    <span>管理控制台</span>
+                                    
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-180 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </summary>
+
+                                <ul class="space-y-1 mt-1 animate-slide-down">
+                                    {{ render_menu_item('manage_announcements', '系统通知', 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z') }}
+                                    
+                                    {{ render_menu_item('manage_users', '用户管理', 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z') }}
+                                    
+                                    {{ render_menu_item('create_wiki', '新建 Wiki', 'M12 4v16m8-8H4') }}
+                                    
+                                    {{ render_menu_item('edit_markdown_css', 'Markdown 样式', 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01') }}
+                                </ul>
+                            </details>
+                        {% endif %}
                     {% endif %}
-                {% endif %}
                 
-            {% else %}
-                <!-- Book Mode Menu -->
-                <div class="menu-section-title">Book</div>
-                <ul class="space-y-1">
-                    <li>
-                        <a href="{{ url_for('book_index') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'book_index' and not request.hash else '' }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                            <span>我的笔记</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('book_calendar') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'book_calendar' else '' }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                            <span>日历视图</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('book_received') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'book_received' else '' }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                            <span>收到笔记</span>
-                        </a>
-                    </li>
-
-                    <li>
-                        <a href="{{ url_for('new_note') }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if request.endpoint == 'new_note' else '' }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" /></svg>
-                            <span>新建笔记</span>
-                        </a>
-                    </li>
-                </ul>
-            {% endif %}
-            
+                {% else %}
+                    <div class="menu-section-title">Book</div>
+                    <ul class="space-y-1">
+                        {{ render_menu_item('book_index', '我的笔记', 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253') }}
+                        {{ render_menu_item('book_calendar', '日历视图', 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z') }}
+                        {{ render_menu_item('book_received', '收到笔记', 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z') }}
+                        {{ render_menu_item('new_note', '新建笔记', 'M12 4v16m8-8H4') }}
+                    </ul>
+                {% endif %}
             {% endblock %}
         </nav>
 
-        <div class="p-4 border-t border-stone-200/50 bg-[#faf7f5]">
+        <div class="p-4 border-t border-stone-200/50 bg-[#faf7f5]/50 backdrop-blur-sm">
             {% if current_user.is_authenticated %}
-                {% set avatar_styles = [
-                    'bg-rose-100 text-rose-700 border border-rose-200',
-                    'bg-orange-100 text-orange-700 border border-orange-200',
-                    'bg-emerald-100 text-emerald-700 border border-emerald-200',
-                    'bg-cyan-100 text-cyan-700 border border-cyan-200',
-                    'bg-blue-100 text-blue-700 border border-blue-200',
-                    'bg-violet-100 text-violet-700 border border-violet-200',
-                    'bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200'
-                ] %}
-                {% set style_class = avatar_styles[(current_user.id) % 7] %}
-
+                {% set style_class = ['bg-rose-100 text-rose-700', 'bg-orange-100 text-orange-700', 'bg-emerald-100 text-emerald-700', 'bg-cyan-100 text-cyan-700', 'bg-blue-100 text-blue-700', 'bg-violet-100 text-violet-700', 'bg-fuchsia-100 text-fuchsia-700'][(current_user.id) % 7] %}
+                
                 <div class="flex items-center gap-3 w-full p-3 bg-white rounded-xl shadow-sm border border-stone-100">
                     <div class="avatar placeholder">
-                        <div class="{{ style_class }} w-9 h-9 rounded-full grid place-items-center ring-2 ring-stone-50">
-                            <span class="text-sm font-bold leading-none select-none mt-[1px]">{{ current_user.username[0] | upper }}</span>
+                        <div class="{{ style_class }} w-9 h-9 rounded-full grid place-items-center ring-2 ring-stone-50 border border-current/20">
+                            <span class="text-sm font-bold leading-none select-none">{{ current_user.username[0] | upper }}</span>
                         </div>
                     </div>
-
-                    <div class="flex-1 min-w-0 text-left cursor-pointer" onclick="window.location.href='{{ url_for('user_profile') }}'" title="查看个人主页">
+                    <div class="flex-1 min-w-0 text-left cursor-pointer group" onclick="window.location.href='{{ url_for('user_profile') }}'">
                         <div class="flex items-center gap-1">
-                            <p class="text-sm font-bold text-stone-700 truncate">{{ current_user.username }}</p>
+                            <p class="text-sm font-bold text-stone-700 truncate group-hover:text-primary transition-colors">{{ current_user.username }}</p>
                             {% if current_user.selected_badge %}
-                                <div class="group relative">
-                                    <div class="badge-icon-container w-6 h-6 cursor-help">
-                                        {% set _icon = current_user.selected_badge.icon %}
-                                        {% if _icon|is_image_icon %}
-                                            <img src="{{ _icon|badge_icon_url }}" alt="{{ current_user.selected_badge.name }}">
-                                        {% else %}
-                                            <span class="text-sm filter drop-shadow-sm">{{ _icon }}</span>
-                                        {% endif %}
-                                    </div>
-                                    <!-- Rich Tooltip -->
-                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-white rounded-lg shadow-xl border border-stone-200 p-4 invisible group-hover:visible z-50 transition-all duration-200 opacity-0 group-hover:opacity-100 transform scale-95 group-hover:scale-100 pointer-events-none">
-                                        <div class="flex flex-col items-center text-center gap-2">
-                                            <div class="w-12 h-12 flex items-center justify-center bg-stone-50 rounded-lg">
-                                                {% if _icon|is_image_icon %}
-                                                    <img src="{{ _icon|badge_icon_url }}" class="w-10 h-10 object-contain" alt="{{ current_user.selected_badge.name }}">
-                                                {% else %}
-                                                    <span class="text-3xl">{{ _icon }}</span>
-                                                {% endif %}
-                                            </div>
-                                            <div>
-                                                <h3 class="font-bold text-stone-800">{{ current_user.selected_badge.name }}</h3>
-                                                <p class="text-xs text-stone-500 mt-1">{{ current_user.selected_badge.description }}</p>
-                                            </div>
-                                            {% set user_badge = current_user.get_selected_user_badge() %}
-                                            {% if user_badge %}
-                                            <div class="text-[10px] text-stone-400 bg-stone-50 px-2 py-1 rounded-full mt-1">
-                                                获得于 {{ user_badge.earned_at.strftime('%Y-%m-%d') }}
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                                        <!-- Arrow -->
-                                        <div class="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-white border-r border-b border-stone-200 rotate-45"></div>
-                                    </div>
+                                <div class="badge-icon-container w-5 h-5" title="{{ current_user.selected_badge.name }}">
+                                    {% if current_user.selected_badge.icon|is_image_icon %}
+                                        <img src="{{ current_user.selected_badge.icon|badge_icon_url }}" alt="badge">
+                                    {% else %}
+                                        <span class="text-xs">{{ current_user.selected_badge.icon }}</span>
+                                    {% endif %}
                                 </div>
                             {% endif %}
                         </div>
                         <p class="text-xs text-stone-400 truncate">{{ '管理员' if current_user.is_admin else '用户' }}</p>
                     </div>
-                    <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-xs btn-square text-stone-400 hover:text-red-500" title="退出登录">
+                    <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-xs btn-square text-stone-400 hover:text-red-500 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                     </a>
                 </div>
             {% else %}
-                <a href="{{ url_for('login') }}" class="btn btn-primary w-full text-white">立即登录</a>
+                <a href="{{ url_for('login') }}" class="btn btn-primary w-full text-white shadow-lg shadow-primary/30">立即登录</a>
             {% endif %}
         </div>
     </aside>
 
-    <main class="min-h-screen main-content pt-16 lg:pt-0 transition-all duration-300 relative flex flex-col">
+    <main class="min-h-screen main-content pt-16 lg:pt-0 transition-all duration-300 relative flex flex-col bg-stone-50">
         {% if current_user.is_authenticated %}
-        <div class="hidden lg:flex fixed top-6 right-8 z-50">
-            <a href="{{ url_for('online_users') }}" class="btn btn-sm gap-2 normal-case glass shadow-md text-stone-600 bg-white/90 hover:bg-white border-white/50" title="查看在线用户">
+        <div class="hidden lg:flex fixed top-6 right-8 z-40">
+            <a href="{{ url_for('online_users') }}" class="btn btn-sm gap-2 normal-case glass shadow-md text-stone-600 bg-white/80 hover:bg-white border/50">
                 <div class="badge badge-success badge-xs animate-pulse"></div>
-                <span>{{ online_user_count }} 人在线</span>
+                <span class="font-medium">{{ online_user_count }} 人在线</span>
             </a>
         </div>
         {% endif %}
         
-        <!-- Nested Frame Container -->
         <div class="flex-1 p-2 lg:p-4">
-            <div class="min-h-[calc(100vh-6rem)] lg:min-h-[calc(100vh-2rem)] bg-white/40 border border-white/60 shadow-xl shadow-stone-200/20 rounded-[2.5rem] relative backdrop-blur-xl overflow-hidden ring-1 ring-white/40">
-                <!-- Inner Gradient Decoration -->
-                <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/40 to-transparent pointer-events-none"></div>
+            <div class="min-h-[calc(100vh-6rem)] lg:min-h-[calc(100vh-2rem)] bg-white/60 border-[1px] border-black shadow-xl shadow-stone-200/40 rounded-[2rem] relative backdrop-blur-xl overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white to-transparent pointer-events-none z-0"></div>
                 
                 <div class="p-4 sm:p-6 lg:p-10 relative z-10">
                     {% block content %}{% endblock %}
@@ -403,258 +380,35 @@
         </div>
     </main>
 
-    <!-- Global Toast Container (Bottom Right) -->
-    <div id="global-toast-container" class="fixed bottom-6 right-6 flex flex-col gap-3 pointer-events-none" style="z-index: 100003;">
+    <div id="toast-container" class="fixed bottom-6 right-6 flex flex-col gap-3 pointer-events-none z-[60]">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                <!-- Server-side Flash Message -->
-                <div class="toast-card pointer-events-auto bg-stone-900/60 backdrop-blur-md text-white border border-white/10 ring-1 ring-white/5 shadow-2xl rounded-2xl p-4 min-w-[320px] max-w-[400px] flex items-start gap-3 transform transition-all duration-500 translate-y-10 opacity-0 animate-slide-up-fade" role="alert">
-                    <div class="mt-0.5">
-                        {% if category == 'success' %}
-                            <i class="fas fa-check-circle text-green-400 text-lg"></i>
-                        {% elif category == 'error' %}
-                            <i class="fas fa-times-circle text-red-400 text-lg"></i>
-                        {% elif category == 'warning' %}
-                            <i class="fas fa-exclamation-triangle text-yellow-400 text-lg"></i>
-                        {% else %}
-                            <i class="fas fa-info-circle text-blue-400 text-lg"></i>
-                        {% endif %}
-                    </div>
-                    <div class="flex-1 text-sm font-medium text-white/90 pt-0.5">{{ message }}</div>
-                    <button onclick="this.parentElement.remove()" class="btn btn-xs btn-ghost btn-circle -mr-2 -mt-2 text-white/40 hover:text-white hover:bg-white/10 transition-colors">✕</button>
-                </div>
+                <div data-category="{{ category }}" class="server-toast hidden">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
     </div>
 
-    <script>
-        // 侧栏控制逻辑
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebar-overlay');
-        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-        const mobileNavbar = document.getElementById('mobile-navbar');
-        const mobileNavbarTitle = document.getElementById('mobile-navbar-title');
+    <!-- Back to Top Button -->
+    <button id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" 
+            class="fixed bottom-24 right-6 btn btn-circle btn-primary shadow-lg z-40 opacity-0 pointer-events-none translate-y-10 transition-all duration-300"
+            aria-label="Back to top">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+    </button>
 
-        // Mobile Navbar Toggle Logic
-        if (mobileNavbar) {
-            // Click outside buttons to toggle
-            mobileNavbar.addEventListener('click', (e) => {
-                if (e.target.closest('button') || e.target.closest('a')) return;
-                
-                if (mobileNavbar.classList.contains('-translate-y-full')) {
-                    mobileNavbar.classList.remove('-translate-y-full');
-                } else {
-                    mobileNavbar.classList.add('-translate-y-full');
-                    showNavbarTrigger();
-                }
-            });
-        }
-        
-        // Helper to show a trigger when navbar is hidden
-        function showNavbarTrigger() {
-            let trigger = document.getElementById('navbar-trigger');
-            if (!trigger) {
-                trigger = document.createElement('div');
-                trigger.id = 'navbar-trigger';
-                trigger.className = 'fixed top-0 left-0 w-full h-4 cursor-pointer';
-                trigger.style.zIndex = '100000';
-                trigger.onclick = () => {
-                    mobileNavbar.classList.remove('-translate-y-full');
-                    trigger.remove();
-                };
-                document.body.appendChild(trigger);
-            }
-        }
-
-        function toggleSidebar() {
-            if (!sidebar || !overlay) return;
-            if (sidebar.classList.contains('-translate-x-full')) {
-                sidebar.classList.remove('-translate-x-full');
-                overlay.classList.remove('hidden');
-            } else {
-                sidebar.classList.add('-translate-x-full');
-                overlay.classList.add('hidden');
-            }
-        }
-        mobileMenuBtn?.addEventListener('click', toggleSidebar);
-        overlay?.addEventListener('click', toggleSidebar);
-        
-        // Global Notification Toast
-        function showGlobalToast(message, type = 'info', link = null) {
-            const container = document.getElementById('global-toast-container');
-            if (!container) return;
-            
-            const toast = document.createElement('div');
-            
-            // Icon Selection
-            let iconClass = 'fa-info-circle text-blue-400';
-            if (type === 'success') iconClass = 'fa-check-circle text-green-400';
-            if (type === 'error') iconClass = 'fa-times-circle text-red-400';
-            if (type === 'warning') iconClass = 'fa-exclamation-triangle text-yellow-400';
-            
-            // Modern Card Style
-            toast.className = `toast-card pointer-events-auto bg-stone-900/60 backdrop-blur-md text-white border border-white/10 ring-1 ring-white/5 shadow-2xl rounded-2xl p-4 min-w-[320px] max-w-[400px] flex items-start gap-3 transform transition-all duration-500 translate-y-10 opacity-0`;
-            
-            if (link) {
-                toast.classList.add('cursor-pointer', 'hover:bg-white/5');
-                toast.onclick = (e) => {
-                    if (!e.target.closest('button')) window.location.href = link;
-                };
-            }
-            
-            toast.innerHTML = `
-                <div class="mt-0.5">
-                    <i class="fas ${iconClass} text-lg"></i>
-                </div>
-                <div class="flex-1 text-sm font-medium text-white/90 pt-0.5 leading-relaxed">${message}</div>
-                <button class="btn btn-xs btn-ghost btn-circle -mr-2 -mt-2 text-white/40 hover:text-white hover:bg-white/10 transition-colors z-10">✕</button>
-            `;
-            
-            // Close Button Logic
-            const closeBtn = toast.querySelector('button');
-            closeBtn.onclick = (e) => {
-                e.stopPropagation();
-                dismissToast(toast);
-            };
-            
-            container.appendChild(toast);
-            
-            // Trigger Animation (Next Frame)
-            requestAnimationFrame(() => {
-                toast.classList.remove('translate-y-10', 'opacity-0');
-            });
-            
-            // Auto Dismiss (3s)
-            setTimeout(() => {
-                dismissToast(toast);
-            }, 3000);
-        }
-
-        function dismissToast(toast) {
-            if (!toast || toast.isDismissed) return;
-            toast.isDismissed = true;
-            
-            // Exit Animation
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(20px) scale(0.95)';
-            
-            // Remove DOM
-            setTimeout(() => {
-                if (toast.parentElement) toast.remove();
-            }, 300);
-        }
-
-        // Auto-dismiss server-side flash messages on load
-        document.addEventListener('DOMContentLoaded', () => {
-            const serverToasts = document.querySelectorAll('.toast-card.animate-slide-up-fade');
-            serverToasts.forEach((toast, index) => {
-                // Staggered entrance fix if needed, but CSS handles it. 
-                // Just remove the initial hidden classes if they exist in HTML (we used animate-slide-up-fade instead)
-                // Actually, let's just set the timeout for removal.
-                
-                // Ensure they are visible (our HTML has opacity-0 + animate class, assuming animate class handles keyframes)
-                // If animate-slide-up-fade is not defined in Tailwind, we should manually trigger transition like JS does.
-                // Let's manually trigger transition for consistency with JS toasts.
-                toast.classList.remove('animate-slide-up-fade'); // Remove CSS animation if any conflicts
-                requestAnimationFrame(() => {
-                    toast.classList.remove('translate-y-10', 'opacity-0');
-                });
-
-                setTimeout(() => {
-                    dismissToast(toast);
-                }, 3000 + (index * 500)); // Stagger dismiss slightly
-            });
-        });
-    </script>
-    {% block scripts %}{% endblock %}
-
-    {% if current_user.is_authenticated %}
-    <script>
-        // Interactive Heartbeat Logic
-        let lastHeartbeatTime = 0;
-        const HEARTBEAT_INTERVAL = 30000; // 30 seconds throttle
-
-        function sendHeartbeat() {
-            // Don't send if tab is hidden
-            if (document.hidden) return;
-
-            const now = Date.now();
-            // Throttle: Only send if enough time passed
-            if (now - lastHeartbeatTime < HEARTBEAT_INTERVAL) {
-                return;
-            }
-
-            lastHeartbeatTime = now;
-
-            fetch('/api/heartbeat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    path: window.location.pathname
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Handle Notifications
-                if (data.notifications && data.notifications.length > 0) {
-                    data.notifications.forEach(n => {
-                        showGlobalToast(n.message, 'info', n.link);
-                    });
-                    
-                    // Mark all as read
-                    fetch('/api/notifications/read/all', { method: 'POST' });
-                }
-            })
-            .catch(console.error);
-        }
-        
-        // Initial heartbeat
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                lastHeartbeatTime = 0; // Ensure first one fires
-                sendHeartbeat();
-            });
-        } else {
-            lastHeartbeatTime = 0;
-            sendHeartbeat();
-        }
-        
-        // Bind Activity Listeners
-        // We listen for any interaction, and try to send heartbeat (which is throttled)
-        const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart'];
-        
-        activityEvents.forEach(eventType => {
-            window.addEventListener(eventType, () => {
-                sendHeartbeat();
-            }, { passive: true });
-        });
-
-        // Visibility Change: Send immediately when user comes back
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                // Force send by resetting timer
-                lastHeartbeatTime = 0; 
-                sendHeartbeat();
-            }
-        });
-    </script>
-    {% endif %}
-    <!-- System Announcement Modal -->
     <dialog id="announcement_modal" class="modal">
         <div class="modal-box w-11/12 max-w-3xl border border-stone-200 shadow-2xl">
             <h3 id="ann_modal_title" class="font-bold text-2xl mb-4 text-stone-800"></h3>
             <div id="ann_modal_content" class="prose max-w-none text-stone-600"></div>
             <div class="modal-action">
-                <button class="btn btn-primary" onclick="confirmAnnouncement()">我已收到</button>
+                <button class="btn btn-primary" onclick="app.announcements.confirm()">我已收到</button>
             </div>
         </div>
     </dialog>
 
-    <!-- Announcement History Modal -->
     <dialog id="history_modal" class="modal">
         <div class="modal-box w-11/12 max-w-3xl border border-stone-200 shadow-2xl h-[80vh] flex flex-col p-0">
             <div class="p-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
@@ -662,139 +416,246 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     历史公告
                 </h3>
-                <form method="dialog">
-                    <button class="btn btn-sm btn-circle btn-ghost">✕</button>
-                </form>
+                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
             </div>
-            
-            <div id="history_list" class="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-                <!-- Dynamic Content -->
-                <div class="flex flex-col items-center justify-center h-full text-stone-400">
-                    <span class="loading loading-spinner loading-md"></span>
-                </div>
-            </div>
+            <div id="history_list" class="flex-1 overflow-y-auto p-6 flex flex-col gap-4"></div>
         </div>
-        <form method="dialog" class="modal-backdrop">
-            <button>close</button>
-        </form>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
-
-    {% if current_user.is_authenticated %}
+    
+    {% block scripts %}{% endblock %}
+    
     <script>
-        // System Announcement Logic
-        let currentAnnouncementId = null;
+        /**
+         * App Global Module
+         * Encapsulates logic to prevent global namespace pollution
+         */
+        const app = {
+            init() {
+                this.sidebar.init();
+                this.toast.init();
+                this.backToTop.init();
+                {% if current_user.is_authenticated %}
+                this.heartbeat.init();
+                this.announcements.init();
+                {% endif %}
+            },
 
-        function showHistoryModal(e) {
-            if (e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-            
-            document.getElementById('history_modal').showModal();
-            const list = document.getElementById('history_list');
-            list.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-stone-400"><span class="loading loading-spinner loading-md"></span></div>';
-            
-            // Fetch history
-            fetch('/api/announcements/history')
-                .then(res => res.json())
-                .then(data => {
-                    list.innerHTML = '';
+            // --- Back to Top Logic ---
+            backToTop: {
+                el: document.getElementById('back-to-top'),
+                
+                init() {
+                    if (!this.el) return;
+                    window.addEventListener('scroll', () => {
+                        const show = window.scrollY > 300;
+                        this.el.classList.toggle('opacity-0', !show);
+                        this.el.classList.toggle('pointer-events-none', !show);
+                        this.el.classList.toggle('translate-y-10', !show);
+                    }, { passive: true });
+                }
+            },
+
+            // --- Sidebar Logic ---
+            sidebar: {
+                el: document.getElementById('sidebar'),
+                overlay: document.getElementById('sidebar-overlay'),
+                mobileBtn: document.getElementById('mobile-menu-btn'),
+                mobileNavbar: document.getElementById('mobile-navbar'),
+
+                init() {
+                    this.mobileBtn?.addEventListener('click', () => this.toggle());
+                    this.overlay?.addEventListener('click', () => this.toggle());
                     
-                    if (!data.announcements || data.announcements.length === 0) {
-                        list.innerHTML = `
-                            <div class="flex flex-col items-center justify-center h-40 text-stone-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 opacity-20 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                                <p>暂无历史公告</p>
-                            </div>
-                        `;
-                    } else {
-                        data.announcements.forEach(ann => {
-                            const item = document.createElement('div');
-                            item.className = 'collapse collapse-arrow bg-white border border-stone-200 shadow-sm rounded-xl overflow-hidden';
-                            // Checked by default if it's the latest? No, all collapsed.
-                            item.innerHTML = `
-                                <input type="checkbox" name="history-accordion" /> 
-                                <div class="collapse-title text-base font-medium flex justify-between items-center pr-12 py-4">
-                                    <span class="text-stone-800">${ann.title}</span>
-                                    <div class="flex items-center gap-2">
-                                        ${!ann.is_confirmed ? '<span class="badge badge-xs badge-error">未读</span>' : ''}
-                                        <span class="text-xs font-normal text-stone-400 font-mono">${ann.created_at}</span>
-                                    </div>
-                                </div>
-                                <div class="collapse-content prose max-w-none bg-stone-50/50 pt-4 border-t border-stone-100 text-sm">
-                                    ${ann.html}
-                                </div>
-                            `;
-                            list.appendChild(item);
-                        });
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    list.innerHTML = '<p class="text-center text-error py-8">加载失败，请重试</p>';
-                });
-        }
-
-        function confirmAnnouncement() {
-            if (!currentAnnouncementId) return;
-            
-            const btn = document.querySelector('#announcement_modal .btn-primary');
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '确认中...';
-            
-            fetch(`/api/announcements/${currentAnnouncementId}/confirm`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('announcement_modal').close();
-                        // Show dot
-                        document.getElementById('announcement-dot').classList.remove('hidden');
-                        showGlobalToast('已确认收到通知', 'success');
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    showGlobalToast('确认失败，请重试', 'error');
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.textContent = originalText;
-                });
-        }
-
-        function checkAnnouncements() {
-            fetch('/api/announcements/check')
-                .then(res => res.json())
-                .then(data => {
-                    const dot = document.getElementById('announcement-dot');
-                    if (dot) {
-                        if (data.has_history) {
-                            dot.classList.remove('hidden');
+                    // Mobile Navbar Auto-hide on scroll
+                    let lastScroll = 0;
+                    window.addEventListener('scroll', () => {
+                        const currentScroll = window.scrollY;
+                        if (currentScroll > 50 && currentScroll > lastScroll && !this.el.classList.contains('translate-x-0')) {
+                            this.mobileNavbar?.classList.add('-translate-y-full');
                         } else {
-                            dot.classList.add('hidden');
+                            this.mobileNavbar?.classList.remove('-translate-y-full');
                         }
-                    }
-                    
-                    if (data.has_unconfirmed) {
-                        currentAnnouncementId = data.announcement.id;
-                        document.getElementById('ann_modal_title').textContent = data.announcement.title;
-                        document.getElementById('ann_modal_content').innerHTML = data.announcement.html;
-                        
-                        // Delay slightly to ensure DOM is ready and avoid conflicts
-                        setTimeout(() => {
-                            document.getElementById('announcement_modal').showModal();
-                        }, 1000);
-                    }
-                })
-                .catch(console.error);
-        }
+                        lastScroll = currentScroll;
+                    }, { passive: true });
+                },
 
-        // Run on load
-        window.addEventListener('load', () => {
-            checkAnnouncements();
+                toggle() {
+                    if (this.el.classList.contains('-translate-x-full')) {
+                        this.el.classList.remove('-translate-x-full');
+                        this.overlay.classList.remove('hidden');
+                    } else {
+                        this.el.classList.add('-translate-x-full');
+                        this.overlay.classList.add('hidden');
+                    }
+                }
+            },
+
+            // --- Toast Logic ---
+            toast: {
+                container: document.getElementById('toast-container'),
+                
+                init() {
+                    // Load server-side messages
+                    document.querySelectorAll('.server-toast').forEach((el, idx) => {
+                        setTimeout(() => this.show(el.textContent, el.dataset.category), idx * 200);
+                    });
+                },
+
+                show(message, type = 'info', link = null) {
+                    const el = document.createElement('div');
+                    const iconMap = {
+                        success: '<i class="fas fa-check-circle text-green-400"></i>',
+                        error: '<i class="fas fa-times-circle text-red-400"></i>',
+                        warning: '<i class="fas fa-exclamation-triangle text-yellow-400"></i>',
+                        info: '<i class="fas fa-info-circle text-blue-400"></i>'
+                    };
+
+                    el.className = `pointer-events-auto bg-stone-900/80 backdrop-blur-md text-white border border-white/10 ring-1 ring-white/5 shadow-xl rounded-2xl p-4 min-w-[320px] max-w-[400px] flex items-start gap-3 transition-all duration-500 translate-y-10 opacity-0`;
+                    
+                    if (link) {
+                        el.classList.add('cursor-pointer', 'hover:bg-stone-800');
+                        el.onclick = (e) => !e.target.closest('button') && (window.location.href = link);
+                    }
+
+                    el.innerHTML = `
+                        <div class="mt-0.5 text-lg">${iconMap[type] || iconMap.info}</div>
+                        <div class="flex-1 text-sm font-medium leading-relaxed">${message}</div>
+                        <button onclick="this.parentElement.remove()" class="btn btn-xs btn-ghost btn-circle text-white/50 hover:text-white">✕</button>
+                    `;
+
+                    this.container.appendChild(el);
+                    requestAnimationFrame(() => el.classList.remove('translate-y-10', 'opacity-0'));
+                    setTimeout(() => {
+                        el.style.opacity = '0';
+                        el.style.transform = 'translateY(10px)';
+                        setTimeout(() => el.remove(), 300);
+                    }, 4000);
+                }
+            },
+
+            {% if current_user.is_authenticated %}
+            // --- Heartbeat Logic ---
+            heartbeat: {
+                lastTime: 0,
+                interval: 30000,
+                
+                init() {
+                    this.send();
+                    // Throttle user activity events
+                    ['mousedown', 'keydown', 'touchstart'].forEach(evt => {
+                        window.addEventListener(evt, () => this.schedule(), { passive: true });
+                    });
+                    document.addEventListener('visibilitychange', () => !document.hidden && this.send());
+                },
+
+                schedule() {
+                    if (Date.now() - this.lastTime > this.interval) this.send();
+                },
+
+                send() {
+                    if (document.hidden) return;
+                    this.lastTime = Date.now();
+                    
+                    fetch('/api/heartbeat', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ path: window.location.pathname })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.notifications?.length) {
+                            data.notifications.forEach(n => app.toast.show(n.message, 'info', n.link));
+                            fetch('/api/notifications/read/all', { method: 'POST' });
+                        }
+                    })
+                    .catch(() => {}); // Silent fail
+                }
+            },
+
+            // --- Announcements Logic ---
+            announcements: {
+                currentId: null,
+
+                init() {
+                    this.check();
+                },
+
+                check() {
+                    fetch('/api/announcements/check')
+                        .then(r => r.json())
+                        .then(data => {
+                            const dot = document.getElementById('announcement-dot');
+                            if (dot) dot.classList.toggle('hidden', !data.has_history);
+                            
+                            if (data.has_unconfirmed) {
+                                this.currentId = data.announcement.id;
+                                document.getElementById('ann_modal_title').textContent = data.announcement.title;
+                                document.getElementById('ann_modal_content').innerHTML = data.announcement.html;
+                                setTimeout(() => document.getElementById('announcement_modal').showModal(), 1000);
+                            }
+                        })
+                        .catch(console.error);
+                },
+
+                confirm() {
+                    if (!this.currentId) return;
+                    const btn = document.querySelector('#announcement_modal .btn-primary');
+                    btn.disabled = true;
+                    
+                    fetch(`/api/announcements/${this.currentId}/confirm`, { method: 'POST' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                document.getElementById('announcement_modal').close();
+                                document.getElementById('announcement-dot').classList.remove('hidden');
+                                app.toast.show('已确认收到通知', 'success');
+                            }
+                        })
+                        .finally(() => btn.disabled = false);
+                },
+
+                showHistory(e) {
+                    e?.preventDefault();
+                    e?.stopPropagation();
+                    const list = document.getElementById('history_list');
+                    document.getElementById('history_modal').showModal();
+                    list.innerHTML = '<div class="grid place-items-center h-full"><span class="loading loading-spinner"></span></div>';
+
+                    fetch('/api/announcements/history')
+                        .then(r => r.json())
+                        .then(data => {
+                            list.innerHTML = '';
+                            if (!data.announcements?.length) {
+                                list.innerHTML = '<div class="text-center text-stone-400 py-10">暂无历史公告</div>';
+                                return;
+                            }
+                            data.announcements.forEach(ann => {
+                                const el = document.createElement('div');
+                                el.className = 'collapse collapse-arrow bg-white border border-stone-200 rounded-xl';
+                                el.innerHTML = `
+                                    <input type="checkbox" />
+                                    <div class="collapse-title font-medium flex justify-between pr-12">
+                                        <span>${ann.title}</span>
+                                        <div class="flex items-center gap-2">
+                                            ${!ann.is_confirmed ? '<span class="badge badge-xs badge-error">未读</span>' : ''}
+                                            <span class="text-xs text-stone-400 font-mono">${ann.created_at}</span>
+                                        </div>
+                                    </div>
+                                    <div class="collapse-content border-t border-stone-100 bg-stone-50/50 pt-4 prose max-w-none text-sm">${ann.html}</div>
+                                `;
+                                list.appendChild(el);
+                            });
+                        });
+                }
+            }
+            {% endif %}
+        };
+
+        // Boot
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
         });
     </script>
-    {% endif %}
 </body>
 </html>

@@ -1,112 +1,232 @@
 {% extends "base.html" %}
 
-{% block title %}编辑徽章{% endblock %}
+{% block title %}编辑徽章 - {{ badge.name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-base-content tracking-tight">编辑徽章</h1>
-        <a href="{{ url_for('manage_badges') }}" class="btn btn-ghost">返回列表</a>
+<div class="max-w-5xl mx-auto">
+    <div class="text-sm breadcrumbs mb-4 text-base-content/60">
+        <ul>
+            <li><a href="{{ url_for('manage_badges') }}">徽章管理</a></li>
+            <li>编辑徽章</li>
+            <li class="font-bold">{{ badge.name }}</li>
+        </ul>
     </div>
 
-    <div class="card bg-base-100 shadow-xl border border-base-200">
-        <div class="card-body">
-            <form method="post" class="flex flex-col gap-4" enctype="multipart/form-data">
-                <div class="form-control">
-                    <label class="label"><span class="label-text">徽章名称</span></label>
-                    <input type="text" name="name" class="input input-bordered" value="{{ badge.name }}" required />
-                </div>
-                
-                <div class="form-control">
-                    <label class="label"><span class="label-text">图标（请选择图片文件）</span></label>
-                    {% if badge.icon and '/' in badge.icon %}
-                    <div class="mb-2">
-                        <img src="{{ badge.icon }}" alt="当前图标" class="w-12 h-12 object-contain border rounded p-1 bg-base-200">
-                        <p class="text-xs text-base-content/60 mt-1">当前图标</p>
+    <form method="post" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="lg:col-span-1 space-y-6">
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body items-center text-center">
+                    <h3 class="card-title text-sm opacity-60 uppercase mb-4">视觉外观</h3>
+                    
+                    <div class="relative group cursor-pointer" onclick="document.getElementById('icon_upload').click()">
+                        <div class="avatar placeholder">
+                            <div class="w-32 h-32 rounded-full bg-base-200 ring ring-base-200 ring-offset-base-100 ring-offset-2 overflow-hidden">
+                                <img id="icon_preview" src="{{ badge.icon|badge_icon_url }}" class="object-contain w-full h-full p-4 transition-opacity duration-300" />
+                            </div>
+                        </div>
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <span class="text-sm font-bold">点击更换</span>
+                        </div>
                     </div>
-                    {% endif %}
-                    <input type="file" name="icon_file" accept="image/*" class="file-input file-input-bordered w-full" />
-                    <label class="label">
-                        <span class="label-text-alt text-base-content/60">留空则保持原图标不变</span>
-                    </label>
-                </div>
-                
-                <div class="form-control">
-                    <label class="label"><span class="label-text">描述</span></label>
-                    <textarea name="description" class="textarea textarea-bordered">{{ badge.description }}</textarea>
-                </div>
+                    <input type="file" id="icon_upload" name="icon_file" accept="image/*" class="hidden" onchange="previewImage(this)" />
+                    <p class="text-xs text-base-content/40 mt-2">支持 JPG, PNG, GIF, WebP</p>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="form-control">
-                        <label class="label"><span class="label-text">贴纸数量</span></label>
-                        <input type="number" name="sticker_count" class="input input-bordered" value="{{ badge.sticker_count or 1 }}" min="1" />
-                        <label class="label"><span class="label-text-alt">获得此成就可得到的贴纸数</span></label>
+                    <div class="divider my-2"></div>
+
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text font-medium">徽章名称</span></label>
+                        <input type="text" name="name" class="input input-bordered w-full text-center font-bold" value="{{ badge.name }}" required />
                     </div>
-                    <div class="form-control">
-                        <label class="label"><span class="label-text">发行限量</span></label>
-                        <input type="number" name="total_limit" class="input input-bordered" value="{{ badge.total_limit if badge.total_limit is not none else '' }}" placeholder="留空为无限量" />
-                        <label class="label"><span class="label-text-alt">当前已发放: {{ badge.issued_count }}</span></label>
-                    </div>
+
+                    <div class="form-control w-full">
+                    <label class="label"><span class="label-text font-medium">分类标签</span></label>
+                    <input type="text" name="category" class="input input-bordered w-full text-center" value="{{ badge.category or '一般' }}" list="category-list" />
+                    <datalist id="category-list">
+                        <option value="一般"><option value="学习"><option value="社交"><option value="创作"><option value="活动">
+                    </datalist>
                 </div>
                 
-                <div class="form-control">
-                    <label class="label"><span class="label-text">触发条件类型</span></label>
-                    <select name="condition_type" class="select select-bordered" required onchange="toggleConditionInputs(this)">
-                        <option value="manual" {% if badge.condition_type == 'manual' %}selected{% endif %}>手动发放 (管理员分配)</option>
-                        <option value="all_users" {% if badge.condition_type == 'all_users' %}selected{% endif %}>全员获取 (新老用户)</option>
-                        <option value="login_days_in_range" {% if badge.condition_type == 'login_days_in_range' %}selected{% endif %}>限时登录天数 (指定时间段内)</option>
-                        <option value="streak_days" {% if badge.condition_type == 'streak_days' %}selected{% endif %}>连续打卡天数</option>
-                        <option value="study_hours" {% if badge.condition_type == 'study_hours' %}selected{% endif %}>累计学习小时数</option>
-                        <option value="note_count" {% if badge.condition_type == 'note_count' %}selected{% endif %}>累计笔记数量</option>
-                        <option value="featured_count" {% if badge.condition_type == 'featured_count' %}selected{% endif %}>累计精选笔记数量</option>
-                        <option value="wiki_edit_count" {% if badge.condition_type == 'wiki_edit_count' %}selected{% endif %}>Wiki 编辑次数 (百科贡献者)</option>
-                        <option value="wiki_create_count" {% if badge.condition_type == 'wiki_create_count' %}selected{% endif %}>Wiki 创建次数 (博学家)</option>
-                        <option value="comment_count" {% if badge.condition_type == 'comment_count' %}selected{% endif %}>评论发布数量 (社区活跃)</option>
-                        <option value="night_owl_sessions" {% if badge.condition_type == 'night_owl_sessions' %}selected{% endif %}>深夜学习天数 (23:00-04:00)</option>
-                        <option value="early_bird" {% if badge.condition_type == 'early_bird' %}selected{% endif %}>早起鸟 (05:00-08:00)</option>
-                        <option value="weekend_warrior" {% if badge.condition_type == 'weekend_warrior' %}selected{% endif %}>周末卷王 (周六日累计小时)</option>
-                        <option value="long_session_count" {% if badge.condition_type == 'long_session_count' %}selected{% endif %}>深度专注次数 (单次>2小时)</option>
-                        <option value="share_count" {% if badge.condition_type == 'share_count' %}selected{% endif %}>分享笔记次数 (乐于分享)</option>
-                        <option value="total_views_received" {% if badge.condition_type == 'total_views_received' %}selected{% endif %}>笔记被阅读次数 (影响力)</option>
+                <div class="divider my-2"></div>
+                
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text font-medium">稀有度</span></label>
+                    <select name="rarity" class="select select-bordered w-full">
+                        <option value="common" {% if badge.rarity == 'common' %}selected{% endif %}>Common (普通)</option>
+                        <option value="rare" {% if badge.rarity == 'rare' %}selected{% endif %}>Rare (稀有)</option>
+                        <option value="epic" {% if badge.rarity == 'epic' %}selected{% endif %}>Epic (史诗)</option>
+                        <option value="legendary" {% if badge.rarity == 'legendary' %}selected{% endif %}>Legendary (传说)</option>
                     </select>
                 </div>
-                
-                <div class="form-control" id="condition_value_group">
-                    <label class="label"><span class="label-text">条件阈值</span></label>
-                    <input type="number" name="condition_value" class="input input-bordered" value="{{ badge.condition_value }}" />
                 </div>
+            </div>
 
-                <div class="form-control hidden" id="time_range_group">
-                    <label class="label"><span class="label-text">时间范围</span></label>
-                    <div class="flex gap-2">
-                        <input type="date" name="start_time" class="input input-bordered w-1/2" value="{{ badge.start_time.strftime('%Y-%m-%d') if badge.start_time else '' }}" />
-                        <input type="date" name="end_time" class="input input-bordered w-1/2" value="{{ badge.end_time.strftime('%Y-%m-%d') if badge.end_time else '' }}" />
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body p-5">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">描述文案</span></label>
+                        <textarea name="description" class="textarea textarea-bordered h-32 leading-relaxed" placeholder="描述这个徽章的含义...">{{ badge.description }}</textarea>
                     </div>
                 </div>
-                
-                <div class="form-control">
-                    <label class="label cursor-pointer justify-start gap-2">
-                        <input type="checkbox" name="is_hidden" class="checkbox" {% if badge.is_hidden %}checked{% endif %} />
-                        <span class="label-text">隐藏成就 (未获得时不显示条件)</span>
-                    </label>
-                </div>
-                
-                <div class="alert alert-info shadow-sm mt-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span>保存后，系统将重新检查所有用户是否满足新的条件，并自动补发徽章。</span>
-                </div>
-                
-                <div class="form-control mt-4">
-                    <button type="submit" class="btn btn-primary">保存修改</button>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
+
+        <div class="lg:col-span-2 space-y-6">
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="card-title text-lg">发放规则配置</h3>
+                        {% if badge.is_hidden %}
+                        <div class="badge badge-warning gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                            隐藏状态
+                        </div>
+                        {% else %}
+                        <div class="badge badge-success badge-outline gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            公开可见
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="bg-base-200/50 p-4 rounded-xl space-y-4">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-medium">触发条件类型</span></label>
+                            <select name="condition_type" class="select select-bordered w-full" required onchange="toggleConditionInputs(this)">
+                                <option value="manual" {% if badge.condition_type == 'manual' %}selected{% endif %}>手动发放 (管理员分配)</option>
+                                <option value="all_users" {% if badge.condition_type == 'all_users' %}selected{% endif %}>全员获取 (新老用户)</option>
+                                <option value="login_days_in_range" {% if badge.condition_type == 'login_days_in_range' %}selected{% endif %}>限时登录天数</option>
+                                <option value="streak_days" {% if badge.condition_type == 'streak_days' %}selected{% endif %}>连续打卡天数</option>
+                                <option value="study_hours" {% if badge.condition_type == 'study_hours' %}selected{% endif %}>累计学习小时数</option>
+                                <option value="note_count" {% if badge.condition_type == 'note_count' %}selected{% endif %}>累计笔记数量</option>
+                                <option value="featured_count" {% if badge.condition_type == 'featured_count' %}selected{% endif %}>累计精选笔记数量</option>
+                                <option value="wiki_edit_count" {% if badge.condition_type == 'wiki_edit_count' %}selected{% endif %}>Wiki 编辑次数</option>
+                                <option value="wiki_create_count" {% if badge.condition_type == 'wiki_create_count' %}selected{% endif %}>Wiki 创建次数</option>
+                                <option value="comment_count" {% if badge.condition_type == 'comment_count' %}selected{% endif %}>评论发布数量</option>
+                                <option value="night_owl_sessions" {% if badge.condition_type == 'night_owl_sessions' %}selected{% endif %}>深夜学习天数</option>
+                                <option value="early_bird" {% if badge.condition_type == 'early_bird' %}selected{% endif %}>早起鸟天数</option>
+                                <option value="weekend_warrior" {% if badge.condition_type == 'weekend_warrior' %}selected{% endif %}>周末卷王 (小时)</option>
+                                <option value="long_session_count" {% if badge.condition_type == 'long_session_count' %}selected{% endif %}>深度专注次数</option>
+                                <option value="share_count" {% if badge.condition_type == 'share_count' %}selected{% endif %}>分享笔记次数</option>
+                                <option value="total_views_received" {% if badge.condition_type == 'total_views_received' %}selected{% endif %}>笔记被阅读次数</option>
+                            </select>
+                        </div>
+
+                        <div class="form-control" id="condition_value_group">
+                            <label class="label"><span class="label-text font-medium">条件阈值</span></label>
+                            <input type="number" name="condition_value" class="input input-bordered" value="{{ badge.condition_value }}" placeholder="例如：10" />
+                            <label class="label"><span class="label-text-alt text-base-content/60">达到此数值时自动发放</span></label>
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-medium">条件描述（可选）</span></label>
+                            <input type="text" name="custom_condition_text" class="input input-bordered" value="{{ badge.custom_condition_text or '' }}" placeholder="例如：连续7天早起打卡" />
+                            <label class="label"><span class="label-text-alt text-base-content/60">如果填写，将在成就卡片上优先显示此文本，否则自动生成</span></label>
+                        </div>
+
+                        <div class="form-control hidden" id="time_range_group">
+                            <label class="label"><span class="label-text font-medium">有效时间段</span></label>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <input type="date" name="start_time" class="input input-bordered w-full" value="{{ badge.start_time.strftime('%Y-%m-%d') if badge.start_time else '' }}" />
+                                <span class="hidden sm:inline self-center font-bold text-base-content/30">→</span>
+                                <input type="date" name="end_time" class="input input-bordered w-full" value="{{ badge.end_time.strftime('%Y-%m-%d') if badge.end_time else '' }}" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="divider">限制与奖励</div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-medium">贴纸奖励数</span></label>
+                            <div class="join">
+                                <button type="button" class="btn join-item" onclick="this.nextElementSibling.stepDown()">-</button>
+                                <input type="number" name="sticker_count" class="input input-bordered join-item w-full text-center" value="{{ badge.sticker_count or 1 }}" min="1" />
+                                <button type="button" class="btn join-item" onclick="this.previousElementSibling.stepUp()">+</button>
+                            </div>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">发行限量</span>
+                                <span class="label-text-alt">当前已发: <span class="font-mono font-bold">{{ badge.issued_count }}</span></span>
+                            </label>
+                            <input type="number" name="total_limit" class="input input-bordered" value="{{ badge.total_limit if badge.total_limit is not none else '' }}" placeholder="留空为无限量" />
+                        </div>
+                    </div>
+
+                    <div class="form-control mt-6 space-y-3">
+                        <label class="label cursor-pointer justify-start gap-3 bg-base-100 border border-base-200 p-3 rounded-lg hover:border-warning transition-colors">
+                            <input type="checkbox" name="is_hidden" class="checkbox checkbox-warning" {% if badge.is_hidden %}checked{% endif %} />
+                            <div>
+                                <span class="label-text font-medium">设置为隐藏成就</span>
+                                <p class="text-xs text-base-content/50">用户在获得该徽章之前，无法在列表中看到它的条件。</p>
+                            </div>
+                        </label>
+                        
+                        <label class="label cursor-pointer justify-start gap-3 bg-base-100 border border-base-200 p-3 rounded-lg hover:border-secondary transition-colors">
+                            <input type="checkbox" name="is_secret" class="checkbox checkbox-secondary" {% if badge.is_secret %}checked{% endif %} />
+                            <div>
+                                <span class="label-text font-medium">设置为神秘成就</span>
+                                <p class="text-xs text-base-content/50">未解锁时完全保密（图标问号，标题???，描述隐藏）。</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body p-5">
+                    <div class="alert alert-info shadow-none bg-info/10 text-info-content text-sm mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>保存修改后，系统将自动重新计算所有用户的达成情况。</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <button type="button" class="btn btn-ghost text-error btn-sm hover:bg-error/10" onclick="document.getElementById('delete_modal').showModal()">
+                            删除徽章
+                        </button>
+                        <div class="flex gap-3">
+                            <a href="{{ url_for('manage_badges') }}" class="btn btn-ghost">取消</a>
+                            <button type="submit" class="btn btn-primary px-8">保存更改</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
 </div>
+
+<dialog id="delete_modal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg text-error">删除确认</h3>
+    <p class="py-4">您确定要删除徽章 <strong>{{ badge.name }}</strong> 吗？<br>此操作将从所有已获得该徽章的用户中移除它，且无法撤销。</p>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">取消</button>
+      </form>
+      <form method="post" action="{{ url_for('delete_badge', badge_id=badge.id) }}">
+        <button type="submit" class="btn btn-error">确认删除</button>
+      </form>
+    </div>
+  </div>
+</dialog>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+// 图片预览逻辑
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('icon_preview').src = e.target.result;
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// 联动逻辑（保持一致）
 function toggleConditionInputs(select) {
     const val = select.value;
     const timeGroup = document.getElementById('time_range_group');
@@ -115,7 +235,7 @@ function toggleConditionInputs(select) {
     if (val === 'login_days_in_range') {
         timeGroup.classList.remove('hidden');
         valueGroup.classList.remove('hidden');
-    } else if (val === 'all_users') {
+    } else if (val === 'all_users' || val === 'manual') {
         timeGroup.classList.add('hidden');
         valueGroup.classList.add('hidden');
     } else {
@@ -124,7 +244,7 @@ function toggleConditionInputs(select) {
     }
 }
 
-// Initial state
+// 初始化状态
 document.addEventListener('DOMContentLoaded', () => {
     const select = document.querySelector('select[name="condition_type"]');
     if (select) toggleConditionInputs(select);

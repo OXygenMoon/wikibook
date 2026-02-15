@@ -1,334 +1,395 @@
 {% extends "base.html" %}
 
+{% block title %}{{ page.title if page else wiki.title }}{% endblock %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('markdown_css') }}">
 <style>
+    /* 侧边栏 TOC 专用样式 */
     .toc-link {
         display: block;
-        padding: 0.35rem 0.5rem;
-        font-size: 0.85rem;
+        padding: 0.25rem 0.5rem 0.25rem 0.75rem;
+        font-size: 0.8rem;
         color: #78716c; /* stone-500 */
-        border-left: 2px solid transparent;
+        border-left: 2px solid #e7e5e4; /* stone-200 */
         transition: all 0.2s;
-        margin-left: -1px; /* Overlap border */
+        text-decoration: none;
+        line-height: 1.4;
     }
     .toc-link:hover {
         color: #1c1917; /* stone-900 */
-        border-left-color: #d6d3d1; /* stone-300 */
+        border-left-color: #a8a29e; /* stone-400 */
+        background-color: rgba(0,0,0,0.02);
     }
     .toc-link.active {
-        color: #ea580c; /* primary */
+        color: #ea580c; /* primary (orange) */
         border-left-color: #ea580c;
-        font-weight: 500;
+        font-weight: 600;
         background-color: transparent;
     }
-    .toc-h1 { padding-left: 0.5rem; }
-    .toc-h2 { padding-left: 1rem; }
-    .toc-h3 { padding-left: 2rem; }
     
-    /* 隐藏滚动条但保留功能 */
-    .hide-scrollbar::-webkit-scrollbar {
-        display: none;
-    }
-    .hide-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
+    /* 层级缩进 */
+    .toc-h1 { padding-left: 0.75rem; }
+    .toc-h2 { padding-left: 1.25rem; }
+    .toc-h3 { padding-left: 1.75rem; }
+    
+    /* 页面列表当前页高亮 */
+    .page-link-active {
+        background-color: #fff7ed;
+        color: #ea580c;
+        font-weight: 600;
+        border-right: 2px solid #ea580c;
     }
 </style>
 {% endblock %}
 
 {% block sidebar_menu %}
     {% include "wiki/sidebar.html" %}
+
+    <div class="h-px bg-stone-200 my-4 mx-2"></div>
+
+    <div class="menu-section-title flex items-center justify-between">
+        <span>页面列表</span>
+        <span class="bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded text-[10px]">{{ pages|length }}</span>
+    </div>
+    
+    <div class="space-y-0.5 mb-6">
+        {% for p in pages %}
+        <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors duration-200 truncate {{ 'page-link-active' if page and p.slug == page.slug else 'text-stone-600 hover:bg-stone-100 hover:text-stone-900' }}" 
+           title="{{ p.title }}">
+            {{ p.title }}
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if page %}
+    <div id="sidebar-toc-wrapper" class="hidden">
+        <div class="menu-section-title">本页目录</div>
+        <nav id="toc-container" class="mb-8 pr-2">
+            </nav>
+    </div>
+    {% endif %}
+
 {% endblock %}
 
 {% block content %}
-<div class="flex flex-col lg:flex-row gap-6 h-full">
+<div id="main-content-wrapper" class="w-full max-w-5xl mx-auto flex flex-col gap-6 transition-all duration-300 ease-in-out">
     
-    <div class="flex-1 min-w-0 flex flex-col gap-6">
-        
-        <div class="card bg-base-100 shadow-sm border border-stone-100">
-            <div class="card-body p-5 flex-row items-start justify-between gap-4">
-                <div class="flex-1 min-w-0 group relative">
-                    <h2 class="text-xl font-bold text-stone-800 truncate" title="{{ wiki.title }}">{{ wiki.title }}</h2>
-                    <p class="text-sm text-stone-500 mt-1 line-clamp-1 group-hover:line-clamp-none transition-all duration-300 bg-base-100 z-10">
-                        {{ wiki.description }}
-                    </p>
-                    {% if wiki.description|length > 50 %}
-                    <div class="hidden group-hover:block absolute top-full left-0 mt-2 p-3 bg-stone-800 text-white text-xs rounded shadow-lg z-50 max-w-md">
-                        {{ wiki.description }}
-                    </div>
-                    {% endif %}
+    <div class="card bg-base-100 shadow-sm border border-stone-100">
+        <div class="card-body p-4 sm:p-5 flex-row items-start justify-between gap-4">
+            <div class="flex-1 min-w-0 group relative">
+                <h2 class="text-xl font-bold text-stone-800 truncate" title="{{ wiki.title }}">{{ wiki.title }}</h2>
+                <p class="text-sm text-stone-500 mt-1 line-clamp-1 group-hover:line-clamp-none transition-all duration-300 bg-base-100 z-10">
+                    {{ wiki.description }}
+                </p>
+                {% if wiki.description|length > 50 %}
+                <div class="hidden group-hover:block absolute top-full left-0 mt-2 p-3 bg-stone-800 text-white text-xs rounded shadow-lg z-50 max-w-md">
+                    {{ wiki.description }}
                 </div>
+                {% endif %}
             </div>
-        </div>
 
-        <div class="card bg-base-100 shadow-sm border border-stone-100 min-h-[70vh]">
-            <div class="card-body p-6 lg:p-10">
-                {% if page %}
-                    <div class="flex items-center justify-between mb-8 pb-4 border-b border-stone-100">
-                      <div>
-                        <h1 class="text-3xl font-bold text-stone-800">{{ page.title }}</h1>
-                        {% if page.tags %}
-                        <div class="flex items-center gap-2 mt-2">
-                            {% for tag in page.tags %}
-                            <span class="badge badge-sm badge-outline">{{ tag.name }}</span>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <button onclick="convert_wiki_page()" class="btn btn-sm btn-ghost gap-1 text-stone-500 hover:text-primary transition-colors" title="转换为我的笔记">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
-                            <span class="hidden sm:inline">转为笔记</span>
-                        </button>
-
-                        {% if can_edit %}
-                        <div class="dropdown dropdown-end">
-                            <label tabindex="0" class="btn btn-sm btn-ghost gap-1 text-stone-500">
-                                更多
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                            </label>
-                            <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 border border-stone-100">
-                                <li>
-                                    <a href="{{ url_for('edit_page', wiki_id=wiki.id, slug=page.slug) }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                        编辑页面
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="{{ url_for('page_history', wiki_id=wiki.id, slug=page.slug) }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        历史版本
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                        {% endif %}
-                        <span class="text-xs text-stone-400">最后更新: {{ page.updated_at.strftime('%Y-%m-%d') }}</span>
-                      </div>
+            <!-- Contributors Section -->
+            <div class="flex items-center -space-x-2 flex-shrink-0">
+                <!-- Author -->
+                {% if wiki.created_by %}
+                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar tooltip tooltip-bottom" data-tip="作者: {{ wiki.created_by.username }}">
+                    <div class="w-8 h-8 rounded-full border-2 border-white bg-primary text-primary-content text-xs font-bold grid place-items-center relative z-30">
+                        {{ wiki.created_by.username[0]|upper if wiki.created_by.username else '?' }}
                     </div>
-
-                    {% if not can_view_wiki(wiki.id) and not is_subscribed %}
-                        <div class="alert alert-warning shadow-lg">
-                            <div>
-                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                <span>请先订阅此 Wiki 以查看完整内容。</span>
-                            </div>
-                        </div>
-                    {% else %}
-                        <div class="markdown-body prose prose-stone max-w-none lg:prose-lg">
-                          {{ html|safe }}
-                        </div>
-                        
-                        {% if page.comment_enabled %}
-                        <div class="border-t border-stone-100 mt-12 pt-8">
-                            <h3 class="text-lg font-bold text-stone-700 mb-6 flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
-                                评论 ({{ page.comments|length }})
-                            </h3>
-                            
-                            <div class="space-y-6 mb-8">
-                                {% for comment in page.comments %}
-                                <div class="flex gap-4 group">
-                                    <div class="avatar placeholder">
-                                        <div class="bg-stone-200 text-stone-600 rounded-full w-10 h-10">
-                                            <span class="text-sm">{{ comment.user.username[0] | upper }}</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex-1">
-                                        <div class="flex items-center gap-2 mb-1">
-                                            <span class="font-bold text-sm text-stone-700">{{ comment.user.username }}</span>
-                                            <span class="text-xs text-stone-400">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                                            
-                                            {% if current_user.is_admin or current_user.id == comment.user_id %}
-                                            <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post" class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button type="submit" class="btn btn-ghost btn-xs text-error" title="删除评论" onclick="return confirm('确定要删除这条评论吗？')">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
-                                            </form>
-                                            {% endif %}
-                                        </div>
-                                        <div class="p-3 bg-stone-50 rounded-lg rounded-tl-none text-sm text-stone-600 whitespace-pre-wrap">{{ comment.content }}</div>
-                                    </div>
-                                </div>
-                                {% else %}
-                                <div class="text-center py-8 text-stone-400 italic">
-                                    暂无评论
-                                </div>
-                                {% endfor %}
-                            </div>
-                            
-                            <form action="{{ url_for('comment_wiki_page', wiki_id=wiki.id, slug=page.slug) }}" method="post" class="flex gap-4">
-                                <div class="avatar placeholder">
-                                    <div class="bg-primary text-primary-content rounded-full w-10 h-10">
-                                        <span class="text-sm">{{ current_user.username[0] | upper }}</span>
-                                    </div>
-                                </div>
-                                <div class="flex-1 flex gap-2">
-                                    <textarea name="content" class="textarea textarea-bordered w-full h-20 resize-none bg-stone-50 focus:bg-white" placeholder="发表评论..." required></textarea>
-                                    <button type="submit" class="btn btn-primary h-auto">发表</button>
-                                </div>
-                            </form>
-                        </div>
-                        {% endif %}
-                    {% endif %}
-                {% else %}
-                    <div class="hero h-full">
-                      <div class="hero-content text-center">
-                        <div class="max-w-md">
-                          <h1 class="text-3xl font-bold text-stone-300 mb-4">欢迎来到 {{ wiki.title }}</h1>
-                          {% if can_edit %}
-                          <p class="py-6 text-stone-500">点击左侧管理菜单创建第一个页面</p>
-                          <a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="btn btn-primary">立即创建</a>
-                          {% else %}
-                          <p class="text-stone-400">此 Wiki 暂无内容，敬请期待。</p>
-                          {% endif %}
-                        </div>
-                      </div>
+                </a>
+                {% endif %}
+                
+                <!-- Top Contributors -->
+                {% for c in contributors[:2] %}
+                {% if c[0] %}
+                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar tooltip tooltip-bottom" data-tip="贡献者: {{ c[0].username }}">
+                    <div class="w-8 h-8 rounded-full border-2 border-white bg-stone-200 text-stone-600 text-xs font-bold grid place-items-center hover:bg-stone-300 transition-colors relative z-20">
+                        {{ c[0].username[0]|upper if c[0].username else '?' }}
                     </div>
+                </a>
+                {% endif %}
+                {% endfor %}
+                
+                <!-- More Count -->
+                {% if contributors|length > 2 %}
+                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar placeholder tooltip tooltip-bottom" data-tip="查看全部 {{ contributors|length }} 位贡献者">
+                    <div class="w-8 h-8 rounded-full border-2 border-white bg-stone-100 text-stone-500 text-xs font-bold grid place-items-center hover:bg-stone-200 transition-colors relative z-10">
+                        <span>+{{ contributors|length - 2 }}</span>
+                    </div>
+                </a>
                 {% endif %}
             </div>
         </div>
-        
     </div>
 
-    <aside class="hidden xl:block w-72 flex-shrink-0 sticky top-6 self-start max-h-[calc(100vh-3rem)] overflow-y-auto hide-scrollbar">
-        <div class="flex flex-col gap-8 pr-2">
-            
-            <div>
-                <div class="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 px-2 flex items-center justify-between">
-                    <span>页面列表</span>
-                    <span class="text-[10px] bg-stone-100 px-1.5 py-0.5 rounded-md">{{ pages|length }}</span>
-                </div>
-                <ul class="space-y-0.5">
-                    {% for p in pages %}
-                    <li>
-                        <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="block px-3 py-2 rounded-lg text-sm truncate transition-all duration-200 {{ 'bg-primary/10 text-primary font-medium' if page and p.slug == page.slug else 'text-stone-600 hover:bg-stone-100 hover:text-stone-900' }}" title="{{ p.title }}">
-                            {{ p.title }}
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-
+    <div class="card bg-base-100 shadow-sm border-[3px] border-stone-200 min-h-[70vh]">
+        <div class="card-body p-6 lg:p-10">
             {% if page %}
-            <div>
-                <div class="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 px-2">
-                    本页目录
-                </div>
-                <nav id="toc-container" class="relative pl-2 text-sm text-stone-600 border-l border-stone-100 ml-2 space-y-1">
-                    </nav>
-            </div>
-            {% endif %}
+                <div class="flex items-center justify-between mb-8 pb-4 border-b border-stone-100">
+                  <div class="min-w-0 flex-1 mr-4">
+                    <h1 class="text-3xl font-bold text-stone-800 break-words">{{ page.title }}</h1>
+                    {% if page.tags %}
+                    <div class="flex items-center gap-2 mt-2 flex-wrap">
+                        {% for tag in page.tags %}
+                        <span class="badge badge-sm badge-outline">{{ tag.name }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                  </div>
+                  
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    
+                    <button id="width-toggle-btn" class="btn btn-sm btn-ghost gap-1 text-stone-500 hover:text-stone-800 hidden lg:inline-flex" title="切换宽屏/窄屏">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                    </button>
 
+                    <div class="divider divider-horizontal mx-1 py-1 h-6 self-center"></div>
+
+                    <button onclick="convert_wiki_page()" class="btn btn-sm btn-ghost gap-1 text-stone-500 hover:text-primary transition-colors" title="转换为我的笔记">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        <span class="hidden xl:inline">转为笔记</span>
+                    </button>
+
+                    {% if can_edit %}
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-sm btn-ghost gap-1 text-stone-500">
+                            更多
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </label>
+                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 border border-stone-100 z-20">
+                            <li>
+                                <a href="{{ url_for('edit_page', wiki_id=wiki.id, slug=page.slug) }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    编辑页面
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ url_for('page_history', wiki_id=wiki.id, slug=page.slug) }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    历史版本
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+                
+                <div class="flex justify-end mb-4">
+                     <span class="text-xs text-stone-400">更新于 {{ page.updated_at.strftime('%Y-%m-%d') }}</span>
+                </div>
+
+                {% if not can_view_wiki(wiki.id) and not is_subscribed %}
+                    <div class="alert alert-warning shadow-lg">
+                        <div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            <span>请先订阅此 Wiki 以查看完整内容。</span>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="markdown-body prose prose-stone max-w-none lg:prose-lg">
+                      {{ html|safe }}
+                    </div>
+                    
+                    {% if page.comment_enabled %}
+                    <div class="border-t border-stone-100 mt-12 pt-8">
+                        <h3 class="text-lg font-bold text-stone-700 mb-6 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                            评论 ({{ page.comments|length }})
+                        </h3>
+                        
+                        <div class="space-y-6 mb-8">
+                            {% for comment in page.comments %}
+                            <div class="flex gap-4 group">
+                                <div class="avatar placeholder">
+                                    <div class="bg-stone-200 text-stone-600 rounded-full w-10 h-10">
+                                        <span class="text-sm">{{ comment.user.username[0] | upper }}</span>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="font-bold text-sm text-stone-700">{{ comment.user.username }}</span>
+                                        <span class="text-xs text-stone-400">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                        {% if current_user.is_admin or current_user.id == comment.user_id %}
+                                        <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post" class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button type="submit" class="btn btn-ghost btn-xs text-error" title="删除评论" onclick="return confirm('确定要删除这条评论吗？')">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                    <div class="p-3 bg-stone-50 rounded-lg rounded-tl-none text-sm text-stone-600 whitespace-pre-wrap">{{ comment.content }}</div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-8 text-stone-400 italic">暂无评论</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <form action="{{ url_for('comment_wiki_page', wiki_id=wiki.id, slug=page.slug) }}" method="post" class="flex gap-4">
+                            <div class="avatar placeholder">
+                                <div class="bg-primary text-primary-content rounded-full w-10 h-10">
+                                    <span class="text-sm">{{ current_user.username[0] | upper }}</span>
+                                </div>
+                            </div>
+                            <div class="flex-1 flex gap-2">
+                                <textarea name="content" class="textarea textarea-bordered w-full h-20 resize-none bg-stone-50 focus:bg-white" placeholder="发表评论..." required></textarea>
+                                <button type="submit" class="btn btn-primary h-auto">发表</button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            {% else %}
+                <div class="hero h-full">
+                  <div class="hero-content text-center">
+                    <div class="max-w-md">
+                      <h1 class="text-3xl font-bold text-stone-300 mb-4">欢迎来到 {{ wiki.title }}</h1>
+                      {% if can_edit %}
+                      <p class="py-6 text-stone-500">点击左侧管理菜单创建第一个页面</p>
+                      <a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="btn btn-primary">立即创建</a>
+                      {% else %}
+                      <p class="text-stone-400">此 Wiki 暂无内容，敬请期待。</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+            {% endif %}
         </div>
-    </aside>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Code block copy button
-    document.querySelectorAll('pre code').forEach((block) => {
-        // Highlight.js might have already processed the block, so we target the pre
-        const pre = block.parentNode;
+    // --- 核心修改点 3: 宽屏/窄屏切换逻辑 ---
+    const widthBtn = document.getElementById('width-toggle-btn');
+    const contentWrapper = document.getElementById('main-content-wrapper');
+    
+    // 图标 SVG 字符串
+    const iconExpand = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>';
+    const iconCompress = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>'; 
+    // 或者使用收缩箭头:
+    const iconContract = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H6m0 0v4m0-4l5 5m7-5h4m-4 0v4m0-4l-5 5m-7-5h-4m4 0v-4m0 4l-5-5m11 5l5-5m-5 5v-4m0 4h4" /></svg>'; // 随便找个类似的，或者用上面的笔记图标
+
+    if (widthBtn && contentWrapper) {
+        // 1. 初始化状态
+        const savedMode = localStorage.getItem('wiki_width_mode');
+        // 默认是窄屏 (savedMode === 'wide' 才是宽屏)
+        let isWide = savedMode === 'wide';
         
-        // Create wrapper
+        // 应用状态函数
+        function applyLayout(wide) {
+            if (wide) {
+                // 宽屏模式：移除 max-w-5xl，设为接近全屏
+                contentWrapper.classList.remove('max-w-5xl');
+                contentWrapper.classList.add('max-w-[98%]'); // 或者 'max-w-none', 'px-4'
+                widthBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'; // 收缩图标
+                widthBtn.setAttribute('title', '恢复窄屏');
+            } else {
+                // 窄屏模式 (默认)
+                contentWrapper.classList.add('max-w-5xl');
+                contentWrapper.classList.remove('max-w-[98%]');
+                widthBtn.innerHTML = iconExpand; // 展开图标
+                widthBtn.setAttribute('title', '切换宽屏');
+            }
+        }
+
+        // 初始应用
+        applyLayout(isWide);
+
+        // 2. 点击事件
+        widthBtn.addEventListener('click', function() {
+            isWide = !isWide;
+            applyLayout(isWide);
+            localStorage.setItem('wiki_width_mode', isWide ? 'wide' : 'narrow');
+        });
+    }
+
+    // --- 原有代码块复制功能 ---
+    document.querySelectorAll('pre code').forEach((block) => {
+        const pre = block.parentNode;
         const wrapper = document.createElement('div');
         wrapper.className = 'relative group';
         pre.parentNode.insertBefore(wrapper, pre);
         wrapper.appendChild(pre);
         
-        // Create button
         const button = document.createElement('button');
         button.className = 'absolute top-2 right-2 p-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100';
         button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>';
         button.title = '复制';
         
-        // Copy functionality
         button.addEventListener('click', async () => {
-            const code = block.textContent; // Get raw code
+            const code = block.textContent;
             try {
                 await navigator.clipboard.writeText(code);
                 const originalIcon = button.innerHTML;
                 button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
-                setTimeout(() => {
-                    button.innerHTML = originalIcon;
-                }, 2000);
-            } catch (err) {
-                console.error('Failed to copy!', err);
-            }
+                setTimeout(() => { button.innerHTML = originalIcon; }, 2000);
+            } catch (err) { console.error('Failed to copy!', err); }
         });
-        
         wrapper.appendChild(button);
     });
 
+    // --- 原有 TOC 生成逻辑 ---
     const content = document.querySelector('.markdown-body');
     const tocContainer = document.getElementById('toc-container');
+    const tocWrapper = document.getElementById('sidebar-toc-wrapper');
     
     if (content && tocContainer) {
         const headers = content.querySelectorAll('h1, h2, h3');
-        
-        if (headers.length === 0) {
-            tocContainer.innerHTML = '<p class="px-2 text-xs text-stone-400 italic">暂无目录</p>';
-            return;
-        }
-
-        const tocLinks = [];
-
-        headers.forEach((header, index) => {
-            // Add ID to header if not present
-            if (!header.id) {
-                header.id = 'heading-' + index;
-            }
-
-            const link = document.createElement('a');
-            link.href = '#' + header.id;
-            link.textContent = header.textContent;
-            link.className = 'toc-link toc-' + header.tagName.toLowerCase();
-            
-            // Smooth scroll
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                header.scrollIntoView({ behavior: 'smooth' });
-                updateTOCVisibility(index);
+        if (headers.length > 0) {
+            if (tocWrapper) tocWrapper.classList.remove('hidden');
+            const tocLinks = [];
+            headers.forEach((header, index) => {
+                if (!header.id) header.id = 'heading-' + index;
+                const link = document.createElement('a');
+                link.href = '#' + header.id;
+                link.textContent = header.textContent;
+                link.className = 'toc-link toc-' + header.tagName.toLowerCase();
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    header.scrollIntoView({ behavior: 'smooth' });
+                    updateTOCVisibility(index);
+                });
+                tocContainer.appendChild(link);
+                tocLinks.push(link);
             });
-
-            tocContainer.appendChild(link);
-            tocLinks.push(link);
-        });
-
-        function updateTOCVisibility(activeIndex) {
-            // Update active class only
-            tocLinks.forEach((link, idx) => {
-                if (idx === activeIndex) {
-                    link.classList.add('active');
-                } else {
-                    link.classList.remove('active');
-                }
-            });
-        }
-
-        // Initialize with first item
-        updateTOCVisibility(0);
-
-        // Scroll spy
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const id = entry.target.id;
-                    const index = Array.from(headers).findIndex(h => h.id === id);
-                    if (index !== -1) {
-                        updateTOCVisibility(index);
+            function updateTOCVisibility(activeIndex) {
+                tocLinks.forEach((link, idx) => {
+                    if (idx === activeIndex) {
+                        link.classList.add('active');
+                        if (idx > 0 && idx < tocLinks.length - 1) {
+                             const rect = link.getBoundingClientRect();
+                             const navRect = document.querySelector('#sidebar nav').getBoundingClientRect();
+                             if (rect.bottom > navRect.bottom || rect.top < navRect.top) {
+                                 link.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                             }
+                        }
+                    } else {
+                        link.classList.remove('active');
                     }
-                }
-            });
-        }, { rootMargin: '-100px 0px -66%' });
-
-        headers.forEach(header => observer.observe(header));
+                });
+            }
+            updateTOCVisibility(0);
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.id;
+                        const index = Array.from(headers).findIndex(h => h.id === id);
+                        if (index !== -1) updateTOCVisibility(index);
+                    }
+                });
+            }, { rootMargin: '-100px 0px -66%' });
+            headers.forEach(header => observer.observe(header));
+        }
     }
 });
 
@@ -336,9 +397,7 @@ function convert_wiki_page() {
     if (confirm('确定要将当前页面内容转换为您的个人笔记吗？')) {
         fetch("{{ url_for('convert_wiki_page', wiki_id=wiki.id, slug=page.slug) }}", {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
+            headers: { 'Content-Type': 'application/json' }
         })
         .then(response => response.json())
         .then(data => {
@@ -350,10 +409,7 @@ function convert_wiki_page() {
                 alert('转换失败: ' + (data.error || '未知错误'));
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('请求发生错误');
-        });
+        .catch(error => { console.error('Error:', error); alert('请求发生错误'); });
     }
 }
 </script>

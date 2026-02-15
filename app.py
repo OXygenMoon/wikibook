@@ -3,8 +3,9 @@ from datetime import datetime, timedelta, timezone
 import csv
 import io
 import openpyxl
-from flask import Flask, render_template, redirect, url_for, request, flash, abort, send_file, Response, make_response, jsonify
+from flask import Flask, render_template, redirect, url_for, request, flash, abort, send_file, Response, make_response, jsonify,session
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text, inspect
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -326,6 +327,10 @@ class Badge(db.Model):
     condition_value = db.Column(db.Integer, nullable=False)
     is_hidden = db.Column(db.Boolean, default=False) # Hidden badges won't show conditions until earned
     sticker_count = db.Column(db.Integer, default=1) # Number of stickers this badge provides
+    category = db.Column(db.String(50), default="一般") # Achievement category
+    rarity = db.Column(db.String(20), default="common") # common, rare, epic, legendary
+    is_secret = db.Column(db.Boolean, default=False) # Secret achievements (??? when locked)
+    custom_condition_text = db.Column(db.String(255), nullable=True) # Custom description for condition
     total_limit = db.Column(db.Integer, nullable=True) # Max number of users who can earn this badge (Null = infinite)
     issued_count = db.Column(db.Integer, default=0) # Current number of users who earned this
     start_time = db.Column(db.DateTime, nullable=True) # For time-limited badges
@@ -348,6 +353,19 @@ class Wiki(db.Model):
     description = db.Column(db.Text, default="")
     created_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=now_utc8)
+    
+    # Appearance Settings
+    bg_color = db.Column(db.String(20), default="#ffffff")
+    fg_color = db.Column(db.String(20), default="#1f2937")
+    pattern = db.Column(db.String(50), default="pattern-none")
+    
+    # Advanced Appearance (Arc Style)
+    blur_level = db.Column(db.Integer, default=60) # px
+    gradient_bg = db.Column(db.String(50), default="radial") # radial, linear, conical
+    gradient_color = db.Column(db.String(20), default="") # Second color for gradient
+    gradient_direction = db.Column(db.String(50), default="to bottom right") # Direction of gradient
+    
+    created_by = db.relationship("User", foreign_keys=[created_by_id])
     pages = db.relationship("WikiPage", backref="wiki", cascade="all, delete-orphan")
     subscriptions = db.relationship("Subscription", backref="wiki", cascade="all, delete-orphan")
     editors = db.relationship("WikiEditor", backref="wiki", cascade="all, delete-orphan")
@@ -435,6 +453,7 @@ class Note(db.Model):
     is_featured = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=now_utc8)
     updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
+    icon = db.Column(db.String(255), nullable=True) # Emoji or Image URL
     
     comment_enabled = db.Column(db.Boolean, default=True)
 
@@ -533,6 +552,53 @@ def can_view_wiki(wiki_id):
     if can_edit_wiki(wiki_id):
         return True
     return Subscription.query.filter_by(wiki_id=wiki_id, user_id=current_user.id).first() is not None
+
+def format_badge_condition(badge):
+    """Format badge condition into human-readable Chinese string"""
+    if badge.custom_condition_text:
+        return badge.custom_condition_text
+        
+    ctype = badge.condition_type
+    val = badge.condition_value
+    
+    if ctype == 'manual':
+        return '管理员手动发放'
+    elif ctype == 'all_users':
+        return '注册即可获得'
+    elif ctype == 'login_days_in_range':
+        return f'活动期间累计登录 {val} 天'
+    elif ctype == 'streak_days':
+        return f'连续学习打卡 {val} 天'
+    elif ctype == 'study_hours':
+        return f'累计学习时长 {val} 小时'
+    elif ctype == 'note_count':
+        return f'发布公开笔记 {val} 篇'
+    elif ctype == 'featured_count':
+        return f'获得精选笔记 {val} 篇'
+    elif ctype == 'wiki_edit_count':
+        return f'参与Wiki编辑 {val} 次'
+    elif ctype == 'wiki_create_count':
+        return f'创建Wiki知识库 {val} 个'
+    elif ctype == 'comment_count':
+        return f'发表评论 {val} 条'
+    elif ctype == 'night_owl_sessions':
+        return f'深夜(23:00-4:00)学习 {val} 天'
+    elif ctype == 'early_bird':
+        return f'早起(5:00-8:00)学习 {val} 天'
+    elif ctype == 'weekend_warrior':
+        return f'周末累计学习 {val} 小时'
+    elif ctype == 'long_session_count':
+        return f'单次专注超过2小时 {val} 次'
+    elif ctype == 'share_count':
+        return f'分享笔记 {val} 次'
+    elif ctype == 'total_views_received':
+        return f'笔记累计被阅读 {val} 次'
+    else:
+        return f'{ctype}: {val}'
+
+@app.template_filter('badge_condition_text')
+def badge_condition_text_filter(badge):
+    return format_badge_condition(badge)
 
 def process_tags(tag_string):
     if not tag_string:
@@ -750,10 +816,27 @@ def create_wiki():
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         description = request.form.get("description", "").strip()
+        bg_color = request.form.get("bg_color", "#ffffff").strip()
+        fg_color = request.form.get("fg_color", "#1f2937").strip()
+        pattern = request.form.get("pattern", "pattern-none").strip()
+        blur_level = request.form.get("blur_level", 60, type=int)
+        gradient_color = request.form.get("gradient_color", "").strip()
+        gradient_direction = request.form.get("gradient_direction", "to bottom right").strip()
+        
         if not title:
             flash("标题不能为空")
             return redirect(url_for("create_wiki"))
-        w = Wiki(title=title, description=description, created_by_id=current_user.id)
+        w = Wiki(
+            title=title, 
+            description=description, 
+            created_by_id=current_user.id,
+            bg_color=bg_color,
+            fg_color=fg_color,
+            pattern=pattern,
+            blur_level=blur_level,
+            gradient_color=gradient_color,
+            gradient_direction=gradient_direction
+        )
         db.session.add(w)
         db.session.commit()
         
@@ -821,6 +904,13 @@ def edit_wiki(wiki_id):
     if request.method == "POST":
         w.title = request.form.get("title", "").strip()
         w.description = request.form.get("description", "").strip()
+        w.bg_color = request.form.get("bg_color", "#ffffff").strip()
+        w.fg_color = request.form.get("fg_color", "#1f2937").strip()
+        w.pattern = request.form.get("pattern", "pattern-none").strip()
+        w.blur_level = request.form.get("blur_level", 60, type=int)
+        w.gradient_color = request.form.get("gradient_color", "").strip()
+        w.gradient_direction = request.form.get("gradient_direction", "to bottom right").strip()
+        
         if not w.title:
             flash("标题不能为空")
             return redirect(url_for("edit_wiki", wiki_id=wiki_id))
@@ -907,44 +997,9 @@ def new_page(wiki_id):
         return redirect(url_for("view_page", wiki_id=wiki_id, slug=slug))
     return render_template("wiki/new_page.html", wiki=w)
 
-@app.route("/wikis/<int:wiki_id>/pages/<slug>")
-@login_required
-def view_page(wiki_id, slug):
-    w = Wiki.query.get_or_404(wiki_id)
-    # 详情页允许所有登录用户访问，以便订阅
-    p = WikiPage.query.filter_by(wiki_id=wiki_id, slug=slug).first_or_404()
-    
-    # 记录浏览日志
-    log = WikiViewLog(wiki_id=wiki_id, user_id=current_user.id)
-    db.session.add(log)
-    p.view_count += 1
-    db.session.commit()
-    
-    # 排序逻辑：
-    # 1. 尝试将 slug 转换为整数
-    # 2. 负数（置顶）升序：-10, -5, -1
-    # 3. 正数（普通）升序：1, 2, 5, 10
-    all_pages = WikiPage.query.filter_by(wiki_id=wiki_id).all()
-    
-    def page_sort_key(page):
-        try:
-            val = int(page.slug)
-        except ValueError:
-            val = 999999 # 非整数排在最后
-        
-        # 为了让负数排在正数前面，且各自内部升序
-        # 负数保持原值（越小越前？不，用户说“负数为置顶, 且按照负数升序置顶”）
-        # 假设用户意思是：-5, -2, -1 这样排在 1, 2, 3 前面
-        # 还是 -1, -2, -5？通常置顶是数字越小越靠前，或者特定的置顶区
-        # 用户原话：“负数为置顶, 且按照负数升序置顶”。即 -10 在 -1 前面。
-        # 那么直接按照数值升序即可：-10 < -1 < 1 < 10
-        return val
 
-    sorted_pages = sorted(all_pages, key=page_sort_key)
-    
-    html = markdown(p.content_md or "")
-    is_subscribed = Subscription.query.filter_by(wiki_id=wiki_id, user_id=current_user.id).first() is not None
-    return render_template("wiki/view_page.html", wiki=w, page=p, pages=sorted_pages, html=html, can_edit=can_edit_wiki(wiki_id), is_subscribed=is_subscribed)
+
+
 
 @app.route("/wikis/<int:wiki_id>/pages/<slug>/edit", methods=["GET", "POST"])
 @login_required
@@ -1115,24 +1170,65 @@ def wiki_stats(wiki_id):
         abort(403)
     w = Wiki.query.get_or_404(wiki_id)
     subscribers = User.query.join(Subscription).filter(Subscription.wiki_id == wiki_id).all()
-    now = datetime.utcnow()
+    now = datetime.utcnow() # 注意：这里尽量统一用 now_utc8()，如果之前的代码混用了请自行统一
+    
+    # 统计概览
     periods = {
-        "1h": now - timedelta(hours=1),
-        "12h": now - timedelta(hours=12),
-        "1d": now - timedelta(days=1),
-        "1w": now - timedelta(weeks=1),
-        "1m": now - timedelta(days=30),
-        "3m": now - timedelta(days=90),
-        "6m": now - timedelta(days=180),
-        "1y": now - timedelta(days=365)
+        "1h": timedelta(hours=1),
+        "12h": timedelta(hours=12),
+        "1d": timedelta(days=1),
+        "1w": timedelta(weeks=1),
+        "1m": timedelta(days=30),
+        "3m": timedelta(days=90),
+        "6m": timedelta(days=180),
+        "1y": timedelta(days=365)
     }
     view_stats = {}
     sub_stats = {}
-    for label, start_time in periods.items():
+    
+    for label, delta in periods.items():
+        start_time = now - delta
         view_stats[label] = WikiViewLog.query.filter(WikiViewLog.wiki_id == wiki_id, WikiViewLog.timestamp >= start_time).count()
         sub_stats[label] = Subscription.query.filter(Subscription.wiki_id == wiki_id, Subscription.created_at >= start_time).count()
-    return render_template("admin/wiki_stats.html", wiki=w, subscribers=subscribers, view_stats=view_stats, sub_stats=sub_stats)
 
+    # --- 新增：生成最近 14 天的每日趋势数据供图表使用 ---
+    trend_days = 14
+    trend_start = now - timedelta(days=trend_days)
+    
+    # 获取最近14天的所有日志
+    raw_logs = WikiViewLog.query.filter(
+        WikiViewLog.wiki_id == wiki_id, 
+        WikiViewLog.timestamp >= trend_start
+    ).all()
+    
+    # 按日期聚合
+    date_counts = {}
+    # 初始化过去14天每一天为0，防止断层
+    for i in range(trend_days):
+        d = (now - timedelta(days=i)).strftime("%m-%d")
+        date_counts[d] = 0
+        
+    for log in raw_logs:
+        # 假设 timestamp 是 UTC，简单转为字符串日期统计
+        # 如果需要精确的 +8区，建议 log.timestamp + timedelta(hours=8)
+        d_str = (log.timestamp + timedelta(hours=8)).strftime("%m-%d")
+        if d_str in date_counts:
+            date_counts[d_str] += 1
+            
+    # 整理成 Chart.js 需要的列表 (按日期升序)
+    chart_labels = sorted(date_counts.keys())
+    chart_data = [date_counts[d] for d in chart_labels]
+
+    return render_template(
+        "admin/wiki_stats.html", 
+        wiki=w, 
+        subscribers=subscribers, 
+        view_stats=view_stats, 
+        sub_stats=sub_stats,
+        chart_labels=chart_labels, # 传递给模板
+        chart_data=chart_data      # 传递给模板
+    )
+    
 @app.route("/admin/wikis/<int:wiki_id>/editors", methods=["GET", "POST"])
 @login_required
 def manage_editors(wiki_id):
@@ -1477,6 +1573,10 @@ def manage_badges():
                 pass
             
         is_hidden = request.form.get("is_hidden") == "on"
+        is_secret = request.form.get("is_secret") == "on"
+        category = request.form.get("category", "一般").strip() or "一般"
+        rarity = request.form.get("rarity", "common").strip()
+        custom_condition_text = request.form.get("custom_condition_text", "").strip()
         
         # Parse dates
         start_time = None
@@ -1503,6 +1603,8 @@ def manage_badges():
             condition_type=condition_type,
             condition_value=condition_value,
             sticker_count=sticker_count,
+            category=category,
+            custom_condition_text=custom_condition_text,
             total_limit=total_limit,
             is_hidden=is_hidden,
             start_time=start_time,
@@ -1601,6 +1703,10 @@ def edit_badge(badge_id):
             b.total_limit = None
             
         b.is_hidden = request.form.get("is_hidden") == "on"
+        b.is_secret = request.form.get("is_secret") == "on"
+        b.category = request.form.get("category", "一般").strip() or "一般"
+        b.rarity = request.form.get("rarity", "common").strip()
+        b.custom_condition_text = request.form.get("custom_condition_text", "").strip()
         
         # Parse dates
         if request.form.get("start_time"):
@@ -1872,6 +1978,9 @@ def public_profile(user_id):
     # Stats
     stats = user.calculate_stats()
     
+    # Total Users for Global Rarity
+    total_users = User.query.count() or 1
+    
     # Badges
     user_badges = UserBadge.query.filter_by(user_id=user.id).order_by(UserBadge.earned_at.desc()).all()
     earned_badge_ids = [ub.badge_id for ub in user_badges]
@@ -1886,6 +1995,34 @@ def public_profile(user_id):
     is_study_partner = current_user.is_following(user) and user.is_following(current_user)
 
     return render_template("user/profile.html", user=user, stats=stats, user_badges=user_badges, unearned_badges=unearned_badges, recent_notes=recent_notes, is_following=is_following, is_study_partner=is_study_partner)
+
+@app.route("/user/<int:user_id>/achievement_book")
+@login_required
+def achievement_book(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # 获取用户已获得的徽章（按获得时间倒序）
+    user_badges = UserBadge.query.filter_by(user_id=user.id).order_by(UserBadge.earned_at.desc()).all()
+    earned_badge_ids = [ub.badge_id for ub in user_badges]
+    
+    # 获取未获得的徽章
+    all_badges = Badge.query.all()
+    unearned_badges = [b for b in all_badges if b.id not in earned_badge_ids]
+    
+    # 获取所有分类（去重）
+    categories = db.session.query(Badge.category).distinct().all()
+    # categories is a list of tuples: [('一般',), ('学习',), ...]
+    category_list = [c[0] for c in categories if c[0]]
+    
+    # Total Users for Global Rarity
+    total_users = User.query.count() or 1
+    
+    return render_template("user/achievement_book.html", 
+                         user=user,
+                         user_badges=user_badges,
+                         unearned_badges=unearned_badges,
+                         categories=category_list,
+                         total_users=total_users)
 
 @app.route("/user/<int:user_id>/follow", methods=["POST"])
 @login_required
@@ -2000,6 +2137,9 @@ def book_index():
     # 精选笔记
     featured_notes = Note.query.filter_by(is_featured=True).order_by(Note.updated_at.desc()).all()
     
+    # Last Edited Note (for Hero Section)
+    last_note = Note.query.filter_by(user_id=current_user.id).order_by(Note.updated_at.desc()).first()
+    
     if q:
         # 1. Title Matches
         my_title = Note.query.filter(
@@ -2042,7 +2182,45 @@ def book_index():
         my_notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.updated_at.desc()).all()
         shared_notes = Note.query.join(NoteShare).filter(NoteShare.user_id == current_user.id).order_by(NoteShare.created_at.desc()).all()
     
-        return render_template("book/index.html", my_notes=my_notes, shared_notes=shared_notes, featured_notes=featured_notes, q=q)
+        return render_template("book/index.html", my_notes=my_notes, shared_notes=shared_notes, featured_notes=featured_notes, q=q, last_note=last_note)
+
+@app.route("/api/notes/search")
+@login_required
+def api_search_notes():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"results": []})
+        
+    # Search my notes
+    my_notes = Note.query.filter(
+        Note.user_id == current_user.id,
+        (Note.title.contains(q)) | (Note.content_md.contains(q))
+    ).limit(5).all()
+    
+    # Search shared notes
+    shared_notes = Note.query.join(NoteShare).filter(
+        NoteShare.user_id == current_user.id,
+        (Note.title.contains(q)) | (Note.content_md.contains(q))
+    ).limit(5).all()
+    
+    results = []
+    for n in my_notes:
+        results.append({
+            "id": n.id,
+            "title": n.title,
+            "type": "my",
+            "icon": n.icon
+        })
+    for n in shared_notes:
+        results.append({
+            "id": n.id,
+            "title": n.title,
+            "type": "shared",
+            "user": n.user.username,
+            "icon": n.icon
+        })
+        
+    return jsonify({"results": results})
 
 
 
@@ -3309,12 +3487,49 @@ def upgrade_db():
                 conn.execute(db.text("ALTER TABLE badge ADD COLUMN issued_count INTEGER DEFAULT 0"))
                 conn.commit()
 
-if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-        upgrade_db() # Run upgrade check
-        
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5009")), debug=True)
+        if 'category' not in columns:
+            print("Upgrading Badge table: Adding category column...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE badge ADD COLUMN category VARCHAR(50) DEFAULT '一般'"))
+                conn.commit()
+
+        if 'custom_condition_text' not in columns:
+            print("Upgrading Badge table: Adding custom_condition_text column...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE badge ADD COLUMN custom_condition_text VARCHAR(255)"))
+                conn.commit()
+
+        if 'rarity' not in columns:
+            print("Upgrading Badge table: Adding rarity column...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE badge ADD COLUMN rarity VARCHAR(20) DEFAULT 'common'"))
+                conn.commit()
+
+        if 'is_secret' not in columns:
+            print("Upgrading Badge table: Adding is_secret column...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE badge ADD COLUMN is_secret BOOLEAN DEFAULT 0"))
+                conn.commit()
+
+        # Check Wiki table for appearance settings
+        wiki_columns = [c['name'] for c in inspector.get_columns('wiki')]
+        if 'bg_color' not in wiki_columns:
+            print("Upgrading Wiki table: Adding appearance columns...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE wiki ADD COLUMN bg_color VARCHAR(20) DEFAULT '#ffffff'"))
+                conn.execute(db.text("ALTER TABLE wiki ADD COLUMN fg_color VARCHAR(20) DEFAULT '#1f2937'"))
+                conn.execute(db.text("ALTER TABLE wiki ADD COLUMN pattern VARCHAR(50) DEFAULT 'pattern-none'"))
+                conn.commit()
+
+        # Check Note table
+        note_columns = [c['name'] for c in inspector.get_columns('note')]
+        if 'icon' not in note_columns:
+            print("Upgrading Note table: Adding icon column...")
+            with db.engine.connect() as conn:
+                conn.execute(db.text("ALTER TABLE note ADD COLUMN icon VARCHAR(255)"))
+                conn.commit()
+
+
 
 @app.route('/service/wiki/pages')
 @login_required
@@ -3351,3 +3566,110 @@ def service_wiki_pages():
         })
         
     return jsonify({'pages': pages_data})
+
+@app.route("/wikis/<int:wiki_id>/contributors")
+@login_required
+def wiki_contributors(wiki_id):
+    w = Wiki.query.get_or_404(wiki_id)
+    
+    # Get all pages
+    page_ids = db.session.query(WikiPage.id).filter_by(wiki_id=wiki_id).all()
+    page_ids = [p[0] for p in page_ids]
+    
+    contributors = []
+    if page_ids:
+        contributors = db.session.query(
+            User, 
+            db.func.count(WikiPageHistory.id).label('edit_count')
+        ).join(
+            WikiPageHistory, WikiPageHistory.user_id == User.id
+        ).filter(
+            WikiPageHistory.page_id.in_(page_ids)
+        ).group_by(
+            User.id
+        ).order_by(
+            db.text('edit_count DESC')
+        ).all()
+        
+    return render_template("wiki/contributors.html", wiki=w, contributors=contributors)
+
+@app.route("/wikis/<int:wiki_id>/pages/<slug>")
+@login_required
+def view_page(wiki_id, slug):
+    w = Wiki.query.get_or_404(wiki_id)
+    p = WikiPage.query.filter_by(wiki_id=wiki_id, slug=slug).first_or_404()
+    
+    now = now_utc8()
+    
+    # --- 优化逻辑开始 ---
+    
+    # 1. Wiki 整体热度记录 (WikiViewLog) - 针对 Wiki ID 10分钟防抖
+    # 目的：统计 Wiki 的总体活跃度趋势
+    last_log = WikiViewLog.query.filter_by(wiki_id=wiki_id, user_id=current_user.id)\
+        .order_by(WikiViewLog.timestamp.desc()).first()
+    
+    should_commit = False
+    
+    # 如果没有记录，或者最后一条记录超过 600秒 (10分钟)
+    if not last_log or (now - last_log.timestamp).total_seconds() > 600:
+        log = WikiViewLog(wiki_id=wiki_id, user_id=current_user.id, timestamp=now)
+        db.session.add(log)
+        should_commit = True
+
+    # 2. 单个页面浏览计数 (Page View Count) - 针对 Page ID 5分钟防抖 (基于 Session)
+    # 目的：让页面下方的 "浏览量: X" 更真实
+    view_key = f"viewed_page_{p.id}"
+    last_view_ts = session.get(view_key)
+    current_ts = time.time()
+    
+    # 如果 Session 里没有记录，或者距离上次访问超过 300秒 (5分钟)
+    if not last_view_ts or (current_ts - last_view_ts) > 300:
+        p.view_count += 1
+        session[view_key] = current_ts # 更新 Session
+        should_commit = True
+    
+    if should_commit:
+        db.session.commit()
+        
+    # --- 优化逻辑结束 ---
+
+    # 排序逻辑保持不变
+    all_pages = WikiPage.query.filter_by(wiki_id=wiki_id).all()
+    
+    def page_sort_key(page):
+        try:
+            val = int(page.slug)
+        except ValueError:
+            val = 999999 
+        return val
+
+    sorted_pages = sorted(all_pages, key=page_sort_key)
+    
+    html = markdown(p.content_md or "")
+    is_subscribed = Subscription.query.filter_by(wiki_id=wiki_id, user_id=current_user.id).first() is not None
+    
+    # Fetch contributors for title card
+    contributors = []
+    if all_pages:
+        page_ids_list = [pg.id for pg in all_pages]
+        contributors = db.session.query(
+            User, 
+            db.func.count(WikiPageHistory.id).label('edit_count')
+        ).join(
+            WikiPageHistory, WikiPageHistory.user_id == User.id
+        ).filter(
+            WikiPageHistory.page_id.in_(page_ids_list)
+        ).group_by(
+            User.id
+        ).order_by(
+            db.text('edit_count DESC')
+        ).all()
+
+    return render_template("wiki/view_page.html", wiki=w, page=p, pages=sorted_pages, html=html, can_edit=can_edit_wiki(wiki_id), is_subscribed=is_subscribed, contributors=contributors)
+
+if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
+        upgrade_db() # Run upgrade check
+        
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5009")), debug=True)

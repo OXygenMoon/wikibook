@@ -1,51 +1,222 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/github.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/easymde.min.css') }}">
+
+<style>
+    /* =========================================
+       1. EasyMDE 容器主样式 (核心修复)
+       ========================================= */
+    .EasyMDEContainer {
+        display: flex;
+        flex-direction: column;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        /* 默认固定高度：这里控制整体编辑器有多高 */
+        height: 600px; 
+    }
+
+    /* 当编辑器进入【全屏模式】时 */
+    .EasyMDEContainer.fullscreen {
+        height: 100vh !important; /* 撑满屏幕高度 */
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        z-index: 99999 !important; /* 确保盖住所有侧边栏和顶栏 */
+        border-radius: 0 !important;
+    }
+
+    /* =========================================
+       2. 工具栏样式
+       ========================================= */
+    .editor-toolbar {
+        flex-shrink: 0; /* 禁止工具栏被压缩 */
+        border: none !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        background-color: #f9fafb;
+        border-radius: 0.5rem 0.5rem 0 0;
+        padding: 0.5rem !important;
+        
+        /* 强制单行显示，支持横向滚动 */
+        white-space: nowrap;
+        overflow-x: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    /* 全屏时去掉圆角 */
+    .EasyMDEContainer.fullscreen .editor-toolbar {
+        border-radius: 0;
+    }
+
+    /* 隐藏工具栏滚动条 */
+    .editor-toolbar::-webkit-scrollbar { height: 0; }
+
+    /* =========================================
+       3. 编辑区 (CodeMirror) 样式
+       ========================================= */
+    .CodeMirror {
+        flex-grow: 1; /* 自动填满剩余高度 */
+        height: auto !important; /* 覆盖默认高度，让 Flexbox 接管 */
+        border: none !important;
+        border-radius: 0 0 0.5rem 0.5rem;
+        font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        background: #fff;
+    }
+    
+    /* 内部滚动条区域 */
+    .CodeMirror-scroll {
+        min-height: 100% !important;
+    }
+
+    /* =========================================
+       4. 分屏预览区 (Side by Side) 样式
+       ========================================= */
+    /* 默认状态下的预览区 */
+    .editor-preview-side {
+        border: none !important;
+        border-left: 1px solid #e5e7eb !important;
+        background-color: #fafaf9;
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        top: 50px; /* 预留工具栏高度，JS会自动微调但CSS做保底 */
+        height: auto !important; /* 跟随容器 */
+        z-index: 50;
+    }
+
+    /* 【关键修复】：当激活分屏模式且非全屏时 (.sided--no-fullscreen)
+       强制 CodeMirror 和 预览区 并排且各占 50% 
+    */
+    .EasyMDEContainer.sided--no-fullscreen .CodeMirror {
+        width: 50% !important;
+    }
+    
+    .EasyMDEContainer.sided--no-fullscreen .editor-preview-side {
+        width: 50% !important;
+        top: 61px !important; /* 修正顶部距离，对应工具栏高度 */
+        display: block !important;
+    }
+
+    /* 修复公式间距 */
+    .editor-preview-side p { margin: 0.5em 0; }
+</style>
+{% endblock %}
+
 {% block sidebar_menu %}
     {% include "wiki/sidebar.html" %}
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto card bg-base-100 shadow">
-  <div class="card-body">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="card-title">新建页面</h2>
-        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost btn-sm">返回 Wiki</a>
+<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6">
+    
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-stone-800">新建页面</h2>
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost btn-sm gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            返回 Wiki
+        </a>
     </div>
-    <form method="post" class="flex flex-col gap-4">
-      <div class="flex gap-4">
-          <input class="input input-bordered flex-1" name="title" placeholder="标题" required>
-          <input class="input input-bordered flex-1" name="slug" type="number" step="1" placeholder="标识（整数，负数置顶）" required>
-      </div>
-      <input class="input input-bordered w-full" name="tags" placeholder="标签 (用逗号分隔)">
-      <textarea id="md-editor" name="content_md" placeholder="Markdown内容"></textarea>
-      <button class="btn btn-primary mt-4" type="submit">保存</button>
-    </form>
-  </div>
+
+    <div class="card bg-base-100 shadow-sm border border-stone-100">
+        <div class="card-body p-4 sm:p-6">
+            <form method="post" class="flex flex-col gap-5">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="form-control flex-1">
+                        <input class="input input-bordered w-full focus:input-primary font-bold text-lg" name="title" placeholder="在此输入页面标题..." required>
+                    </div>
+                    <div class="form-control w-full md:w-32">
+                        <input class="input input-bordered w-full text-center" name="slug" type="number" step="1" placeholder="排序ID" title="数字越小越靠前" required>
+                    </div>
+                </div>
+                
+                <div class="form-control">
+                    <input class="input input-bordered w-full text-sm" name="tags" placeholder="标签 (例如：算法, 笔记)，用逗号分隔">
+                </div>
+
+                <div class="form-control">
+                    <textarea id="md-editor" name="content_md"></textarea>
+                </div>
+
+                <div class="flex justify-end pt-2">
+                    <button class="btn btn-primary px-8 gap-2" type="submit">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        保存页面
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/vendor/polyfill.min.js') }}"></script>
+<script id="MathJax-script" async src="{{ url_for('static', filename='js/vendor/tex-mml-chtml.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/highlight.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/easymde.min.js') }}"></script>
+
 <script>
+  document.addEventListener('DOMContentLoaded', () => {
+      hljs.highlightAll();
+  });
+
   const easyMDE = new EasyMDE({
     element: document.getElementById('md-editor'),
-    minHeight: "400px",
+    // 不要在 JS 里写 minHeight/maxHeight 了，完全交给 CSS 控制
+    // 这样 Fullscreen 才能生效
+    
+    // 允许分屏
+    sideBySideFullscreen: false, 
+    syncSideBySidePreviewScroll: true,
+    
+    toolbar: [
+        "bold", "italic", "strikethrough", "heading", "|", 
+        "quote", "unordered-list", "ordered-list", "|", 
+        "link", "image", "upload-image", "code", "|",  
+        "preview", "side-by-side", "fullscreen", "|", // side-by-side 和 fullscreen 都会正常工作
+        "guide"
+    ],
+
     uploadImage: true,
     imageUploadEndpoint: "{{ url_for('upload_file') }}",
     imagePathAbsolute: true,
-    imageCSRFToken: "",
+    imageCSRFToken: "", 
     imageMaxSize: 1024 * 1024 * 16,
     imageAccept: "image/png, image/jpeg, image/gif, image/webp",
     imageTexts: {
-        sbInit: "拖拽图片到这里或点击上传",
+        sbInit: "上传图片",
         sbOnDragEnter: "松开上传",
-        sbOnDragLeave: "拖拽图片到这里或点击上传",
+        sbOnDragLeave: "取消",
         sbProgress: "上传中...",
-        sbOnUploaded: "上传成功",
+        sbOnUploaded: "成功",
         sizeUnits: "b,kb,mb"
     },
-    errorCallback: function(errorMessage) {
-        alert("上传失败: " + errorMessage);
-    }
+    errorCallback: (msg) => alert("上传失败: " + msg),
+
+    previewRender: function(plainText) {
+        const preview = document.getElementsByClassName("editor-preview-side")[0];
+        preview.innerHTML = this.parent.markdown(plainText);
+        preview.querySelectorAll('pre code').forEach((block) => hljs.highlightElement(block));
+        if (typeof MathJax !== 'undefined') MathJax.typesetPromise([preview]);
+        return preview.innerHTML;
+    },
   });
+
+  // 页面加载后自动开启分屏
+  // 延迟一点以确保 CSS 布局计算完成
+  setTimeout(function() {
+      if (!easyMDE.isSideBySideActive()) {
+          easyMDE.toggleSideBySide();
+      }
+  }, 200);
+
 </script>
 {% endblock %}

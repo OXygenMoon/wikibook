@@ -57,6 +57,72 @@
                     </div>
                 </div>
 
+                <!-- Appearance Settings -->
+                <div class="bg-stone-50 rounded-xl p-4 border border-stone-100">
+                    <h3 class="text-sm font-bold text-stone-600 mb-3 flex items-center gap-2">
+                        <i class="fas fa-palette text-purple-500"></i> 外观设置
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-medium">背景颜色</span></label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" name="bg_color" value="#ffffff" class="h-10 w-full cursor-pointer rounded-lg border border-stone-200 p-1" />
+                            </div>
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-medium">前景/纹理颜色</span></label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" name="fg_color" value="#1f2937" class="h-10 w-full cursor-pointer rounded-lg border border-stone-200 p-1" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-medium">渐变颜色 (可选)</span></label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" name="gradient_color" value="#ffffff" class="h-10 w-full cursor-pointer rounded-lg border border-stone-200 p-1" />
+                            </div>
+                            <p class="text-xs text-stone-400 mt-1">设置背景渐变的第二种颜色，与背景色混合。</p>
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-medium">渐变方向/类型</span></label>
+                            <select name="gradient_direction" class="select select-bordered w-full h-10 min-h-0">
+                                <option value="to bottom right" selected>↘ 右下 (默认)</option>
+                                <option value="to right">→ 向右</option>
+                                <option value="to bottom">↓ 向下</option>
+                                <option value="to bottom left">↙ 左下</option>
+                                <option value="to left">← 向左</option>
+                                <option value="to top left">↖ 左上</option>
+                                <option value="to top">↑ 向上</option>
+                                <option value="to top right">↗ 右上</option>
+                                <option value="circle at center">◉ 径向 (中心)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-control mt-4">
+                        <label class="label"><span class="label-text font-medium">背景模糊度 (高斯模糊)</span></label>
+                        <div class="flex items-center gap-4">
+                            <span class="text-xs text-stone-400">清晰</span>
+                            <input type="range" name="blur_level" min="0" max="100" step="1" value="60" class="range range-primary range-sm" />
+                            <span class="text-xs text-stone-400">模糊</span>
+                        </div>
+                        <p class="text-xs text-stone-400 mt-2">调整卡片背景的高斯模糊程度。</p>
+                    </div>
+
+                    <div class="form-control mt-4">
+                        <label class="label"><span class="label-text font-medium">Arc 风格颗粒度</span></label>
+                        <div class="flex items-center gap-4">
+                            <span class="text-xs text-stone-400">细腻</span>
+                            <input type="range" name="pattern" min="0" max="0.3" step="0.01" value="0.05" class="range range-primary range-sm" />
+                            <span class="text-xs text-stone-400">粗糙</span>
+                        </div>
+                        <p class="text-xs text-stone-400 mt-2">调整表面噪点的强度，营造 Arc 浏览器的纸质/磨砂质感。</p>
+                    </div>
+                </div>
+
                 <!-- Initialization Options -->
                 <div class="bg-stone-50 rounded-xl p-4 border border-stone-100">
                     <h3 class="text-sm font-bold text-stone-600 mb-3 flex items-center gap-2">

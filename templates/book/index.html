@@ -3,64 +3,38 @@
 {% block title %}Book 首页{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/sticker.css') }}">
 {% endblock %}
 
 {% block content %}
-<!-- Sticker System -->
-<div id="sticker-canvas"></div>
-
-<button id="sticker-fab" class="sticker-fab btn btn-circle btn-primary btn-lg shadow-lg">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-</button>
-
-<div id="sticker-drawer" class="sticker-drawer">
-    <div class="sticker-drawer-header">
-        <h3 class="font-bold text-lg">我的贴纸库</h3>
-        <div class="flex gap-2">
-            <button id="sticker-save-btn" class="btn btn-primary btn-sm">保存</button>
-            <button id="sticker-close-btn" class="btn btn-ghost btn-sm btn-circle">✕</button>
-        </div>
-    </div>
-    <div class="sticker-drawer-body">
-        <div class="sticker-grid">
-            {% for ub in current_user.earned_badges %}
-            <div class="sticker-option" 
-                 data-badge-id="{{ ub.badge.id }}" 
-                 data-badge-icon="{{ ub.badge.icon | badge_icon_url }}"
-                 title="{{ ub.badge.name }}">
-                <div class="sticker-option-icon">
-                    {% if ub.badge.icon | is_image_icon %}
-                        <img src="{{ ub.badge.icon | badge_icon_url }}" alt="{{ ub.badge.name }}">
-                    {% else %}
-                        {{ ub.badge.icon }}
-                    {% endif %}
-                </div>
-                <div class="sticker-option-name">{{ ub.badge.name }}</div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-
-<!-- Hero Section with Search -->
-<div class="text-center space-y-8 py-16 bg-gradient-to-b from-primary/5 to-transparent rounded-3xl mb-12 relative z-10">
-    <div class="space-y-4">
+<div class="text-center space-y-8 py-12 bg-gradient-to-b from-primary/5 to-transparent rounded-3xl mb-8 relative z-10">
+    <div class="flex items-center justify-center gap-4 relative">
         <h1 class="text-4xl lg:text-5xl font-extrabold text-base-content tracking-tight">
             知识笔记库 <span class="text-primary">WikiBook</span>
         </h1>
-        <p class="text-lg text-base-content/60 max-w-2xl mx-auto">
-            探索精选笔记，记录学习心得，与同学分享知识点滴。
-        </p>
+        
+        <!-- Last Edited Note Shortcut -->
+        {% if last_note %}
+        <div class="absolute left-1/2 ml-[180px] lg:ml-[220px] top-1/2 -translate-y-1/2" title="继续编辑: {{ last_note.title }}">
+            <a href="{{ url_for('view_note', note_id=last_note.id) }}" class="w-12 h-12 rounded-full bg-white shadow-lg border border-primary/20 flex items-center justify-center hover:scale-110 transition-transform group relative">
+                <span class="text-2xl">{{ last_note.icon or '📝' }}</span>
+                <span class="absolute left-full ml-3 px-2 py-1 bg-base-300 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-sm pointer-events-none">
+                    {{ last_note.title }}
+                </span>
+            </a>
+        </div>
+        {% endif %}
     </div>
+    
+    <p class="text-lg text-base-content/60 max-w-2xl mx-auto mt-4">
+        探索精选笔记，记录学习心得，与同学分享知识点滴。
+    </p>
 
-    <div class="max-w-2xl mx-auto px-4">
+    <div class="max-w-2xl mx-auto px-4 relative z-50 mt-8">
         <div class="relative group">
             <input type="text" id="quickInput" name="q" value="{{ q }}" 
-                class="input input-lg w-full pl-12 pr-32 bg-white shadow-lg border-stone-200 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-full transition-all duration-300" 
-                placeholder="搜索笔记内容或生成快速笔记...">
+                oninput="handleSearchInput(this.value)"
+                class="input input-lg w-full pl-12 pr-32 bg-white shadow-xl border-stone-200 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-full transition-all duration-300" 
+                placeholder="搜索笔记内容或生成快速笔记..." autocomplete="off">
             
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -77,18 +51,343 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </button>
             </div>
+
+            <!-- Instant Search Dropdown -->
+            <div id="instantSearchResults" class="absolute top-full left-0 right-0 mt-2 bg-base-100 rounded-2xl shadow-2xl border border-base-200 hidden overflow-hidden transition-all text-left">
+                <!-- Results injected via JS -->
+            </div>
         </div>
     </div>
 </div>
 
+<div class="flex justify-between items-center mb-6 px-1">
+    <h2 class="text-xl font-bold text-base-content flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21L10.714 14.143 5 12l5.714-2.143L13 3z" /></svg>
+        精选笔记
+    </h2>
+    <div class="flex gap-2">
+        <a href="{{ url_for('my_notes') }}" class="btn btn-sm btn-ghost gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            我的统计
+        </a>
+        <a href="{{ url_for('new_note') }}" class="btn btn-sm btn-primary gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            新建笔记
+        </a>
+    </div>
+</div>
+
+{% if not q %}
+    <!-- Featured Notes -->
+    {% if featured_notes %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        {% for note in featured_notes %}
+        <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-lg transition-all border border-base-200 group h-full">
+            <div class="card-body p-5">
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="avatar placeholder">
+                        <div class="bg-primary/10 text-primary rounded-full w-8 h-8">
+                            <span class="text-xs font-bold">{{ note.user.username[0] | upper }}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-base-content/80">{{ note.user.username }}</div>
+                        <div class="text-[10px] text-base-content/40">{{ note.updated_at.strftime('%Y-%m-%d') }}</div>
+                    </div>
+                    <div class="ml-auto badge badge-xs badge-warning gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                        精选
+                    </div>
+                </div>
+                
+                <h3 class="card-title text-lg mb-2 group-hover:text-primary transition-colors line-clamp-1">{{ note.title }}</h3>
+                <p class="text-sm text-base-content/60 line-clamp-3 mb-4 flex-grow">
+                    {{ note.content_md | striptags }}
+                </p>
+                
+                <div class="flex items-center text-xs text-base-content/40 pt-3 border-t border-base-200/50">
+                    <span class="flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        阅读笔记
+                    </span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% elif not my_notes and not shared_notes %}
+    <div class="text-center py-12 mb-8">
+        <div class="bg-base-200/50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+        </div>
+        <h3 class="text-lg font-bold text-base-content/70">暂无精选笔记</h3>
+        <p class="text-sm text-base-content/50 mt-1">管理员尚未推荐任何笔记</p>
+    </div>
+    {% endif %}
+
+    <div class="divider text-base-content/30 text-sm font-medium my-8">个人空间</div>
+
+    <!-- Tabs -->
+    <div class="flex justify-center mb-8">
+        <div class="tabs tabs-boxed bg-base-100 p-1 rounded-xl border border-base-200 inline-flex shadow-sm">
+            <a class="tab tab-lg px-8 rounded-lg transition-all tab-active bg-white shadow-sm font-bold" id="tab-my" onclick="switchTab('my')">
+                我的笔记
+                <span class="ml-2 badge badge-sm badge-ghost">{{ my_notes|length }}</span>
+            </a>
+            <a class="tab tab-lg px-8 rounded-lg transition-all font-medium text-base-content/70 hover:bg-base-200/50" id="tab-shared" onclick="switchTab('shared')">
+                收到笔记
+                <span class="ml-2 badge badge-sm badge-ghost">{{ shared_notes|length }}</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- My Notes -->
+    <div id="content-my" class="animate-fade-in">
+        {% if my_notes %}
+            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {% for note in my_notes %}
+                <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-xl transition-all duration-300 border border-base-200 group h-full">
+                    <div class="h-2 bg-gradient-to-r from-primary/40 to-secondary/40"></div>
+                    <div class="card-body p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-lg bg-base-200 flex items-center justify-center text-lg">
+                                    {{ note.icon or '📝' }}
+                                </div>
+                                <span class="text-xs text-base-content/40 font-mono">{{ note.updated_at.strftime('%m-%d') }}</span>
+                            </div>
+                            <div class="flex gap-1">
+                                {% for tag in note.tags[:2] %}
+                                    <span class="badge badge-xs badge-outline opacity-70">{{ tag.name }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <h3 class="card-title text-lg font-bold group-hover:text-primary transition-colors line-clamp-1 mb-1">{{ note.title }}</h3>
+                        <p class="text-sm text-base-content/60 line-clamp-3 leading-relaxed">
+                            {{ note.content_md | striptags }}
+                        </p>
+                        
+                        <div class="card-actions justify-end mt-4 pt-3 border-t border-base-100 items-center">
+                            {% if note.is_featured %}
+                            <div class="badge badge-xs badge-warning" title="已设为精选">精选</div>
+                            {% endif %}
+                            {% if note.shares %}
+                            <div class="badge badge-xs badge-ghost gap-1" title="已分享给 {{ note.shares|length }} 人">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                {{ note.shares|length }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-16 bg-base-100 rounded-3xl border border-dashed border-base-300">
+                <div class="w-16 h-16 bg-base-200 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">📝</div>
+                <h3 class="font-bold text-lg opacity-70">还没有笔记</h3>
+                <p class="text-sm opacity-50 mb-6">记录下你的第一个灵感吧</p>
+                <a href="{{ url_for('new_note') }}" class="btn btn-primary btn-sm">创建笔记</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Shared Notes -->
+    <div id="content-shared" class="hidden animate-fade-in">
+        {% if shared_notes %}
+            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {% for note in shared_notes %}
+                <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-xl transition-all duration-300 border border-base-200 group h-full">
+                    <div class="h-2 bg-gradient-to-r from-secondary/40 to-accent/40"></div>
+                    <div class="card-body p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-lg bg-base-200 flex items-center justify-center text-lg">
+                                    {{ note.icon or '📬' }}
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-base-content/80">{{ note.user.username }}</span>
+                                    <span class="text-[10px] text-base-content/40 font-mono">分享于 {{ note.updated_at.strftime('%m-%d') }}</span>
+                                </div>
+                            </div>
+                            <div class="flex gap-1">
+                                {% for tag in note.tags[:2] %}
+                                    <span class="badge badge-xs badge-outline opacity-70">{{ tag.name }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <h3 class="card-title text-lg font-bold group-hover:text-primary transition-colors line-clamp-1 mb-1">{{ note.title }}</h3>
+                        <p class="text-sm text-base-content/60 line-clamp-3 leading-relaxed">
+                            {{ note.content_md | striptags }}
+                        </p>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-16 bg-base-100 rounded-3xl border border-dashed border-base-300">
+                <div class="w-16 h-16 bg-base-200 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">📭</div>
+                <h3 class="font-bold text-lg opacity-70">暂时没有收到笔记</h3>
+                <p class="text-sm opacity-50 mb-6">同学分享的笔记会出现在这里</p>
+            </div>
+        {% endif %}
+    </div>
+
+{% else %}
+    <!-- Search Results View -->
+    <div class="space-y-12 mb-12">
+        <div class="text-center">
+            <h2 class="text-2xl font-bold text-base-content">
+                搜索结果：<span class="text-primary">"{{ q }}"</span>
+            </h2>
+            <p class="text-base-content/60 mt-2">
+                共找到 {{ title_matches|length + content_matches|length }} 条匹配结果
+            </p>
+        </div>
+        
+        <div class="space-y-6">
+            <h3 class="text-xl font-bold text-base-content/80 flex items-center gap-2 border-b border-base-200 pb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg>
+                标题匹配
+                <span class="badge badge-ghost">{{ title_matches|length }}</span>
+            </h3>
+            {% if title_matches %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for note in title_matches %}
+                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-md transition-all border border-base-200 group">
+                        <div class="card-body p-5">
+                            <div class="flex items-center gap-2 mb-2">
+                                {% if note.source_type == 'my' %}
+                                    <div class="badge badge-xs badge-primary">我的</div>
+                                {% else %}
+                                    <div class="badge badge-xs badge-secondary">来自 {{ note.user.username }}</div>
+                                {% endif %}
+                                <span class="text-xs text-base-content/40 ml-auto">{{ note.updated_at.strftime('%Y-%m-%d') }}</span>
+                            </div>
+                            <h3 class="card-title text-lg group-hover:text-primary transition-colors">
+                                {{ note.title | replace(q, '<mark class="bg-yellow-200 rounded-sm px-0.5">' + q + '</mark>') | safe }}
+                            </h3>
+                            <p class="text-sm text-base-content/60 line-clamp-2 mt-2">
+                                {{ note.content_md | striptags }}
+                            </p>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-base-content/40 italic pl-4">没有匹配的标题</p>
+            {% endif %}
+        </div>
+
+        <div class="space-y-6">
+            <h3 class="text-xl font-bold text-base-content/80 flex items-center gap-2 border-b border-base-200 pb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                内容匹配
+                <span class="badge badge-ghost">{{ content_matches|length }}</span>
+            </h3>
+            {% if content_matches %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for note in content_matches %}
+                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-md transition-all border border-base-200 group">
+                        <div class="card-body p-5">
+                            <div class="flex items-center gap-2 mb-2">
+                                {% if note.source_type == 'my' %}
+                                    <div class="badge badge-xs badge-primary">我的</div>
+                                {% else %}
+                                    <div class="badge badge-xs badge-secondary">来自 {{ note.user.username }}</div>
+                                {% endif %}
+                                <span class="text-xs text-base-content/40 ml-auto">{{ note.updated_at.strftime('%Y-%m-%d') }}</span>
+                            </div>
+                            <h3 class="card-title text-lg group-hover:text-primary transition-colors">{{ note.title }}</h3>
+                            <p class="text-sm text-base-content/60 line-clamp-2 mt-2">
+                                {{ note.content_md | striptags | replace(q, '<mark class="bg-yellow-200 rounded-sm px-0.5">' + q + '</mark>') | safe }}
+                            </p>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-base-content/40 italic pl-4">没有匹配的内容</p>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+
+{% endblock %}
+
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/sticker.js') }}?v={{ range(1, 10000) | random }}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        new StickerManager('book');
-    });
-</script>
-<script>
+let searchTimeout;
+
+function handleSearchInput(val) {
+    clearTimeout(searchTimeout);
+    const resultsDiv = document.getElementById('instantSearchResults');
+    
+    if (!val.trim()) {
+        resultsDiv.classList.add('hidden');
+        resultsDiv.innerHTML = '';
+        return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`/api/notes/search?q=${encodeURIComponent(val)}`);
+            const data = await response.json();
+            
+            if (data.results && data.results.length > 0) {
+                resultsDiv.innerHTML = data.results.map(item => `
+                    <a href="/book/notes/${item.id}" class="flex items-center gap-3 p-4 hover:bg-base-100 border-b border-base-100 last:border-0 transition-colors cursor-pointer group">
+                        <div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-lg">
+                            ${item.icon || (item.type === 'my' ? '📝' : '📬')}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-sm text-base-content truncate group-hover:text-primary">${item.title}</h4>
+                            <p class="text-xs text-base-content/50 truncate">
+                                ${item.type === 'my' ? '我的笔记' : `来自 ${item.user}`}
+                            </p>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-base-content/30 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </a>
+                `).join('');
+                resultsDiv.classList.remove('hidden');
+            } else {
+                resultsDiv.innerHTML = `
+                    <div class="p-4 text-center text-sm text-base-content/50">
+                        没有找到相关笔记，按回车搜索更多
+                    </div>
+                `;
+                resultsDiv.classList.remove('hidden');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }, 300);
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const container = document.querySelector('.relative.group');
+    const resultsDiv = document.getElementById('instantSearchResults');
+    if (container && !container.contains(e.target) && resultsDiv) {
+        resultsDiv.classList.add('hidden');
+    }
+});
+
+function switchTab(tab) {
+    // Update Tabs
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('tab-active', 'bg-white', 'shadow-sm'));
+    document.getElementById(`tab-${tab}`).classList.add('tab-active', 'bg-white', 'shadow-sm');
+    
+    // Update Content
+    document.getElementById('content-my').classList.add('hidden');
+    document.getElementById('content-shared').classList.add('hidden');
+    document.getElementById(`content-${tab}`).classList.remove('hidden');
+}
+
 function doSearch() {
     const val = document.getElementById('quickInput').value.trim();
     window.location.href = "{{ url_for('book_index') }}?q=" + encodeURIComponent(val);
@@ -139,230 +438,4 @@ document.getElementById('quickInput').addEventListener('keypress', function(e) {
     }
 });
 </script>
-{% endblock %}
-
-<div class="flex justify-between items-center mb-6 px-1">
-    <h2 class="text-xl font-bold text-base-content flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-        精选笔记
-    </h2>
-    <div class="flex gap-2">
-        <a href="{{ url_for('my_notes') }}" class="btn btn-sm btn-ghost gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-            我的统计
-        </a>
-        <a href="{{ url_for('new_note') }}" class="btn btn-sm btn-primary gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-            新建笔记
-        </a>
-    </div>
-</div>
-
-<!-- Featured Notes Grid -->
-{% if not q %}
-    {% if featured_notes %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        {% for note in featured_notes %}
-        <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-lg transition-all border border-base-200 group h-full">
-            <div class="card-body p-5">
-                <div class="flex items-center gap-2 mb-3">
-                    <div class="avatar placeholder">
-                        <div class="bg-primary/10 text-primary rounded-full w-8 h-8">
-                            <span class="text-xs font-bold">{{ note.user.username[0] | upper }}</span>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-base-content/80">{{ note.user.username }}</div>
-                        <div class="text-[10px] text-base-content/40">{{ note.updated_at.strftime('%Y-%m-%d') }}</div>
-                    </div>
-                    <div class="ml-auto badge badge-xs badge-warning gap-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                        精选
-                    </div>
-                </div>
-                
-                <h3 class="card-title text-lg mb-2 group-hover:text-primary transition-colors line-clamp-1">{{ note.title }}</h3>
-                <p class="text-sm text-base-content/60 line-clamp-3 mb-4 flex-grow">
-                    {{ note.content_md | striptags }}
-                </p>
-                
-                <div class="flex items-center text-xs text-base-content/40 pt-3 border-t border-base-200/50">
-                    <span class="flex items-center gap-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        阅读笔记
-                    </span>
-                </div>
-            </div>
-        </a>
-        {% endfor %}
-    </div>
-    {% elif not my_notes and not shared_notes %}
-    <!-- Empty State if nothing at all -->
-    <div class="text-center py-12 mb-8">
-        <div class="bg-base-200/50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-        </div>
-        <h3 class="text-lg font-bold text-base-content/70">暂无精选笔记</h3>
-        <p class="text-sm text-base-content/50 mt-1">管理员尚未推荐任何笔记</p>
-    </div>
-    {% endif %}
-
-    <div class="divider text-base-content/30 text-sm font-medium my-8">个人空间</div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <!-- 我的笔记列表 -->
-        <div class="space-y-4" id="my-notes">
-            <h2 class="text-lg font-bold text-base-content/70 uppercase tracking-wide px-1 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                我创建的笔记
-            </h2>
-            {% if my_notes %}
-                <div class="grid gap-4 md:grid-cols-2">
-                    {% for note in my_notes %}
-                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-md transition-all border border-base-200 group">
-                        <div class="card-body p-5">
-                            <div class="flex justify-between items-start">
-                                <h3 class="card-title text-lg group-hover:text-primary transition-colors">{{ note.title }}</h3>
-                                <span class="text-xs text-base-content/40">{{ note.updated_at.strftime('%m-%d') }}</span>
-                            </div>
-                            <p class="text-sm text-base-content/60 line-clamp-2 mt-2">
-                                {{ note.content_md | striptags }}
-                            </p>
-                            <div class="card-actions justify-end mt-4 items-center gap-2">
-                                {% if note.is_featured %}
-                                <div class="badge badge-xs badge-warning" title="已设为精选">精选</div>
-                                {% endif %}
-                                {% if note.shares %}
-                                <div class="badge badge-sm badge-ghost gap-1" title="已分享给 {{ note.shares|length }} 人">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                                    {{ note.shares|length }}
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </a>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="text-center py-12 bg-base-100 rounded-xl border border-base-200 border-dashed">
-                    <p class="text-base-content/40">暂无笔记，开始创建第一篇吧！</p>
-                </div>
-            {% endif %}
-        </div>
-
-        <!-- 收到笔记 -->
-        <div class="space-y-4" id="received-notes">
-            <h2 class="text-lg font-bold text-base-content/70 uppercase tracking-wide px-1 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                收到笔记
-            </h2>
-            {% if shared_notes %}
-                <div class="grid gap-4 md:grid-cols-2">
-                    {% for note in shared_notes %}
-                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-md transition-all border border-base-200 group">
-                        <div class="card-body p-5">
-                            <div class="flex items-center gap-3 mb-2">
-                                <div class="avatar placeholder">
-                                    <div class="bg-neutral-focus text-neutral-content rounded-full w-6 h-6">
-                                        <span class="text-xs">{{ note.user.username[0] | upper }}</span>
-                                    </div>
-                                </div>
-                                <span class="text-xs font-bold text-base-content/60">来自 {{ note.user.username }}</span>
-                            </div>
-                            <h3 class="card-title text-lg group-hover:text-primary transition-colors">{{ note.title }}</h3>
-                            <p class="text-sm text-base-content/60 line-clamp-2 mt-2">
-                                {{ note.content_md | striptags }}
-                            </p>
-                        </div>
-                    </a>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="text-center py-12 bg-base-100 rounded-xl border border-base-200 border-dashed">
-                    <p class="text-base-content/40">暂时没有收到笔记</p>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-{% else %}
-    <!-- Search Results Mode -->
-    <div class="space-y-12 mb-12">
-        <div class="text-center">
-            <h2 class="text-2xl font-bold text-base-content">
-                搜索结果：<span class="text-primary">"{{ q }}"</span>
-            </h2>
-            <p class="text-base-content/60 mt-2">
-                共找到 {{ title_matches|length + content_matches|length }} 条匹配结果
-            </p>
-        </div>
-        
-        <!-- Title Matches -->
-        <div class="space-y-6">
-            <h3 class="text-xl font-bold text-base-content/80 flex items-center gap-2 border-b border-base-200 pb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg>
-                标题匹配
-                <span class="badge badge-ghost">{{ title_matches|length }}</span>
-            </h3>
-            {% if title_matches %}
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {% for note in title_matches %}
-                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-md transition-all border border-base-200 group">
-                        <div class="card-body p-5">
-                            <div class="flex items-center gap-2 mb-2">
-                                {% if note.source_type == 'my' %}
-                                    <div class="badge badge-xs badge-primary">我的</div>
-                                {% else %}
-                                    <div class="badge badge-xs badge-secondary">来自 {{ note.user.username }}</div>
-                                {% endif %}
-                                <span class="text-xs text-base-content/40 ml-auto">{{ note.updated_at.strftime('%Y-%m-%d') }}</span>
-                            </div>
-                            <h3 class="card-title text-lg group-hover:text-primary transition-colors">
-                                {{ note.title | replace(q, '<mark class="bg-yellow-200 rounded-sm px-0.5">' + q + '</mark>') | safe }}
-                            </h3>
-                            <p class="text-sm text-base-content/60 line-clamp-2 mt-2">
-                                {{ note.content_md | striptags }}
-                            </p>
-                        </div>
-                    </a>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-base-content/40 italic pl-4">没有匹配的标题</p>
-            {% endif %}
-        </div>
-
-        <!-- Content Matches -->
-        <div class="space-y-6">
-            <h3 class="text-xl font-bold text-base-content/80 flex items-center gap-2 border-b border-base-200 pb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                内容匹配
-                <span class="badge badge-ghost">{{ content_matches|length }}</span>
-            </h3>
-            {% if content_matches %}
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {% for note in content_matches %}
-                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="card bg-base-100 shadow-sm hover:shadow-md transition-all border border-base-200 group">
-                        <div class="card-body p-5">
-                            <div class="flex items-center gap-2 mb-2">
-                                {% if note.source_type == 'my' %}
-                                    <div class="badge badge-xs badge-primary">我的</div>
-                                {% else %}
-                                    <div class="badge badge-xs badge-secondary">来自 {{ note.user.username }}</div>
-                                {% endif %}
-                                <span class="text-xs text-base-content/40 ml-auto">{{ note.updated_at.strftime('%Y-%m-%d') }}</span>
-                            </div>
-                            <h3 class="card-title text-lg group-hover:text-primary transition-colors">{{ note.title }}</h3>
-                            <p class="text-sm text-base-content/60 line-clamp-2 mt-2">
-                                {{ note.content_md | striptags | replace(q, '<mark class="bg-yellow-200 rounded-sm px-0.5">' + q + '</mark>') | safe }}
-                            </p>
-                        </div>
-                    </a>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-base-content/40 italic pl-4">没有匹配的内容</p>
-            {% endif %}
-        </div>
-    </div>
-{% endif %}
 {% endblock %}

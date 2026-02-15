@@ -2,98 +2,121 @@
 
 {% block title %}新建笔记{% endblock %}
 
-{% block content %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/github.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/easymde.min.css') }}">
+
 <style>
-    /* EasyMDE Customization */
+    /* =========================================
+       EasyMDE 容器样式 (复用 Wiki 逻辑)
+       ========================================= */
     .EasyMDEContainer {
-        height: 100%;
         display: flex;
         flex-direction: column;
-        border: none !important;
-        background-color: transparent;
-    }
-    
-    .editor-toolbar {
-        border: none !important;
-        border-bottom: 1px solid hsl(var(--b2)) !important;
-        background-color: hsl(var(--b1)) !important;
-        border-radius: 0 !important;
-        padding: 0.5rem 1rem !important;
-        opacity: 0.8;
-        transition: opacity 0.2s;
-    }
-    
-    .editor-toolbar:hover {
-        opacity: 1;
-    }
-    
-    .editor-toolbar button {
-        border-radius: 0.5rem !important;
-        transition: all 0.2s !important;
-        color: hsl(var(--bc) / 0.6) !important;
-    }
-    
-    .editor-toolbar button:hover, .editor-toolbar button.active {
-        background-color: hsl(var(--b2)) !important;
-        border-color: transparent !important;
-        color: hsl(var(--p)) !important;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        /* 适配笔记页面：自动计算高度，填满屏幕剩余空间 */
+        height: calc(100vh - 320px); 
+        min-height: 400px;
     }
 
-    .CodeMirror {
-        flex: 1;
-        height: auto !important;
-        border: none !important;
-        border-radius: 0 !important;
-        background-color: transparent !important;
-        padding: 1rem !important;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
-        font-size: 0.95rem !important;
-        line-height: 1.6 !important;
-        color: hsl(var(--bc)) !important;
-    }
-
-    .CodeMirror-scroll {
-        min-height: 100% !important;
-    }
-
-    .editor-preview {
-        background-color: hsl(var(--b1)) !important;
-        padding: 2rem !important;
-    }
-
-    /* Fullscreen mode fixes */
+    /* 全屏模式修正 */
     .EasyMDEContainer.fullscreen {
+        height: 100vh !important;
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
         width: 100% !important;
-        height: 100% !important;
-        z-index: 9999 !important;
+        z-index: 99999 !important;
+        border-radius: 0 !important;
+        border: none !important;
     }
-</style>
 
-<div class="max-w-5xl mx-auto">
-    <div class="flex items-center gap-2 text-sm text-base-content/60 mb-6">
-        <a href="{{ url_for('book_index') }}" class="hover:text-primary">我的笔记</a>
+    /* 工具栏样式 */
+    .editor-toolbar {
+        flex-shrink: 0;
+        border: none !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        background-color: #f9fafb;
+        border-radius: 0.5rem 0.5rem 0 0;
+        padding: 0.5rem !important;
+        white-space: nowrap;
+        overflow-x: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .EasyMDEContainer.fullscreen .editor-toolbar { border-radius: 0; }
+    .editor-toolbar::-webkit-scrollbar { height: 0; }
+
+    /* 编辑区样式 */
+    .CodeMirror {
+        flex-grow: 1;
+        height: auto !important;
+        border: none !important;
+        border-radius: 0 0 0.5rem 0.5rem;
+        font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+        font-size: 15px; /* 笔记字体稍微大一点点 */
+        line-height: 1.7;
+        background: #fff;
+        padding: 10px;
+    }
+    .CodeMirror-scroll { min-height: 100% !important; }
+
+    /* 预览区样式 */
+    .editor-preview-side {
+        border: none !important;
+        border-left: 1px solid #e5e7eb !important;
+        background-color: #fafaf9;
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        top: 50px;
+        height: auto !important;
+        z-index: 50;
+    }
+
+    /* 分屏布局控制 (左右各50%) */
+    .EasyMDEContainer.sided--no-fullscreen .CodeMirror { width: 50% !important; }
+    .EasyMDEContainer.sided--no-fullscreen .editor-preview-side {
+        width: 50% !important;
+        top: 61px !important;
+        display: block !important;
+    }
+    
+    /* 修复公式间距 */
+    .editor-preview-side p { margin: 0.5em 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4">
+    <div class="flex items-center gap-2 text-sm text-base-content/60 mb-6 pt-4">
+        <a href="{{ url_for('book_index') }}" class="hover:text-primary transition-colors">我的笔记</a>
         <span>/</span>
-        <span class="text-base-content/80">新建笔记</span>
+        <span class="text-base-content/80 font-medium">新建笔记</span>
     </div>
 
     <div class="card bg-base-100 shadow-xl border border-base-200 overflow-hidden">
         <div class="card-body p-0">
-            <form method="post" class="flex flex-col h-[calc(100vh-12rem)]">
-                <div class="p-6 border-b border-base-200 bg-base-100 space-y-4">
-                    <input type="text" name="title" placeholder="输入笔记标题..." class="input input-ghost text-2xl font-bold w-full focus:bg-transparent px-0 placeholder:text-base-content/30" required autofocus />
-                    <input type="text" name="tags" placeholder="标签 (用逗号分隔)" class="input input-sm input-ghost w-full focus:bg-transparent px-0 placeholder:text-base-content/30" />
+            <form method="post" class="flex flex-col">
+                
+                <div class="p-6 border-b border-base-200 bg-base-100/50 space-y-4">
+                    <input type="text" name="title" placeholder="输入笔记标题..." class="input input-ghost text-2xl font-bold w-full focus:bg-transparent px-0 placeholder:text-base-content/30 border-none focus:outline-none" required autofocus />
+                    <input type="text" name="tags" placeholder="标签 (用逗号分隔，如: 想法, 待办)" class="input input-sm input-ghost w-full focus:bg-transparent px-0 placeholder:text-base-content/30 text-stone-500" />
                 </div>
                 
-                <div class="flex-1 overflow-hidden relative bg-base-100">
-                    <textarea id="markdown-editor" name="content_md" class="hidden"></textarea>
+                <div class="p-4 bg-base-50 flex-1">
+                    <textarea id="markdown-editor" name="content_md"></textarea>
                 </div>
                 
                 <div class="p-4 border-t border-base-200 bg-base-100 flex justify-between items-center z-10">
-                    <a href="{{ url_for('book_index') }}" class="btn btn-ghost">取消</a>
-                    <button type="submit" class="btn btn-primary px-8">保 存</button>
+                    <a href="{{ url_for('book_index') }}" class="btn btn-ghost text-stone-500">取消</a>
+                    <button type="submit" class="btn btn-primary px-8 gap-2 shadow-md shadow-primary/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        保存笔记
+                    </button>
                 </div>
             </form>
         </div>
@@ -102,16 +125,67 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/vendor/polyfill.min.js') }}"></script>
+<script id="MathJax-script" async src="{{ url_for('static', filename='js/vendor/tex-mml-chtml.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/highlight.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/easymde.min.js') }}"></script>
+
 <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        hljs.highlightAll();
+    });
+
     const easyMDE = new EasyMDE({
         element: document.getElementById('markdown-editor'),
-        spellChecker: false,
-        placeholder: "在此输入笔记内容...",
-        status: false,
-        minHeight: "100%",
-        toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "|", "preview", "side-by-side", "fullscreen"],
+        
+        // 核心配置：允许分屏，禁止全屏分屏(使用嵌入式)
+        sideBySideFullscreen: false, 
+        syncSideBySidePreviewScroll: true,
+        status: ["lines", "words", "cursor"], // 显示底部状态栏
+        
+        // 工具栏 (与 Wiki 保持一致，去除了 table)
+        toolbar: [
+            "bold", "italic", "strikethrough", "heading", "|", 
+            "quote", "unordered-list", "ordered-list", "|", 
+            "link", "image", "upload-image", "code", "|",  
+            "preview", "side-by-side", "fullscreen", "|",
+            "guide"
+        ],
+
+        // 图片上传配置
+        uploadImage: true,
+        imageUploadEndpoint: "{{ url_for('upload_file') }}",
+        imagePathAbsolute: true,
+        imageCSRFToken: "", 
+        imageMaxSize: 1024 * 1024 * 16,
+        imageAccept: "image/png, image/jpeg, image/gif, image/webp",
+        imageTexts: {
+            sbInit: "上传图片",
+            sbOnDragEnter: "松开上传",
+            sbOnDragLeave: "取消",
+            sbProgress: "上传中...",
+            sbOnUploaded: "成功",
+            sizeUnits: "b,kb,mb"
+        },
+        errorCallback: (msg) => alert("上传失败: " + msg),
+
+        // 渲染预览 (MathJax + Highlight)
+        previewRender: function(plainText) {
+            const preview = document.getElementsByClassName("editor-preview-side")[0];
+            preview.innerHTML = this.parent.markdown(plainText);
+            preview.querySelectorAll('pre code').forEach((block) => hljs.highlightElement(block));
+            if (typeof MathJax !== 'undefined') MathJax.typesetPromise([preview]);
+            return preview.innerHTML;
+        },
     });
-    // Fix for full height
-    easyMDE.codemirror.setSize("100%", "100%");
+
+    // 自动开启分屏
+    setTimeout(function() {
+        if (!easyMDE.isSideBySideActive()) {
+            easyMDE.toggleSideBySide();
+        }
+        // 强制刷新
+        if(easyMDE.codemirror) easyMDE.codemirror.refresh();
+    }, 200);
 </script>
 {% endblock %}

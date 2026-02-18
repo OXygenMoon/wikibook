@@ -1,6 +1,60 @@
 {% extends "base.html" %}
 
-{% block title %}创建 Wiki{% endblock %}
+{% block title %}创建 Wiki{% block scripts %}
+<script>
+    function togglePermissions(visibility) {
+        const details = document.getElementById('permission-details');
+        if (visibility === 'restricted') {
+            details.classList.remove('hidden');
+        } else {
+            details.classList.add('hidden');
+        }
+    }
+    
+    function filterUsers() {
+        const input = document.getElementById('userSearch');
+        const filter = input.value.toLowerCase();
+        const items = document.getElementsByClassName('user-item');
+        
+        for (let i = 0; i < items.length; i++) {
+            const name = items[i].querySelector('.user-name').textContent || "";
+            if (name.toLowerCase().indexOf(filter) > -1) {
+                items[i].style.display = "";
+            } else {
+                items[i].style.display = "none";
+            }
+        }
+    }
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function togglePermissions(visibility) {
+        const details = document.getElementById('permission-details');
+        if (visibility === 'restricted') {
+            details.classList.remove('hidden');
+        } else {
+            details.classList.add('hidden');
+        }
+    }
+    
+    function filterUsers() {
+        const input = document.getElementById('userSearch');
+        const filter = input.value.toLowerCase();
+        const items = document.getElementsByClassName('user-item');
+        
+        for (let i = 0; i < items.length; i++) {
+            const name = items[i].querySelector('.user-name').textContent || "";
+            if (name.toLowerCase().indexOf(filter) > -1) {
+                items[i].style.display = "";
+            } else {
+                items[i].style.display = "none";
+            }
+        }
+    }
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl mx-auto animate-fade-in">
@@ -54,6 +108,93 @@
                                   class="textarea textarea-bordered h-32 w-full pl-10 pt-3 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-base leading-relaxed" 
                                   placeholder="简要介绍这个 Wiki 的主要内容和目标受众..."></textarea>
                         <i class="fas fa-align-left absolute left-3.5 top-3.5 text-stone-400"></i>
+                    </div>
+                </div>
+
+                <!-- Permissions Settings -->
+                <div class="bg-stone-50 rounded-xl p-4 border border-stone-100">
+                    <h3 class="text-sm font-bold text-stone-600 mb-3 flex items-center gap-2">
+                        <i class="fas fa-lock text-red-500"></i> 权限设置
+                    </h3>
+                    
+                    <div class="form-control mb-4">
+                        <label class="label"><span class="label-text font-medium">可见性范围</span></label>
+                        <div class="flex gap-4">
+                            <label class="label cursor-pointer gap-2 border border-stone-200 p-3 rounded-lg bg-white hover:border-primary/50 flex-1">
+                                <input type="radio" name="visibility" value="public" class="radio radio-primary" checked onclick="togglePermissions('public')" />
+                                <div>
+                                    <span class="label-text font-bold block">公开 (Public)</span>
+                                    <span class="text-xs text-stone-400">所有登录用户可见</span>
+                                </div>
+                            </label>
+                            <label class="label cursor-pointer gap-2 border border-stone-200 p-3 rounded-lg bg-white hover:border-primary/50 flex-1">
+                                <input type="radio" name="visibility" value="restricted" class="radio radio-primary" onclick="togglePermissions('restricted')" />
+                                <div>
+                                    <span class="label-text font-bold block">受限 (Restricted)</span>
+                                    <span class="text-xs text-stone-400">仅特定班级/组/用户可见</span>
+                                </div>
+                            </label>
+                            <label class="label cursor-pointer gap-2 border border-stone-200 p-3 rounded-lg bg-white hover:border-primary/50 flex-1">
+                                <input type="radio" name="visibility" value="private" class="radio radio-primary" onclick="togglePermissions('private')" />
+                                <div>
+                                    <span class="label-text font-bold block">私有 (Private)</span>
+                                    <span class="text-xs text-stone-400">仅创建者和编辑可见</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="permission-details" class="hidden space-y-4 border-t border-stone-200 pt-4">
+                        <!-- Allowed Classes -->
+                        <div class="form-control">
+                            <label class="label cursor-pointer justify-between" onclick="document.getElementById('classes-section').classList.toggle('hidden')">
+                                <span class="label-text font-medium">允许的班级</span>
+                                <i class="fas fa-chevron-down text-stone-400 text-xs"></i>
+                            </label>
+                            <div id="classes-section" class="hidden grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 bg-white p-3 rounded-lg border border-stone-200 max-h-40 overflow-y-auto">
+                                {% for cls in classes %}
+                                <label class="label cursor-pointer justify-start gap-2 hover:bg-stone-50 rounded p-1">
+                                    <input type="checkbox" name="allowed_classes" value="{{ cls.id }}" class="checkbox checkbox-xs checkbox-primary" />
+                                    <span class="label-text text-sm">{{ cls.name }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Allowed Groups -->
+                        <div class="form-control">
+                            <label class="label cursor-pointer justify-between" onclick="document.getElementById('groups-section').classList.toggle('hidden')">
+                                <span class="label-text font-medium">允许的小组</span>
+                                <i class="fas fa-chevron-down text-stone-400 text-xs"></i>
+                            </label>
+                            <div id="groups-section" class="hidden grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 bg-white p-3 rounded-lg border border-stone-200 max-h-40 overflow-y-auto">
+                                {% for grp in groups %}
+                                <label class="label cursor-pointer justify-start gap-2 hover:bg-stone-50 rounded p-1">
+                                    <input type="checkbox" name="allowed_groups" value="{{ grp.id }}" class="checkbox checkbox-xs checkbox-primary" />
+                                    <span class="label-text text-sm">{{ grp.name }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Allowed Users -->
+                        <div class="form-control">
+                            <label class="label cursor-pointer justify-between" onclick="document.getElementById('users-section').classList.toggle('hidden')">
+                                <span class="label-text font-medium">允许的特定用户</span>
+                                <i class="fas fa-chevron-down text-stone-400 text-xs"></i>
+                            </label>
+                            <div id="users-section" class="hidden mt-2 bg-white p-3 rounded-lg border border-stone-200">
+                                <input type="text" id="userSearch" placeholder="搜索用户..." class="input input-bordered input-sm w-full mb-2" onkeyup="filterUsers()" />
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-1 max-h-40 overflow-y-auto" id="userList">
+                                    {% for user in all_users %}
+                                    <label class="label cursor-pointer justify-start gap-2 hover:bg-stone-50 rounded p-1 user-item">
+                                        <input type="checkbox" name="allowed_users" value="{{ user.id }}" class="checkbox checkbox-xs checkbox-primary" />
+                                        <span class="label-text text-sm user-name">{{ user.real_name or user.username }} <span class="text-xs text-stone-400">({{ user.student_id or '无学号' }})</span></span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -19,6 +19,12 @@
         </div>
     </div>
 
+    <div class="flex gap-4 mb-6 border-b border-stone-200">
+        <a href="{{ url_for('manage_users') }}" class="px-4 py-2 border-b-2 border-primary font-bold text-primary">用户管理</a>
+        <a href="{{ url_for('manage_classes') }}" class="px-4 py-2 text-stone-500 hover:text-stone-800">班级管理</a>
+        <a href="{{ url_for('manage_groups') }}" class="px-4 py-2 text-stone-500 hover:text-stone-800">组管理</a>
+    </div>
+
     <!-- 用户列表 -->
     <div class="card bg-base-100 shadow-sm border border-stone-200">
         <div class="overflow-x-auto">
@@ -27,6 +33,7 @@
                     <tr class="bg-stone-50 text-stone-600">
                         <th>ID</th>
                         <th>用户名</th>
+                        <th>班级</th>
                         <th>邮箱</th>
                         <th>注册时间</th>
                         <th>角色</th>
@@ -39,6 +46,16 @@
                         <td class="font-mono text-sm text-stone-400">#{{ user.id }}</td>
                         <td>
                             <div class="font-medium text-stone-700">{{ user.username }}</div>
+                            {% if user.real_name %}
+                            <div class="text-xs text-stone-400">{{ user.real_name }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.student_class %}
+                            <span class="badge badge-outline">{{ user.student_class.name }}</span>
+                            {% else %}
+                            <span class="text-stone-300">-</span>
+                            {% endif %}
                         </td>
                         <td class="text-stone-500">{{ user.email }}</td>
                         <td class="text-stone-500 text-sm">{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
@@ -61,7 +78,7 @@
                                 <label tabindex="0" class="btn btn-ghost btn-xs">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
                                 </label>
-                                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40 border border-stone-100">
+                                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-48 border border-stone-100">
                                     <li>
                                         <form action="{{ url_for('update_user_role', user_id=user.id) }}" method="post" class="w-full p-0">
                                             {% if user.is_admin %}
@@ -73,8 +90,34 @@
                                             {% endif %}
                                         </form>
                                     </li>
+                                    <li>
+                                        <button type="button" onclick="document.getElementById('class_modal_{{ user.id }}').showModal()" class="w-full text-left px-4 py-2 text-stone-600 hover:bg-stone-50 rounded-lg">修改班级</button>
+                                    </li>
                                 </ul>
                             </div>
+                            
+                            <!-- 修改班级 Modal -->
+                            <dialog id="class_modal_{{ user.id }}" class="modal text-left">
+                                <div class="modal-box">
+                                    <h3 class="font-bold text-lg mb-4">修改班级 - {{ user.username }}</h3>
+                                    <form action="{{ url_for('update_user_class', user_id=user.id) }}" method="post">
+                                        <div class="form-control w-full mb-4">
+                                            <label class="label"><span class="label-text">选择班级</span></label>
+                                            <select name="class_id" class="select select-bordered w-full">
+                                                <option value="" {% if not user.class_id %}selected{% endif %}>无班级</option>
+                                                {% for c in classes %}
+                                                <option value="{{ c.id }}" {% if user.class_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="modal-action">
+                                            <button type="submit" class="btn btn-primary">保存</button>
+                                            <button type="button" class="btn" onclick="document.getElementById('class_modal_{{ user.id }}').close()">取消</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <form method="dialog" class="modal-backdrop"><button>close</button></form>
+                            </dialog>
                             {% endif %}
                         </td>
                     </tr>

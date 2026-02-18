@@ -14,152 +14,239 @@
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* 动画 */
+    /* 动画定义 */
     @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
-    .animate-card {
-        animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    /* --- 2. 列表页卡片样式 --- */
-    .badge-card {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        transform-style: preserve-3d;
-        cursor: pointer;
-        background: #ffffff;
-        border-radius: 1rem;
-        overflow: hidden;
-    }
     
-    /* 已获得 */
-    .badge-card.unlocked {
-        border: 1px solid #fcd34d; /* 默认金边，会被稀有度样式覆盖 */
-        box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.1), 0 2px 4px -1px rgba(245, 158, 11, 0.06);
-    }
-    .badge-card.unlocked:hover {
-        transform: translateY(-6px) scale(1.02);
-        box-shadow: 0 20px 25px -5px rgba(245, 158, 11, 0.2);
-    }
-    
-    /* 未获得 */
-    .badge-card.locked {
-        filter: grayscale(100%);
-        opacity: 0.8;
-        background-color: #fafaf9;
-        border: 1px dashed #d6d3d1;
-    }
-    .badge-card.locked:hover {
-        opacity: 1;
-        transform: translateY(-2px);
-        background-color: #fff;
-    }
-
-    .card-body { padding: 1.25rem; display: flex; flex-direction: column; align-items: center; text-align: center; height: 100%; }
-
-    /* --- 3. 弹窗 3D 卡片样式 --- */
-    #badge-modal .modal-box {
-        background: transparent;
-        box-shadow: none;
-        overflow: visible;
-        max-width: 420px;
-        perspective: 1000px;
-        padding: 0;
-    }
-
-    .collectible-card {
-        position: relative;
-        width: 100%;
-        background: #fff;
-        border-radius: 24px;
-        transform-style: preserve-3d;
-        transition: transform 0.1s ease-out;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    }
-    
-    .modal[open] .collectible-card {
-        animation: cardPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-    @keyframes cardPop {
-        0% { opacity: 0; transform: scale(0.5) translateY(50px) rotateX(10deg); }
-        100% { opacity: 1; transform: scale(1) translateY(0) rotateX(0); }
-    }
-
-    .holo-shine {
-        position: absolute; inset: 0;
-        background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
-        opacity: 0; pointer-events: none; z-index: 50; transition: opacity 0.2s;
-    }
-
-    .card-pattern-bg {
-        background-color: #fffbeb;
-        background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23f59e0b' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-
-    .circular-chart { display: block; margin: 0 auto; max-width: 100%; max-height: 250px; }
-    .circle-bg { fill: none; stroke: #fed7aa; stroke-width: 3.8; } 
-    .circle { fill: none; stroke-width: 2.8; stroke-linecap: round; animation: progress 1s ease-out forwards; }
-    @keyframes progress { 0% { stroke-dasharray: 0 100; } }
-
-    /* --- 4. 优化后的稀有度视觉效果 (流光溢彩) --- */
-    
-    /* 流光动画定义 */
     @keyframes gradient-flow {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
     }
 
-    /* 基础标签样式 */
-    .badge-tag {
-        display: inline-block; padding: 3px 8px; border-radius: 6px; 
-        font-size: 10px; font-weight: 900; letter-spacing: 0.05em;
-        text-transform: uppercase; color: #fff;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    @keyframes progress { 
+        0% { stroke-dasharray: 0 100; } 
+    }
+
+    /* --- 2. 列表项样式 --- */
+    .badge-list-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: #ffffff;
+        border-radius: 1rem;
+        border: 1px solid #f3f4f6;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .badge-list-item:hover {
+        transform: translateY(-2px) scale(1.01);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .badge-list-item:active {
+        transform: scale(0.98);
+    }
+
+    .badge-list-item.locked {
+        opacity: 0.7;
+        background: #fafaf9;
+    }
+    .badge-list-item.locked .badge-icon-wrapper {
+        filter: grayscale(100%) contrast(0.8);
+        opacity: 0.6;
+    }
+
+    .badge-icon-wrapper {
+        width: 4rem; height: 4rem;
+        flex-shrink: 0;
+        border-radius: 1rem;
+        display: flex; align-items: center; justify-content: center;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+
+    /* --- 3. 稀有度视觉系统 (修复了原代码未应用的问题) --- */
+    
+    /* 稀有度标签基础 */
+    .rarity-badge {
+        font-size: 0.65rem;
+        padding: 2px 8px;
+        border-radius: 99px;
+        color: white;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
         background-size: 200% 200%;
         animation: gradient-flow 4s ease infinite;
-        text-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        display: inline-block;
+        margin-left: 8px;
+        vertical-align: middle;
     }
 
-    /* 1. 普通 (Common) - 银灰极光 */
-    .rarity-common .badge-tag {
-        background-image: linear-gradient(135deg, #94a3b8, #cbd5e1, #64748b);
+    /* 普通 (Common) */
+    .rarity-common .rarity-badge {
+        background-image: linear-gradient(135deg, #94a3b8, #64748b);
     }
-    .badge-card.rarity-common.unlocked { border: 1px solid #cbd5e1; }
+    /* 列表项边框颜色 - 仅在解锁时显示 */
+    .badge-list-item.unlocked.rarity-common { border-left: 4px solid #cbd5e1; }
 
-    /* 2. 稀有 (Rare) - 深海冰蓝 */
-    .rarity-rare .badge-tag {
-        background-image: linear-gradient(135deg, #3b82f6, #60a5fa, #2563eb);
+    /* 稀有 (Rare) */
+    .rarity-rare .rarity-badge {
+        background-image: linear-gradient(135deg, #3b82f6, #2563eb);
     }
-    .badge-card.rarity-rare.unlocked { border: 1px solid #93c5fd; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.15); }
-
-    /* 3. 史诗 (Epic) - 霓虹紫韵 */
-    .rarity-epic .badge-tag {
-        background-image: linear-gradient(135deg, #a855f7, #d946ef, #7e22ce);
-    }
-    .badge-card.rarity-epic.unlocked { border: 1px solid #d8b4fe; box-shadow: 0 4px 10px rgba(168, 85, 247, 0.15); }
-
-    /* 4. 传说 (Legendary) - 烈焰流金 */
-    .rarity-legendary .badge-tag {
-        background-image: linear-gradient(135deg, #f59e0b, #fbbf24, #d97706, #f59e0b);
-        animation: gradient-flow 3s linear infinite; /* 传说级流动更快 */
-    }
-    .badge-card.rarity-legendary.unlocked { 
-        border: 1px solid #fcd34d; 
-        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25); 
+    .badge-list-item.unlocked.rarity-rare { 
+        border-left: 4px solid #3b82f6;
+        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
     }
 
-    /* 按钮加载状态优化 */
-    .btn-generating {
-        position: relative;
-        pointer-events: none;
-        overflow: hidden;
-        background-image: linear-gradient(45deg, #f59e0b, #fbbf24, #f59e0b);
-        background-size: 200% 200%;
+    /* 史诗 (Epic) */
+    .rarity-epic .rarity-badge {
+        background-image: linear-gradient(135deg, #d946ef, #7e22ce);
+    }
+    .badge-list-item.unlocked.rarity-epic { 
+        border-left: 4px solid #d946ef;
+        background: linear-gradient(to right, #fdf4ff, #fff);
+    }
+
+    /* 传说 (Legendary) */
+    .rarity-legendary .rarity-badge {
+        background-image: linear-gradient(135deg, #f59e0b, #d97706, #fbbf24);
         animation: gradient-flow 2s linear infinite;
+    }
+    .badge-list-item.unlocked.rarity-legendary { 
+        border: 1px solid #fcd34d;
+        border-left: 4px solid #f59e0b;
+        background: linear-gradient(to right, #fffbeb, #fff);
+        box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.15);
+    }
+
+    /* --- 4. 详情页模态框 --- */
+    #badge-modal .modal-box {
+        max-width: 100%;
+        width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        background: #ffffff;
+        padding: 0;
+        display: flex;
+        flex-direction: column; /* 修复了原代码的 flex-col: column */
+        overflow-y: auto;
+    }
+    
+    @media (min-width: 640px) {
+        #badge-modal .modal-box {
+            max-width: 420px;
+            height: auto;
+            max-height: 85vh;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+    }
+
+    .sticker-hero-container {
+        flex: 1;
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at center, #fdfbf7 0%, #fff 70%);
+        position: relative;
+    }
+
+    .sticker-img-large {
+        filter: drop-shadow(0 8px 16px rgba(0,0,0,0.1));
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .sticker-img-large:hover {
+        transform: scale(1.1) rotate(3deg);
+    }
+
+    .sticker-info-section {
+        padding: 1.5rem 2rem 2rem;
+        background: #fff;
+        position: relative;
+        z-index: 10;
+    }
+    
+    /* 底部元数据网格 */
+    .meta-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 1rem;
+        border-top: 1px solid #f3f4f6;
+        padding-top: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .meta-label { font-size: 0.75rem; color: #9ca3af; font-weight: 500; }
+    .meta-value { font-size: 0.875rem; color: #1f2937; font-weight: 700; font-family: ui-monospace, SFMono-Regular, monospace; }
+
+    /* 分享按钮 */
+    .share-btn-large {
+        width: 100%;
+        background-color: #0ea5e9;
+        color: white;
+        border-radius: 16px;
+        padding: 1rem;
+        font-weight: 600;
+        font-size: 1rem;
         border: none;
-        color: white !important;
+        margin-top: 1.5rem;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+        box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);
+    }
+    .share-btn-large:hover { background-color: #0284c7; transform: translateY(-1px); }
+    .share-btn-large:active { transform: translateY(1px); }
+
+    /* 关闭按钮 */
+    .close-btn-round {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.8);
+        backdrop-filter: blur(4px);
+        color: #4b5563;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 50;
+        transition: all 0.2s;
+        border: 1px solid rgba(0,0,0,0.05);
+        font-size: 1.2rem;
+    }
+    .close-btn-round:hover { background: #fff; transform: rotate(90deg); }
+
+    /* 之前遗漏在 style 标签外的样式修复 */
+    .circular-chart { display: block; margin: 0 auto; max-width: 100%; max-height: 250px; }
+    .circle-bg { fill: none; stroke: #fed7aa; stroke-width: 3.8; } 
+    .circle { 
+        fill: none; 
+        stroke-width: 2.8; 
+        stroke-linecap: round; 
+        transition: stroke-dasharray 1s ease-out; /* 使用 transition 代替 animation 以便动态更新 */
     }
 </style>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -168,120 +255,120 @@
 {% block content %}
 <div id="achievement-book-container" class="max-w-[1400px] mx-auto px-4 sm:px-6 py-8 min-h-screen bg-[#fdfcf8]">
     
-    <div class="bg-white rounded-3xl shadow-sm border border-orange-100 p-6 md:p-8 mb-10 relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-80 h-80 bg-orange-100 rounded-full blur-3xl opacity-60 -mr-20 -mt-20 pointer-events-none"></div>
-        <div class="absolute bottom-0 left-0 w-64 h-64 bg-amber-100 rounded-full blur-3xl opacity-60 -ml-16 -mb-16 pointer-events-none"></div>
+    <div class="bg-white rounded-3xl shadow-sm border border-orange-100 p-6 md:p-8 mb-8 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-80 h-80 bg-orange-50 rounded-full blur-3xl opacity-60 -mr-20 -mt-20 pointer-events-none"></div>
+        <div class="absolute bottom-0 left-0 w-64 h-64 bg-amber-50 rounded-full blur-3xl opacity-60 -ml-16 -mb-16 pointer-events-none"></div>
 
         <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
             <div class="flex items-start gap-5 w-full md:w-auto">
-                <a href="{{ url_for('public_profile', user_id=user.id) }}" class="btn btn-circle btn-ghost bg-stone-50 hover:bg-orange-50 text-stone-500 hover:text-orange-600 transition-all">
+                <a href="{{ url_for('public_profile', user_id=user.id) }}" class="btn btn-circle btn-ghost bg-stone-50 hover:bg-orange-100 text-stone-500 hover:text-orange-600 transition-all border-none">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-black text-stone-800 tracking-tight flex items-center gap-3">
+                    <h1 class="text-3xl md:text-4xl font-black text-stone-800 tracking-tight flex items-center gap-3 flex-wrap">
                         <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500">成就图鉴</span>
-                        <span class="text-xs bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full font-bold align-top mt-1 border border-orange-200" id="total-badge-count">0</span>
+                        <span class="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full font-bold align-top mt-1 border border-orange-200 shadow-sm">
+                            共 <span id="total-badge-count">0</span> 枚
+                        </span>
                     </h1>
-                    <p class="text-stone-500 mt-2 text-sm md:text-base max-w-lg font-medium">
-                        每一枚徽章都是一段闪光的旅程。继续探索，点亮你的荣誉墙。
+                    <p class="text-stone-500 mt-3 text-sm md:text-base max-w-lg font-medium leading-relaxed">
+                        记录每一个闪光时刻。收集徽章，点亮属于你的荣誉星空。
                     </p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-6 bg-white/60 backdrop-blur-md p-3 pr-6 rounded-2xl border border-orange-100 shadow-sm">
+            <div class="flex items-center gap-6 bg-white/80 backdrop-blur-md p-4 pr-8 rounded-2xl border border-orange-100 shadow-sm">
                 <div class="relative w-16 h-16">
-                    <svg viewBox="0 0 36 36" class="circular-chart text-amber-500">
+                    <svg viewBox="0 0 36 36" class="circular-chart text-amber-500 transform -rotate-90">
                         <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                         <path class="circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" id="progress-circle" stroke="currentColor" />
                     </svg>
-                    <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-amber-600">
+                    <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-amber-600">
                         <span id="completion-rate">0%</span>
                     </div>
                 </div>
                 <div>
-                    <div class="text-[10px] text-stone-400 uppercase font-bold tracking-wider mb-0.5">收集进度</div>
-                    <div class="text-xl font-black text-stone-800">
+                    <div class="text-[10px] text-stone-400 uppercase font-bold tracking-wider mb-1">当前进度</div>
+                    <div class="text-2xl font-black text-stone-800 leading-none">
                         <span id="unlocked-count" class="text-amber-600">0</span>
-                        <span class="text-stone-300 text-lg mx-0.5">/</span>
-                        <span id="total-count" class="text-stone-400 text-lg">0</span>
+                        <span class="text-stone-300 text-lg font-normal mx-0.5">/</span>
+                        <span id="total-count" class="text-stone-400 text-lg font-normal">0</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="sticky top-20 z-30 bg-[#fdfcf8]/90 backdrop-blur-md py-2 -mx-4 px-4 md:mx-0 md:px-0 mb-6 rounded-xl md:bg-transparent md:backdrop-blur-none md:static">
-        <div class="flex justify-start md:justify-center overflow-x-auto hide-scrollbar">
-            <div class="bg-white p-1.5 rounded-2xl shadow-sm border border-stone-100 flex gap-1" id="category-tabs"></div>
+    <div class="sticky top-2 z-30 bg-[#fdfcf8]/95 backdrop-blur-md py-3 -mx-4 px-4 md:mx-0 md:px-0 mb-6 rounded-xl md:static md:bg-transparent md:backdrop-blur-none transition-all">
+        <div class="flex justify-start md:justify-center overflow-x-auto hide-scrollbar pb-2 md:pb-0">
+            <div class="bg-white p-1.5 rounded-2xl shadow-sm border border-stone-100 flex gap-1" id="category-tabs">
+                </div>
         </div>
     </div>
 
-    <div id="achievements-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+    <div class="flex justify-between items-end mb-4 px-2 max-w-3xl mx-auto w-full">
+        <h2 class="text-lg font-bold text-stone-700 flex items-center gap-2">
+            <i class="fas fa-layer-group text-stone-400 text-sm"></i> 贴纸库
+        </h2>
+        <span class="text-xs text-stone-400 font-medium bg-white px-2 py-1 rounded-md border border-stone-100 shadow-sm">
+            显示 <span id="list-display-count" class="text-stone-600 font-bold">0</span> 张
+        </span>
     </div>
-    
-    <div id="empty-state" class="hidden flex-col items-center justify-center py-20 text-center">
-        <div class="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center mb-4 text-orange-200 text-4xl border border-orange-100">
-            <i class="fas fa-trophy"></i>
+
+    <div id="achievements-list" class="flex flex-col gap-3 pb-20 max-w-3xl mx-auto">
         </div>
-        <h3 class="text-lg font-bold text-stone-600">暂无相关成就</h3>
+    
+    <div id="empty-state" class="hidden flex-col items-center justify-center py-24 text-center">
+        <div class="w-24 h-24 bg-stone-50 rounded-full flex items-center justify-center mb-4 text-stone-200 text-4xl border border-stone-100">
+            <i class="fas fa-search"></i>
+        </div>
+        <h3 class="text-lg font-bold text-stone-600">没有找到相关成就</h3>
+        <p class="text-stone-400 text-sm mt-1">尝试切换其他分类看看吧</p>
     </div>
 </div>
 
 <dialog id="badge-modal" class="modal modal-bottom sm:modal-middle backdrop-blur-sm">
-    <div class="modal-box bg-transparent shadow-none overflow-visible p-0 w-auto max-w-lg">
+    <div class="modal-box hide-scrollbar">
         <form method="dialog">
-            <button class="btn btn-sm btn-circle btn-ghost absolute -right-2 -top-10 md:-right-12 md:top-0 text-white/80 hover:text-white hover:bg-white/20 z-50 text-lg">✕</button>
+            <button class="close-btn-round">✕</button>
         </form>
 
-        <div class="collectible-card" id="card-3d-container">
-            <div class="holo-shine" id="holo-layer"></div>
-
-            <div class="relative h-48 card-pattern-bg flex flex-col items-center justify-center overflow-hidden border-b border-orange-50">
-                <div class="absolute inset-0 bg-gradient-to-b from-transparent to-white/60"></div>
-                <div id="modal-status-badge" class="absolute top-4 right-4 z-20"></div>
-                
-                <div class="absolute top-4 left-4 z-20">
-                    <span id="modal-rarity-tag" class="badge-tag"></span>
-                </div>
-
-                <div class="relative z-10 w-32 h-32 transform transition-transform duration-500">
-                    <div class="absolute inset-0 bg-orange-400/20 blur-2xl rounded-full scale-75" id="icon-glow"></div>
-                    <div id="modal-icon-container" class="w-full h-full flex items-center justify-center drop-shadow-2xl"></div>
-                </div>
+        <div id="share-capture-area" class="flex flex-col h-full bg-white">
+            <div class="sticker-hero-container">
+                <div id="modal-sticker-img-container" class="transition-all duration-500">
+                    </div>
             </div>
 
-            <div class="p-6 bg-white relative z-10">
+            <div class="sticker-info-section">
                 <div class="text-center mb-6">
-                    <h3 class="font-900 text-3xl text-stone-800 tracking-tight mb-2" id="modal-title"></h3>
-                    <div class="h-1 w-12 bg-orange-400 mx-auto rounded-full mb-3"></div>
-                    <p class="text-[10px] text-stone-400 uppercase tracking-wider font-bold mb-2" id="modal-rarity-text"></p>
+                    <div class="flex justify-center items-center gap-2 mb-3">
+                        <h3 class="font-900 text-2xl text-stone-800 tracking-tight" id="modal-title"></h3>
+                        <span id="modal-rarity-tag"></span>
+                    </div>
                     <p class="text-stone-500 text-sm leading-relaxed px-2 font-medium" id="modal-desc"></p>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div class="bg-stone-50 rounded-xl p-3 border border-stone-100 flex flex-col items-center justify-center text-center">
-                        <span class="text-[10px] text-stone-400 font-bold uppercase mb-1">解锁条件</span>
-                        <span class="text-xs font-bold text-stone-700" id="modal-condition"></span>
+                <div class="meta-grid">
+                    <div class="meta-item border-r border-stone-100 pr-4">
+                        <span class="meta-label">发行方</span>
+                        <span class="meta-value truncate" id="modal-issuer">WikiBook</span>
                     </div>
-                    <div class="bg-orange-50 rounded-xl p-3 border border-orange-100 flex flex-col items-center justify-center text-center">
-                        <span class="text-[10px] text-orange-400 font-bold uppercase mb-1">获得奖励</span>
-                        <span class="text-xs font-bold text-orange-700" id="modal-sticker-count"></span>
+                    <div class="meta-item border-r border-stone-100 px-4">
+                        <span class="meta-label">收集日期</span>
+                        <span class="meta-value" id="modal-date">--.--.--</span>
+                    </div>
+                    <div class="meta-item pl-4 text-right">
+                        <span class="meta-label">序列号</span>
+                        <span class="meta-value font-mono text-stone-400" id="modal-serial">--</span>
                     </div>
                 </div>
-
-                <div id="modal-date-container" class="text-center pt-2 border-t border-stone-100 hidden">
-                    <p class="text-[10px] text-stone-400 uppercase tracking-wide font-bold">
-                        解锁于 <span id="modal-date" class="text-orange-500 ml-1"></span>
-                    </p>
-                </div>
-                
-                <div id="modal-share-container" class="hidden"></div>
             </div>
         </div>
-        
-        <p class="text-center text-white/50 text-xs mt-4 font-medium tracking-wider">
-            <i class="fas fa-mouse-pointer mr-1"></i> 移动鼠标欣赏卡片细节
-        </p>
+        <div class="px-8 pb-8 bg-white">
+            <button onclick="generateShareCard()" class="share-btn-large" id="share-btn">
+                <i class="fas fa-share-nodes mr-2"></i>保存分享卡片
+            </button>
+        </div>
     </div>
     
     <form method="dialog" class="modal-backdrop bg-stone-900/60 backdrop-blur-sm">
@@ -290,7 +377,7 @@
 </dialog>
 
 <script>
-    // --- 稀有度中英文映射 ---
+    // --- 稀有度映射 ---
     const RARITY_MAP = {
         'common': '普通',
         'rare': '稀有',
@@ -299,7 +386,7 @@
     };
 
     // --- 数据注入 ---
-    const TOTAL_USERS = {{ total_users }};
+    // 使用 tojson 过滤器（如果在 Flask 环境），或者更加安全的手动构造
     const SERVER_DATA = {
         categories: [
             { id: 'all', name: '全部' },
@@ -311,324 +398,245 @@
             // 已获得
             {% for ub in user_badges %}
             {
-                "id": {{ ub.badge.id }}, "name": "{{ ub.badge.name }}",
-                "description": "{{ ub.badge.description|replace('"', '\\"') }}",
+                "id": {{ ub.badge.id }}, 
+                "name": "{{ ub.badge.name|replace('"', '\\"') }}",
+                "description": "{{ ub.badge.description|replace('"', '\\"')|replace('\n', ' ') }}",
                 "category": "{{ ub.badge.category or '一般' }}",
                 "rarity": "{{ ub.badge.rarity or 'common' }}",
                 "isSecret": {{ 'true' if ub.badge.is_secret else 'false' }},
-                "issuedCount": {{ ub.badge.issued_count }},
-                "condition": "{{ ub.badge|badge_condition_text }}",
-                "isUnlocked": true, "unlockDate": "{{ ub.earned_at.strftime('%Y-%m-%d') }}",
-                "stickerCount": {{ ub.badge.sticker_count or 1 }}, 
+                "isUnlocked": true, 
+                "unlockDate": "{{ ub.earned_at.strftime('%Y.%m.%d') }}",
                 "isImage": {{ 'true' if ub.badge.icon|is_image_icon else 'false' }},
                 "iconUrl": "{{ ub.badge.icon|badge_icon_url }}",
-                "iconText": "{{ ub.badge.icon if not ub.badge.icon|is_image_icon else '' }}"
+                "iconText": "{{ ub.badge.icon if not ub.badge.icon|is_image_icon else '' }}",
+                "issuer": "{{ ub.badge.issuer or 'WikiBook' }}",
+                "serialNumber": "{{ ub.serial_number or 'SF-????' }}"
             },
             {% endfor %}
-            // 未获得
+            // 未获得 (注意加上逗号，如果有已获得徽章)
+            {% if user_badges and unearned_badges %},{% endif %}
             {% for b in unearned_badges %}
             {
-                "id": {{ b.id }}, "name": "{{ b.name }}",
-                "description": "{{ b.description|replace('"', '\\"') }}",
+                "id": {{ b.id }}, 
+                "name": "{{ b.name|replace('"', '\\"') }}",
+                "description": "{{ b.description|replace('"', '\\"')|replace('\n', ' ') }}",
                 "category": "{{ b.category or '一般' }}",
                 "rarity": "{{ b.rarity or 'common' }}",
                 "isSecret": {{ 'true' if b.is_secret else 'false' }},
-                "issuedCount": {{ b.issued_count }},
-                "condition": "{{ b|badge_condition_text }}",
-                "isUnlocked": false, "unlockDate": null,
-                "stickerCount": {{ b.sticker_count or 1 }},
+                "isUnlocked": false, 
+                "unlockDate": null,
                 "isImage": {{ 'true' if b.icon|is_image_icon else 'false' }},
                 "iconUrl": "{{ b.icon|badge_icon_url }}",
-                "iconText": "{{ b.icon if not b.icon|is_image_icon else '' }}"
+                "iconText": "{{ b.icon if not b.icon|is_image_icon else '' }}",
+                "issuer": "{{ b.issuer or 'WikiBook' }}",
+                "serialNumber": null
             }{{ "," if not loop.last }}
             {% endfor %}
         ]
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-        const grid = document.getElementById('achievements-grid');
+        const listContainer = document.getElementById('achievements-list');
         const tabsContainer = document.getElementById('category-tabs');
         const emptyState = document.getElementById('empty-state');
         const modal = document.getElementById('badge-modal');
         
-        // 3D 交互逻辑 (保持不变)
-        const cardContainer = document.getElementById('card-3d-container');
-        const holoLayer = document.getElementById('holo-layer');
-        let isHovering = false;
-
-        cardContainer.addEventListener('mouseenter', () => { isHovering = true; });
-        cardContainer.addEventListener('mouseleave', () => {
-            isHovering = false;
-            cardContainer.style.transform = `rotateX(0deg) rotateY(0deg)`;
-            holoLayer.style.opacity = '0';
-        });
-
-        cardContainer.addEventListener('mousemove', (e) => {
-            if (!isHovering) return;
-            const rect = cardContainer.getBoundingClientRect();
-            const x = e.clientX - rect.left; 
-            const y = e.clientY - rect.top;
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-            const percentX = (x - centerX) / centerX;
-            const percentY = (y - centerY) / centerY;
-            const rotateX = percentY * -10; 
-            const rotateY = percentX * 10;
-            cardContainer.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-            if(cardContainer.classList.contains('is-unlocked')) {
-                holoLayer.style.opacity = '1';
-                holoLayer.style.transform = `translate(${percentX * 40}px, ${percentY * 40}px)`;
-            }
-        });
-
+        let currentFilter = 'all';
+        
         initStats();
         renderTabs();
-        renderGrid('all');
+        renderList('all');
 
         function initStats() {
             const total = SERVER_DATA.achievements.length;
             const unlocked = SERVER_DATA.achievements.filter(a => a.isUnlocked).length;
             const rate = total === 0 ? 0 : Math.round((unlocked / total) * 100);
+            
             document.getElementById('total-badge-count').innerText = total;
             document.getElementById('unlocked-count').innerText = unlocked;
             document.getElementById('total-count').innerText = total;
             document.getElementById('completion-rate').innerText = `${rate}%`;
+            
+            // 动画设置进度
             setTimeout(() => {
                 document.getElementById('progress-circle').setAttribute('stroke-dasharray', `${rate}, 100`);
-            }, 100);
+            }, 300);
         }
 
         function renderTabs() {
             tabsContainer.innerHTML = SERVER_DATA.categories.map(cat => `
                 <button onclick="filterAchievements('${cat.id}')" 
-                    class="px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn ${cat.id === 'all' ? 'bg-amber-500 text-white shadow-md shadow-orange-200' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}" 
-                    data-id="${cat.id}">${cat.name}</button>
+                    class="px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap ${cat.id === 'all' ? 'bg-amber-500 text-white shadow-md shadow-orange-200' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}" 
+                    data-id="${cat.id}">
+                    ${cat.name}
+                </button>
             `).join('');
         }
 
         window.filterAchievements = function(categoryId) {
+            currentFilter = categoryId;
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.className = btn.dataset.id === categoryId 
-                    ? 'px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn bg-amber-500 text-white shadow-md shadow-orange-200 transform scale-105'
-                    : 'px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn text-stone-500 hover:bg-stone-50 hover:text-stone-800';
+                const isActive = btn.dataset.id === categoryId;
+                btn.className = isActive 
+                    ? 'px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap bg-amber-500 text-white shadow-md shadow-orange-200 transform scale-105'
+                    : 'px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap text-stone-500 hover:bg-stone-50 hover:text-stone-800';
             });
-            renderGrid(categoryId);
+            renderList(categoryId);
         };
 
-window.openBadgeDetail = function(id) {
-    const item = SERVER_DATA.achievements.find(a => a.id === id);
-    if (!item) return;
+        window.openBadgeDetail = function(id) {
+            const item = SERVER_DATA.achievements.find(a => a.id === id);
+            if (!item) return;
 
-    // --- 辅助函数：安全设置文本 ---
-    function setSafeText(id, text) {
-        const el = document.getElementById(id);
-        if (el) el.innerText = text;
-        else console.warn(`找不到 ID: ${id}`);
-    }
-    
-    // --- 辅助函数：安全设置HTML ---
-    function setSafeHtml(id, html) {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = html;
-    }
-
-    const isSecretLocked = !item.isUnlocked && item.isSecret;
-    
-    // 1. 填充基础信息
-    setSafeText('modal-title', isSecretLocked ? "???" : item.name);
-    setSafeText('modal-category', item.category);
-    setSafeText('modal-desc', isSecretLocked ? "继续探索以揭示此成就" : (item.description || '暂无描述'));
-    setSafeText('modal-condition', isSecretLocked ? "???" : item.condition);
-    setSafeText('modal-sticker-count', `+${item.stickerCount} 贴纸`);
-
-    // 2. 填充稀有度和持有率 (这里是你报错的地方)
-    // 确保 TOTAL_USERS 有值，防止除以0
-    const safeTotalUsers = (typeof TOTAL_USERS !== 'undefined' && TOTAL_USERS > 0) ? TOTAL_USERS : 1;
-    const percentage = ((item.issuedCount / safeTotalUsers) * 100).toFixed(1);
-    
-    setSafeText('modal-rarity-text', `全站仅有 ${percentage}% 的用户拥有此徽章`);
-    
-    const cnRarity = RARITY_MAP[item.rarity] || '普通';
-    setSafeText('modal-rarity-tag', cnRarity);
-
-    // 3. 填充图标
-    const iconContainer = document.getElementById('modal-icon-container');
-    if (iconContainer) {
-        if (isSecretLocked) {
-             iconContainer.innerHTML = `<span class="text-7xl drop-shadow-md">❓</span>`;
-        } else if (item.isImage) {
-            iconContainer.innerHTML = `<img src="${item.iconUrl}" class="w-24 h-24 object-contain drop-shadow-xl" crossOrigin="anonymous">`;
-        } else {
-            iconContainer.innerHTML = `<span class="text-7xl drop-shadow-md">${item.iconText}</span>`;
-        }
-    }
-
-    // 4. 样式处理
-    const card3d = document.getElementById('card-3d-container');
-    const statusBadge = document.getElementById('modal-status-badge');
-    const glow = document.getElementById('icon-glow');
-    const dateContainer = document.getElementById('modal-date-container');
-
-    if (card3d) {
-        card3d.classList.remove('rarity-common', 'rarity-rare', 'rarity-epic', 'rarity-legendary');
-        card3d.classList.add(`rarity-${item.rarity}`);
-    }
-
-    if (item.isUnlocked) {
-        if (card3d) {
-            card3d.classList.add('is-unlocked');
-            card3d.classList.remove('grayscale');
-        }
-        if (statusBadge) statusBadge.innerHTML = `<div class="bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg flex items-center gap-1"><i class="fas fa-check-circle"></i> 已获得</div>`;
-        if (glow) glow.style.opacity = '1';
-        if (dateContainer) {
-            dateContainer.classList.remove('hidden');
-            const dateSpan = document.getElementById('modal-date');
-            if (dateSpan) dateSpan.innerText = item.unlockDate;
-        }
-        if (iconContainer) iconContainer.style.filter = 'none';
-    } else {
-        if (card3d) {
-            card3d.classList.remove('is-unlocked');
-            card3d.classList.add('grayscale');
-        }
-        if (statusBadge) statusBadge.innerHTML = `<div class="bg-stone-400 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg flex items-center gap-1"><i class="fas fa-lock"></i> 待解锁</div>`;
-        if (glow) glow.style.opacity = '0';
-        if (dateContainer) dateContainer.classList.add('hidden');
-        if (iconContainer) iconContainer.style.filter = 'grayscale(100%) opacity(0.6)';
-    }
-    
-    // 5. 分享按钮
-    const shareBtnContainer = document.getElementById('modal-share-container');
-    if (shareBtnContainer) {
-        if (item.isUnlocked) {
-            shareBtnContainer.innerHTML = `<button onclick="generateShareCard()" class="btn btn-sm btn-outline btn-warning w-full gap-2 mt-4 hover:scale-105 transition-transform"><i class="fas fa-share-alt"></i> 生成分享卡片</button>`;
-            shareBtnContainer.classList.remove('hidden');
-        } else {
-            shareBtnContainer.classList.add('hidden');
-        }
-    }
-
-    modal.showModal();
-};
-        // --- 核心优化：更精致的生成逻辑 ---
-        window.generateShareCard = function() {
-            const card = document.getElementById('card-3d-container');
-            const btn = document.querySelector('#modal-share-container button');
-            const originalHtml = btn.innerHTML;
+            // 1. 基础信息
+            const isUnknown = item.isSecret && !item.isUnlocked;
+            document.getElementById('modal-title').innerText = isUnknown ? "???" : item.name;
+            document.getElementById('modal-desc').innerText = isUnknown ? "继续探索以揭示此成就的获取方式" : (item.description || '暂无描述');
             
-            // 1. 设置加载状态：固定宽度防止跳动，使用动画背景
-            const btnWidth = btn.offsetWidth;
-            btn.style.width = `${btnWidth}px`;
-            btn.classList.add('btn-generating'); // 添加流光背景类
-            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> 正在绘图...';
+            // 2. 稀有度标签
+            const rarityText = RARITY_MAP[item.rarity] || '普通';
+            const rarityBadgeHtml = `<span class="rarity-badge bg-stone-400">${rarityText}</span>`; // 默认为灰色
+            const rarityContainer = document.getElementById('modal-rarity-tag');
+            
+            // 只有解锁了或者是公开成就才显示稀有度颜色
+            if (!isUnknown) {
+                rarityContainer.className = `rarity-${item.rarity}`; 
+                rarityContainer.innerHTML = `<span class="rarity-badge shadow-sm">${rarityText}</span>`;
+            } else {
+                rarityContainer.className = '';
+                rarityContainer.innerHTML = `<span class="rarity-badge bg-stone-200 text-stone-400">未知</span>`;
+            }
+
+            document.getElementById('modal-issuer').innerText = item.issuer;
+            document.getElementById('modal-date').innerText = item.isUnlocked ? item.unlockDate : '--.--.--';
+            document.getElementById('modal-serial').innerText = item.isUnlocked ? (item.serialNumber || 'SF-????') : '--';
+
+            // 3. 图片展示
+            const imgContainer = document.getElementById('modal-sticker-img-container');
+            if (item.isImage && !isUnknown) {
+                imgContainer.innerHTML = `<img src="${item.iconUrl}" class="sticker-img-large w-48 h-48 object-contain ${item.isUnlocked ? '' : 'grayscale opacity-50 blur-sm'}" crossOrigin="anonymous">`;
+            } else {
+                const icon = isUnknown ? '❓' : (item.iconText || '🏅');
+                imgContainer.innerHTML = `<div class="w-48 h-48 flex items-center justify-center text-8xl ${item.isUnlocked ? '' : 'grayscale opacity-40'}">${icon}</div>`;
+            }
+
+            // 4. 按钮状态
+            const btn = document.getElementById('share-btn');
+            if (item.isUnlocked) {
+                btn.style.display = 'block';
+            } else {
+                btn.style.display = 'none';
+            }
+
+            modal.showModal();
+        };
+
+        window.generateShareCard = function() {
+            const btn = document.getElementById('share-btn');
+            const originalText = btn.innerHTML;
+            
+            // Loading state
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
             btn.disabled = true;
 
-            // 2. 准备截图：移除 3D 变换以获得清晰平面的图像
-            const originalTransform = card.style.transform;
-            card.style.transform = 'none';
+            // 选择只截图上半部分的卡片内容区域
+            const element = document.getElementById('share-capture-area');
             
-            // 稍微延迟一下，确保 UI 更新和 transforms 清除完成
-            setTimeout(() => {
-                html2canvas(card, {
-                    backgroundColor: null, // 透明背景
-                    scale: 3,              // 提高分辨率，让文字更清晰
-                    useCORS: true,         // 允许跨域图片
-                    logging: false,
-                    allowTaint: true
-                }).then(canvas => {
-                    // 恢复状态
-                    card.style.transform = originalTransform;
-                    
-                    const link = document.createElement('a');
-                    link.download = `my-achievement-${Date.now()}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                    
-                    // 恢复按钮（延迟一点点，增加“完成”的仪式感）
-                    setTimeout(() => {
-                        btn.innerHTML = `<i class="fas fa-check"></i> 保存成功`;
-                        btn.classList.remove('btn-generating');
-                        setTimeout(() => {
-                            btn.innerHTML = originalHtml;
-                            btn.style.width = 'auto';
-                            btn.disabled = false;
-                        }, 1500);
-                    }, 500);
-
-                }).catch(err => {
-                    console.error(err);
-                    card.style.transform = originalTransform;
-                    btn.innerHTML = '<i class="fas fa-times"></i> 生成失败';
-                    btn.classList.remove('btn-generating');
-                    btn.disabled = false;
-                });
-            }, 300); // 300ms 延迟
+            html2canvas(element, {
+                backgroundColor: '#ffffff',
+                scale: 2, // 高清
+                useCORS: true,
+                logging: false,
+                allowTaint: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `my-badge-${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                // Restore state
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error(err);
+                alert('图片生成失败，请稍后重试');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
         };
 
-        function renderGrid(filter) {
-            grid.innerHTML = '';
+        function renderList(filter) {
+            listContainer.innerHTML = '';
+            
             const items = SERVER_DATA.achievements
                 .filter(item => filter === 'all' || item.category === filter)
-                .sort((a, b) => (a.isUnlocked === b.isUnlocked) ? 0 : a.isUnlocked ? -1 : 1);
+                .sort((a, b) => {
+                    // 1. 已获得在前
+                    if (a.isUnlocked && !b.isUnlocked) return -1;
+                    if (!a.isUnlocked && b.isUnlocked) return 1;
+                    // 2. 获得的按时间倒序
+                    if (a.isUnlocked && b.isUnlocked) {
+                        return b.unlockDate.localeCompare(a.unlockDate);
+                    }
+                    // 3. 未获得的按稀有度 (简单按ID排序保持稳定)
+                    return a.id - b.id;
+                });
+
+            document.getElementById('list-display-count').innerText = items.length;
 
             if (items.length === 0) {
                 emptyState.classList.remove('hidden'); emptyState.classList.add('flex');
             } else {
                 emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
             }
+            
+            // 使用 DocumentFragment 优化性能
+            const fragment = document.createDocumentFragment();
 
             items.forEach((item, index) => {
-                const card = document.createElement('div');
-                card.style.animationDelay = `${index * 30}ms`;
-                card.onclick = function() { window.openBadgeDetail(item.id); };
+                const el = document.createElement('div');
+                // 关键修复：添加 rarity-class 到列表项容器
+                el.className = `badge-list-item ${item.isUnlocked ? 'unlocked' : 'locked'} rarity-${item.rarity} animate-card`;
+                el.style.animationDelay = `${index * 0.05}s`; // 瀑布流动画
+                el.onclick = () => window.openBadgeDetail(item.id);
                 
-                const isSecretLocked = !item.isUnlocked && item.isSecret;
-                const displayName = isSecretLocked ? "???" : item.name;
-                const displayDesc = isSecretLocked ? "继续探索以揭示此成就" : (item.description || '暂无描述');
-                const displayCondition = isSecretLocked ? "???" : item.condition;
-                const displayIcon = isSecretLocked ? "?" : (item.iconText || '🏅');
-
-                const iconHtml = (item.isImage && !isSecretLocked)
-                    ? `<img src="${item.iconUrl}" class="w-16 h-16 object-contain drop-shadow-md" loading="lazy">` 
-                    : `<span class="text-4xl text-stone-700">${displayIcon}</span>`;
-
-                const statusClass = item.isUnlocked ? 'unlocked' : 'locked';
-                const statusBadge = item.isUnlocked
-                    ? `<span class="absolute top-3 right-3 bg-white/90 backdrop-blur text-amber-600 text-[10px] font-bold px-2 py-1 rounded-full border border-amber-100 shadow-sm"><i class="fas fa-check"></i></span>`
-                    : `<span class="absolute top-3 right-3 bg-stone-200/50 text-stone-400 text-[10px] font-bold px-2 py-1 rounded-full"><i class="fas fa-lock"></i></span>`;
+                const isUnknown = item.isSecret && !item.isUnlocked;
                 
-                const rarityClass = `rarity-${item.rarity}`;
-                
-                // 将英文稀有度转为中文
-                const cnRarity = RARITY_MAP[item.rarity] || '普通';
+                const iconHtml = (item.isImage && !isUnknown)
+                    ? `<img src="${item.iconUrl}" class="w-10 h-10 object-contain" loading="lazy">`
+                    : `<span class="text-2xl">${isUnknown ? '❓' : (item.iconText || '🏅')}</span>`;
 
-                card.className = `card badge-card relative animate-card ${statusClass} ${rarityClass}`;
-                card.innerHTML = `
-                    <div class="card-body relative z-10">
-                        ${statusBadge}
-                        <div class="absolute top-3 left-3 badge-tag">${cnRarity}</div>
-                        
-                        <div class="icon-wrapper w-20 h-20 rounded-full bg-gradient-to-tr from-white to-stone-50 flex items-center justify-center mb-3 ring-1 ring-stone-100 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
-                            ${iconHtml}
-                        </div>
-                        
-                        <h2 class="text-base font-bold text-stone-800 mb-1 leading-tight truncate w-full">${displayName}</h2>
-                        
-                        <p class="text-xs text-stone-500 leading-relaxed line-clamp-2 h-[2.5em] w-full mb-2">
-                            ${displayDesc}
-                        </p>
-                        
-                        <div class="pt-2 border-t border-stone-100/50 w-full mt-auto">
-                            <p class="text-[10px] font-mono font-bold truncate ${item.isUnlocked ? 'text-amber-600' : 'text-stone-400'} opacity-80">
-                                ${displayCondition}
-                            </p>
-                        </div>
+                const dateText = item.isUnlocked ? item.unlockDate : '未解锁';
+                const nameText = isUnknown ? '???' : item.name;
+                const rarityText = RARITY_MAP[item.rarity];
+                
+                // 只有解锁的才显示稀有度标签
+                const rarityTag = item.isUnlocked 
+                    ? `<span class="rarity-badge text-[10px] ml-2 scale-90 origin-left opacity-80">${rarityText}</span>` 
+                    : '';
+
+                el.innerHTML = `
+                    <div class="badge-icon-wrapper">
+                        ${iconHtml}
                     </div>
-                    ${item.isUnlocked ? '<div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-amber-50/20 pointer-events-none"></div>' : ''}
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center">
+                            <h3 class="font-bold text-stone-800 text-base truncate">${nameText}</h3>
+                            ${rarityTag}
+                        </div>
+                        <p class="text-xs text-stone-400 font-mono mt-1 flex items-center gap-1">
+                            ${item.isUnlocked ? '<i class="far fa-calendar-check text-green-500"></i>' : '<i class="fas fa-lock text-stone-300"></i>'}
+                            ${dateText}
+                        </p>
+                    </div>
+                    <div class="text-stone-300 pl-2">
+                        <i class="fas fa-chevron-right text-xs"></i>
+                    </div>
                 `;
-                grid.appendChild(card);
+                fragment.appendChild(el);
             });
+            
+            listContainer.appendChild(fragment);
         }
     });
 </script>

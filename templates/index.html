@@ -19,54 +19,62 @@
         </span> 
         的贴纸板
     </span>
-    <a href="{{ url_for('my_following') }}" class="ml-2 w-6 h-6 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 hover:scale-110 transition-all text-xs border border-white/10">✕</a>
+    <a href="{{ url_for('my_following') }}" class="ml-2 w-6 h-6 flex items-center justify-center rounded-full bg-base-100/10 hover:bg-base-100/20 hover:scale-110 transition-all text-xs border border-white/10">✕</a>
 </div>
 {% endif %}
 
 <!-- <div class="border-black border-[1px] rounded-3xl max-w-7xl mx-auto space-y-12 pb-12 relative pointer-events-none"> -->
     <div class="rounded-3xl max-w-7xl mx-auto space-y-12 pb-12 relative pointer-events-none">
-    <div class="relative text-center space-y-8 py-16 bg-gradient-to-b from-primary/5 to-transparent rounded-3xl group/hero pointer-events-none">
+    <div class="relative text-center space-y-8 py-16 from-primary/5 from-primary/5 to-transparent rounded-3xl group/hero pointer-events-none">
         <div class="space-y-4 pointer-events-auto">
-            <h1 class="text-4xl lg:text-5xl font-extrabold text-stone-800 tracking-tight">
+            <h1 class="text-4xl lg:text-5xl font-extrabold text-base-content tracking-tight">
                 探索知识的 <span class="text-primary">WikiBook</span>
             </h1>
-            <p class="text-lg text-stone-500 max-w-2xl mx-auto">
+            <p class="text-lg text-base-content/70 max-w-2xl mx-auto">
                 构建、分享与协作。在这里发现有价值的文档，或创建属于你的知识库。
             </p>
         </div>
 
-        <div class="max-w-2xl mx-auto px-4 relative z-20 pointer-events-auto">
-            <form action="{{ url_for('index') }}" method="get" class="relative group">
-                <input type="text" name="q" value="{{ q or '' }}" 
-                    class="input input-lg w-full pl-12 pr-4 bg-white shadow-lg border-stone-200 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-full transition-all duration-300" 
-                    placeholder="搜索 Wiki 或文章内容...">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-            </form>
+        <div class="max-w-2xl mx-auto px-4 relative z-50 pointer-events-auto">
+            <div class="relative group">
+                <form action="{{ url_for('index') }}" method="get" id="wikiSearchForm">
+                    <input type="text" id="wikiQuickInput" name="q" value="{{ q or '' }}" 
+                        oninput="handleWikiSearchInput(this.value)"
+                        class="input input-lg w-full pl-12 pr-4 bg-base-100 shadow-lg border-base-300 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-full transition-all duration-300" 
+                        placeholder="搜索 Wiki 或文章内容..." autocomplete="off">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-base-content/40 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </form>
+
+                <!-- Instant Search Dropdown -->
+                <div id="wikiInstantSearchResults" class="absolute top-full left-0 right-0 mt-2 bg-base-100 rounded-2xl shadow-2xl border border-base-200 hidden overflow-hidden transition-all text-left z-[100]">
+                    <!-- Results injected via JS -->
+                </div>
+            </div>
         </div>
 
         <div id="sticker-drop-zone" class="hidden absolute left-0 right-0 -bottom-12 z-10 h-24 transition-all duration-500 animate-fade-in-up pointer-events-none">
-            <div class="w-full h-full border-2 border-dashed border-stone-300/60 rounded-3xl p-4 flex flex-col items-center justify-center text-center bg-white/90 backdrop-blur-sm hover:bg-stone-50 transition-colors shadow-sm">
-                <div class="p-2 rounded-full bg-stone-100 mb-2 text-primary">
+            <div class="w-full h-full border-2 border-dashed border-stone-300/60 rounded-3xl p-4 flex flex-col items-center justify-center text-center bg-base-100/90 backdrop-blur-sm hover:bg-base-200 transition-colors shadow-sm">
+                <div class="p-2 rounded-full bg-base-300 mb-2 text-primary">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
                 </div>
                 <h3 class="text-sm font-bold text-stone-600">拖拽贴纸到这里</h3>
-                <p class="text-[10px] text-stone-400 mt-0.5">贴纸将固定在首页背景上</p>
+                <p class="text-[10px] text-base-content/40 mt-0.5">贴纸将固定在首页背景上</p>
             </div>
         </div>
     </div>
 
-    <div class="relative z-30 bg-white rounded-3xl shadow-sm border border-stone-100 p-8 lg:p-12 pointer-events-auto">
+    <div class="relative z-30 bg-base-100 rounded-3xl shadow-sm border border-stone-100 p-8 lg:p-12 pointer-events-auto">
         {% if q %}
             <div class="space-y-12">
                 <section>
                     <div class="flex items-center gap-3 mb-6">
                         <div class="w-1 h-6 bg-primary rounded-full"></div>
-                        <h2 class="text-xl font-bold text-stone-800">Wiki 匹配结果</h2>
-                        {% if not wikis %}<span class="text-sm text-stone-400 font-normal">无匹配</span>{% endif %}
+                        <h2 class="text-xl font-bold text-base-content">Wiki 匹配结果</h2>
+                        {% if not wikis %}<span class="text-sm text-base-content/40 font-normal">无匹配</span>{% endif %}
                     </div>
                     {% if wikis %}
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -101,21 +109,21 @@
                 <section>
                     <div class="flex items-center gap-3 mb-6">
                         <div class="w-1 h-6 bg-secondary rounded-full"></div>
-                        <h2 class="text-xl font-bold text-stone-800">文章匹配结果</h2>
-                        {% if not pages %}<span class="text-sm text-stone-400 font-normal">无匹配</span>{% endif %}
+                        <h2 class="text-xl font-bold text-base-content">文章匹配结果</h2>
+                        {% if not pages %}<span class="text-sm text-base-content/40 font-normal">无匹配</span>{% endif %}
                     </div>
                     {% if pages %}
                     <div class="grid grid-cols-1 gap-4">
                         {% for p in pages %}
-                        <a href="{{ url_for('view_page', wiki_id=p.wiki.id, slug=p.slug) }}" class="flex flex-col md:flex-row gap-4 p-4 rounded-xl hover:bg-stone-50 transition-colors border border-transparent hover:border-stone-100 group">
+                        <a href="{{ url_for('view_page', wiki_id=p.wiki.id, slug=p.slug) }}" class="flex flex-col md:flex-row gap-4 p-4 rounded-xl hover:bg-base-200 transition-colors border border-transparent hover:border-stone-100 group">
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 mb-1">
                                     <span class="badge badge-sm badge-ghost">{{ p.wiki.title }}</span>
-                                    <h3 class="font-bold text-lg text-stone-800 group-hover:text-primary transition-colors truncate">{{ p.title }}</h3>
+                                    <h3 class="font-bold text-lg text-base-content group-hover:text-primary transition-colors truncate">{{ p.title }}</h3>
                                 </div>
-                                <p class="text-sm text-stone-500 line-clamp-2">{{ p.content_md[:200] }}...</p>
+                                <p class="text-sm text-base-content/70 line-clamp-2">{{ p.content_md[:200] }}...</p>
                             </div>
-                            <div class="flex items-center gap-4 text-xs text-stone-400 flex-shrink-0 md:self-center">
+                            <div class="flex items-center gap-4 text-xs text-base-content/40 flex-shrink-0 md:self-center">
                                 <span>{{ p.updated_at.strftime('%Y-%m-%d') }}</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-stone-300 group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -133,14 +141,42 @@
             <div class="flex items-center justify-between mb-8">
                 <div class="flex items-center gap-3">
                     <div class="w-1 h-6 bg-primary rounded-full"></div>
-                    <h2 class="text-2xl font-bold text-stone-800">精选 Wiki</h2>
+                    <h2 class="text-2xl font-bold text-base-content">精选 Wiki</h2>
                 </div>
-                {% if current_user.is_admin %}
-                <a href="{{ url_for('create_wiki') }}" class="btn btn-primary btn-sm gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                    创建新 Wiki
-                </a>
-                {% endif %}
+                <div class="flex items-center gap-2">
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost gap-2">
+                            <i class="fas fa-filter text-stone-400"></i>
+                            <span class="hidden md:inline font-normal text-stone-500">
+                                {% if current_filter == 'my_class' %}我的班级
+                            {% elif current_filter == 'my_groups' %}我的小组
+                            {% elif current_filter.startswith('class_') %}特定班级
+                            {% elif current_filter.startswith('group_') %}特定小组
+                            {% else %}全部可见{% endif %}
+                            </span>
+                            <i class="fas fa-chevron-down text-xs text-stone-300"></i>
+                        </label>
+                        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 border border-stone-100">
+                            <li><a href="{{ url_for('index', visibility='all') }}" class="{% if current_filter == 'all' %}active{% endif %}">全部可见</a></li>
+                            {% if current_user.is_authenticated %}
+                            <li><a href="{{ url_for('index', visibility='my_class') }}" class="{% if current_filter == 'my_class' %}active{% endif %}">我的班级</a></li>
+                            <li><a href="{{ url_for('index', visibility='my_groups') }}" class="{% if current_filter == 'my_groups' %}active{% endif %}">我的小组</a></li>
+                            {% if current_user.is_admin %}
+                            <div class="divider my-0"></div>
+                            <li class="menu-title text-xs text-base-content/40 uppercase tracking-wider px-4 py-2">按班级筛选</li>
+                            {% for cls in all_classes %}
+                            <li><a href="{{ url_for('index', visibility='class_' + cls.id|string) }}" class="{% if current_filter == 'class_' + cls.id|string %}active{% endif %}">{{ cls.name }}</a></li>
+                            {% endfor %}
+                            <div class="divider my-0"></div>
+                            <li class="menu-title text-xs text-base-content/40 uppercase tracking-wider px-4 py-2">按小组筛选</li>
+                            {% for grp in all_groups %}
+                            <li><a href="{{ url_for('index', visibility='group_' + grp.id|string) }}" class="{% if current_filter == 'group_' + grp.id|string %}active{% endif %}">{{ grp.name }}</a></li>
+                            {% endfor %}
+                            {% endif %}
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -153,7 +189,7 @@
                     <div class="card-body p-5 relative z-10">
                         <div class="flex items-center gap-2 mb-3">
                             <div class="avatar placeholder">
-                                <div class="bg-primary/10 text-primary rounded-full w-8 h-8 backdrop-blur-md bg-white/40 shadow-sm border-black border-white/20">
+                                <div class="bg-primary/10 text-primary rounded-full w-8 h-8 backdrop-blur-md bg-base-100/40 shadow-sm border-black border-white/20">
                                     <span class="text-xs font-bold">{{ w.title[0]|upper }}</span>
                                 </div>
                             </div>
@@ -193,5 +229,91 @@
 <script>
     // 在这里添加处理贴纸拖拽逻辑的 JS 代码
     // 或者引用外部 JS 文件
+
+    let wikiSearchTimeout;
+
+    function handleWikiSearchInput(val) {
+        clearTimeout(wikiSearchTimeout);
+        const resultsDiv = document.getElementById('wikiInstantSearchResults');
+        
+        if (!val.trim()) {
+            resultsDiv.classList.add('hidden');
+            resultsDiv.innerHTML = '';
+            return;
+        }
+
+        wikiSearchTimeout = setTimeout(async () => {
+            try {
+                // 使用现有的搜索API，如果需要更复杂的Wiki搜索，可能需要新端点
+                // 这里我们复用 index 路由的搜索逻辑不太合适，因为 index 返回 HTML
+                // 最好有一个 API 返回 JSON
+                // 既然没有专门的 Wiki 搜索 API，我们可以快速创建一个，或者
+                // 暂时使用 notes 的搜索 API 作为一个示例？不，那搜不到 Wiki。
+                // 让我们先在前端模拟一个简单的 API 调用，或者我们需要在后端添加一个 API。
+                // 考虑到任务要求，我应该添加一个 API。
+                
+                const response = await fetch(`/api/wikis/search?q=${encodeURIComponent(val)}`);
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    resultsDiv.innerHTML = data.results.map(item => {
+                        let iconHtml = '';
+                        let typeText = '';
+                        let linkUrl = '';
+                        let snippetHtml = '';
+                        
+                        if (item.type === 'wiki') {
+                            iconHtml = `<div class="w-8 h-8 rounded bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">${item.title[0].toUpperCase()}</div>`;
+                            typeText = 'Wiki';
+                            linkUrl = `/wikis/${item.id}`;
+                        } else {
+                            iconHtml = `<div class="w-8 h-8 rounded bg-secondary/10 text-secondary flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>`;
+                            typeText = `文章 · ${item.wiki_title}`;
+                            linkUrl = `/wikis/${item.wiki_id}/pages/${item.slug}`;
+                            if (item.snippet) {
+                                snippetHtml = `<p class="text-[10px] text-base-content/40 mt-0.5 line-clamp-1 break-all">${item.snippet.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
+                            }
+                        }
+                        
+                        return `
+                        <a href="${linkUrl}" class="flex items-center gap-3 p-4 hover:bg-base-200/50 border-b border-base-100 last:border-0 transition-colors cursor-pointer group">
+                            ${iconHtml}
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-bold text-sm text-base-content truncate group-hover:text-primary">${item.title}</h4>
+                                <p class="text-xs text-base-content/50 truncate">
+                                    ${typeText}
+                                </p>
+                                ${snippetHtml}
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-base-content/30 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </a>
+                        `;
+                    }).join('');
+                    resultsDiv.classList.remove('hidden');
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="p-4 text-center text-sm text-base-content/50 cursor-pointer hover:bg-base-200/50 transition-colors" onclick="document.getElementById('wikiSearchForm').submit()">
+                            未找到精确匹配，<span class="text-primary font-bold">按回车</span> 查看更多结果
+                        </div>
+                    `;
+                    resultsDiv.classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }, 300);
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const container = document.querySelector('.relative.group');
+        const resultsDiv = document.getElementById('wikiInstantSearchResults');
+        if (container && !container.contains(e.target) && resultsDiv) {
+            resultsDiv.classList.add('hidden');
+        }
+    });
+
 </script>
 {% endblock %}

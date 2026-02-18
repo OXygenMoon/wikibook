@@ -124,6 +124,11 @@
                             <label class="label"><span class="label-text-alt text-base-content/60">如果填写，将在成就卡片上优先显示此文本，否则自动生成</span></label>
                         </div>
 
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-medium">发行方</span></label>
+                            <input type="text" name="issuer" value="{{ badge.issuer or 'WikiBook' }}" class="input input-bordered w-full" />
+                        </div>
+
                         <div class="form-control hidden" id="time_range_group">
                             <label class="label"><span class="label-text font-medium">有效时间段</span></label>
                             <div class="flex flex-col sm:flex-row gap-2">

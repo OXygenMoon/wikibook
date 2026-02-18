@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}编辑小组成员 - {{ group.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <div class="text-sm breadcrumbs text-stone-500 mb-2">
+                <ul>
+                    <li><a href="{{ url_for('manage_groups') }}">组管理</a></li>
+                    <li>编辑成员</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-bold text-stone-800">编辑小组: {{ group.name }}</h1>
+        </div>
+    </div>
+
+    <form action="{{ url_for('edit_group', group_id=group.id) }}" method="post" class="card bg-base-100 shadow-sm border border-stone-200">
+        <div class="card-body">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">小组名称</span></label>
+                    <input type="text" name="name" value="{{ group.name }}" class="input input-bordered w-full" required />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">描述</span></label>
+                    <input type="text" name="description" value="{{ group.description or '' }}" class="input input-bordered w-full" />
+                </div>
+            </div>
+
+            <div class="divider">成员管理</div>
+
+            <div class="form-control">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="label"><span class="label-text font-bold">选择成员</span></label>
+                    <div class="join">
+                        <input type="text" id="userSearch" placeholder="搜索姓名、学号或班级..." class="input input-bordered input-sm join-item w-64" onkeyup="filterUsers()">
+                        <button type="button" class="btn btn-sm join-item" onclick="filterUsers()">搜索</button>
+                    </div>
+                </div>
+                
+                <div class="h-96 overflow-y-auto border border-base-300 rounded-lg bg-base-50">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1 p-2" id="userList">
+                        {% for user in all_users %}
+                        <label class="label cursor-pointer justify-start gap-3 hover:bg-white p-2 rounded border border-transparent hover:border-base-200 hover:shadow-sm transition-all user-item">
+                            <input type="checkbox" name="members" value="{{ user.id }}" class="checkbox checkbox-sm checkbox-primary" 
+                                {% if user in group.users %}checked{% endif %}>
+                            <div class="flex flex-col overflow-hidden">
+                                <span class="font-bold text-sm truncate searchable-name">{{ user.real_name or user.username }}</span>
+                                <span class="text-xs text-stone-400 truncate searchable-info">
+                                    {{ user.student_id or '无学号' }} 
+                                    {% if user.student_class %}· {{ user.student_class.name }}{% endif %}
+                                </span>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div id="noResult" class="hidden p-8 text-center text-stone-400">未找到匹配的用户</div>
+                </div>
+                <div class="label">
+                    <span class="label-text-alt text-stone-500">已选: <span id="selectedCount" class="font-bold text-primary">{{ group.users|length }}</span> 人</span>
+                </div>
+            </div>
+
+            <div class="card-actions justify-end mt-6">
+                <a href="{{ url_for('manage_groups') }}" class="btn">取消</a>
+                <button type="submit" class="btn btn-primary px-8">保存更改</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    function filterUsers() {
+        const input = document.getElementById('userSearch');
+        const filter = input.value.toLowerCase();
+        const items = document.getElementsByClassName('user-item');
+        let hasVisible = false;
+
+        for (let i = 0; i < items.length; i++) {
+            const name = items[i].querySelector('.searchable-name').textContent || "";
+            const info = items[i].querySelector('.searchable-info').textContent || "";
+            const text = name + " " + info;
+            
+            if (text.toLowerCase().indexOf(filter) > -1) {
+                items[i].style.display = "";
+                hasVisible = true;
+            } else {
+                items[i].style.display = "none";
+            }
+        }
+        
+        document.getElementById('noResult').classList.toggle('hidden', hasVisible);
+    }
+
+    // Update count on change
+    document.querySelectorAll('input[name="members"]').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const count = document.querySelectorAll('input[name="members"]:checked').length;
+            document.getElementById('selectedCount').textContent = count;
+        });
+    });
+</script>
+{% endblock %}

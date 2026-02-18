@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}组管理{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-stone-800">组管理</h1>
+            <p class="text-stone-500 mt-1">创建和管理学习小组</p>
+        </div>
+    </div>
+
+    <div class="flex gap-4 mb-6 border-b border-stone-200">
+        <a href="{{ url_for('manage_users') }}" class="px-4 py-2 text-stone-500 hover:text-stone-800">用户管理</a>
+        <a href="{{ url_for('manage_classes') }}" class="px-4 py-2 text-stone-500 hover:text-stone-800">班级管理</a>
+        <a href="{{ url_for('manage_groups') }}" class="px-4 py-2 border-b-2 border-primary font-bold text-primary">组管理</a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Create Group Form -->
+        <div class="card bg-base-100 shadow-sm border border-stone-200 h-fit">
+            <div class="card-body">
+                <h3 class="card-title text-lg mb-4">新建小组</h3>
+                <form action="{{ url_for('manage_groups') }}" method="post" class="space-y-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">小组名称</span></label>
+                        <input type="text" name="name" class="input input-bordered w-full" placeholder="例如: 算法竞赛小组" required />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">描述</span></label>
+                        <textarea name="description" class="textarea textarea-bordered w-full" placeholder="简要描述小组用途..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">创建</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Group List -->
+        <div class="lg:col-span-2">
+            <div class="card bg-base-100 shadow-sm border border-stone-200">
+                <div class="overflow-x-auto">
+                    <table class="table">
+                        <thead>
+                            <tr class="bg-stone-50 text-stone-600">
+                                <th>ID</th>
+                                <th>小组名称</th>
+                                <th>描述</th>
+                                <th>成员数</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for g in groups %}
+                            <tr class="hover:bg-stone-50/50 group">
+                                <td class="font-mono text-sm text-stone-400">#{{ g.id }}</td>
+                                <td class="font-bold text-stone-700">{{ g.name }}</td>
+                                <td class="text-stone-500 text-sm max-w-xs truncate">{{ g.description or '-' }}</td>
+                                <td>
+                                    <div class="badge badge-ghost">{{ g.users|length }} 人</div>
+                                </td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <!-- Edit Members Button -->
+                                        <a href="{{ url_for('edit_group', group_id=g.id) }}" class="btn btn-xs btn-outline btn-primary">
+                                            管理成员
+                                        </a>
+                                        
+                                        <!-- Delete Button -->
+                                        <form action="{{ url_for('delete_group', group_id=g.id) }}" method="post" onsubmit="return confirm('确定要删除这个小组吗？');">
+                                            <button type="submit" class="btn btn-xs btn-ghost text-error">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

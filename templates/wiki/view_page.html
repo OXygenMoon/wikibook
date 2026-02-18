@@ -94,9 +94,9 @@
             <div class="flex items-center -space-x-2 flex-shrink-0">
                 <!-- Author -->
                 {% if wiki.created_by %}
-                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar tooltip tooltip-bottom" data-tip="作者: {{ wiki.created_by.username }}">
-                    <div class="w-8 h-8 rounded-full border-2 border-white bg-primary text-primary-content text-xs font-bold grid place-items-center relative z-30">
-                        {{ wiki.created_by.username[0]|upper if wiki.created_by.username else '?' }}
+                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar tooltip tooltip-bottom" data-tip="作者: {{ wiki.created_by.username if wiki.created_by and wiki.created_by.username else 'Unknown' }}">
+                    <div class="w-8 h-8 rounded-full border-2 border-white bg-primary text-primary-content text-xs font-bold flex items-center justify-center relative z-30 !flex !items-center !justify-center leading-none">
+                        <span class="transform -translate-y-[1px]">{{ wiki.created_by.username[0]|upper if wiki.created_by and wiki.created_by.username else '?' }}</span>
                     </div>
                 </a>
                 {% endif %}
@@ -104,9 +104,9 @@
                 <!-- Top Contributors -->
                 {% for c in contributors[:2] %}
                 {% if c[0] %}
-                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar tooltip tooltip-bottom" data-tip="贡献者: {{ c[0].username }}">
-                    <div class="w-8 h-8 rounded-full border-2 border-white bg-stone-200 text-stone-600 text-xs font-bold grid place-items-center hover:bg-stone-300 transition-colors relative z-20">
-                        {{ c[0].username[0]|upper if c[0].username else '?' }}
+                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar tooltip tooltip-bottom" data-tip="贡献者: {{ c[0].username if c[0] and c[0].username else 'Unknown' }}">
+                    <div class="w-8 h-8 rounded-full border-2 border-white bg-stone-200 text-stone-600 text-xs font-bold flex items-center justify-center hover:bg-stone-300 transition-colors relative z-20 !flex !items-center !justify-center leading-none">
+                        <span class="transform -translate-y-[1px]">{{ c[0].username[0]|upper if c[0] and c[0].username else '?' }}</span>
                     </div>
                 </a>
                 {% endif %}
@@ -115,8 +115,8 @@
                 <!-- More Count -->
                 {% if contributors|length > 2 %}
                 <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar placeholder tooltip tooltip-bottom" data-tip="查看全部 {{ contributors|length }} 位贡献者">
-                    <div class="w-8 h-8 rounded-full border-2 border-white bg-stone-100 text-stone-500 text-xs font-bold grid place-items-center hover:bg-stone-200 transition-colors relative z-10">
-                        <span>+{{ contributors|length - 2 }}</span>
+                    <div class="w-8 h-8 rounded-full border-2 border-white bg-stone-100 text-stone-500 text-xs font-bold flex items-center justify-center hover:bg-stone-200 transition-colors relative z-10 !flex !items-center !justify-center leading-none">
+                        <span class="transform -translate-y-[1px]">+{{ contributors|length - 2 }}</span>
                     </div>
                 </a>
                 {% endif %}

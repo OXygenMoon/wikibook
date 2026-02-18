@@ -287,10 +287,8 @@
                 </div>
 
                 <div class="form-control">
-                    <label class="label cursor-pointer justify-start gap-3 mt-4">
-                        <input type="checkbox" name="is_hidden" class="checkbox checkbox-warning" />
-                        <span class="label-text font-medium">作为隐藏成就</span>
-                    </label>
+                    <label class="label"><span class="label-text">发行方</span></label>
+                    <input type="text" name="issuer" value="WikiBook" class="input input-bordered w-full" placeholder="例如: WikiBook, 活动名称等" />
                 </div>
 
                 <div class="form-control md:col-span-2 hidden" id="time_range_group">
@@ -301,6 +299,20 @@
                         <input type="date" name="end_time" class="input input-bordered w-1/2" />
                     </div>
                 </div>
+            </div>
+
+            <div class="form-control mt-4">
+                <label class="label cursor-pointer justify-start gap-4">
+                    <input type="checkbox" name="is_hidden" class="checkbox" />
+                    <span class="label-text">隐藏成就 (未获得时不显示详细条件)</span>
+                </label>
+            </div>
+
+            <div class="form-control mt-2">
+                <label class="label cursor-pointer justify-start gap-4">
+                    <input type="checkbox" name="is_secret" class="checkbox" />
+                    <span class="label-text">秘密成就 (未获得时完全显示为问号)</span>
+                </label>
             </div>
 
             <div class="modal-action">

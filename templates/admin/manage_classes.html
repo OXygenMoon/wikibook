@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}班级管理{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-stone-800">班级管理</h1>
+            <p class="text-stone-500 mt-1">创建和管理学生班级</p>
+        </div>
+    </div>
+
+    <div class="flex gap-4 mb-6 border-b border-stone-200">
+        <a href="{{ url_for('manage_users') }}" class="px-4 py-2 text-stone-500 hover:text-stone-800">用户管理</a>
+        <a href="{{ url_for('manage_classes') }}" class="px-4 py-2 border-b-2 border-primary font-bold text-primary">班级管理</a>
+        <a href="{{ url_for('manage_groups') }}" class="px-4 py-2 text-stone-500 hover:text-stone-800">组管理</a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Create Class Form -->
+        <div class="card bg-base-100 shadow-sm border border-stone-200 h-fit">
+            <div class="card-body">
+                <h3 class="card-title text-lg mb-4">新建班级</h3>
+                <form action="{{ url_for('manage_classes') }}" method="post" class="space-y-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">班级名称</span></label>
+                        <input type="text" name="name" class="input input-bordered w-full" placeholder="例如: 2023级计算机1班" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">创建</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Class List -->
+        <div class="lg:col-span-2">
+            <div class="card bg-base-100 shadow-sm border border-stone-200">
+                <div class="overflow-x-auto">
+                    <table class="table">
+                        <thead>
+                            <tr class="bg-stone-50 text-stone-600">
+                                <th>ID</th>
+                                <th>班级名称</th>
+                                <th>学生人数</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in classes %}
+                            <tr class="hover:bg-stone-50/50 group">
+                                <td class="font-mono text-sm text-stone-400">#{{ c.id }}</td>
+                                <td class="font-bold text-stone-700">{{ c.name }}</td>
+                                <td>
+                                    <div class="badge badge-ghost">{{ c.users.count() }} 人</div>
+                                </td>
+                                <td>
+                                    <div class="flex gap-2">
+                                        <!-- Edit Button (Popover) -->
+                                        <button class="btn btn-xs btn-ghost" onclick="document.getElementById('edit_modal_{{ c.id }}').showModal()">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        </button>
+                                        
+                                        <!-- Delete Button -->
+                                        <form action="{{ url_for('delete_class', class_id=c.id) }}" method="post" onsubmit="return confirm('确定要删除这个班级吗？');">
+                                            <button type="submit" class="btn btn-xs btn-ghost text-error">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <!-- Edit Modal -->
+                                    <dialog id="edit_modal_{{ c.id }}" class="modal">
+                                        <div class="modal-box">
+                                            <h3 class="font-bold text-lg mb-4">编辑班级</h3>
+                                            <form action="{{ url_for('edit_class', class_id=c.id) }}" method="post">
+                                                <div class="form-control mb-6">
+                                                    <label class="label"><span class="label-text">班级名称</span></label>
+                                                    <input type="text" name="name" value="{{ c.name }}" class="input input-bordered w-full" required />
+                                                </div>
+                                                <div class="modal-action">
+                                                    <button type="submit" class="btn btn-primary">保存</button>
+                                                    <button type="button" class="btn" onclick="document.getElementById('edit_modal_{{ c.id }}').close()">取消</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+                                    </dialog>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

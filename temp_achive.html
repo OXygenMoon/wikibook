@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的收藏簿 Demo</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --book-bg: #fdf6e3;
+            --line-color: #e0d6c5;
+            --grid-size: 80px; /* 每个格子的大小 */
+            --page-padding: 20px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+
+        h1 { color: #555; margin-bottom: 20px; font-size: 24px; }
+        p.hint { color: #888; font-size: 14px; margin-bottom: 10px; }
+
+        /* 书籍主体 */
+        .book-container {
+            display: flex;
+            gap: 0;
+            background-color: #5d4037;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .page {
+            width: calc(var(--grid-size) * 4);
+            height: calc(var(--grid-size) * 4);
+            background-color: var(--book-bg);
+            position: relative; /* 用于贴纸的绝对定位 */
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            /* 网格线样式 */
+            background-image: 
+                linear-gradient(var(--line-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--line-color) 1px, transparent 1px);
+            background-size: var(--grid-size) var(--grid-size);
+            border: 1px solid #dcdcdc;
+        }
+
+        /* 左页和右页的分割线效果 */
+        #page-left {
+            border-radius: 5px 0 0 5px;
+            border-right: 2px solid #dcdcdc;
+            box-shadow: inset -5px 0 10px rgba(0,0,0,0.05); /* 书脊阴影 */
+        }
+        #page-right {
+            border-radius: 0 5px 5px 0;
+            border-left: none;
+            box-shadow: inset 5px 0 10px rgba(0,0,0,0.05); /* 书脊阴影 */
+        }
+
+        /* 放置在网格上的透明感应层，用于接收 Drop 事件 */
+        .grid-cell {
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* 在底层 */
+        }
+        .grid-cell.drag-over {
+            background-color: rgba(100, 181, 246, 0.3);
+        }
+
+        /* 贴纸样式 */
+        .sticker {
+            position: absolute; /* 绝对定位，方便调整大小 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            /* 贴纸样式 */
+            background: white;
+            border-radius: 8px;
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.15);
+            border: 2px solid transparent;
+        }
+
+        .sticker:hover {
+            transform: scale(1.02);
+            box-shadow: 4px 8px 12px rgba(0,0,0,0.2);
+            border-color: #ffd54f;
+        }
+
+        /* 底部贴纸坞 */
+        .sticker-dock {
+            margin-top: 30px;
+            background: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            display: flex;
+            gap: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .dock-item {
+            width: 60px;
+            height: 60px;
+            font-size: 32px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: grab;
+            background-color: #f9f9f9;
+            border-radius: 12px;
+            transition: transform 0.2s;
+            border: 2px dashed #ddd;
+        }
+        .dock-item:active { cursor: grabbing; }
+        .dock-item:hover { transform: translateY(-5px); border-color: #bbb; }
+
+        /* 尺寸大小指示类 (JS动态添加) */
+        /* width/height 会由 JS 直接计算百分比，这里仅作参考 */
+    </style>
+</head>
+<body>
+
+    <h1>✨ 贴纸收藏簿 ✨</h1>
+    <p class="hint">1. 拖拽底部贴纸到书本中 &nbsp;|&nbsp; 2. 点击已放置的贴纸改变大小 (1x1 到 4x4)</p>
+
+    <div class="book-container">
+        <div class="page" id="page-left">
+            </div>
+
+        <div class="page" id="page-right">
+             </div>
+    </div>
+
+    <div class="sticker-dock">
+        <div class="dock-item" draggable="true" data-content="🐻">🐻</div>
+        <div class="dock-item" draggable="true" data-content="🌵">🌵</div>
+        <div class="dock-item" draggable="true" data-content="🚀">🚀</div>
+        <div class="dock-item" draggable="true" data-content="🍓">🍓</div>
+        <div class="dock-item" draggable="true" data-content="⭐">⭐</div>
+        <div class="dock-item" draggable="true" data-content="🎵">🎵</div>
+    </div>
+
+    <script>
+        // 初始化网格
+        function initGrid(pageId) {
+            const page = document.getElementById(pageId);
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('grid-cell');
+                    // 存储坐标信息
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    cell.dataset.page = pageId;
+                    
+                    // 绑定 Drop 事件
+                    cell.addEventListener('dragover', handleDragOver);
+                    cell.addEventListener('dragleave', handleDragLeave);
+                    cell.addEventListener('drop', handleDrop);
+                    
+                    page.appendChild(cell);
+                }
+            }
+        }
+
+        initGrid('page-left');
+        initGrid('page-right');
+
+        // 拖拽逻辑
+        const dockItems = document.querySelectorAll('.dock-item');
+        let draggedContent = null;
+
+        dockItems.forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                draggedContent = item.dataset.content;
+                e.dataTransfer.effectAllowed = "copy";
+                // 设置拖拽时的半透明图像（可选）
+                item.style.opacity = '0.5';
+            });
+            item.addEventListener('dragend', (e) => {
+                item.style.opacity = '1';
+                draggedContent = null;
+            });
+        });
+
+        function handleDragOver(e) {
+            e.preventDefault(); // 允许放置
+            e.dataTransfer.dropEffect = "copy";
+            e.target.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.target.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.target.classList.remove('drag-over');
+
+            // 确保我们由于 z-index 问题，drop 的 target 确实是 cell
+            // 如果 drop 在了现有的 sticker 上，这部分逻辑需要更复杂，这里假设用户尽量 drop 在空格子上
+            if (!e.target.classList.contains('grid-cell')) return;
+
+            const row = parseInt(e.target.dataset.row);
+            const col = parseInt(e.target.dataset.col);
+            const pageId = e.target.dataset.page;
+            const page = document.getElementById(pageId);
+
+            createSticker(page, row, col, draggedContent);
+        }
+
+        // 创建贴纸
+        function createSticker(container, row, col, content) {
+            const sticker = document.createElement('div');
+            sticker.classList.add('sticker');
+            sticker.textContent = content;
+            
+            // 初始数据
+            sticker.dataset.row = row;
+            sticker.dataset.col = col;
+            sticker.dataset.size = 1; // 默认 1x1
+
+            // 设置样式位置
+            updateStickerPosition(sticker);
+
+            // 点击改变大小
+            sticker.addEventListener('click', (e) => {
+                e.stopPropagation(); // 防止冒泡
+                resizeSticker(sticker);
+            });
+            
+            // 右键点击删除
+            sticker.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                sticker.remove();
+            });
+
+            container.appendChild(sticker);
+        }
+
+        // 更新贴纸的 CSS 位置和大小
+        function updateStickerPosition(sticker) {
+            const row = parseInt(sticker.dataset.row);
+            const col = parseInt(sticker.dataset.col);
+            const size = parseInt(sticker.dataset.size);
+
+            // Grid 系统中：
+            // left = col * 25%
+            // top = row * 25%
+            // width = size * 25%
+            // height = size * 25%
+
+            sticker.style.left = (col * 25) + '%';
+            sticker.style.top = (row * 25) + '%';
+            sticker.style.width = (size * 25) + '%';
+            sticker.style.height = (size * 25) + '%';
+            
+            // 根据大小调整字体
+            sticker.style.fontSize = (30 + (size - 1) * 20) + 'px';
+        }
+
+        // 调整大小逻辑
+        function resizeSticker(sticker) {
+            let currentSize = parseInt(sticker.dataset.size);
+            let nextSize = currentSize + 1;
+            
+            // 如果超过4，重置为1
+            if (nextSize > 4) {
+                nextSize = 1;
+            }
+
+            const row = parseInt(sticker.dataset.row);
+            const col = parseInt(sticker.dataset.col);
+
+            // 边界检查：如果变大后超出了 4x4 网格的边界，则重置为 1
+            // 例如：在第3列 (index 2)，大小变成3 -> 占位 col 2,3,4 (index 2,3,4) -> index 4 超出
+            // 公式：col index + size 必须 <= 4
+            
+            if (col + nextSize > 4 || row + nextSize > 4) {
+                // 如果在当前位置无法扩大，尝试重置回 1，或者给用户一个抖动反馈
+                // 这里我们简单的策略是：如果放不下，就回到 1
+                nextSize = 1;
+            }
+
+            sticker.dataset.size = nextSize;
+            updateStickerPosition(sticker);
+        }
+
+    </script>
+</body>
+</html>

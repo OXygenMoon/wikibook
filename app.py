@@ -66,6 +66,23 @@ followers = db.Table('followers',
     db.Column('followed_id', db.Integer, db.ForeignKey('user.id'))
 )
 
+user_groups = db.Table('user_groups',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('group_id', db.Integer, db.ForeignKey('group.id'), primary_key=True)
+)
+
+class Class(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    users = db.relationship('User', backref='student_class', lazy='dynamic')
+
+class Group(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.String(255))
+    users = db.relationship('User', secondary=user_groups, lazy='subquery',
+        backref=db.backref('groups', lazy=True))
+
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -79,6 +96,7 @@ class User(db.Model, UserMixin):
     student_id = db.Column(db.String(20), unique=True)
     department = db.Column(db.String(100))
     class_name = db.Column(db.String(100))
+    class_id = db.Column(db.Integer, db.ForeignKey('class.id'))
     
     # Badge System
     selected_badge_id = db.Column(db.Integer, db.ForeignKey("badge.id"), nullable=True)
@@ -336,6 +354,7 @@ class Badge(db.Model):
     start_time = db.Column(db.DateTime, nullable=True) # For time-limited badges
     end_time = db.Column(db.DateTime, nullable=True) # For time-limited badges
     created_at = db.Column(db.DateTime, default=now_utc8)
+    issuer = db.Column(db.String(100), default="WikiBook") # Issuer of the badge
     
     users = db.relationship("UserBadge", backref="badge_info", lazy="dynamic")
 
@@ -344,8 +363,35 @@ class UserBadge(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     badge_id = db.Column(db.Integer, db.ForeignKey("badge.id"), nullable=False)
     earned_at = db.Column(db.DateTime, default=now_utc8)
+    serial_number = db.Column(db.String(50), unique=True, nullable=True) # Unique Serial Number
+
+    def __init__(self, **kwargs):
+        super(UserBadge, self).__init__(**kwargs)
+        if not self.serial_number:
+            # Generate a unique serial number: SF-{timestamp}{random}
+            import time
+            import random
+            ts = int(time.time())
+            rand = random.randint(1000, 9999)
+            self.serial_number = f"SF-{ts}{rand}"
     
     badge = db.relationship("Badge")
+
+# Wiki Permissions Associations
+wiki_classes = db.Table('wiki_classes',
+    db.Column('wiki_id', db.Integer, db.ForeignKey('wiki.id'), primary_key=True),
+    db.Column('class_id', db.Integer, db.ForeignKey('class.id'), primary_key=True)
+)
+
+wiki_groups = db.Table('wiki_groups',
+    db.Column('wiki_id', db.Integer, db.ForeignKey('wiki.id'), primary_key=True),
+    db.Column('group_id', db.Integer, db.ForeignKey('group.id'), primary_key=True)
+)
+
+wiki_users = db.Table('wiki_users',
+    db.Column('wiki_id', db.Integer, db.ForeignKey('wiki.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
+)
 
 class Wiki(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -365,10 +411,53 @@ class Wiki(db.Model):
     gradient_color = db.Column(db.String(20), default="") # Second color for gradient
     gradient_direction = db.Column(db.String(50), default="to bottom right") # Direction of gradient
     
+    # Permissions
+    visibility = db.Column(db.String(20), default="public") # public, private, restricted
+    
+    allowed_classes = db.relationship('Class', secondary=wiki_classes, lazy='subquery',
+        backref=db.backref('wikis', lazy=True))
+    allowed_groups = db.relationship('Group', secondary=wiki_groups, lazy='subquery',
+        backref=db.backref('wikis', lazy=True))
+    allowed_users = db.relationship('User', secondary=wiki_users, lazy='subquery',
+        backref=db.backref('accessible_wikis', lazy=True))
+    
     created_by = db.relationship("User", foreign_keys=[created_by_id])
     pages = db.relationship("WikiPage", backref="wiki", cascade="all, delete-orphan")
     subscriptions = db.relationship("Subscription", backref="wiki", cascade="all, delete-orphan")
     editors = db.relationship("WikiEditor", backref="wiki", cascade="all, delete-orphan")
+
+    def is_visible_to(self, user):
+        if self.visibility == 'public':
+            return True
+        if not user.is_authenticated:
+            return False
+        if user.is_admin:
+            return True
+        if user.id == self.created_by_id:
+            return True
+        
+        # Check editors
+        if WikiEditor.query.filter_by(wiki_id=self.id, user_id=user.id).first():
+            return True
+            
+        if self.visibility == 'private':
+            return False
+            
+        # restricted
+        # Check users
+        if user in self.allowed_users:
+            return True
+        # Check classes
+        if user.student_class and user.student_class in self.allowed_classes:
+            return True
+        # Check groups
+        # Intersection of user groups and allowed groups
+        user_groups_set = set(user.groups)
+        allowed_groups_set = set(self.allowed_groups)
+        if not user_groups_set.isdisjoint(allowed_groups_set):
+            return True
+            
+        return False
 
 class WikiPage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -545,13 +634,18 @@ def can_edit_wiki(wiki_id):
     return WikiEditor.query.filter_by(wiki_id=wiki_id, user_id=current_user.id).first() is not None
 
 def can_view_wiki(wiki_id):
-    if not current_user.is_authenticated:
+    w = Wiki.query.get(wiki_id)
+    if not w:
         return False
-    if current_user.is_admin:
-        return True
-    if can_edit_wiki(wiki_id):
-        return True
-    return Subscription.query.filter_by(wiki_id=wiki_id, user_id=current_user.id).first() is not None
+    
+    if not current_user.is_authenticated:
+        # If public, maybe allow? But currently all wikis require login.
+        # But if visibility is public, maybe we should allow anonymous?
+        # The user said "viewing permission range", implying restrictions.
+        # Let's stick to login required for now as base policy.
+        return False
+        
+    return w.is_visible_to(current_user)
 
 def format_badge_condition(badge):
     """Format badge condition into human-readable Chinese string"""
@@ -775,10 +869,72 @@ def index():
             (WikiPage.title.contains(q)) | (WikiPage.content_md.contains(q))
         ).all()
     else:
-        wikis = Wiki.query.order_by(Wiki.created_at.desc()).all()
+        # Filter logic
+        visibility_filter = request.args.get("visibility", "all")
+        query = Wiki.query
+        
+        if visibility_filter == "my_class":
+            if current_user.is_authenticated and current_user.student_class:
+                query = query.join(wiki_classes).filter(wiki_classes.c.class_id == current_user.student_class.id)
+            else:
+                # If not logged in or no class, show nothing or empty
+                query = query.filter(db.false()) 
+        elif visibility_filter == "my_groups":
+            if current_user.is_authenticated and current_user.groups:
+                group_ids = [g.id for g in current_user.groups]
+                query = query.join(wiki_groups).filter(wiki_groups.c.group_id.in_(group_ids))
+            else:
+                query = query.filter(db.false())
+        elif visibility_filter == "all_classes" and current_user.is_authenticated and current_user.is_admin:
+            query = query.join(wiki_classes).distinct()
+        elif visibility_filter == "all_groups" and current_user.is_authenticated and current_user.is_admin:
+            query = query.join(wiki_groups).distinct()
+        else:
+            # Default: Show public wikis + visible restricted ones
+            # Actually, the original logic showed ALL wikis regardless of visibility
+            # Now we should probably filter visible ones if we are strict, 
+            # but 'index' usually shows public catalog.
+            # Let's keep showing all for 'all' filter but maybe mark them?
+            # Or better: Only show what user CAN view.
+            
+            # For now, let's just return all for 'all', but maybe filter public only?
+            # User requirement: "Filter visibility, i.e., filter class/group visible wikis"
+            # If I select "All", I expect to see Public wikis.
+            # If I select "Class", I see wikis for my class.
+            
+            # Let's implement a proper visibility filter
+            pass
+
+        wikis = query.order_by(Wiki.created_at.desc()).all()
+        
+        # Post-filtering for visibility if not admin
+        # Ideally this should be in DB query, but our permission logic is complex (is_visible_to)
+        # So we fetch and filter in python for now, or trust the user wants to see the list 
+        # even if they can't access some (which would be bad UX).
+        # Let's filter wikis list using can_view_wiki logic
+        
+        visible_wikis = []
+        for w in wikis:
+            if w.is_visible_to(current_user if current_user.is_authenticated else User(is_admin=False, id=-1)): # Dummy user for anon check
+                 visible_wikis.append(w)
+        
+        # If specific filter was requested, use that result (which is already subset of visible usually)
+        # But wait, my_class query above only checks class association, not full visibility logic.
+        # But association implies visibility in our logic.
+        # So:
+        if visibility_filter != 'all':
+             # The DB query for my_class/my_groups returns wikis explicitly assigned.
+             # These are visible.
+             pass
+        else:
+             # For 'all', we should probably only show public ones + ones user has access to?
+             # Or just Public ones?
+             # Let's default to visible_wikis (Public + accessible restricted/private)
+             wikis = visible_wikis
+
         pages = []
         
-    return render_template("index.html", wikis=wikis, pages=pages, q=q, target_user=target_user)
+    return render_template("index.html", wikis=wikis, pages=pages, q=q, target_user=target_user, current_filter=request.args.get("visibility", "all"))
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -835,8 +991,25 @@ def create_wiki():
             pattern=pattern,
             blur_level=blur_level,
             gradient_color=gradient_color,
-            gradient_direction=gradient_direction
+            gradient_direction=gradient_direction,
+            visibility=request.form.get("visibility", "public")
         )
+        
+        # Permissions
+        class_ids = request.form.getlist("allowed_classes")
+        if class_ids:
+            w.allowed_classes = Class.query.filter(Class.id.in_(class_ids)).all()
+            
+        group_ids = request.form.getlist("allowed_groups")
+        if group_ids:
+            w.allowed_groups = Group.query.filter(Group.id.in_(group_ids)).all()
+            
+        # User permissions (handled as list of IDs)
+        # Note: Frontend should provide a way to select users
+        user_ids = request.form.getlist("allowed_users")
+        if user_ids:
+            w.allowed_users = User.query.filter(User.id.in_(user_ids)).all()
+            
         db.session.add(w)
         db.session.commit()
         
@@ -860,13 +1033,22 @@ def create_wiki():
             return redirect(url_for("view_page", wiki_id=w.id, slug="home"))
             
         return redirect(url_for("wiki_detail", wiki_id=w.id))
-    return render_template("admin/create_wiki.html")
+        
+    classes = Class.query.order_by(Class.name).all()
+    groups = Group.query.order_by(Group.name).all()
+    # Users for selection - might be too many, but let's provide all for now or implement search
+    # For now, let's just pass all users sorted by name
+    all_users = User.query.order_by(User.class_name, User.student_id).all()
+    
+    return render_template("admin/create_wiki.html", classes=classes, groups=groups, all_users=all_users)
 
 @app.route("/wikis/<int:wiki_id>")
 @login_required
 def wiki_detail(wiki_id):
+    if not can_view_wiki(wiki_id):
+        abort(403)
     w = Wiki.query.get_or_404(wiki_id)
-    # 详情页允许所有登录用户访问，以便订阅
+    # ...详情页允许所有登录用户访问，以便订阅
     all_pages = WikiPage.query.filter_by(wiki_id=wiki_id).all()
     
     # 排序逻辑（复用）
@@ -893,14 +1075,36 @@ def wiki_detail(wiki_id):
         first_page.view_count += 1
         db.session.commit()
     
-    return render_template("wiki/view_page.html", wiki=w, page=first_page, pages=pages, html=html, can_edit=is_editor, is_subscribed=is_subscribed, is_home=True)
+    # Fetch contributors for title card (Same as view_page)
+    contributors = []
+    try:
+        if pages:
+            page_ids_list = [pg.id for pg in pages]
+            contributors = db.session.query(
+                User, 
+                db.func.count(WikiPageHistory.id).label('edit_count')
+            ).join(
+                WikiPageHistory, WikiPageHistory.user_id == User.id
+            ).filter(
+                WikiPageHistory.page_id.in_(page_ids_list)
+            ).group_by(
+                User.id
+            ).order_by(
+                db.text('edit_count DESC')
+            ).all()
+    except Exception as e:
+        print(f"Error fetching contributors in wiki_detail: {e}")
+        contributors = []
+    
+    return render_template("wiki/view_page.html", wiki=w, page=first_page, pages=pages, html=html, can_edit=is_editor, is_subscribed=is_subscribed, is_home=True, contributors=contributors)
 
 @app.route("/admin/wikis/<int:wiki_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_wiki(wiki_id):
-    if not current_user.is_admin:
-        abort(403)
     w = Wiki.query.get_or_404(wiki_id)
+    if not current_user.is_admin and current_user.id != w.created_by_id:
+        abort(403)
+        
     if request.method == "POST":
         w.title = request.form.get("title", "").strip()
         w.description = request.form.get("description", "").strip()
@@ -911,13 +1115,36 @@ def edit_wiki(wiki_id):
         w.gradient_color = request.form.get("gradient_color", "").strip()
         w.gradient_direction = request.form.get("gradient_direction", "to bottom right").strip()
         
+        # Permissions
+        w.visibility = request.form.get("visibility", "public")
+        
+        class_ids = request.form.getlist("allowed_classes")
+        w.allowed_classes = []
+        if class_ids:
+             w.allowed_classes = Class.query.filter(Class.id.in_(class_ids)).all()
+             
+        group_ids = request.form.getlist("allowed_groups")
+        w.allowed_groups = []
+        if group_ids:
+            w.allowed_groups = Group.query.filter(Group.id.in_(group_ids)).all()
+            
+        user_ids = request.form.getlist("allowed_users")
+        w.allowed_users = []
+        if user_ids:
+            w.allowed_users = User.query.filter(User.id.in_(user_ids)).all()
+        
         if not w.title:
             flash("标题不能为空")
             return redirect(url_for("edit_wiki", wiki_id=wiki_id))
         db.session.commit()
         flash("Wiki 信息已更新")
         return redirect(url_for("wiki_detail", wiki_id=w.id))
-    return render_template("admin/edit_wiki.html", wiki=w)
+        
+    classes = Class.query.order_by(Class.name).all()
+    groups = Group.query.order_by(Group.name).all()
+    all_users = User.query.order_by(User.class_name, User.student_id).all()
+    
+    return render_template("admin/edit_wiki.html", wiki=w, classes=classes, groups=groups, all_users=all_users)
 
 @app.route("/admin/wikis/<int:wiki_id>/delete", methods=["POST"])
 @login_required
@@ -1384,7 +1611,127 @@ def manage_users():
     if not current_user.is_admin:
         abort(403)
     users = User.query.order_by(User.created_at.desc()).all()
-    return render_template("admin/manage_users.html", users=users)
+    classes = Class.query.order_by(Class.name).all()
+    return render_template("admin/manage_users.html", users=users, classes=classes)
+
+@app.route("/admin/classes", methods=["GET", "POST"])
+@login_required
+def manage_classes():
+    if not current_user.is_admin:
+        abort(403)
+    
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        if name:
+            if Class.query.filter_by(name=name).first():
+                flash("班级已存在")
+            else:
+                c = Class(name=name)
+                db.session.add(c)
+                db.session.commit()
+                flash("班级创建成功")
+        return redirect(url_for("manage_classes"))
+        
+    classes = Class.query.order_by(Class.name).all()
+    return render_template("admin/manage_classes.html", classes=classes)
+
+@app.route("/admin/classes/<int:class_id>/edit", methods=["POST"])
+@login_required
+def edit_class(class_id):
+    if not current_user.is_admin:
+        abort(403)
+    c = Class.query.get_or_404(class_id)
+    name = request.form.get("name", "").strip()
+    if name:
+        if Class.query.filter(Class.name == name, Class.id != class_id).first():
+            flash("班级名已存在")
+        else:
+            c.name = name
+            # Update class_name in User table for consistency (legacy field)
+            # User.query.filter_by(class_id=c.id).update({"class_name": name})
+            # Actually, let's keep them in sync if we are still using class_name somewhere
+            for u in c.users:
+                u.class_name = name
+            db.session.commit()
+            flash("班级更新成功")
+    return redirect(url_for("manage_classes"))
+
+@app.route("/admin/classes/<int:class_id>/delete", methods=["POST"])
+@login_required
+def delete_class(class_id):
+    if not current_user.is_admin:
+        abort(403)
+    c = Class.query.get_or_404(class_id)
+    # Check if has users
+    if c.users.count() > 0:
+        flash("无法删除：该班级下还有学生")
+    else:
+        db.session.delete(c)
+        db.session.commit()
+        flash("班级已删除")
+    return redirect(url_for("manage_classes"))
+
+@app.route("/admin/groups", methods=["GET", "POST"])
+@login_required
+def manage_groups():
+    if not current_user.is_admin:
+        abort(403)
+        
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        if name:
+            if Group.query.filter_by(name=name).first():
+                flash("组名已存在")
+            else:
+                g = Group(name=name, description=description)
+                db.session.add(g)
+                db.session.commit()
+                flash("创建成功")
+        return redirect(url_for("manage_groups"))
+        
+    groups = Group.query.order_by(Group.id.desc()).all()
+    return render_template("admin/manage_groups.html", groups=groups)
+
+@app.route("/admin/groups/<int:group_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_group(group_id):
+    if not current_user.is_admin:
+        abort(403)
+    g = Group.query.get_or_404(group_id)
+    
+    if request.method == "POST":
+        g.name = request.form.get("name", "").strip()
+        g.description = request.form.get("description", "").strip()
+        
+        # Update members
+        # We expect a list of user_ids
+        member_ids = request.form.getlist("members")
+        # Clear existing
+        g.users = []
+        if member_ids:
+            users = User.query.filter(User.id.in_(member_ids)).all()
+            g.users.extend(users)
+            
+        db.session.commit()
+        flash("更新成功")
+        return redirect(url_for("manage_groups"))
+    
+    # GET: Show edit form with member selection
+    # We need all users to select from
+    all_users = User.query.order_by(User.class_name, User.student_id).all()
+    return render_template("admin/edit_group.html", group=g, all_users=all_users)
+
+@app.route("/admin/groups/<int:group_id>/delete", methods=["POST"])
+@login_required
+def delete_group(group_id):
+    if not current_user.is_admin:
+        abort(403)
+    g = Group.query.get_or_404(group_id)
+    db.session.delete(g)
+    db.session.commit()
+    flash("删除成功")
+    return redirect(url_for("manage_groups"))
 
 @app.route("/admin/users/template")
 @login_required
@@ -1497,6 +1844,14 @@ def import_users():
             u.department = department
             u.class_name = class_name
             
+            if class_name:
+                cls = Class.query.filter_by(name=class_name).first()
+                if not cls:
+                    cls = Class(name=class_name)
+                    db.session.add(cls)
+                    db.session.flush()
+                u.class_id = cls.id
+            
             db.session.add(u)
             success_count += 1
         db.session.commit()
@@ -1521,6 +1876,30 @@ def update_user_role(user_id):
         u.is_admin = False
     db.session.commit()
     flash(f"用户 {u.username} 权限已更新")
+    return redirect(url_for("manage_users"))
+
+@app.route("/admin/users/<int:user_id>/class", methods=["POST"])
+@login_required
+def update_user_class(user_id):
+    if not current_user.is_admin:
+        abort(403)
+    u = User.query.get_or_404(user_id)
+    class_id = request.form.get("class_id")
+    
+    if class_id:
+        c = Class.query.get(class_id)
+        if c:
+            u.class_id = c.id
+            u.class_name = c.name # Keep legacy field in sync
+        else:
+            u.class_id = None
+            u.class_name = None
+    else:
+        u.class_id = None
+        u.class_name = None
+        
+    db.session.commit()
+    flash(f"用户 {u.username} 班级已更新")
     return redirect(url_for("manage_users"))
 
 @app.route("/admin/badges", methods=["GET", "POST"])
@@ -1576,6 +1955,7 @@ def manage_badges():
         is_secret = request.form.get("is_secret") == "on"
         category = request.form.get("category", "一般").strip() or "一般"
         rarity = request.form.get("rarity", "common").strip()
+        issuer = request.form.get("issuer", "WikiBook").strip() or "WikiBook"
         custom_condition_text = request.form.get("custom_condition_text", "").strip()
         
         # Parse dates
@@ -1604,9 +1984,12 @@ def manage_badges():
             condition_value=condition_value,
             sticker_count=sticker_count,
             category=category,
+            rarity=rarity,
+            issuer=issuer,
             custom_condition_text=custom_condition_text,
             total_limit=total_limit,
             is_hidden=is_hidden,
+            is_secret=is_secret,
             start_time=start_time,
             end_time=end_time
         )
@@ -1706,6 +2089,7 @@ def edit_badge(badge_id):
         b.is_secret = request.form.get("is_secret") == "on"
         b.category = request.form.get("category", "一般").strip() or "一般"
         b.rarity = request.form.get("rarity", "common").strip()
+        b.issuer = request.form.get("issuer", "WikiBook").strip() or "WikiBook"
         b.custom_condition_text = request.form.get("custom_condition_text", "").strip()
         
         # Parse dates
@@ -2222,6 +2606,52 @@ def api_search_notes():
         
     return jsonify({"results": results})
 
+
+@app.route("/api/wikis/search")
+def api_search_wikis():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"results": []})
+        
+    results = []
+    
+    # 1. Search Wikis (Top 3)
+    wikis = Wiki.query.filter(Wiki.title.contains(q)).limit(3).all()
+    for w in wikis:
+        results.append({
+            "type": "wiki",
+            "id": w.id,
+            "title": w.title,
+            "desc": w.description
+        })
+        
+    # 2. Search Pages (Top 5)
+    # Join with Wiki to get wiki title
+    # Search both title and content
+    pages = WikiPage.query.join(Wiki).filter(
+        (WikiPage.title.contains(q)) | (WikiPage.content_md.contains(q))
+    ).limit(5).all()
+    
+    for p in pages:
+        # Extract snippet if match is in content
+        snippet = ""
+        if q.lower() in (p.content_md or "").lower():
+            # Find the position
+            idx = (p.content_md or "").lower().find(q.lower())
+            start = max(0, idx - 20)
+            end = min(len(p.content_md), idx + 60)
+            snippet = p.content_md[start:end] + "..."
+            
+        results.append({
+            "type": "page",
+            "wiki_id": p.wiki_id,
+            "wiki_title": p.wiki.title,
+            "slug": p.slug,
+            "title": p.title,
+            "snippet": snippet
+        })
+        
+    return jsonify({"results": results})
 
 
 @app.route("/book/received")
@@ -3577,25 +4007,31 @@ def wiki_contributors(wiki_id):
     page_ids = [p[0] for p in page_ids]
     
     contributors = []
-    if page_ids:
-        contributors = db.session.query(
-            User, 
-            db.func.count(WikiPageHistory.id).label('edit_count')
-        ).join(
-            WikiPageHistory, WikiPageHistory.user_id == User.id
-        ).filter(
-            WikiPageHistory.page_id.in_(page_ids)
-        ).group_by(
-            User.id
-        ).order_by(
-            db.text('edit_count DESC')
-        ).all()
+    try:
+        if page_ids:
+            contributors = db.session.query(
+                User, 
+                db.func.count(WikiPageHistory.id).label('edit_count')
+            ).join(
+                WikiPageHistory, WikiPageHistory.user_id == User.id
+            ).filter(
+                WikiPageHistory.page_id.in_(page_ids)
+            ).group_by(
+                User.id
+            ).order_by(
+                db.text('edit_count DESC')
+            ).all()
+    except Exception as e:
+        print(f"Error fetching contributors for list: {e}")
+        contributors = []
         
     return render_template("wiki/contributors.html", wiki=w, contributors=contributors)
 
 @app.route("/wikis/<int:wiki_id>/pages/<slug>")
 @login_required
 def view_page(wiki_id, slug):
+    if not can_view_wiki(wiki_id):
+        abort(403)
     w = Wiki.query.get_or_404(wiki_id)
     p = WikiPage.query.filter_by(wiki_id=wiki_id, slug=slug).first_or_404()
     
@@ -3650,20 +4086,26 @@ def view_page(wiki_id, slug):
     
     # Fetch contributors for title card
     contributors = []
-    if all_pages:
-        page_ids_list = [pg.id for pg in all_pages]
-        contributors = db.session.query(
-            User, 
-            db.func.count(WikiPageHistory.id).label('edit_count')
-        ).join(
-            WikiPageHistory, WikiPageHistory.user_id == User.id
-        ).filter(
-            WikiPageHistory.page_id.in_(page_ids_list)
-        ).group_by(
-            User.id
-        ).order_by(
-            db.text('edit_count DESC')
-        ).all()
+    try:
+        if all_pages:
+            page_ids_list = [pg.id for pg in all_pages]
+            contributors = db.session.query(
+                User, 
+                db.func.count(WikiPageHistory.id).label('edit_count')
+            ).join(
+                WikiPageHistory, WikiPageHistory.user_id == User.id
+            ).filter(
+                WikiPageHistory.page_id.in_(page_ids_list)
+            ).group_by(
+                User.id
+            ).order_by(
+                db.text('edit_count DESC')
+            ).all()
+    except Exception as e:
+        print(f"Error fetching contributors: {e}")
+        # import traceback
+        # traceback.print_exc()
+        contributors = []
 
     return render_template("wiki/view_page.html", wiki=w, page=p, pages=sorted_pages, html=html, can_edit=can_edit_wiki(wiki_id), is_subscribed=is_subscribed, contributors=contributors)
 

@@ -875,20 +875,38 @@ def index():
         
         if visibility_filter == "my_class":
             if current_user.is_authenticated and current_user.student_class:
-                query = query.join(wiki_classes).filter(wiki_classes.c.class_id == current_user.student_class.id)
+                query = query.outerjoin(wiki_classes).filter(
+                    db.or_(Wiki.visibility == 'public', wiki_classes.c.class_id == current_user.student_class.id)
+                )
             else:
-                # If not logged in or no class, show nothing or empty
-                query = query.filter(db.false()) 
+                query = query.filter(Wiki.visibility == 'public')
+                
         elif visibility_filter == "my_groups":
             if current_user.is_authenticated and current_user.groups:
                 group_ids = [g.id for g in current_user.groups]
-                query = query.join(wiki_groups).filter(wiki_groups.c.group_id.in_(group_ids))
+                query = query.outerjoin(wiki_groups).filter(
+                    db.or_(Wiki.visibility == 'public', wiki_groups.c.group_id.in_(group_ids))
+                )
             else:
-                query = query.filter(db.false())
-        elif visibility_filter == "all_classes" and current_user.is_authenticated and current_user.is_admin:
-            query = query.join(wiki_classes).distinct()
-        elif visibility_filter == "all_groups" and current_user.is_authenticated and current_user.is_admin:
-            query = query.join(wiki_groups).distinct()
+                query = query.filter(Wiki.visibility == 'public')
+                
+        elif visibility_filter.startswith("class_") and current_user.is_authenticated and current_user.is_admin:
+            try:
+                class_id = int(visibility_filter.split("_")[1])
+                query = query.outerjoin(wiki_classes).filter(
+                    db.or_(Wiki.visibility == 'public', wiki_classes.c.class_id == class_id)
+                )
+            except:
+                query = query.filter(Wiki.visibility == 'public')
+                
+        elif visibility_filter.startswith("group_") and current_user.is_authenticated and current_user.is_admin:
+            try:
+                group_id = int(visibility_filter.split("_")[1])
+                query = query.outerjoin(wiki_groups).filter(
+                    db.or_(Wiki.visibility == 'public', wiki_groups.c.group_id == group_id)
+                )
+            except:
+                query = query.filter(Wiki.visibility == 'public')
         else:
             # Default: Show public wikis + visible restricted ones
             # Actually, the original logic showed ALL wikis regardless of visibility
@@ -906,35 +924,29 @@ def index():
             pass
 
         wikis = query.order_by(Wiki.created_at.desc()).all()
-        
+                    
         # Post-filtering for visibility if not admin
-        # Ideally this should be in DB query, but our permission logic is complex (is_visible_to)
-        # So we fetch and filter in python for now, or trust the user wants to see the list 
-        # even if they can't access some (which would be bad UX).
-        # Let's filter wikis list using can_view_wiki logic
-        
         visible_wikis = []
         for w in wikis:
             if w.is_visible_to(current_user if current_user.is_authenticated else User(is_admin=False, id=-1)): # Dummy user for anon check
-                 visible_wikis.append(w)
+                visible_wikis.append(w)
         
-        # If specific filter was requested, use that result (which is already subset of visible usually)
-        # But wait, my_class query above only checks class association, not full visibility logic.
-        # But association implies visibility in our logic.
-        # So:
-        if visibility_filter != 'all':
-             # The DB query for my_class/my_groups returns wikis explicitly assigned.
-             # These are visible.
-             pass
-        else:
-             # For 'all', we should probably only show public ones + ones user has access to?
-             # Or just Public ones?
-             # Let's default to visible_wikis (Public + accessible restricted/private)
-             wikis = visible_wikis
+        # 修改这里：取消掉之前 if visibility_filter != 'all': 的 pass 判断
+        # 无论什么筛选状态，都直接使用鉴权过滤后的可见列表
+        wikis = visible_wikis
 
         pages = []
         
-    return render_template("index.html", wikis=wikis, pages=pages, q=q, target_user=target_user, current_filter=request.args.get("visibility", "all"))
+    # Context data for filters (only for admin)
+    all_classes = []
+    all_groups = []
+    if current_user.is_authenticated and current_user.is_admin:
+        all_classes = Class.query.order_by(Class.name).all()
+        all_groups = Group.query.order_by(Group.name).all()
+
+    return render_template("index.html", wikis=wikis, pages=pages, q=q, target_user=target_user, 
+                          current_filter=request.args.get("visibility", "all"),
+                          all_classes=all_classes, all_groups=all_groups)
 
 @app.route("/register", methods=["GET", "POST"])
 def register():

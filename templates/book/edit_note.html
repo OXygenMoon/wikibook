@@ -2,75 +2,85 @@
 
 {% block title %}编辑笔记 - {{ note.title }}{% endblock %}
 
-{% block content %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/github.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/easymde.min.css') }}">
+
 <style>
-    /* EasyMDE Customization */
+    /* 与新建笔记保持一致的 EasyMDE 外观与布局 */
     .EasyMDEContainer {
-        height: 100%;
         display: flex;
         flex-direction: column;
-        border: none !important;
-        background-color: transparent;
-    }
-    
-    .editor-toolbar {
-        border: none !important;
-        border-bottom: 1px solid hsl(var(--b2)) !important;
-        background-color: hsl(var(--b1)) !important;
-        border-radius: 0 !important;
-        padding: 0.5rem 1rem !important;
-        opacity: 0.8;
-        transition: opacity 0.2s;
-    }
-    
-    .editor-toolbar:hover {
-        opacity: 1;
-    }
-    
-    .editor-toolbar button {
-        border-radius: 0.5rem !important;
-        transition: all 0.2s !important;
-        color: hsl(var(--bc) / 0.6) !important;
-    }
-    
-    .editor-toolbar button:hover, .editor-toolbar button.active {
-        background-color: hsl(var(--b2)) !important;
-        border-color: transparent !important;
-        color: hsl(var(--p)) !important;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        height: calc(100vh - 320px);
+        min-height: 400px;
     }
 
-    .CodeMirror {
-        flex: 1;
-        height: auto !important;
-        border: none !important;
-        border-radius: 0 !important;
-        background-color: transparent !important;
-        padding: 1rem !important;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
-        font-size: 0.95rem !important;
-        line-height: 1.6 !important;
-        color: hsl(var(--bc)) !important;
-    }
-
-    .CodeMirror-scroll {
-        min-height: 100% !important;
-    }
-
-    .editor-preview {
-        background-color: hsl(var(--b1)) !important;
-        padding: 2rem !important;
-    }
-
-    /* Fullscreen mode fixes */
     .EasyMDEContainer.fullscreen {
+        height: 100vh !important;
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
         width: 100% !important;
-        height: 100% !important;
-        z-index: 9999 !important;
+        z-index: 99999 !important;
+        border-radius: 0 !important;
+        border: none !important;
     }
+
+    .editor-toolbar {
+        flex-shrink: 0;
+        border: none !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        background-color: #f9fafb;
+        border-radius: 0.5rem 0.5rem 0 0;
+        padding: 0.5rem !important;
+        white-space: nowrap;
+        overflow-x: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .EasyMDEContainer.fullscreen .editor-toolbar { border-radius: 0; }
+    .editor-toolbar::-webkit-scrollbar { height: 0; }
+
+    .CodeMirror {
+        flex-grow: 1;
+        height: auto !important;
+        border: none !important;
+        border-radius: 0 0 0.5rem 0.5rem;
+        font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+        font-size: 15px;
+        line-height: 1.7;
+        background: #fff;
+        padding: 10px;
+    }
+    .CodeMirror-scroll { min-height: 100% !important; }
+
+    .editor-preview-side {
+        border: none !important;
+        border-left: 1px solid #e5e7eb !important;
+        background-color: #fafaf9;
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        top: 50px;
+        height: auto !important;
+        z-index: 50;
+    }
+
+    .EasyMDEContainer.sided--no-fullscreen .CodeMirror { width: 50% !important; }
+    .EasyMDEContainer.sided--no-fullscreen .editor-preview-side {
+        width: 50% !important;
+        top: 61px !important;
+        display: block !important;
+    }
+    .editor-preview-side p { margin: 0.5em 0; }
 </style>
+{% endblock %}
+
+{% block content %}
 
 <div class="max-w-5xl mx-auto">
     <div class="flex items-center gap-2 text-sm text-base-content/60 mb-6">
@@ -111,16 +121,57 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/vendor/polyfill.min.js') }}"></script>
+<script id="MathJax-script" async src="{{ url_for('static', filename='js/vendor/tex-mml-chtml.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/highlight.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/easymde.min.js') }}"></script>
+
 <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.hljs) hljs.highlightAll();
+    });
+
     const easyMDE = new EasyMDE({
         element: document.getElementById('markdown-editor'),
-        spellChecker: false,
-        placeholder: "在此输入笔记内容...",
-        status: false,
-        minHeight: "100%",
-        toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "|", "preview", "side-by-side", "fullscreen"],
+        sideBySideFullscreen: false,
+        syncSideBySidePreviewScroll: true,
+        status: ["lines", "words", "cursor"],
+        toolbar: [
+            "bold", "italic", "strikethrough", "heading", "|",
+            "quote", "unordered-list", "ordered-list", "|",
+            "link", "image", "upload-image", "code", "|",
+            "preview", "side-by-side", "fullscreen", "|",
+            "guide"
+        ],
+        uploadImage: true,
+        imageUploadEndpoint: "{{ url_for('upload_file') }}",
+        imagePathAbsolute: true,
+        imageCSRFToken: "",
+        imageMaxSize: 1024 * 1024 * 16,
+        imageAccept: "image/png, image/jpeg, image/gif, image/webp",
+        imageTexts: {
+            sbInit: "上传图片",
+            sbOnDragEnter: "松开上传",
+            sbOnDragLeave: "取消",
+            sbProgress: "上传中...",
+            sbOnUploaded: "成功",
+            sizeUnits: "b,kb,mb"
+        },
+        errorCallback: (msg) => alert("上传失败: " + msg),
+        previewRender: function(plainText) {
+            const preview = document.getElementsByClassName("editor-preview-side")[0];
+            preview.innerHTML = this.parent.markdown(plainText);
+            if (window.hljs) preview.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
+            if (typeof MathJax !== 'undefined') MathJax.typesetPromise([preview]);
+            return preview.innerHTML;
+        },
     });
-    // Fix for full height
-    easyMDE.codemirror.setSize("100%", "100%");
+
+    setTimeout(function() {
+        if (!easyMDE.isSideBySideActive()) {
+            easyMDE.toggleSideBySide();
+        }
+        if (easyMDE.codemirror) easyMDE.codemirror.refresh();
+    }, 200);
 </script>
 {% endblock %}

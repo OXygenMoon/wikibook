@@ -148,34 +148,86 @@
                         <label tabindex="0" class="btn btn-ghost gap-2">
                             <i class="fas fa-filter text-stone-400"></i>
                             <span class="hidden md:inline font-normal text-stone-500">
-                                {% if current_filter == 'my_class' %}我的班级
-                            {% elif current_filter == 'my_groups' %}我的小组
-                            {% elif current_filter.startswith('class_') %}特定班级
-                            {% elif current_filter.startswith('group_') %}特定小组
-                            {% else %}全部可见{% endif %}
+                                {# --- 修正 1: 动态显示当前选中的具体名称，而不仅是显示“特定班级” --- #}
+                                {% set display_label = '全部可见' %}
+                                
+                                {% if current_filter == 'my_class' %}
+                                    {% set display_label = '我的班级' %}
+                                {% elif current_filter == 'my_groups' %}
+                                    {% set display_label = '我的小组' %}
+                                
+                                {# 检查班级名称 #}
+                                {% elif current_filter and current_filter.startswith('class_') %}
+                                    {% set display_label = '特定班级' %} {# 默认值 #}
+                                    {% if all_classes %}
+                                        {% for cls in all_classes %}
+                                            {% if current_filter == 'class_' ~ cls.id|string %}
+                                                {% set display_label = cls.name %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                
+                                {# 检查小组名称 #}
+                                {% elif current_filter and current_filter.startswith('group_') %}
+                                    {% set display_label = '特定小组' %} {# 默认值 #}
+                                    {% if all_groups %}
+                                        {% for grp in all_groups %}
+                                            {% if current_filter == 'group_' ~ grp.id|string %}
+                                                {% set display_label = grp.name %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endif %}
+
+                                {{ display_label }}
                             </span>
                             <i class="fas fa-chevron-down text-xs text-stone-300"></i>
                         </label>
-                        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 border border-stone-100">
-                            <li><a href="{{ url_for('index', visibility='all') }}" class="{% if current_filter == 'all' %}active{% endif %}">全部可见</a></li>
-                            {% if current_user.is_authenticated %}
-                            <li><a href="{{ url_for('index', visibility='my_class') }}" class="{% if current_filter == 'my_class' %}active{% endif %}">我的班级</a></li>
-                            <li><a href="{{ url_for('index', visibility='my_groups') }}" class="{% if current_filter == 'my_groups' %}active{% endif %}">我的小组</a></li>
-                            {% if current_user.is_admin %}
-                            <div class="divider my-0"></div>
-                            <li class="menu-title text-xs text-base-content/40 uppercase tracking-wider px-4 py-2">按班级筛选</li>
-                            {% for cls in all_classes %}
-                            <li><a href="{{ url_for('index', visibility='class_' + cls.id|string) }}" class="{% if current_filter == 'class_' + cls.id|string %}active{% endif %}">{{ cls.name }}</a></li>
-                            {% endfor %}
-                            <div class="divider my-0"></div>
-                            <li class="menu-title text-xs text-base-content/40 uppercase tracking-wider px-4 py-2">按小组筛选</li>
-                            {% for grp in all_groups %}
-                            <li><a href="{{ url_for('index', visibility='group_' + grp.id|string) }}" class="{% if current_filter == 'group_' + grp.id|string %}active{% endif %}">{{ grp.name }}</a></li>
-                            {% endfor %}
-                            {% endif %}
-                            {% endif %}
-                        </ul>
-                    </div>
+                        
+                        {# --- 修改了 ul 的 class：增加了 flex flex-col flex-nowrap --- #}
+<ul tabindex="0" class="dropdown-content z-[50] menu p-2 shadow bg-base-100 rounded-box w-60 border border-stone-100 max-h-96 overflow-y-auto flex flex-col flex-nowrap block">
+    
+    {# 1. 固定选项 #}
+    <li class="w-full"><a href="{{ url_for('index', visibility='all') }}" class="{% if not current_filter or current_filter == 'all' %}active{% endif %}">全部可见</a></li>
+    
+    {% if current_user.is_authenticated %}
+        <li class="w-full"><a href="{{ url_for('index', visibility='my_class') }}" class="{% if current_filter == 'my_class' %}active{% endif %}">我的班级</a></li>
+        <li class="w-full"><a href="{{ url_for('index', visibility='my_groups') }}" class="{% if current_filter == 'my_groups' %}active{% endif %}">我的小组</a></li>
+        
+        {# 2. 班级列表 #}
+        {% if all_classes %}
+            {# 将 divider 包裹在 li 中或直接使用，但为防止布局错乱，确保它是宽度的 100% #}
+            <div class="divider my-0 w-full"></div>
+            <li class="menu-title text-xs text-base-content/40 uppercase tracking-wider px-4 py-2 w-full">按班级筛选</li>
+            
+            {% for cls in all_classes %}
+            <li class="w-full">
+                <a href="{{ url_for('index', visibility='class_' ~ cls.id) }}" 
+                   class="{% if current_filter == 'class_' ~ cls.id|string %}active{% endif %} block truncate">
+                    {{ cls.name }}
+                </a>
+            </li>
+            {% endfor %}
+        {% endif %}
+
+        {# 3. 小组列表 #}
+        {% if all_groups %}
+            <div class="divider my-0 w-full"></div>
+            <li class="menu-title text-xs text-base-content/40 uppercase tracking-wider px-4 py-2 w-full">按小组筛选</li>
+            
+            {% for grp in all_groups %}
+            <li class="w-full">
+                <a href="{{ url_for('index', visibility='group_' ~ grp.id) }}" 
+                   class="{% if current_filter == 'group_' ~ grp.id|string %}active{% endif %} block truncate">
+                    {{ grp.name }}
+                </a>
+            </li>
+            {% endfor %}
+        {% endif %}
+        
+    {% endif %}
+</ul>
+</div>
                 </div>
             </div>
 

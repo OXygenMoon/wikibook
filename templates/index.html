@@ -55,19 +55,19 @@
         </div>
 
         <div id="sticker-drop-zone" class="hidden absolute left-0 right-0 -bottom-12 z-10 h-24 transition-all duration-500 animate-fade-in-up pointer-events-none">
-            <div class="w-full h-full border-2 border-dashed border-stone-300/60 rounded-3xl p-4 flex flex-col items-center justify-center text-center bg-base-100/90 backdrop-blur-sm hover:bg-base-200 transition-colors shadow-sm">
+            <div class="w-full h-full border-2 border-dashed border-base-content/20/60 rounded-3xl p-4 flex flex-col items-center justify-center text-center bg-base-100/90 backdrop-blur-sm hover:bg-base-200 transition-colors shadow-sm">
                 <div class="p-2 rounded-full bg-base-300 mb-2 text-primary">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
                 </div>
-                <h3 class="text-sm font-bold text-stone-600">拖拽贴纸到这里</h3>
+                <h3 class="text-sm font-bold text-base-content/80">拖拽贴纸到这里</h3>
                 <p class="text-[10px] text-base-content/40 mt-0.5">贴纸将固定在首页背景上</p>
             </div>
         </div>
     </div>
 
-    <div class="relative z-30 bg-base-100 rounded-3xl shadow-sm border border-stone-100 p-8 lg:p-12 pointer-events-auto">
+    <div class="relative z-30 bg-base-100 rounded-3xl shadow-sm border border-base-300 p-8 lg:p-12 pointer-events-auto">
         {% if q %}
             <div class="space-y-12">
                 <section>
@@ -79,7 +79,7 @@
                     {% if wikis %}
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {% for w in wikis %}
-                        <a href="{{ url_for('wiki_detail', wiki_id=w.id) }}" class="liquid-card hover:shadow-xl transition-all duration-300 border border-stone-100/50 group h-full rounded-2xl" 
+                        <a href="{{ url_for('wiki_detail', wiki_id=w.id) }}" class="liquid-card hover:shadow-xl transition-all duration-300 border border-base-300/50 group h-full rounded-2xl" 
                            style="--bg-color: {{ w.bg_color or '#ffffff' }}; color: {{ w.fg_color or '#1f2937' }}; --grain-opacity: {{ w.pattern if w.pattern and w.pattern[0].isdigit() else '0.05' }}; --blur-level: {{ w.blur_level or 60 }}px; {% if w.gradient_color %}--bg-image: {% if 'circle' in (w.gradient_direction or '') %}radial-gradient({{ w.gradient_direction }}, {{ w.bg_color }}, {{ w.gradient_color }}){% else %}linear-gradient({{ w.gradient_direction or 'to bottom right' }}, {{ w.bg_color }}, {{ w.gradient_color }}){% endif %};{% endif %}">
                             
                             <div class="liquid-noise"></div>
@@ -115,7 +115,7 @@
                     {% if pages %}
                     <div class="grid grid-cols-1 gap-4">
                         {% for p in pages %}
-                        <a href="{{ url_for('view_page', wiki_id=p.wiki.id, slug=p.slug) }}" class="flex flex-col md:flex-row gap-4 p-4 rounded-xl hover:bg-base-200 transition-colors border border-transparent hover:border-stone-100 group">
+                        <a href="{{ url_for('view_page', wiki_id=p.wiki.id, slug=p.slug) }}" class="flex flex-col md:flex-row gap-4 p-4 rounded-xl hover:bg-base-200 transition-colors border border-transparent hover:border-base-300 group">
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2 mb-1">
                                     <span class="badge badge-sm badge-ghost">{{ p.wiki.title }}</span>
@@ -146,8 +146,8 @@
                 <div class="flex items-center gap-2">
                     <div class="dropdown dropdown-end">
                         <label tabindex="0" class="btn btn-ghost gap-2">
-                            <i class="fas fa-filter text-stone-400"></i>
-                            <span class="hidden md:inline font-normal text-stone-500">
+                            <i class="fas fa-filter text-base-content/50"></i>
+                            <span class="hidden md:inline font-normal text-base-content/80">
                                 {# --- 修正 1: 动态显示当前选中的具体名称，而不仅是显示“特定班级” --- #}
                                 {% set display_label = '全部可见' %}
                                 
@@ -185,7 +185,7 @@
                         </label>
                         
                         {# --- 修改了 ul 的 class：增加了 flex flex-col flex-nowrap --- #}
-<ul tabindex="0" class="dropdown-content z-[50] menu p-2 shadow bg-base-100 rounded-box w-60 border border-stone-100 max-h-96 overflow-y-auto flex flex-col flex-nowrap block">
+<ul tabindex="0" class="dropdown-content z-[50] menu p-2 shadow bg-base-100 rounded-box w-60 border border-base-300 max-h-96 overflow-y-auto flex flex-col flex-nowrap block">
     
     {# 1. 固定选项 #}
     <li class="w-full"><a href="{{ url_for('index', visibility='all') }}" class="{% if not current_filter or current_filter == 'all' %}active{% endif %}">全部可见</a></li>
@@ -233,7 +233,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {% for w in wikis %}
-                <a href="{{ url_for('wiki_detail', wiki_id=w.id) }}" class="liquid-card hover:shadow-xl transition-all duration-300 border border-stone-100/50 group h-full rounded-2xl" 
+                <a href="{{ url_for('wiki_detail', wiki_id=w.id) }}" class="liquid-card hover:shadow-xl transition-all duration-300 border border-base-300/50 group h-full rounded-2xl" 
                    style="--bg-color: {{ w.bg_color or '#ffffff' }}; color: {{ w.fg_color or '#1f2937' }}; --grain-opacity: {{ w.pattern if w.pattern and w.pattern[0].isdigit() else '0.05' }}; --blur-level: {{ w.blur_level or 60 }}px; {% if w.gradient_color %}--bg-image: {% if 'circle' in (w.gradient_direction or '') %}radial-gradient({{ w.gradient_direction }}, {{ w.bg_color }}, {{ w.gradient_color }}){% else %}linear-gradient({{ w.gradient_direction or 'to bottom right' }}, {{ w.bg_color }}, {{ w.gradient_color }}){% endif %};{% endif %}">
                     
                     <div class="liquid-noise"></div>

@@ -255,29 +255,29 @@
 {% block content %}
 <div id="achievement-book-container" class="max-w-[1400px] mx-auto px-4 sm:px-6 py-8 min-h-screen bg-[#fdfcf8]">
     
-    <div class="bg-white rounded-3xl shadow-sm border border-orange-100 p-6 md:p-8 mb-8 relative overflow-hidden">
+    <div class="bg-base-100 rounded-3xl shadow-sm border border-orange-100 p-6 md:p-8 mb-8 relative overflow-hidden">
         <div class="absolute top-0 right-0 w-80 h-80 bg-orange-50 rounded-full blur-3xl opacity-60 -mr-20 -mt-20 pointer-events-none"></div>
         <div class="absolute bottom-0 left-0 w-64 h-64 bg-amber-50 rounded-full blur-3xl opacity-60 -ml-16 -mb-16 pointer-events-none"></div>
 
         <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
             <div class="flex items-start gap-5 w-full md:w-auto">
-                <a href="{{ url_for('public_profile', user_id=user.id) }}" class="btn btn-circle btn-ghost bg-stone-50 hover:bg-orange-100 text-stone-500 hover:text-orange-600 transition-all border-none">
+                <a href="{{ url_for('public_profile', user_id=user.id) }}" class="btn btn-circle btn-ghost bg-stone-50 hover:bg-orange-100 text-base-content/80 hover:text-orange-600 transition-all border-none">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-black text-stone-800 tracking-tight flex items-center gap-3 flex-wrap">
+                    <h1 class="text-3xl md:text-4xl font-black text-base-content tracking-tight flex items-center gap-3 flex-wrap">
                         <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500">成就图鉴</span>
                         <span class="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full font-bold align-top mt-1 border border-orange-200 shadow-sm">
                             共 <span id="total-badge-count">0</span> 枚
                         </span>
                     </h1>
-                    <p class="text-stone-500 mt-3 text-sm md:text-base max-w-lg font-medium leading-relaxed">
+                    <p class="text-base-content/80 mt-3 text-sm md:text-base max-w-lg font-medium leading-relaxed">
                         记录每一个闪光时刻。收集徽章，点亮属于你的荣誉星空。
                     </p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-6 bg-white/80 backdrop-blur-md p-4 pr-8 rounded-2xl border border-orange-100 shadow-sm">
+            <div class="flex items-center gap-6 bg-base-100/80 backdrop-blur-md p-4 pr-8 rounded-2xl border border-orange-100 shadow-sm">
                 <div class="relative w-16 h-16">
                     <svg viewBox="0 0 36 36" class="circular-chart text-amber-500 transform -rotate-90">
                         <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -288,11 +288,11 @@
                     </div>
                 </div>
                 <div>
-                    <div class="text-[10px] text-stone-400 uppercase font-bold tracking-wider mb-1">当前进度</div>
-                    <div class="text-2xl font-black text-stone-800 leading-none">
+                    <div class="text-[10px] text-base-content/50 uppercase font-bold tracking-wider mb-1">当前进度</div>
+                    <div class="text-2xl font-black text-base-content leading-none">
                         <span id="unlocked-count" class="text-amber-600">0</span>
                         <span class="text-stone-300 text-lg font-normal mx-0.5">/</span>
-                        <span id="total-count" class="text-stone-400 text-lg font-normal">0</span>
+                        <span id="total-count" class="text-base-content/50 text-lg font-normal">0</span>
                     </div>
                 </div>
             </div>
@@ -301,17 +301,17 @@
 
     <div class="sticky top-2 z-30 bg-[#fdfcf8]/95 backdrop-blur-md py-3 -mx-4 px-4 md:mx-0 md:px-0 mb-6 rounded-xl md:static md:bg-transparent md:backdrop-blur-none transition-all">
         <div class="flex justify-start md:justify-center overflow-x-auto hide-scrollbar pb-2 md:pb-0">
-            <div class="bg-white p-1.5 rounded-2xl shadow-sm border border-stone-100 flex gap-1" id="category-tabs">
+            <div class="bg-base-100 p-1.5 rounded-2xl shadow-sm border border-base-300 flex gap-1" id="category-tabs">
                 </div>
         </div>
     </div>
 
     <div class="flex justify-between items-end mb-4 px-2 max-w-3xl mx-auto w-full">
-        <h2 class="text-lg font-bold text-stone-700 flex items-center gap-2">
-            <i class="fas fa-layer-group text-stone-400 text-sm"></i> 贴纸库
+        <h2 class="text-lg font-bold text-base-content flex items-center gap-2">
+            <i class="fas fa-layer-group text-base-content/50 text-sm"></i> 贴纸库
         </h2>
-        <span class="text-xs text-stone-400 font-medium bg-white px-2 py-1 rounded-md border border-stone-100 shadow-sm">
-            显示 <span id="list-display-count" class="text-stone-600 font-bold">0</span> 张
+        <span class="text-xs text-base-content/50 font-medium bg-base-100 px-2 py-1 rounded-md border border-base-300 shadow-sm">
+            显示 <span id="list-display-count" class="text-base-content/80 font-bold">0</span> 张
         </span>
     </div>
 
@@ -319,11 +319,11 @@
         </div>
     
     <div id="empty-state" class="hidden flex-col items-center justify-center py-24 text-center">
-        <div class="w-24 h-24 bg-stone-50 rounded-full flex items-center justify-center mb-4 text-stone-200 text-4xl border border-stone-100">
+        <div class="w-24 h-24 bg-stone-50 rounded-full flex items-center justify-center mb-4 text-stone-200 text-4xl border border-base-300">
             <i class="fas fa-search"></i>
         </div>
-        <h3 class="text-lg font-bold text-stone-600">没有找到相关成就</h3>
-        <p class="text-stone-400 text-sm mt-1">尝试切换其他分类看看吧</p>
+        <h3 class="text-lg font-bold text-base-content/80">没有找到相关成就</h3>
+        <p class="text-base-content/50 text-sm mt-1">尝试切换其他分类看看吧</p>
     </div>
 </div>
 
@@ -333,7 +333,7 @@
             <button class="close-btn-round">✕</button>
         </form>
 
-        <div id="share-capture-area" class="flex flex-col h-full bg-white">
+        <div id="share-capture-area" class="flex flex-col h-full bg-base-100">
             <div class="sticker-hero-container">
                 <div id="modal-sticker-img-container" class="transition-all duration-500">
                     </div>
@@ -342,29 +342,29 @@
             <div class="sticker-info-section">
                 <div class="text-center mb-6">
                     <div class="flex justify-center items-center gap-2 mb-3">
-                        <h3 class="font-900 text-2xl text-stone-800 tracking-tight" id="modal-title"></h3>
+                        <h3 class="font-900 text-2xl text-base-content tracking-tight" id="modal-title"></h3>
                         <span id="modal-rarity-tag"></span>
                     </div>
-                    <p class="text-stone-500 text-sm leading-relaxed px-2 font-medium" id="modal-desc"></p>
+                    <p class="text-base-content/80 text-sm leading-relaxed px-2 font-medium" id="modal-desc"></p>
                 </div>
 
                 <div class="meta-grid">
-                    <div class="meta-item border-r border-stone-100 pr-4">
+                    <div class="meta-item border-r border-base-300 pr-4">
                         <span class="meta-label">发行方</span>
                         <span class="meta-value truncate" id="modal-issuer">WikiBook</span>
                     </div>
-                    <div class="meta-item border-r border-stone-100 px-4">
+                    <div class="meta-item border-r border-base-300 px-4">
                         <span class="meta-label">收集日期</span>
                         <span class="meta-value" id="modal-date">--.--.--</span>
                     </div>
                     <div class="meta-item pl-4 text-right">
                         <span class="meta-label">序列号</span>
-                        <span class="meta-value font-mono text-stone-400" id="modal-serial">--</span>
+                        <span class="meta-value font-mono text-base-content/50" id="modal-serial">--</span>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="px-8 pb-8 bg-white">
+        <div class="px-8 pb-8 bg-base-100">
             <button onclick="generateShareCard()" class="share-btn-large" id="share-btn">
                 <i class="fas fa-share-nodes mr-2"></i>保存分享卡片
             </button>
@@ -466,7 +466,7 @@
         function renderTabs() {
             tabsContainer.innerHTML = SERVER_DATA.categories.map(cat => `
                 <button onclick="filterAchievements('${cat.id}')" 
-                    class="px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap ${cat.id === 'all' ? 'bg-amber-500 text-white shadow-md shadow-orange-200' : 'text-stone-500 hover:bg-stone-50 hover:text-stone-800'}" 
+                    class="px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap ${cat.id === 'all' ? 'bg-amber-500 text-white shadow-md shadow-orange-200' : 'text-base-content/80 hover:bg-stone-50 hover:text-base-content'}" 
                     data-id="${cat.id}">
                     ${cat.name}
                 </button>
@@ -479,7 +479,7 @@
                 const isActive = btn.dataset.id === categoryId;
                 btn.className = isActive 
                     ? 'px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap bg-amber-500 text-white shadow-md shadow-orange-200 transform scale-105'
-                    : 'px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap text-stone-500 hover:bg-stone-50 hover:text-stone-800';
+                    : 'px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap text-base-content/80 hover:bg-stone-50 hover:text-base-content';
             });
             renderList(categoryId);
         };
@@ -504,7 +504,7 @@
                 rarityContainer.innerHTML = `<span class="rarity-badge shadow-sm">${rarityText}</span>`;
             } else {
                 rarityContainer.className = '';
-                rarityContainer.innerHTML = `<span class="rarity-badge bg-stone-200 text-stone-400">未知</span>`;
+                rarityContainer.innerHTML = `<span class="rarity-badge bg-stone-200 text-base-content/50">未知</span>`;
             }
 
             document.getElementById('modal-issuer').innerText = item.issuer;
@@ -621,10 +621,10 @@
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center">
-                            <h3 class="font-bold text-stone-800 text-base truncate">${nameText}</h3>
+                            <h3 class="font-bold text-base-content text-base truncate">${nameText}</h3>
                             ${rarityTag}
                         </div>
-                        <p class="text-xs text-stone-400 font-mono mt-1 flex items-center gap-1">
+                        <p class="text-xs text-base-content/50 font-mono mt-1 flex items-center gap-1">
                             ${item.isUnlocked ? '<i class="far fa-calendar-check text-green-500"></i>' : '<i class="fas fa-lock text-stone-300"></i>'}
                             ${dateText}
                         </p>

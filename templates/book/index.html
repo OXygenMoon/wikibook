@@ -15,7 +15,7 @@
         <!-- Last Edited Note Shortcut -->
         {% if last_note %}
         <div class="absolute left-1/2 ml-[180px] lg:ml-[220px] top-1/2 -translate-y-1/2" title="继续编辑: {{ last_note.title }}">
-            <a href="{{ url_for('view_note', note_id=last_note.id) }}" class="w-12 h-12 rounded-full bg-white shadow-lg border border-primary/20 flex items-center justify-center hover:scale-110 transition-transform group relative">
+            <a href="{{ url_for('view_note', note_id=last_note.id) }}" class="w-12 h-12 rounded-full bg-base-100 shadow-lg border border-primary/20 flex items-center justify-center hover:scale-110 transition-transform group relative">
                 <span class="text-2xl">{{ last_note.icon or '📝' }}</span>
                 <span class="absolute left-full ml-3 px-2 py-1 bg-base-300 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-sm pointer-events-none">
                     {{ last_note.title }}
@@ -33,10 +33,10 @@
         <div class="relative group">
             <input type="text" id="quickInput" name="q" value="{{ q }}" 
                 oninput="handleSearchInput(this.value)"
-                class="input input-lg w-full pl-12 pr-32 bg-white shadow-xl border-stone-200 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-full transition-all duration-300" 
+                class="input input-lg w-full pl-12 pr-32 bg-base-100 shadow-xl border-base-200 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-full transition-all duration-300" 
                 placeholder="搜索笔记内容或生成快速笔记..." autocomplete="off">
             
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-base-content/50 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
 
@@ -130,7 +130,7 @@
     <!-- Tabs -->
     <div class="flex justify-center mb-8">
         <div class="tabs tabs-boxed bg-base-100 p-1 rounded-xl border border-base-200 inline-flex shadow-sm">
-            <a class="tab tab-lg px-8 rounded-lg transition-all tab-active bg-white shadow-sm font-bold" id="tab-my" onclick="switchTab('my')">
+            <a class="tab tab-lg px-8 rounded-lg transition-all tab-active bg-base-100 shadow-sm font-bold" id="tab-my" onclick="switchTab('my')">
                 我的笔记
                 <span class="ml-2 badge badge-sm badge-ghost">{{ my_notes|length }}</span>
             </a>
@@ -379,8 +379,8 @@ document.addEventListener('click', (e) => {
 
 function switchTab(tab) {
     // Update Tabs
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('tab-active', 'bg-white', 'shadow-sm'));
-    document.getElementById(`tab-${tab}`).classList.add('tab-active', 'bg-white', 'shadow-sm');
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('tab-active', 'bg-base-100', 'shadow-sm'));
+    document.getElementById(`tab-${tab}`).classList.add('tab-active', 'bg-base-100', 'shadow-sm');
     
     // Update Content
     document.getElementById('content-my').classList.add('hidden');

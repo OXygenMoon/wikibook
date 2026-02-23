@@ -50,13 +50,13 @@
 
     <div class="menu-section-title flex items-center justify-between">
         <span>页面列表</span>
-        <span class="bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded text-[10px]">{{ pages|length }}</span>
+        <span class="bg-base-300 text-base-content/80 px-1.5 py-0.5 rounded text-[10px]">{{ pages|length }}</span>
     </div>
     
     <div class="space-y-0.5 mb-6">
         {% for p in pages %}
         <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" 
-           class="block px-3 py-2 text-sm rounded-lg transition-colors duration-200 truncate {{ 'page-link-active' if page and p.slug == page.slug else 'text-stone-600 hover:bg-stone-100 hover:text-stone-900' }}" 
+           class="block px-3 py-2 text-sm rounded-lg transition-colors duration-200 truncate {{ 'page-link-active' if page and p.slug == page.slug else 'text-base-content/80 hover:bg-base-300 hover:text-stone-900' }}" 
            title="{{ p.title }}">
             {{ p.title }}
         </a>
@@ -76,11 +76,11 @@
 {% block content %}
 <div id="main-content-wrapper" class="w-full max-w-5xl mx-auto flex flex-col gap-6 transition-all duration-300 ease-in-out">
     
-    <div class="card bg-base-100 shadow-sm border border-stone-100">
+    <div class="card bg-base-100 shadow-sm border border-base-300">
         <div class="card-body p-4 sm:p-5 flex-row items-start justify-between gap-4">
             <div class="flex-1 min-w-0 group relative">
-                <h2 class="text-xl font-bold text-stone-800 truncate" title="{{ wiki.title }}">{{ wiki.title }}</h2>
-                <p class="text-sm text-stone-500 mt-1 line-clamp-1 group-hover:line-clamp-none transition-all duration-300 bg-base-100 z-10">
+                <h2 class="text-xl font-bold text-base-content truncate" title="{{ wiki.title }}">{{ wiki.title }}</h2>
+                <p class="text-sm text-base-content/80 mt-1 line-clamp-1 group-hover:line-clamp-none transition-all duration-300 bg-base-100 z-10">
                     {{ wiki.description }}
                 </p>
                 {% if wiki.description|length > 50 %}
@@ -105,7 +105,7 @@
                 {% for c in contributors[:2] %}
                 {% if c[0] %}
                 <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar tooltip tooltip-bottom" data-tip="贡献者: {{ c[0].username if c[0] and c[0].username else 'Unknown' }}">
-                    <div class="w-8 h-8 rounded-full border-2 border-white bg-stone-200 text-stone-600 text-xs font-bold flex items-center justify-center hover:bg-stone-300 transition-colors relative z-20 !flex !items-center !justify-center leading-none">
+                    <div class="w-8 h-8 rounded-full border-2 border-white bg-stone-200 text-base-content/80 text-xs font-bold flex items-center justify-center hover:bg-stone-300 transition-colors relative z-20 !flex !items-center !justify-center leading-none">
                         <span class="transform -translate-y-[1px]">{{ c[0].username[0]|upper if c[0] and c[0].username else '?' }}</span>
                     </div>
                 </a>
@@ -115,7 +115,7 @@
                 <!-- More Count -->
                 {% if contributors|length > 2 %}
                 <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar placeholder tooltip tooltip-bottom" data-tip="查看全部 {{ contributors|length }} 位贡献者">
-                    <div class="w-8 h-8 rounded-full border-2 border-white bg-stone-100 text-stone-500 text-xs font-bold flex items-center justify-center hover:bg-stone-200 transition-colors relative z-10 !flex !items-center !justify-center leading-none">
+                    <div class="w-8 h-8 rounded-full border-2 border-white bg-base-300 text-base-content/80 text-xs font-bold flex items-center justify-center hover:bg-stone-200 transition-colors relative z-10 !flex !items-center !justify-center leading-none">
                         <span class="transform -translate-y-[1px]">+{{ contributors|length - 2 }}</span>
                     </div>
                 </a>
@@ -124,12 +124,12 @@
         </div>
     </div>
 
-    <div class="card bg-base-100 shadow-sm border-[3px] border-stone-200 min-h-[70vh]">
+    <div class="card bg-base-100 shadow-sm border-[3px] border-base-200 min-h-[70vh]">
         <div class="card-body p-6 lg:p-10">
             {% if page %}
-                <div class="flex items-center justify-between mb-8 pb-4 border-b border-stone-100">
+                <div class="flex items-center justify-between mb-8 pb-4 border-b border-base-300">
                   <div class="min-w-0 flex-1 mr-4">
-                    <h1 class="text-3xl font-bold text-stone-800 break-words">{{ page.title }}</h1>
+                    <h1 class="text-3xl font-bold text-base-content break-words">{{ page.title }}</h1>
                     {% if page.tags %}
                     <div class="flex items-center gap-2 mt-2 flex-wrap">
                         {% for tag in page.tags %}
@@ -141,7 +141,7 @@
                   
                   <div class="flex items-center gap-1 flex-shrink-0">
                     
-                    <button id="width-toggle-btn" class="btn btn-sm btn-ghost gap-1 text-stone-500 hover:text-stone-800 hidden lg:inline-flex" title="切换宽屏/窄屏">
+                    <button id="width-toggle-btn" class="btn btn-sm btn-ghost gap-1 text-base-content/80 hover:text-base-content hidden lg:inline-flex" title="切换宽屏/窄屏">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                         </svg>
@@ -149,7 +149,7 @@
 
                     <div class="divider divider-horizontal mx-1 py-1 h-6 self-center"></div>
 
-                    <button onclick="convert_wiki_page()" class="btn btn-sm btn-ghost gap-1 text-stone-500 hover:text-primary transition-colors" title="转换为我的笔记">
+                    <button onclick="convert_wiki_page()" class="btn btn-sm btn-ghost gap-1 text-base-content/80 hover:text-primary transition-colors" title="转换为我的笔记">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
@@ -158,11 +158,11 @@
 
                     {% if can_edit %}
                     <div class="dropdown dropdown-end">
-                        <label tabindex="0" class="btn btn-sm btn-ghost gap-1 text-stone-500">
+                        <label tabindex="0" class="btn btn-sm btn-ghost gap-1 text-base-content/80">
                             更多
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                         </label>
-                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 border border-stone-100 z-20">
+                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-300 z-20">
                             <li>
                                 <a href="{{ url_for('edit_page', wiki_id=wiki.id, slug=page.slug) }}">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -182,7 +182,7 @@
                 </div>
                 
                 <div class="flex justify-end mb-4">
-                     <span class="text-xs text-stone-400">更新于 {{ page.updated_at.strftime('%Y-%m-%d') }}</span>
+                     <span class="text-xs text-base-content/50">更新于 {{ page.updated_at.strftime('%Y-%m-%d') }}</span>
                 </div>
 
                 {% if not can_view_wiki(wiki.id) and not is_subscribed %}
@@ -198,8 +198,8 @@
                     </div>
                     
                     {% if page.comment_enabled %}
-                    <div class="border-t border-stone-100 mt-12 pt-8">
-                        <h3 class="text-lg font-bold text-stone-700 mb-6 flex items-center gap-2">
+                    <div class="border-t border-base-300 mt-12 pt-8">
+                        <h3 class="text-lg font-bold text-base-content mb-6 flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
                             评论 ({{ page.comments|length }})
                         </h3>
@@ -208,14 +208,14 @@
                             {% for comment in page.comments %}
                             <div class="flex gap-4 group">
                                 <div class="avatar placeholder">
-                                    <div class="bg-stone-200 text-stone-600 rounded-full w-10 h-10">
+                                    <div class="bg-stone-200 text-base-content/80 rounded-full w-10 h-10">
                                         <span class="text-sm">{{ comment.user.username[0] | upper }}</span>
                                     </div>
                                 </div>
                                 <div class="flex-1">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="font-bold text-sm text-stone-700">{{ comment.user.username }}</span>
-                                        <span class="text-xs text-stone-400">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                        <span class="font-bold text-sm text-base-content">{{ comment.user.username }}</span>
+                                        <span class="text-xs text-base-content/50">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
                                         {% if current_user.is_admin or current_user.id == comment.user_id %}
                                         <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post" class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button type="submit" class="btn btn-ghost btn-xs text-error" title="删除评论" onclick="return confirm('确定要删除这条评论吗？')">
@@ -224,11 +224,11 @@
                                         </form>
                                         {% endif %}
                                     </div>
-                                    <div class="p-3 bg-stone-50 rounded-lg rounded-tl-none text-sm text-stone-600 whitespace-pre-wrap">{{ comment.content }}</div>
+                                    <div class="p-3 bg-base-200 rounded-lg rounded-tl-none text-sm text-base-content/80 whitespace-pre-wrap">{{ comment.content }}</div>
                                 </div>
                             </div>
                             {% else %}
-                            <div class="text-center py-8 text-stone-400 italic">暂无评论</div>
+                            <div class="text-center py-8 text-base-content/50 italic">暂无评论</div>
                             {% endfor %}
                         </div>
                         
@@ -239,7 +239,7 @@
                                 </div>
                             </div>
                             <div class="flex-1 flex gap-2">
-                                <textarea name="content" class="textarea textarea-bordered w-full h-20 resize-none bg-stone-50 focus:bg-white" placeholder="发表评论..." required></textarea>
+                                <textarea name="content" class="textarea textarea-bordered w-full h-20 resize-none bg-base-200 focus:bg-base-100" placeholder="发表评论..." required></textarea>
                                 <button type="submit" class="btn btn-primary h-auto">发表</button>
                             </div>
                         </form>
@@ -252,10 +252,10 @@
                     <div class="max-w-md">
                       <h1 class="text-3xl font-bold text-stone-300 mb-4">欢迎来到 {{ wiki.title }}</h1>
                       {% if can_edit %}
-                      <p class="py-6 text-stone-500">点击左侧管理菜单创建第一个页面</p>
+                      <p class="py-6 text-base-content/80">点击左侧管理菜单创建第一个页面</p>
                       <a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="btn btn-primary">立即创建</a>
                       {% else %}
-                      <p class="text-stone-400">此 Wiki 暂无内容，敬请期待。</p>
+                      <p class="text-base-content/50">此 Wiki 暂无内容，敬请期待。</p>
                       {% endif %}
                     </div>
                   </div>
@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapper.appendChild(pre);
         
         const button = document.createElement('button');
-        button.className = 'absolute top-2 right-2 p-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100';
+        button.className = 'absolute top-2 right-2 p-1.5 rounded-lg bg-base-100/10 text-white/70 hover:bg-base-100/20 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100';
         button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>';
         button.title = '复制';
         

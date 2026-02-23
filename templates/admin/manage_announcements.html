@@ -6,8 +6,8 @@
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-8">
         <div>
-            <h1 class="text-2xl font-bold text-stone-800">系统通知管理</h1>
-            <p class="text-stone-500 mt-1">发布全员通知，查看确认状态</p>
+            <h1 class="text-2xl font-bold text-base-content">系统通知管理</h1>
+            <p class="text-base-content/80 mt-1">发布全员通知，查看确认状态</p>
         </div>
         
         <div class="flex gap-2">
@@ -22,11 +22,11 @@
         </div>
     </div>
 
-    <div class="card bg-base-100 shadow-sm border border-stone-200">
+    <div class="card bg-base-100 shadow-sm border border-base-200">
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
-                    <tr class="bg-stone-50 text-stone-600">
+                    <tr class="bg-stone-50 text-base-content/80">
                         <th>ID</th>
                         <th>标题</th>
                         <th>状态</th>
@@ -38,9 +38,9 @@
                 <tbody>
                     {% for ann in announcements %}
                     <tr class="hover:bg-stone-50/50">
-                        <td class="font-mono text-sm text-stone-400">#{{ ann.id }}</td>
+                        <td class="font-mono text-sm text-base-content/50">#{{ ann.id }}</td>
                         <td>
-                            <div class="font-medium text-stone-700">{{ ann.title }}</div>
+                            <div class="font-medium text-base-content">{{ ann.title }}</div>
                         </td>
                         <td>
                             {% if ann.is_active %}
@@ -49,8 +49,8 @@
                             <div class="badge badge-ghost gap-1">已停用</div>
                             {% endif %}
                         </td>
-                        <td class="text-stone-500">{{ ann.creator.username }}</td>
-                        <td class="text-stone-500 text-sm">{{ ann.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="text-base-content/80">{{ ann.creator.username }}</td>
+                        <td class="text-base-content/80 text-sm">{{ ann.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>
                             <div class="flex gap-2">
                                 <a href="{{ url_for('announcement_stats', id=ann.id) }}" class="btn btn-xs btn-ghost" title="查看统计">

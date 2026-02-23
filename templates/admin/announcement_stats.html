@@ -8,12 +8,12 @@
         <a href="{{ url_for('manage_announcements') }}" class="btn btn-circle btn-ghost btn-sm">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
         </a>
-        <h1 class="text-2xl font-bold text-stone-800">通知统计: {{ announcement.title }}</h1>
+        <h1 class="text-2xl font-bold text-base-content">通知统计: {{ announcement.title }}</h1>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <!-- Confirmed Users -->
-        <div class="card bg-base-100 shadow-sm border border-stone-200">
+        <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body">
                 <h2 class="card-title text-success mb-4">
                     已确认 ({{ confirmed_users|length }})
@@ -42,10 +42,10 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="text-sm font-mono text-stone-500">{{ user.confirmed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td class="text-sm font-mono text-base-content/80">{{ user.confirmed_at.strftime('%Y-%m-%d %H:%M') }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="2" class="text-center text-stone-400 py-4">暂无用户确认</td></tr>
+                            <tr><td colspan="2" class="text-center text-base-content/50 py-4">暂无用户确认</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -54,7 +54,7 @@
         </div>
 
         <!-- Unconfirmed Users -->
-        <div class="card bg-base-100 shadow-sm border border-stone-200">
+        <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body">
                 <h2 class="card-title text-warning mb-4">
                     未确认 ({{ unconfirmed_users|length }})
@@ -73,7 +73,7 @@
                                 <td>
                                     <div class="flex items-center gap-2">
                                         <div class="avatar placeholder">
-                                            <div class="bg-stone-200 text-stone-600 rounded-full w-8">
+                                            <div class="bg-stone-200 text-base-content/80 rounded-full w-8">
                                                 <span class="text-xs">{{ user.username[0]|upper }}</span>
                                             </div>
                                         </div>
@@ -83,10 +83,10 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="text-sm font-mono text-stone-500">{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td class="text-sm font-mono text-base-content/80">{{ user.created_at.strftime('%Y-%m-%d') }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="2" class="text-center text-stone-400 py-4">所有用户已确认</td></tr>
+                            <tr><td colspan="2" class="text-center text-base-content/50 py-4">所有用户已确认</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

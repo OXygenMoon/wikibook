@@ -41,13 +41,20 @@
     <script>hljs.highlightAll();</script>
 
     <style>
-        /* --- Theme Variables (CSS 变量代替硬编码 Jinja 判断) --- */
+        /* 亮色模式变量 */
         :root {
-            /* 默认 Wiki 模式 (Amber/Orange) */
-            --theme-primary: #ea580c; /* Orange-600 */
-            --theme-primary-hover: #d97706; /* Amber-600 */
-            --theme-bg-sidebar: hsl(var(--b2));
+            --theme-primary: #ea580c;
+            --theme-primary-hover: #d97706;
+            --theme-bg-sidebar: #faf7f5;
             --toggle-bg: #f59e0b;
+        }
+
+        /* 暗色模式变量重写 (匹配你的 class="dark") */
+        :root.dark {
+            --theme-primary: #f97316; /* 暗色下稍微提亮一点主色以保证对比度 */
+            --theme-primary-hover: #fb923c;
+            --theme-bg-sidebar: #1d232a; /* 对应 business 主题的底色，或 #1f2937 */
+            --toggle-bg: #ea580c;
         }
 
         /* 修复 CSS 语法错误：将 Jinja 逻辑移出 CSS 块或确保正确闭合 */
@@ -137,7 +144,7 @@
         .liquid-card {
             position: relative;
             overflow: hidden;
-            background-color: var(--bg-color, #ffffff);
+            background-color: var(--bg-color, hsl(var(--b1)));
             /* Important: background-image must override background-color if set */
             background-image: var(--bg-image, none);
             transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s ease;
@@ -222,6 +229,11 @@
             </a>
         </div>
         <div class="navbar-end">
+            <!-- <button id="theme-toggle-btn" class="btn btn-ghost btn-circle">
+                <svg class="h-5 w-5 swap-on fill-current dark:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7-.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/></svg>
+                <svg class="h-5 w-5 swap-off fill-current hidden dark:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z"/></svg>
+            </button> -->
+
             {% if current_user.is_authenticated %}
             <a href="{{ url_for('online_users') }}" class="btn btn-ghost btn-sm gap-2 normal-case">
                 <div class="badge badge-success badge-xs animate-pulse"></div>
@@ -233,9 +245,9 @@
 
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden lg:hidden transition-opacity z-[51]"></div>
 
-    <aside id="sidebar" style="background-color: var(--theme-bg-sidebar);" class="fixed left-0 top-0 h-screen w-64 border-r-[3px] border-stone-200/60 shadow-xl sidebar-transition transform -translate-x-full lg:translate-x-0 flex flex-col z-[52]">
+    <aside id="sidebar" style="background-color: var(--theme-bg-sidebar);" class="fixed left-0 top-0 h-screen w-64 border-r-[3px] border-base-200/60 shadow-xl sidebar-transition transform -translate-x-full lg:translate-x-0 flex flex-col z-[52]">
         
-        <div class="h-20 flex items-center px-6 border-b border-stone-200/50 flex-shrink-0">
+        <div class="h-20 flex items-center px-6 border-b border-base-200/50 flex-shrink-0">
             <div class="w-full">
                 <div class="mode-toggle-label" onclick="window.location.href='{{ url_for('index') if is_book_mode else url_for('book_index') }}'">
                     <div class="mode-toggle-slider"></div>
@@ -269,10 +281,10 @@
                             <li>
                                 <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" 
                                 class="group relative flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 border border-transparent 
-                                        {{ 'bg-white border-stone-200/60 shadow-sm' if is_active else 'hover:bg-white hover:shadow-sm hover:border-stone-100' }}">
+                                        {{ 'bg-base-100 border-base-200/60 shadow-sm' if is_active else 'hover:bg-base-100 hover:shadow-sm hover:border-base-300' }}">
                                     
                                     <div class="w-8 h-8 rounded-[0.6rem] shrink-0 grid place-items-center overflow-hidden border border-black/5 
-                                                {{ icon_bg if not sub.wiki.icon_url else 'bg-white' }} shadow-sm group-hover:scale-105 transition-transform duration-200">
+                                                {{ icon_bg if not sub.wiki.icon_url else 'bg-base-100' }} shadow-sm group-hover:scale-105 transition-transform duration-200">
                                         
                                         {% if sub.wiki.icon %}
                                             {% if sub.wiki.icon.startswith('http') or sub.wiki.icon.startswith('/') %}
@@ -286,7 +298,7 @@
                                     </div>
 
                                     <div class="flex-1 min-w-0 flex flex-col justify-center h-8">
-                                        <span class="text-[0.85rem] leading-tight font-medium text-stone-600 group-hover:text-stone-900 
+                                        <span class="text-[0.85rem] leading-tight font-medium text-base-content/80 group-hover:text-stone-900 
                                                     {{ 'text-stone-900 font-bold' if is_active else '' }}
                                                     line-clamp-2 break-words" 
                                             title="{{ sub.wiki.title }}">
@@ -309,7 +321,7 @@
 
                             <details class="group" {{ 'open' if is_admin_expanded else '' }}>
                                 
-                                <summary class="menu-section-title flex items-center justify-between cursor-pointer select-none list-none hover:text-stone-600 transition-colors">
+                                <summary class="menu-section-title flex items-center justify-between cursor-pointer select-none list-none hover:text-base-content/80 transition-colors">
                                     <span>管理控制台</span>
                                     
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-180 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -342,11 +354,11 @@
             {% endblock %}
         </nav>
 
-        <div class="p-4 border-t border-stone-200/50 bg-[#faf7f5]/50 backdrop-blur-sm">
+        <div class="p-4 border-t border-base-200/50 bg-[#faf7f5]/50 backdrop-blur-sm">
             {% if current_user.is_authenticated %}
                 {% set style_class = ['bg-rose-100 text-rose-700', 'bg-orange-100 text-orange-700', 'bg-emerald-100 text-emerald-700', 'bg-cyan-100 text-cyan-700', 'bg-blue-100 text-blue-700', 'bg-violet-100 text-violet-700', 'bg-fuchsia-100 text-fuchsia-700'][(current_user.id) % 7] %}
                 
-                <div class="flex items-center gap-3 w-full p-3 bg-white rounded-xl shadow-sm border border-stone-100">
+                <div class="flex items-center gap-3 w-full p-3 bg-base-100 rounded-xl shadow-sm border border-base-300">
                     <div class="avatar placeholder">
                         <div class="{{ style_class }} w-9 h-9 rounded-full grid place-items-center ring-2 ring-stone-50 border border-current/20">
                             <span class="text-sm font-bold leading-none select-none">{{ current_user.username[0] | upper }}</span>
@@ -356,7 +368,7 @@
 
                     <div class="flex-1 min-w-0 text-left cursor-pointer group" onclick="window.location.href='{{ url_for('user_profile') }}'">
                         <div class="flex items-center gap-1">
-                            <p class="text-sm font-bold text-stone-700 truncate group-hover:text-primary transition-colors">{{ current_user.username }}</p>
+                            <p class="text-sm font-bold text-base-content truncate group-hover:text-primary transition-colors">{{ current_user.username }}</p>
                             {% if current_user.selected_badge %}
                                 <div class="badge-icon-container w-5 h-5" title="{{ current_user.selected_badge.name }}">
                                     {% if current_user.selected_badge.icon|is_image_icon %}
@@ -367,9 +379,9 @@
                                 </div>
                             {% endif %}
                         </div>
-                        <p class="text-xs text-stone-400 truncate">{{ '管理员' if current_user.is_admin else '用户' }}</p>
+                        <p class="text-xs text-base-content/50 truncate">{{ '管理员' if current_user.is_admin else '用户' }}</p>
                     </div>
-                    <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-xs btn-square text-stone-400 hover:text-red-500 transition-colors">
+                    <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-red-500 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                     </a>
                 </div>
@@ -379,10 +391,10 @@
         </div>
     </aside>
 
-    <main class="min-h-screen main-content pt-16 lg:pt-0 transition-all duration-300 relative flex flex-col bg-stone-50">
+    <main class="min-h-screen main-content pt-16 lg:pt-0 transition-all duration-300 relative flex flex-col bg-base-200">
         {% if current_user.is_authenticated %}
         <div class="hidden lg:flex fixed top-6 right-8 z-40">
-            <a href="{{ url_for('online_users') }}" class="btn btn-sm gap-2 normal-case glass shadow-md text-stone-600 bg-white/80 hover:bg-white border/50">
+            <a href="{{ url_for('online_users') }}" class="btn btn-sm gap-2 normal-case glass shadow-md text-base-content/80 bg-base-100/80 hover:bg-base-100 border/50">
                 <div class="badge badge-success badge-xs animate-pulse"></div>
                 <span class="font-medium">{{ online_user_count }} 人在线</span>
             </a>
@@ -390,7 +402,7 @@
         {% endif %}
         
         <div class="flex-1 p-2 lg:p-4">
-            <div class="min-h-[calc(100vh-6rem)] lg:min-h-[calc(100vh-2rem)] bg-white/60 border-[1px] border-black shadow-xl shadow-stone-200/40 rounded-[2rem] relative backdrop-blur-xl overflow-hidden">
+            <div class="min-h-[calc(100vh-6rem)] lg:min-h-[calc(100vh-2rem)] bg-base-100/60 border-[1px] border-black shadow-xl shadow-stone-200/40 rounded-[2rem] relative backdrop-blur-xl overflow-hidden">
                 <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white to-transparent pointer-events-none z-0"></div>
                 
                 <div class="p-4 sm:p-6 lg:p-10 relative z-10">
@@ -420,9 +432,9 @@
     </button>
 
     <dialog id="announcement_modal" class="modal">
-        <div class="modal-box w-11/12 max-w-3xl border border-stone-200 shadow-2xl">
-            <h3 id="ann_modal_title" class="font-bold text-2xl mb-4 text-stone-800"></h3>
-            <div id="ann_modal_content" class="prose max-w-none text-stone-600"></div>
+        <div class="modal-box w-11/12 max-w-3xl border border-base-200 shadow-2xl">
+            <h3 id="ann_modal_title" class="font-bold text-2xl mb-4 text-base-content"></h3>
+            <div id="ann_modal_content" class="prose max-w-none text-base-content/80"></div>
             <div class="modal-action">
                 <button class="btn btn-primary" onclick="app.announcements.confirm()">我已收到</button>
             </div>
@@ -430,10 +442,10 @@
     </dialog>
 
     <dialog id="history_modal" class="modal">
-        <div class="modal-box w-11/12 max-w-3xl border border-stone-200 shadow-2xl h-[80vh] flex flex-col p-0">
-            <div class="p-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
-                <h3 class="font-bold text-xl text-stone-800 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <div class="modal-box w-11/12 max-w-3xl border border-base-200 shadow-2xl h-[80vh] flex flex-col p-0">
+            <div class="p-6 border-b border-base-300 flex justify-between items-center bg-base-200/50">
+                <h3 class="font-bold text-xl text-base-content flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     历史公告
                 </h3>
                 <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
@@ -647,22 +659,22 @@
                         .then(data => {
                             list.innerHTML = '';
                             if (!data.announcements?.length) {
-                                list.innerHTML = '<div class="text-center text-stone-400 py-10">暂无历史公告</div>';
+                                list.innerHTML = '<div class="text-center text-base-content/50 py-10">暂无历史公告</div>';
                                 return;
                             }
                             data.announcements.forEach(ann => {
                                 const el = document.createElement('div');
-                                el.className = 'collapse collapse-arrow bg-white border border-stone-200 rounded-xl';
+                                el.className = 'collapse collapse-arrow bg-base-100 border border-base-200 rounded-xl';
                                 el.innerHTML = `
                                     <input type="checkbox" />
                                     <div class="collapse-title font-medium flex justify-between pr-12">
                                         <span>${ann.title}</span>
                                         <div class="flex items-center gap-2">
                                             ${!ann.is_confirmed ? '<span class="badge badge-xs badge-error">未读</span>' : ''}
-                                            <span class="text-xs text-stone-400 font-mono">${ann.created_at}</span>
+                                            <span class="text-xs text-base-content/50 font-mono">${ann.created_at}</span>
                                         </div>
                                     </div>
-                                    <div class="collapse-content border-t border-stone-100 bg-stone-50/50 pt-4 prose max-w-none text-sm">${ann.html}</div>
+                                    <div class="collapse-content border-t border-base-300 bg-base-200/50 pt-4 prose max-w-none text-sm">${ann.html}</div>
                                 `;
                                 list.appendChild(el);
                             });
@@ -677,26 +689,21 @@
             app.init();
         });
 
-        // 在 app.init() 中加入或单独放在 DOMContentLoaded 里
-const themeToggle = document.getElementById('theme-toggle');
-const isBookMode = window.location.pathname.startsWith('/book');
-const lightTheme = isBookMode ? 'winter' : 'cupcake';
-const darkTheme = 'business';
-
-// 初始化开关状态
-if (localStorage.getItem('theme') === 'dark') {
-    themeToggle.checked = true;
-}
-
-themeToggle.addEventListener('change', (e) => {
-    if (e.target.checked) {
-        document.documentElement.setAttribute('data-theme', darkTheme);
-        localStorage.setItem('theme', 'dark');
-        document.documentElement.classList.add('dark');
-    } else {
-        document.documentElement.setAttribute('data-theme', lightTheme);
+        document.getElementById('theme-toggle-btn')?.addEventListener('click', () => {
+    const htmlEl = document.documentElement;
+    const isBookMode = window.location.pathname.startsWith('/book');
+    const lightTheme = isBookMode ? 'winter' : 'cupcake';
+    const darkTheme = 'business';
+    
+    // 如果当前是暗色，则切回亮色
+    if (htmlEl.classList.contains('dark')) {
+        htmlEl.classList.remove('dark');
+        htmlEl.setAttribute('data-theme', lightTheme);
         localStorage.setItem('theme', 'light');
-        document.documentElement.classList.remove('dark');
+    } else {
+        htmlEl.classList.add('dark');
+        htmlEl.setAttribute('data-theme', darkTheme);
+        localStorage.setItem('theme', 'dark');
     }
 });
     </script>

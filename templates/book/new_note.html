@@ -104,7 +104,7 @@
                 
                 <div class="p-6 border-b border-base-200 bg-base-100/50 space-y-4">
                     <input type="text" name="title" placeholder="输入笔记标题..." class="input input-ghost text-2xl font-bold w-full focus:bg-transparent px-0 placeholder:text-base-content/30 border-none focus:outline-none" required autofocus />
-                    <input type="text" name="tags" placeholder="标签 (用逗号分隔，如: 想法, 待办)" class="input input-sm input-ghost w-full focus:bg-transparent px-0 placeholder:text-base-content/30 text-stone-500" />
+                    <input type="text" name="tags" placeholder="标签 (用逗号分隔，如: 想法, 待办)" class="input input-sm input-ghost w-full focus:bg-transparent px-0 placeholder:text-base-content/30 text-base-content/80" />
                 </div>
                 
                 <div class="p-4 bg-base-50 flex-1">
@@ -112,7 +112,7 @@
                 </div>
                 
                 <div class="p-4 border-t border-base-200 bg-base-100 flex justify-between items-center z-10">
-                    <a href="{{ url_for('book_index') }}" class="btn btn-ghost text-stone-500">取消</a>
+                    <a href="{{ url_for('book_index') }}" class="btn btn-ghost text-base-content/80">取消</a>
                     <button type="submit" class="btn btn-primary px-8 gap-2 shadow-md shadow-primary/20">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         保存笔记

@@ -111,10 +111,10 @@ class AchievementBook {
 
     createAchievementCard(item) {
         const statusClass = item.isUnlocked 
-            ? 'bg-white border-stone-200 shadow-sm hover:shadow-md hover:border-indigo-300' 
-            : 'bg-stone-50 border-stone-100 grayscale opacity-80';
+            ? 'bg-base-100 border-base-200 shadow-sm hover:shadow-md hover:border-indigo-300' 
+            : 'bg-stone-50 border-base-300 grayscale opacity-80';
         
-        const iconBg = item.isUnlocked ? 'bg-indigo-50 text-indigo-500' : 'bg-stone-200 text-stone-400';
+        const iconBg = item.isUnlocked ? 'bg-indigo-50 text-indigo-500' : 'bg-stone-200 text-base-content/50';
         const dateText = item.isUnlocked ? `获得于 ${item.unlockDate}` : '未获得';
         const checkMark = item.isUnlocked ? '<div class="absolute top-3 right-3 text-emerald-500"><i class="fas fa-check-circle"></i></div>' : '';
 
@@ -131,13 +131,13 @@ class AchievementBook {
                     <div class="w-16 h-16 rounded-2xl ${iconBg} flex items-center justify-center text-3xl mb-3 shadow-inner">
                         ${iconContent}
                     </div>
-                    <h3 class="font-bold text-stone-800 text-lg mb-1 group-hover:text-indigo-600 transition-colors">${item.name}</h3>
+                    <h3 class="font-bold text-base-content text-lg mb-1 group-hover:text-indigo-600 transition-colors">${item.name}</h3>
                     <div class="badge badge-sm badge-ghost mb-3 text-xs">${this.getCategoryName(item.category)}</div>
-                    <p class="text-sm text-stone-500 mb-2 h-10 leading-snug line-clamp-2" title="${item.description}">${item.description}</p>
+                    <p class="text-sm text-base-content/80 mb-2 h-10 leading-snug line-clamp-2" title="${item.description}">${item.description}</p>
                     <div class="text-[10px] text-indigo-400 bg-indigo-50 px-2 py-1 rounded-full mb-2 font-mono" title="${item.condition || '无特殊条件'}">
                         ${item.condition || '无特殊条件'}
                     </div>
-                    <div class="text-xs text-stone-400 font-mono mt-auto border-t border-stone-100 pt-3 w-full">
+                    <div class="text-xs text-base-content/50 font-mono mt-auto border-t border-base-300 pt-3 w-full">
                         ${dateText}
                     </div>
                 </div>

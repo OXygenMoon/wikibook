@@ -3,7 +3,7 @@
 {% block title %}{% if announcement %}编辑通知{% else %}发布新通知{% endif %}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto card bg-base-100 shadow border border-stone-200">
+<div class="max-w-4xl mx-auto card bg-base-100 shadow border border-base-200">
   <div class="card-body">
     <h2 class="card-title text-2xl mb-4">{% if announcement %}编辑通知{% else %}发布新通知{% endif %}</h2>
     <form method="post" class="flex flex-col gap-6">
@@ -19,7 +19,7 @@
         <label class="label cursor-pointer justify-start gap-4">
           <span class="label-text font-bold">状态</span> 
           <input type="checkbox" name="is_active" class="toggle toggle-success" {% if announcement.is_active %}checked{% endif %} />
-          <span class="label-text text-stone-500">启用 (停用后用户无法看到)</span>
+          <span class="label-text text-base-content/80">启用 (停用后用户无法看到)</span>
         </label>
       </div>
       {% endif %}

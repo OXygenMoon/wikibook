@@ -125,7 +125,7 @@
 
                         <!-- Recent Achievement -->
                         {% if user.latest_earned_badge %}
-                        <div class="mt-4 flex items-center gap-3 bg-base-100/50 rounded-xl p-2 border border-base-content/5 group/badge hover:bg-white hover:shadow-sm transition-all cursor-default">
+                        <div class="mt-4 flex items-center gap-3 bg-base-100/50 rounded-xl p-2 border border-base-content/5 group/badge hover:bg-base-100 hover:shadow-sm transition-all cursor-default">
                             <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 flex items-center justify-center shrink-0">
                                 {% if user.latest_earned_badge.badge.icon|is_image_icon %}
                                     <img src="{{ user.latest_earned_badge.badge.icon|badge_icon_url }}" class="w-6 h-6 object-contain">
@@ -200,7 +200,7 @@
         <div class="flex flex-col gap-3" id="following-list">
             {% for user in following %}
             <!-- Compact Following Row -->
-            <div class="group flex items-center gap-4 p-3 rounded-xl bg-base-100/40 border border-base-content/5 hover:bg-white hover:shadow-md hover:border-base-content/10 transition-all duration-200 user-card" data-username="{{ user.username }}">
+            <div class="group flex items-center gap-4 p-3 rounded-xl bg-base-100/40 border border-base-content/5 hover:bg-base-100 hover:shadow-md hover:border-base-content/10 transition-all duration-200 user-card" data-username="{{ user.username }}">
                 <!-- Small Rainbow Avatar -->
                 <a href="{{ url_for('public_profile', user_id=user.id) }}" class="avatar placeholder shrink-0">
                     {% set avatar_styles = [

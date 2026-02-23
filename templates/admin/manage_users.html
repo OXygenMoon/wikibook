@@ -6,8 +6,8 @@
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-8">
         <div>
-            <h1 class="text-2xl font-bold text-stone-800">用户管理</h1>
-            <p class="text-stone-500 mt-1">管理系统用户、导入账号及权限分配</p>
+            <h1 class="text-2xl font-bold text-base-content">用户管理</h1>
+            <p class="text-base-content/80 mt-1">管理系统用户、导入账号及权限分配</p>
         </div>
         
         <div class="flex gap-2">
@@ -19,18 +19,18 @@
         </div>
     </div>
 
-    <div class="flex gap-4 mb-6 border-b border-stone-200">
+    <div class="flex gap-4 mb-6 border-b border-base-200">
         <a href="{{ url_for('manage_users') }}" class="px-4 py-2 border-b-2 border-primary font-bold text-primary">用户管理</a>
-        <a href="{{ url_for('manage_classes') }}" class="px-4 py-2 text-stone-500 hover:text-stone-800">班级管理</a>
-        <a href="{{ url_for('manage_groups') }}" class="px-4 py-2 text-stone-500 hover:text-stone-800">组管理</a>
+        <a href="{{ url_for('manage_classes') }}" class="px-4 py-2 text-base-content/80 hover:text-base-content">班级管理</a>
+        <a href="{{ url_for('manage_groups') }}" class="px-4 py-2 text-base-content/80 hover:text-base-content">组管理</a>
     </div>
 
     <!-- 用户列表 -->
-    <div class="card bg-base-100 shadow-sm border border-stone-200">
+    <div class="card bg-base-100 shadow-sm border border-base-200">
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
-                    <tr class="bg-stone-50 text-stone-600">
+                    <tr class="bg-stone-50 text-base-content/80">
                         <th>ID</th>
                         <th>用户名</th>
                         <th>班级</th>
@@ -43,11 +43,11 @@
                 <tbody>
                     {% for user in users %}
                     <tr class="hover:bg-stone-50/50">
-                        <td class="font-mono text-sm text-stone-400">#{{ user.id }}</td>
+                        <td class="font-mono text-sm text-base-content/50">#{{ user.id }}</td>
                         <td>
-                            <div class="font-medium text-stone-700">{{ user.username }}</div>
+                            <div class="font-medium text-base-content">{{ user.username }}</div>
                             {% if user.real_name %}
-                            <div class="text-xs text-stone-400">{{ user.real_name }}</div>
+                            <div class="text-xs text-base-content/50">{{ user.real_name }}</div>
                             {% endif %}
                         </td>
                         <td>
@@ -57,8 +57,8 @@
                             <span class="text-stone-300">-</span>
                             {% endif %}
                         </td>
-                        <td class="text-stone-500">{{ user.email }}</td>
-                        <td class="text-stone-500 text-sm">{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="text-base-content/80">{{ user.email }}</td>
+                        <td class="text-base-content/80 text-sm">{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>
                             {% if user.is_admin %}
                             <div class="badge badge-primary badge-outline gap-1">
@@ -78,7 +78,7 @@
                                 <label tabindex="0" class="btn btn-ghost btn-xs">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
                                 </label>
-                                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-48 border border-stone-100">
+                                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-48 border border-base-300">
                                     <li>
                                         <form action="{{ url_for('update_user_role', user_id=user.id) }}" method="post" class="w-full p-0">
                                             {% if user.is_admin %}
@@ -91,7 +91,7 @@
                                         </form>
                                     </li>
                                     <li>
-                                        <button type="button" onclick="document.getElementById('class_modal_{{ user.id }}').showModal()" class="w-full text-left px-4 py-2 text-stone-600 hover:bg-stone-50 rounded-lg">修改班级</button>
+                                        <button type="button" onclick="document.getElementById('class_modal_{{ user.id }}').showModal()" class="w-full text-left px-4 py-2 text-base-content/80 hover:bg-stone-50 rounded-lg">修改班级</button>
                                     </li>
                                 </ul>
                             </div>

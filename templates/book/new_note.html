@@ -138,12 +138,14 @@
     const easyMDE = new EasyMDE({
         element: document.getElementById('markdown-editor'),
         
-        // 核心配置：允许分屏，禁止全屏分屏(使用嵌入式)
         sideBySideFullscreen: false, 
         syncSideBySidePreviewScroll: true,
-        status: ["lines", "words", "cursor"], // 显示底部状态栏
-        
-        // 工具栏 (与 Wiki 保持一致，去除了 table)
+        status: ["lines", "words", "cursor"], 
+        autosave: {
+            enabled: true,
+            uniqueId: "new_book_page_draft", 
+            delay: 1000,
+        },
         toolbar: [
             "bold", "italic", "strikethrough", "heading", "|", 
             "quote", "unordered-list", "ordered-list", "|", 
@@ -152,7 +154,6 @@
             "guide"
         ],
 
-        // 图片上传配置
         uploadImage: true,
         imageUploadEndpoint: "{{ url_for('upload_file') }}",
         imagePathAbsolute: true,
@@ -169,7 +170,6 @@
         },
         errorCallback: (msg) => alert("上传失败: " + msg),
 
-        // 渲染预览 (MathJax + Highlight)
         previewRender: function(plainText) {
             const preview = document.getElementsByClassName("editor-preview-side")[0];
             preview.innerHTML = this.parent.markdown(plainText);
@@ -184,8 +184,30 @@
         if (!easyMDE.isSideBySideActive()) {
             easyMDE.toggleSideBySide();
         }
-        // 强制刷新
         if(easyMDE.codemirror) easyMDE.codemirror.refresh();
     }, 200);
+
+    // 💡 修复：延时执行便签转存，避开 autosave 的恢复过程
+    setTimeout(() => {
+        const draft = sessionStorage.getItem('auto_fill_note');
+        if (draft) {
+            const currentVal = easyMDE.value();
+            // 智能判断：如果编辑器当前是空的，直接写入便签内容
+            if (currentVal.trim() === "") {
+                easyMDE.value(draft);
+            } else {
+                // 如果当前编辑器里已经有自动恢复的草稿，为了防止误删，把便签追加在末尾
+                easyMDE.value(currentVal + "\n\n---\n\n" + draft);
+            }
+            // 写入成功后销毁暂存
+            sessionStorage.removeItem('auto_fill_note');
+        }
+    }, 350); // 延迟 350 毫秒，确保万无一失
+
+    // 💡 附赠神级优化：表单成功提交时，清空当前草稿！
+    // 否则下次你点“新建笔记”时，上次写完的笔记还会自动跳出来
+    document.querySelector('form').addEventListener('submit', function() {
+        easyMDE.clearAutosavedValue();
+    });
 </script>
 {% endblock %}

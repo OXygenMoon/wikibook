@@ -16,6 +16,8 @@ from bs4 import BeautifulSoup
 import json
 import shutil
 import time
+from flask_migrate import Migrate
+from sqlalchemy import MetaData
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
@@ -25,7 +27,21 @@ app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static/uploads")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB limit
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # Keep session for 30 days
 
-db = SQLAlchemy(app)
+# ==========================================
+# 💡 核心修复：定义一套命名约定，拯救 SQLite 迁移
+# ==========================================
+convention = {
+    "ix": 'ix_%(column_0_label)s',
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
+metadata = MetaData(naming_convention=convention)
+
+db = SQLAlchemy(app, metadata=metadata)
+migrate = Migrate(app, db, render_as_batch=True)
+
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
@@ -1094,38 +1110,56 @@ def wiki_detail(wiki_id):
     if not can_view_wiki(wiki_id):
         abort(403)
     w = Wiki.query.get_or_404(wiki_id)
-    # ...详情页允许所有登录用户访问，以便订阅
+    
+    # 1. 获取所有文件夹和页面
+    all_folders = WikiFolder.query.filter_by(wiki_id=wiki_id).all()
     all_pages = WikiPage.query.filter_by(wiki_id=wiki_id).all()
     
-    # 排序逻辑
-    def page_sort_key(page):
-        try:
-            val = int(page.slug)
-        except ValueError:
-            val = 999999
-        return val
-
-    pages = sorted(all_pages, key=page_sort_key)
+    # 2. 构建混合目录树 (支持文件夹和独立页面混排)
+    root_items = []
+    
+    # A. 组装文件夹及其内部的页面
+    for f in all_folders:
+        f.item_type = 'folder'
+        # 筛选出属于该文件夹的页面，并按 order_weight 升序
+        f.children = sorted([p for p in all_pages if p.folder_id == f.id], key=lambda x: x.order_weight)
+        root_items.append(f)
+        
+    # B. 组装根目录下的独立页面
+    for p in all_pages:
+        if p.folder_id is None:
+            p.item_type = 'page'
+            root_items.append(p)
+            
+    # C. 对所有根节点元素统一按 order_weight 进行全局排序
+    root_items = sorted(root_items, key=lambda x: x.order_weight)
+    
+    # 决定默认显示的第一页
+    # 为了保证按真实显示顺序打开第一页，我们将树形结构展平来寻找第一个页面
+    pages_sorted_flat = []
+    for item in root_items:
+        if getattr(item, 'item_type', '') == 'folder':
+            pages_sorted_flat.extend(getattr(item, 'children', []))
+        elif getattr(item, 'item_type', '') == 'page':
+            pages_sorted_flat.append(item)
+            
+    first_page = pages_sorted_flat[0] if pages_sorted_flat else None
     
     is_editor = can_edit_wiki(wiki_id)
     is_subscribed = Subscription.query.filter_by(wiki_id=wiki_id, user_id=current_user.id).first() is not None
-    
-    # 如果有页面，默认显示第一个页面；否则只显示 Wiki 信息
-    first_page = pages[0] if pages else None
     html = markdown(first_page.content_md or "") if first_page else ""
     
     if first_page:
-        # 记录首页浏览日志
         log = WikiViewLog(wiki_id=wiki_id, user_id=current_user.id)
         db.session.add(log)
         first_page.view_count += 1
         db.session.commit()
     
-    # Fetch contributors for title card
+    # Fetch contributors
     contributors = []
     try:
-        if pages:
-            page_ids_list = [pg.id for pg in pages]
+        if all_pages:
+            page_ids_list = [pg.id for pg in all_pages]
             contributors = db.session.query(
                 User, 
                 db.func.count(WikiPageHistory.id).label('edit_count')
@@ -1142,24 +1176,23 @@ def wiki_detail(wiki_id):
         print(f"Error fetching contributors in wiki_detail: {e}")
         contributors = []
         
-    # ========================================================
-    # 💡 核心修复：在这里也必须获取 my_recent_notes，因为这个路由也渲染 view_page.html
-    # ========================================================
     my_recent_notes = []
     if current_user.is_authenticated:
         my_recent_notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.updated_at.desc()).limit(15).all()
 
-    # 💡 别忘了在 return 里把 my_recent_notes 传给模板
     return render_template("wiki/view_page.html", 
                            wiki=w, 
                            page=first_page, 
-                           pages=pages, 
+                           root_items=root_items, # 💡 传入树形结构
+                           pages=all_pages,       # 兼容旧逻辑保留，但不用于目录渲染
                            html=html, 
                            can_edit=is_editor, 
                            is_subscribed=is_subscribed, 
                            is_home=True, 
                            contributors=contributors,
                            my_recent_notes=my_recent_notes)
+
+import json
 
 @app.route("/admin/wikis/<int:wiki_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -1169,6 +1202,7 @@ def edit_wiki(wiki_id):
         abort(403)
         
     if request.method == "POST":
+        # 1. 基础信息与权限保存
         w.title = request.form.get("title", "").strip()
         w.description = request.form.get("description", "").strip()
         w.bg_color = request.form.get("bg_color", "#ffffff").strip()
@@ -1177,38 +1211,132 @@ def edit_wiki(wiki_id):
         w.blur_level = request.form.get("blur_level", 60, type=int)
         w.gradient_color = request.form.get("gradient_color", "").strip()
         w.gradient_direction = request.form.get("gradient_direction", "to bottom right").strip()
-        
-        # Permissions
         w.visibility = request.form.get("visibility", "public")
         
+        # 权限更新逻辑（保持你原有的逻辑）
         class_ids = request.form.getlist("allowed_classes")
-        w.allowed_classes = []
-        if class_ids:
-             w.allowed_classes = Class.query.filter(Class.id.in_(class_ids)).all()
-             
+        w.allowed_classes = Class.query.filter(Class.id.in_(class_ids)).all() if class_ids else []
         group_ids = request.form.getlist("allowed_groups")
-        w.allowed_groups = []
-        if group_ids:
-            w.allowed_groups = Group.query.filter(Group.id.in_(group_ids)).all()
-            
+        w.allowed_groups = Group.query.filter(Group.id.in_(group_ids)).all() if group_ids else []
         user_ids = request.form.getlist("allowed_users")
-        w.allowed_users = []
-        if user_ids:
-            w.allowed_users = User.query.filter(User.id.in_(user_ids)).all()
-        
-        if not w.title:
-            flash("标题不能为空")
-            return redirect(url_for("edit_wiki", wiki_id=wiki_id))
+        w.allowed_users = User.query.filter(User.id.in_(user_ids)).all() if user_ids else []
+
         db.session.commit()
-        flash("Wiki 信息已更新")
+        flash("基本信息已更新", "success")
         return redirect(url_for("wiki_detail", wiki_id=w.id))
         
+    # ==========================================
+    # GET 请求：构建用于渲染的层级数据字典
+    # ==========================================
     classes = Class.query.order_by(Class.name).all()
     groups = Group.query.order_by(Group.name).all()
     all_users = User.query.order_by(User.class_name, User.student_id).all()
     
-    return render_template("admin/edit_wiki.html", wiki=w, classes=classes, groups=groups, all_users=all_users)
+    all_folders = WikiFolder.query.filter_by(wiki_id=w.id).all()
+    all_pages = WikiPage.query.filter_by(wiki_id=w.id).all()
+    
+    root_items = []
+    # A. 处理文件夹
+    for f in all_folders:
+        # 获取属于该文件夹的文章，并排序
+        f_pages = [p for p in all_pages if p.folder_id == f.id]
+        f_pages.sort(key=lambda x: x.order_weight or 0)
+        
+        root_items.append({
+            'type': 'folder',
+            'id': f.id,
+            'name': f.name,
+            'order_weight': f.order_weight or 0,
+            'children': f_pages # 这里存放的是 WikiPage 对象，方便读取标题等属性
+        })
+        
+    # B. 处理根目录独立文章
+    for p in all_pages:
+        if p.folder_id is None:
+            root_items.append({
+                'type': 'page',
+                'id': p.id,
+                'title': p.title,
+                'order_weight': p.order_weight or 0
+            })
+            
+    # C. 全局按照 order_weight 排序
+    root_items.sort(key=lambda x: x['order_weight'])
+    
+    return render_template(
+        "admin/edit_wiki.html", 
+        wiki=w, 
+        classes=classes, 
+        groups=groups, 
+        all_users=all_users,
+        root_items=root_items
+    )
 
+# ==========================================
+# 💡 实时保存接口：由前端拖拽完成后自动调用
+# ==========================================
+@app.route("/admin/wikis/<int:wiki_id>/update_structure", methods=["POST"])
+@login_required
+def update_wiki_structure(wiki_id):
+    w = Wiki.query.get_or_404(wiki_id)
+    if not current_user.is_admin and current_user.id != w.created_by_id:
+        return {"success": False, "error": "无权限"}, 403
+
+    data = request.json.get("structure_data", [])
+    if not data:
+        return {"success": True}
+
+    id_mapping = {} # 用于把临时ID映射回真实ID
+    received_folder_ids = []
+
+    try:
+        # 1. 第一轮：处理文件夹创建与更新
+        for item in data:
+            if item.get('type') == 'folder':
+                f_id = str(item.get('id'))
+                if f_id.startswith('new_'):
+                    new_f = WikiFolder(wiki_id=w.id, name=item.get('name'), order_weight=item.get('order'))
+                    db.session.add(new_f)
+                    db.session.flush()
+                    id_mapping[f_id] = new_f.id
+                    db_folder_id = new_f.id
+                else:
+                    db_folder_id = int(f_id)
+                    folder = WikiFolder.query.get(db_folder_id)
+                    if folder:
+                        folder.name = item.get('name', folder.name)
+                        folder.order_weight = item.get('order')
+                received_folder_ids.append(db_folder_id)
+
+        # 2. 清理删除的文件夹
+        existing_folders = WikiFolder.query.filter_by(wiki_id=w.id).all()
+        for ef in existing_folders:
+            if ef.id not in received_folder_ids:
+                pages = WikiPage.query.filter_by(folder_id=ef.id).all()
+                for pf in pages: pf.folder_id = None # 释放文章
+                db.session.delete(ef)
+        db.session.flush()
+
+        # 3. 第二轮：处理文章归属和最终排序
+        for item in data:
+            if item.get('type') == 'folder':
+                db_f_id = id_mapping.get(str(item['id'])) or int(item['id'])
+                for p_idx, p_item in enumerate(item.get('pages', [])):
+                    page = WikiPage.query.get(int(p_item['id']))
+                    if page:
+                        page.folder_id = db_f_id
+                        page.order_weight = p_item['order']
+            elif item.get('type') == 'page':
+                page = WikiPage.query.get(int(item['id']))
+                if page:
+                    page.folder_id = None
+                    page.order_weight = item['order']
+
+        db.session.commit()
+        return {"success": True, "id_mapping": id_mapping}
+    except Exception as e:
+        db.session.rollback()
+        return {"success": False, "error": str(e)}, 500
 @app.route("/admin/wikis/<int:wiki_id>/delete", methods=["POST"])
 @login_required
 def delete_wiki(wiki_id):
@@ -1264,6 +1392,7 @@ def new_page(wiki_id):
     w = Wiki.query.get_or_404(wiki_id)
     if not can_edit_wiki(wiki_id):
         abort(403)
+        
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         slug = request.form.get("slug", "").strip()
@@ -1273,7 +1402,23 @@ def new_page(wiki_id):
         if not title or not slug:
             flash("标题与标识不能为空")
             return redirect(url_for("new_page", wiki_id=wiki_id))
-        p = WikiPage(wiki_id=wiki_id, title=title, slug=slug, content_md=content_md)
+            
+        # 💡 核心修复：计算当前最大的排序权重，确保新页面排在最后面
+        max_page = WikiPage.query.filter_by(wiki_id=wiki_id).order_by(WikiPage.order_weight.desc()).first()
+        max_folder = WikiFolder.query.filter_by(wiki_id=wiki_id).order_by(WikiFolder.order_weight.desc()).first()
+        
+        max_p_weight = max_page.order_weight if max_page and max_page.order_weight else 0
+        max_f_weight = max_folder.order_weight if max_folder and max_folder.order_weight else 0
+        next_order_weight = max(max_p_weight, max_f_weight) + 1
+        
+        # 保存时带上自动计算好的权重
+        p = WikiPage(
+            wiki_id=wiki_id, 
+            title=title, 
+            slug=slug, 
+            content_md=content_md,
+            order_weight=next_order_weight # <--- 就是这个决定了它会在最后面！
+        )
         
         # Process tags
         p.tags = process_tags(tags_str)
@@ -1285,8 +1430,8 @@ def new_page(wiki_id):
         check_and_award_badges(current_user)
         
         return redirect(url_for("view_page", wiki_id=wiki_id, slug=slug))
+        
     return render_template("wiki/new_page.html", wiki=w)
-
 
 
 
@@ -4076,54 +4221,49 @@ def view_page(wiki_id, slug):
     
     now = now_utc8()
     
-    # --- 优化逻辑开始 ---
-    
-    # 1. Wiki 整体热度记录 (WikiViewLog) - 针对 Wiki ID 10分钟防抖
-    # 目的：统计 Wiki 的总体活跃度趋势
     last_log = WikiViewLog.query.filter_by(wiki_id=wiki_id, user_id=current_user.id)\
         .order_by(WikiViewLog.timestamp.desc()).first()
     
     should_commit = False
     
-    # 如果没有记录，或者最后一条记录超过 600秒 (10分钟)
     if not last_log or (now - last_log.timestamp).total_seconds() > 600:
         log = WikiViewLog(wiki_id=wiki_id, user_id=current_user.id, timestamp=now)
         db.session.add(log)
         should_commit = True
 
-    # 2. 单个页面浏览计数 (Page View Count) - 针对 Page ID 5分钟防抖 (基于 Session)
-    # 目的：让页面下方的 "浏览量: X" 更真实
     view_key = f"viewed_page_{p.id}"
     last_view_ts = session.get(view_key)
     current_ts = time.time()
     
-    # 如果 Session 里没有记录，或者距离上次访问超过 300秒 (5分钟)
     if not last_view_ts or (current_ts - last_view_ts) > 300:
         p.view_count += 1
-        session[view_key] = current_ts # 更新 Session
+        session[view_key] = current_ts
         should_commit = True
     
     if should_commit:
         db.session.commit()
-        
-    # --- 优化逻辑结束 ---
 
-    # 排序逻辑保持不变
+    # 1. 获取所有文件夹和页面
+    all_folders = WikiFolder.query.filter_by(wiki_id=wiki_id).all()
     all_pages = WikiPage.query.filter_by(wiki_id=wiki_id).all()
     
-    def page_sort_key(page):
-        try:
-            val = int(page.slug)
-        except ValueError:
-            val = 999999 
-        return val
-
-    sorted_pages = sorted(all_pages, key=page_sort_key)
+    # 2. 构建混合目录树 (支持文件夹和独立页面混排)
+    root_items = []
+    for f in all_folders:
+        f.item_type = 'folder'
+        f.children = sorted([page for page in all_pages if page.folder_id == f.id], key=lambda x: x.order_weight)
+        root_items.append(f)
+        
+    for page in all_pages:
+        if page.folder_id is None:
+            page.item_type = 'page'
+            root_items.append(page)
+            
+    root_items = sorted(root_items, key=lambda x: x.order_weight)
     
     html = markdown(p.content_md or "")
     is_subscribed = Subscription.query.filter_by(wiki_id=wiki_id, user_id=current_user.id).first() is not None
     
-    # Fetch contributors for title card
     contributors = []
     try:
         if all_pages:
@@ -4142,16 +4282,22 @@ def view_page(wiki_id, slug):
             ).all()
     except Exception as e:
         print(f"Error fetching contributors: {e}")
-        # import traceback
-        # traceback.print_exc()
         contributors = []
 
     my_recent_notes = []
     if current_user.is_authenticated:
         my_recent_notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.updated_at.desc()).limit(15).all()
 
-    return render_template("wiki/view_page.html", wiki=w, page=p, pages=sorted_pages, html=html, can_edit=can_edit_wiki(wiki_id), is_subscribed=is_subscribed, contributors=contributors, my_recent_notes=my_recent_notes)
-
+    return render_template("wiki/view_page.html", 
+                           wiki=w, 
+                           page=p, 
+                           root_items=root_items, # 💡 传入树形结构
+                           pages=all_pages,       # 兼容旧逻辑保留
+                           html=html, 
+                           can_edit=can_edit_wiki(wiki_id), 
+                           is_subscribed=is_subscribed, 
+                           contributors=contributors, 
+                           my_recent_notes=my_recent_notes)
 
 # ==========================================
 # ✨ 全员贴纸墙 (Global Sticker Wall) 模型与路由
@@ -4218,7 +4364,31 @@ class WikiFolder(db.Model):
     # 关联
     wiki = db.relationship('Wiki', backref=db.backref('folders', cascade='all, delete-orphan'))
 
+class StickyNote(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.Text, default="")
+    # 便签颜色 (默认黄色，还支持 pink, blue, green)
+    color = db.Column(db.String(20), default="yellow") 
+    # 记录在屏幕上的坐标 (百分比或像素)
+    pos_x = db.Column(db.Integer, default=100)
+    pos_y = db.Column(db.Integer, default=100)
+    z_index = db.Column(db.Integer, default=1000) # 层级，点击时置顶
+    
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
 
+    # 关联 User (方便通过 user.sticky_notes 获取)
+    user = db.relationship('User', backref=db.backref('sticky_notes', cascade='all, delete-orphan', lazy=True))
+
+class PomodoroRecord(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    duration_minutes = db.Column(db.Integer, default=45) # 默认一次 45 分钟
+    completed_at = db.Column(db.DateTime, default=now_utc8)
+
+    # 关联 User
+    user = db.relationship('User', backref=db.backref('pomodoros', cascade='all, delete-orphan', lazy='dynamic'))
 
 # --- 后台管理员路由：管理贴纸墙 ---
 @app.route("/admin/sticker_walls", methods=["GET", "POST"])
@@ -4579,6 +4749,121 @@ def leaderboard():
                            period=period, 
                            my_rank_info=my_rank_info,
                            gap_to_next=gap_to_next)
+
+
+# ==========================================
+# ✨ 全局便签 (Sticky Notes) 接口
+# ==========================================
+
+@app.route('/api/sticky_notes', methods=['GET'])
+@login_required
+def get_sticky_notes():
+    """获取当前用户的所有便签"""
+    notes = StickyNote.query.filter_by(user_id=current_user.id).all()
+    return jsonify([{
+        'id': n.id, 
+        'content': n.content, 
+        'color': n.color,
+        'pos_x': n.pos_x, 
+        'pos_y': n.pos_y, 
+        'z_index': n.z_index
+    } for n in notes])
+
+@app.route('/api/sticky_notes', methods=['POST'])
+@login_required
+def create_sticky_note():
+    """新建一个便签"""
+    # 强制限制最多 5 个便签
+    count = StickyNote.query.filter_by(user_id=current_user.id).count()
+    if count >= 5:
+        return jsonify({'success': False, 'error': '为了保持屏幕整洁，最多只能贴 5 个便签哦！'}), 400
+    
+    data = request.json or {}
+    # 新便签错开位置显示
+    offset = count * 30
+    
+    note = StickyNote(
+        user_id=current_user.id,
+        content="",
+        color=data.get('color', 'yellow'),
+        pos_x=100 + offset, # 默认 x 坐标
+        pos_y=100 + offset, # 默认 y 坐标
+        z_index=1000 + count
+    )
+    db.session.add(note)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True, 
+        'note': {
+            'id': note.id, 'content': note.content, 'color': note.color,
+            'pos_x': note.pos_x, 'pos_y': note.pos_y, 'z_index': note.z_index
+        }
+    })
+
+@app.route('/api/sticky_notes/<int:note_id>', methods=['PUT'])
+@login_required
+def update_sticky_note(note_id):
+    """更新便签 (内容、位置、颜色、层级)"""
+    note = StickyNote.query.get_or_404(note_id)
+    if note.user_id != current_user.id:
+        return jsonify({'success': False, 'error': '无权限'}), 403
+    
+    data = request.json
+    if 'content' in data: note.content = data['content']
+    if 'color' in data: note.color = data['color']
+    if 'pos_x' in data: note.pos_x = data['pos_x']
+    if 'pos_y' in data: note.pos_y = data['pos_y']
+    if 'z_index' in data: note.z_index = data['z_index']
+    
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/sticky_notes/<int:note_id>', methods=['DELETE'])
+@login_required
+def delete_sticky_note(note_id):
+    """撕掉(删除)便签"""
+    note = StickyNote.query.get_or_404(note_id)
+    if note.user_id == current_user.id:
+        db.session.delete(note)
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False}), 403
+
+
+# ==========================================
+# 🍅 番茄钟 (Pomodoro) 接口
+# ==========================================
+@app.route('/api/pomodoro/today', methods=['GET'])
+@login_required
+def get_today_pomodoro():
+    """获取今日已完成的番茄钟次数"""
+    # 获取今天凌晨 0 点的时间
+    today_start = now_utc8().replace(hour=0, minute=0, second=0, microsecond=0)
+    count = PomodoroRecord.query.filter(
+        PomodoroRecord.user_id == current_user.id,
+        PomodoroRecord.completed_at >= today_start
+    ).count()
+    return jsonify({'success': True, 'count': count})
+
+@app.route('/api/pomodoro/complete', methods=['POST'])
+@login_required
+def complete_pomodoro():
+    """完成一次番茄钟，写入数据库"""
+    record = PomodoroRecord(user_id=current_user.id, duration_minutes=45)
+    db.session.add(record)
+    db.session.commit()
+    
+    # 返回更新后的今日总数，用于更新右上角角标
+    today_start = now_utc8().replace(hour=0, minute=0, second=0, microsecond=0)
+    count = PomodoroRecord.query.filter(
+        PomodoroRecord.user_id == current_user.id,
+        PomodoroRecord.completed_at >= today_start
+    ).count()
+    
+    # [未来预留] 这里可以加上检测徽章的逻辑，比如 check_and_award_badges(current_user)
+    
+    return jsonify({'success': True, 'count': count})
 
 
 if __name__ == "__main__":

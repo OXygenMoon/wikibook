@@ -195,7 +195,11 @@
     // 允许分屏
     sideBySideFullscreen: false, 
     syncSideBySidePreviewScroll: true,
-    
+    autosave: {
+            enabled: true,
+            uniqueId: "new_wiki_page_draft", // 必须唯一！
+            delay: 1000,
+        },
     toolbar: [
         "bold", "italic", "strikethrough", "heading", "|", 
         "quote", "unordered-list", "ordered-list", "|", 

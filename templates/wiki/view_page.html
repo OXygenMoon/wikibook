@@ -67,13 +67,36 @@
         <span class="bg-base-200 text-base-content/70 px-2 py-0.5 rounded-md text-[10px] font-bold">{{ pages|length }}</span>
     </div>
     
-    <div class="space-y-1 mb-8 px-2">
-        {% for p in pages %}
-        <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" 
-           class="block px-3 py-2 text-sm rounded-xl transition-all duration-200 truncate {% if page and p.slug == page.slug %}page-link-active shadow-sm{% else %}text-base-content/70 hover:bg-base-200 hover:text-base-content{% endif %}" 
-           title="{{ p.title }}">
-            {{ p.title }}
-        </a>
+<div class="space-y-1 mb-8 px-2">
+        {% for item in root_items %}
+            
+            {% if item.item_type == 'folder' %}
+                <div class="folder-group mb-3">
+                    <div class="px-3 py-2 text-xs font-black text-base-content/50 uppercase tracking-widest flex items-center gap-2 bg-base-200/30 rounded-lg">
+                        <i class="fas fa-folder text-warning/80"></i> {{ item.name }}
+                    </div>
+                    <div class="pl-3 mt-1 border-l-2 border-base-200/50 ml-4 space-y-0.5">
+                        {% for p in item.children %}
+                            <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" 
+                               class="block px-3 py-1.5 text-sm rounded-lg transition-all duration-200 truncate {% if page and p.slug == page.slug %}bg-primary/10 text-primary font-bold shadow-sm{% else %}text-base-content/70 hover:bg-base-200 hover:text-base-content{% endif %}" 
+                               title="{{ p.title }}">
+                                {{ p.title }}
+                            </a>
+                        {% endfor %}
+                        {% if not item.children %}
+                            <div class="text-[10px] text-base-content/30 italic pl-3 py-1">空文件夹</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+            {% elif item.item_type == 'page' %}
+                <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=item.slug) }}" 
+                   class="block px-3 py-2 text-sm rounded-xl transition-all duration-200 truncate mb-1 {% if page and item.slug == page.slug %}page-link-active shadow-sm{% else %}text-base-content/70 hover:bg-base-200 hover:text-base-content{% endif %}" 
+                   title="{{ item.title }}">
+                    {{ item.title }}
+                </a>
+            {% endif %}
+            
         {% endfor %}
     </div>
 
@@ -724,7 +747,13 @@ window.toggleSplitScreen = function() {
                     status: false,
                     maxHeight: "calc(100vh - 280px)",
                     placeholder: "在这里记录你的灵感、代码或者读书笔记...",
-                    toolbar: ["bold", "italic", "heading", "|", "quote", "code", "unordered-list", "ordered-list", "|", "preview"]
+                    toolbar: ["bold", "italic", "heading", "|", "quote", "code", "unordered-list", "ordered-list", "|", "preview"],
+                    autosave: {
+                        enabled: true,
+                        uniqueId: "split_screen_draft", // 必须唯一！
+                        delay: 1000, // 每隔 1 秒自动缓存一次
+                        text: "自动保存草稿: "
+                    }
                 });
             }, 400);
         } else {

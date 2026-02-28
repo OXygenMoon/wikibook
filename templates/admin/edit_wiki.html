@@ -4,535 +4,208 @@
 
 {% block extra_css %}
 <style>
-    /* 拖拽时的占位符样式 */
-    .sortable-ghost {
-        opacity: 0.4;
-        background-color: hsl(var(--p) / 0.1) !important;
-        border: 2px dashed hsl(var(--p)) !important;
-    }
-    .sortable-drag {
-        cursor: grabbing !important;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-    }
-    .drag-handle {
-        cursor: grab;
-    }
-    .drag-handle:active {
-        cursor: grabbing;
-    }
+    .sortable-ghost { opacity: 0.4; background-color: hsl(var(--p) / 0.1) !important; border: 2px dashed hsl(var(--p)) !important; }
+    .drag-handle { cursor: grab; }
+    .drag-handle:active { cursor: grabbing; }
+    #auto-save-indicator { transition: all 0.3s ease; }
 </style>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
-    // 原有的权限切换逻辑
-    function togglePermissions(visibility) {
-        const details = document.getElementById('permission-details');
-        const radioCards = document.querySelectorAll('.visibility-card');
-        
-        radioCards.forEach(card => {
-            if (card.querySelector('input').checked) {
-                card.classList.add('border-primary', 'bg-primary/5', 'ring-1', 'ring-primary');
-                card.classList.remove('border-base-300', 'bg-base-100');
-            } else {
-                card.classList.remove('border-primary', 'bg-primary/5', 'ring-1', 'ring-primary');
-                card.classList.add('border-base-300', 'bg-base-100');
-            }
+    // --- 权限控制 JS 保留 ---
+    function togglePermissions(v) {
+        const d = document.getElementById('permission-details');
+        document.querySelectorAll('.visibility-card').forEach(c => {
+            const checked = c.querySelector('input').checked;
+            c.classList.toggle('border-primary', checked);
+            c.classList.toggle('bg-primary/5', checked);
         });
-
-        if (visibility === 'restricted') {
-            details.style.display = 'block';
-            requestAnimationFrame(() => {
-                details.classList.remove('opacity-0', '-translate-y-4');
-                details.classList.add('opacity-100', 'translate-y-0');
-            });
-        } else {
-            details.classList.remove('opacity-100', 'translate-y-0');
-            details.classList.add('opacity-0', '-translate-y-4');
-            setTimeout(() => { details.style.display = 'none'; }, 300);
-        }
-    }
-    
-    function toggleSection(sectionId, iconId) {
-        const section = document.getElementById(sectionId);
-        const icon = document.getElementById(iconId);
-        if (section.classList.contains('hidden')) {
-            section.classList.remove('hidden');
-            icon.classList.add('rotate-180');
-        } else {
-            section.classList.add('hidden');
-            icon.classList.remove('rotate-180');
-        }
-    }
-    
-    function filterUsers() {
-        const input = document.getElementById('userSearch');
-        const filter = input.value.toLowerCase();
-        const items = document.getElementsByClassName('user-item');
-        
-        for (let i = 0; i < items.length; i++) {
-            const name = items[i].querySelector('.user-name').textContent || "";
-            if (name.toLowerCase().indexOf(filter) > -1) {
-                items[i].style.display = "";
-            } else {
-                items[i].style.display = "none";
-            }
-        }
+        d.style.display = (v === 'restricted') ? 'block' : 'none';
     }
 
     // ==========================================
-    // ✨ 目录拖拽与文件夹管理核心逻辑
+    // 💡 实时自动保存与层级管理核心
     // ==========================================
     let folderCounter = 1;
+    let saveTimer = null;
 
-    // 初始化所有的拖拽区域
-    function initSortables() {
-        // 1. 初始化根目录
-        const rootArea = document.getElementById('wiki-tree-root');
-        if (rootArea) {
-            new Sortable(rootArea, {
-                group: 'shared', // 允许在 shared 组内互相拖拽
-                animation: 150,
-                handle: '.drag-handle',
-                fallbackOnBody: true,
-                swapThreshold: 0.65,
-            });
-        }
+    // AJAX 保存函数
+    async function triggerAutoSave() {
+        const indicator = document.getElementById('auto-save-indicator');
+        indicator.innerHTML = '<span class="loading loading-spinner loading-xs"></span> 正在保存结构...';
+        indicator.className = "ml-3 badge badge-ghost gap-2 opacity-100";
 
-        // 2. 初始化所有文件夹的内部区域
-        document.querySelectorAll('.folder-content').forEach(folder => {
-            new Sortable(folder, {
-                group: 'shared',
-                animation: 150,
-                handle: '.drag-handle',
-                fallbackOnBody: true,
-                // 防止把文件夹拖进文件夹（目前只支持一层文件夹）
-                onAdd: function (evt) {
-                    if (evt.item.dataset.type === 'folder') {
-                        evt.from.appendChild(evt.item); // 强行退回
-                        if(app && app.toast) app.toast.show('暂不支持文件夹嵌套', 'warning');
-                    }
-                }
-            });
-        });
-    }
-
-    // 新建文件夹
-    window.createFolder = function() {
-        const name = prompt("请输入新文件夹名称：", "新建文件夹");
-        if (!name || name.trim() === '') return;
-
-        const newId = 'new_' + folderCounter++;
-        const root = document.getElementById('wiki-tree-root');
-        
-        const folderHtml = `
-            <div class="folder-item bg-base-200/40 border border-base-300 rounded-xl p-2 pb-3 mb-2" data-id="${newId}" data-type="folder" data-name="${name}">
-                <div class="flex items-center gap-2 font-bold text-sm p-2 bg-white dark:bg-base-200 rounded-lg cursor-move drag-handle shadow-sm">
-                    <i class="fas fa-grip-vertical text-base-content/20 hover:text-primary transition-colors px-1"></i>
-                    <i class="fas fa-folder text-warning drop-shadow-sm text-lg"></i>
-                    <span class="folder-name flex-1 ml-1">${name}</span>
-                    <button type="button" class="btn btn-xs btn-ghost text-error/70 hover:text-error hover:bg-error/10" onclick="deleteFolder(this)" title="删除文件夹 (内的文章会被移出)">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-                <div class="folder-content min-h-[40px] pl-6 pt-2 space-y-2 mt-1 border-l-2 border-base-300 ml-4">
-                    </div>
-            </div>
-        `;
-        
-        // 插入到根目录的最前面
-        root.insertAdjacentHTML('afterbegin', folderHtml);
-        
-        // 为新生成的文件夹容器初始化拖拽功能
-        const newFolderContent = root.querySelector(`[data-id="${newId}"] .folder-content`);
-        new Sortable(newFolderContent, {
-            group: 'shared',
-            animation: 150,
-            handle: '.drag-handle',
-            onAdd: function (evt) {
-                if (evt.item.dataset.type === 'folder') {
-                    evt.from.appendChild(evt.item);
-                    if(app && app.toast) app.toast.show('暂不支持文件夹嵌套', 'warning');
-                }
-            }
-        });
-    };
-
-    // 删除文件夹 (将内部的文章释放到根目录)
-    window.deleteFolder = function(btn) {
-        if (!confirm('确定删除该文件夹吗？\n文件夹内的文章不会被删除，它们会被移动到根目录。')) return;
-        
-        const folderItem = btn.closest('.folder-item');
-        const root = document.getElementById('wiki-tree-root');
-        const pages = folderItem.querySelectorAll('.page-item');
-        
-        // 把子元素移回根目录
-        pages.forEach(p => {
-            root.appendChild(p);
-        });
-        
-        // 删掉文件夹DOM
-        folderItem.remove();
-    };
-
-    // 表单提交前，解析 DOM 树结构并转为 JSON 存入隐藏输入框
-    window.serializeTree = function() {
         const root = document.getElementById('wiki-tree-root');
         const structure = [];
-        let globalOrder = 1;
+        let order = 1;
 
         Array.from(root.children).forEach(el => {
             if (el.dataset.type === 'page') {
-                // 根目录下的独立页面
-                structure.push({
-                    type: 'page',
-                    id: el.dataset.id,
-                    folder_id: null,
-                    order: globalOrder++
-                });
+                structure.push({ type: 'page', id: el.dataset.id, order: order++ });
             } else if (el.dataset.type === 'folder') {
-                // 文件夹
-                const folderId = el.dataset.id;
-                const folderName = el.dataset.name || el.querySelector('.folder-name').innerText.trim();
-                
-                const folderObj = {
-                    type: 'folder',
-                    id: folderId,
-                    name: folderName,
-                    order: globalOrder++,
+                const folder = {
+                    type: 'folder', id: el.dataset.id, order: order++,
+                    name: el.querySelector('.folder-name').innerText.trim(),
                     pages: []
                 };
-                
-                // 获取文件夹内的页面
-                const subPages = el.querySelectorAll('.page-item');
-                let subOrder = 1;
-                subPages.forEach(p => {
-                    folderObj.pages.push({
-                        id: p.dataset.id,
-                        order: subOrder++
-                    });
+                el.querySelectorAll('.page-item').forEach((p, idx) => {
+                    folder.pages.push({ id: p.dataset.id, order: idx + 1 });
                 });
-                
-                structure.push(folderObj);
+                structure.push(folder);
             }
         });
 
-        document.getElementById('structure_data').value = JSON.stringify(structure);
+        try {
+            const res = await fetch("{{ url_for('update_wiki_structure', wiki_id=wiki.id) }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ structure_data: structure })
+            });
+            const data = await res.json();
+            if (data.success) {
+                // 更新临时文件夹 ID
+                for (const [tmp, real] of Object.entries(data.id_mapping || {})) {
+                    const el = document.querySelector(`[data-id="${tmp}"]`);
+                    if (el) el.dataset.id = real;
+                }
+                indicator.innerHTML = '<i class="fas fa-check-circle text-emerald-500"></i> 结构已实时保存';
+                setTimeout(() => indicator.classList.add('opacity-0'), 2000);
+            }
+        } catch (e) { indicator.innerHTML = '<i class="fas fa-exclamation-circle text-error"></i> 保存失败'; }
+    }
+
+    function debounceSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(triggerAutoSave, 500);
+    }
+
+    function initSortables() {
+        new Sortable(document.getElementById('wiki-tree-root'), {
+            group: 'nested', animation: 150, handle: '.drag-handle', onSort: debounceSave
+        });
+        document.querySelectorAll('.folder-content').forEach(el => {
+            new Sortable(el, {
+                group: 'nested', animation: 150, handle: '.drag-handle', onSort: debounceSave
+            });
+        });
+    }
+
+    window.createFolder = function() {
+        const name = prompt("输入文件夹名：", "新建文件夹");
+        if (!name) return;
+        const id = 'new_' + folderCounter++;
+        const html = `
+            <div class="folder-item bg-base-200/40 border border-base-300 rounded-xl p-2 mb-2" data-id="${id}" data-type="folder">
+                <div class="flex items-center gap-2 font-bold text-sm p-2 bg-white dark:bg-base-200 rounded-lg drag-handle">
+                    <i class="fas fa-grip-vertical opacity-20"></i>
+                    <i class="fas fa-folder text-warning"></i>
+                    <span class="folder-name flex-1 ml-1">${name}</span>
+                    <button type="button" class="btn btn-xs btn-ghost text-error" onclick="this.closest('.folder-item').remove();debounceSave();"><i class="fas fa-trash"></i></button>
+                </div>
+                <div class="folder-content min-h-[30px] pl-8 pt-2 space-y-2"></div>
+            </div>`;
+        document.getElementById('wiki-tree-root').insertAdjacentHTML('beforeend', html);
+        initSortables();
+        debounceSave();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-        const checkedRadio = document.querySelector('input[name="visibility"]:checked');
-        if(checkedRadio) togglePermissions(checkedRadio.value);
-        
         initSortables();
-
-        // 拦截表单提交，执行序列化
-        const form = document.getElementById('wiki-settings-form');
-        form.addEventListener('submit', function(e) {
-            serializeTree();
-        });
+        const checked = document.querySelector('input[name="visibility"]:checked');
+        if(checked) togglePermissions(checked.value);
     });
 </script>
 {% endblock %}
 
-{% block sidebar_menu %}
-    {% include "wiki/sidebar.html" ignore missing %}
-{% endblock %}
-
 {% block content %}
-<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6 transition-all duration-500 ease-in-out pb-12">
-    
-    <div class="flex items-center justify-between mb-2 mt-2">
-        <h1 class="text-3xl font-black text-stone-800 dark:text-stone-100 tracking-tight flex items-center gap-3">
-            <i class="fas fa-cog text-primary opacity-80 drop-shadow-sm"></i> Wiki 设置
+<div class="w-full max-w-[98%] mx-auto pb-12">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-3xl font-black flex items-center gap-3">
+            <i class="fas fa-cog text-primary"></i> Wiki 管理中心
         </h1>
-        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost bg-base-200/50 hover:bg-base-200 border-none rounded-xl gap-2 font-medium">
-            <i class="fas fa-arrow-left text-base-content/50"></i> 返回 Wiki
-        </a>
+        <div id="auto-save-indicator" class="opacity-0"></div>
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-sm btn-ghost bg-base-200 rounded-xl">返回 Wiki</a>
     </div>
 
-    <form id="wiki-settings-form" method="post" class="grid grid-cols-1 gap-8">
-        
-        <input type="hidden" name="structure_data" id="structure_data">
-
-        <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-black/5 dark:border-white/5 rounded-[2.5rem] overflow-hidden">
-            <div class="card-body p-6 lg:p-10 space-y-8">
-                
-                <div class="space-y-5">
-                    <div class="flex items-center gap-2 border-b border-base-200/60 pb-3 mb-2">
-                        <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center"><i class="fas fa-info-circle"></i></div>
-                        <h2 class="text-xl font-bold text-base-content tracking-tight">基本信息</h2>
-                    </div>
-                    
-                    <div class="form-control w-full">
-                        <label class="label"><span class="label-text font-bold text-base-content/80 tracking-wider">WIKI 标题</span></label>
-                        <input type="text" name="title" class="input input-lg input-bordered w-full font-bold text-lg focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all shadow-sm" value="{{ wiki.title }}" required />
-                    </div>
-                    
-                    <div class="form-control w-full">
-                        <label class="label"><span class="label-text font-bold text-base-content/80 tracking-wider">简短描述</span></label>
-                        <textarea name="description" class="textarea textarea-bordered h-28 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all shadow-sm resize-none leading-relaxed" placeholder="用一两句话描述这个 Wiki 的核心内容...">{{ wiki.description }}</textarea>
-                    </div>
-                </div>
-
-                <div class="bg-stone-50 dark:bg-base-200/40 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-inner">
-                    <div class="flex items-center justify-between border-b border-base-200/60 pb-3 mb-5">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center"><i class="fas fa-sitemap"></i></div>
-                            <h2 class="text-xl font-bold text-base-content tracking-tight">目录排版管理</h2>
-                        </div>
-                        <button type="button" onclick="createFolder()" class="btn btn-sm bg-white dark:bg-base-100 hover:bg-indigo-50 hover:text-indigo-600 border border-base-300 shadow-sm rounded-lg gap-1.5 transition-colors">
-                            <i class="fas fa-folder-plus text-indigo-400"></i> 新建文件夹
-                        </button>
-                    </div>
-                    <p class="text-xs text-base-content/50 font-medium mb-4 flex items-center gap-1.5"><i class="fas fa-lightbulb text-warning"></i> 提示：上下拖拽可以调整页面顺序。将文章拖入文件夹内可形成层级。</p>
-
-                    <div id="wiki-tree-root" class="space-y-2 min-h-[60px] p-3 bg-white dark:bg-base-100 rounded-2xl border border-base-200 shadow-sm">
-                        
-                        {% if folders %}
-                            {% for folder in folders|sort(attribute='order_weight') %}
-                            <div class="folder-item bg-base-200/40 border border-base-300 rounded-xl p-2 pb-3 mb-2" data-id="{{ folder.id }}" data-type="folder" data-name="{{ folder.name }}">
-                                <div class="flex items-center gap-2 font-bold text-sm p-2 bg-white dark:bg-base-200 rounded-lg cursor-move drag-handle shadow-sm">
-                                    <i class="fas fa-grip-vertical text-base-content/20 hover:text-primary transition-colors px-1"></i>
-                                    <i class="fas fa-folder text-warning drop-shadow-sm text-lg"></i>
-                                    <span class="folder-name flex-1 ml-1">{{ folder.name }}</span>
-                                    <button type="button" class="btn btn-xs btn-ghost text-error/70 hover:text-error hover:bg-error/10" onclick="deleteFolder(this)" title="删除文件夹 (内的文章会被移出)">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                                <div class="folder-content min-h-[40px] pl-6 pt-2 space-y-2 mt-1 border-l-2 border-base-300 ml-4">
-                                    {% for p in pages|selectattr('folder_id', 'equalto', folder.id)|sort(attribute='order_weight') %}
-                                    <div class="page-item bg-white dark:bg-base-100 border border-base-200 shadow-sm rounded-lg p-2.5 flex items-center gap-3 cursor-move drag-handle hover:border-primary/30 transition-colors" data-id="{{ p.id }}" data-type="page">
-                                        <i class="fas fa-grip-vertical text-base-content/20"></i>
-                                        <div class="w-6 h-6 rounded bg-primary/10 text-primary flex items-center justify-center text-xs"><i class="far fa-file-alt"></i></div>
-                                        <span class="text-sm font-medium flex-1 truncate">{{ p.title }}</span>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        {% endif %}
-
-                        {% if pages %}
-                            {% for p in pages|selectattr('folder_id', 'none')|sort(attribute='order_weight') %}
-                            <div class="page-item bg-white dark:bg-base-100 border border-base-200 shadow-sm rounded-lg p-2.5 flex items-center gap-3 cursor-move drag-handle hover:border-primary/30 transition-colors mb-2" data-id="{{ p.id }}" data-type="page">
-                                <i class="fas fa-grip-vertical text-base-content/20 hover:text-primary px-1"></i>
-                                <div class="w-6 h-6 rounded bg-primary/10 text-primary flex items-center justify-center text-xs"><i class="far fa-file-alt"></i></div>
-                                <span class="text-sm font-medium flex-1 truncate">{{ p.title }}</span>
-                            </div>
-                            {% endfor %}
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="bg-stone-50 dark:bg-base-200/40 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-inner">
-                    <div class="flex items-center gap-2 border-b border-base-200/60 pb-3 mb-5">
-                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center"><i class="fas fa-shield-alt"></i></div>
-                        <h2 class="text-xl font-bold text-base-content tracking-tight">访问控制</h2>
-                    </div>
-                    
-                    <div class="form-control mb-2">
-                        <label class="label"><span class="label-text font-bold text-base-content/80 tracking-wider">可见性范围</span></label>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1">
-                            <label class="visibility-card cursor-pointer border border-base-300 p-4 rounded-2xl bg-base-100 hover:border-primary/50 transition-all flex flex-col gap-1 relative overflow-hidden shadow-sm">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-black text-base-content flex items-center gap-2"><i class="fas fa-globe-americas text-blue-500 text-lg"></i> 公开</span>
-                                    <input type="radio" name="visibility" value="public" class="radio radio-primary radio-sm" {% if wiki.visibility == 'public' %}checked{% endif %} onclick="togglePermissions('public')" />
-                                </div>
-                                <span class="text-xs text-base-content/50 mt-1.5 font-medium leading-relaxed">允许所有已登录的用户查看。</span>
-                            </label>
-                            
-                            <label class="visibility-card cursor-pointer border border-base-300 p-4 rounded-2xl bg-base-100 hover:border-primary/50 transition-all flex flex-col gap-1 relative overflow-hidden shadow-sm">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-black text-base-content flex items-center gap-2"><i class="fas fa-users-cog text-orange-500 text-lg"></i> 受限</span>
-                                    <input type="radio" name="visibility" value="restricted" class="radio radio-primary radio-sm" {% if wiki.visibility == 'restricted' %}checked{% endif %} onclick="togglePermissions('restricted')" />
-                                </div>
-                                <span class="text-xs text-base-content/50 mt-1.5 font-medium leading-relaxed">仅允许你指定的班级、小组或个人查看。</span>
-                            </label>
-
-                            <label class="visibility-card cursor-pointer border border-base-300 p-4 rounded-2xl bg-base-100 hover:border-primary/50 transition-all flex flex-col gap-1 relative overflow-hidden shadow-sm">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-black text-base-content flex items-center gap-2"><i class="fas fa-lock text-rose-500 text-lg"></i> 私有</span>
-                                    <input type="radio" name="visibility" value="private" class="radio radio-primary radio-sm" {% if wiki.visibility == 'private' %}checked{% endif %} onclick="togglePermissions('private')" />
-                                </div>
-                                <span class="text-xs text-base-content/50 mt-1.5 font-medium leading-relaxed">只有创建者和管理员可以查看。</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div id="permission-details" class="transition-all duration-300 opacity-0 -translate-y-4 pt-6 mt-4 border-t border-base-300 border-dashed" style="display: none;">
-                        <div class="space-y-4">
-                            <div class="form-control bg-base-100 rounded-xl border border-base-300 overflow-hidden shadow-sm">
-                                <label class="label cursor-pointer p-4 hover:bg-base-200/50 transition-colors" onclick="toggleSection('classes-section', 'icon-classes')">
-                                    <span class="font-bold text-sm text-base-content flex items-center gap-2"><i class="fas fa-graduation-cap text-base-content/40"></i> 授权班级</span>
-                                    <i id="icon-classes" class="fas fa-chevron-down text-base-content/40 text-xs transition-transform duration-300"></i>
-                                </label>
-                                <div id="classes-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-2 p-4 bg-base-200/30 border-t border-base-200 max-h-48 overflow-y-auto">
-                                    {% for cls in classes %}
-                                    <label class="label cursor-pointer justify-start gap-3 hover:bg-white dark:hover:bg-base-200 rounded-lg p-2 transition-colors border border-transparent hover:border-base-300 hover:shadow-sm">
-                                        <input type="checkbox" name="allowed_classes" value="{{ cls.id }}" class="checkbox checkbox-sm checkbox-primary rounded" {% if cls in wiki.allowed_classes %}checked{% endif %} />
-                                        <span class="label-text text-sm font-medium">{{ cls.name }}</span>
-                                    </label>
-                                    {% endfor %}
-                                </div>
-                            </div>
-
-                            <div class="form-control bg-base-100 rounded-xl border border-base-300 overflow-hidden shadow-sm">
-                                <label class="label cursor-pointer p-4 hover:bg-base-200/50 transition-colors" onclick="toggleSection('groups-section', 'icon-groups')">
-                                    <span class="font-bold text-sm text-base-content flex items-center gap-2"><i class="fas fa-layer-group text-base-content/40"></i> 授权小组</span>
-                                    <i id="icon-groups" class="fas fa-chevron-down text-base-content/40 text-xs transition-transform duration-300"></i>
-                                </label>
-                                <div id="groups-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-2 p-4 bg-base-200/30 border-t border-base-200 max-h-48 overflow-y-auto">
-                                    {% for grp in groups %}
-                                    <label class="label cursor-pointer justify-start gap-3 hover:bg-white dark:hover:bg-base-200 rounded-lg p-2 transition-colors border border-transparent hover:border-base-300 hover:shadow-sm">
-                                        <input type="checkbox" name="allowed_groups" value="{{ grp.id }}" class="checkbox checkbox-sm checkbox-primary rounded" {% if grp in wiki.allowed_groups %}checked{% endif %} />
-                                        <span class="label-text text-sm font-medium">{{ grp.name }}</span>
-                                    </label>
-                                    {% endfor %}
-                                </div>
-                            </div>
-
-                            <div class="form-control bg-base-100 rounded-xl border border-base-300 overflow-hidden shadow-sm">
-                                <label class="label cursor-pointer p-4 hover:bg-base-200/50 transition-colors" onclick="toggleSection('users-section', 'icon-users')">
-                                    <span class="font-bold text-sm text-base-content flex items-center gap-2"><i class="fas fa-user-check text-base-content/40"></i> 授权特定用户</span>
-                                    <i id="icon-users" class="fas fa-chevron-down text-base-content/40 text-xs transition-transform duration-300"></i>
-                                </label>
-                                <div id="users-section" class="hidden p-4 bg-base-200/30 border-t border-base-200">
-                                    <div class="relative mb-3 w-full md:w-1/2">
-                                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-base-content/30 text-sm"></i>
-                                        <input type="text" id="userSearch" placeholder="搜索用户名或学号..." class="input input-sm input-bordered w-full pl-9 rounded-lg focus:border-primary" onkeyup="filterUsers()" />
-                                    </div>
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-2 custom-scroll" id="userList">
-                                        {% for user in all_users %}
-                                        <label class="label cursor-pointer justify-start gap-3 hover:bg-white dark:hover:bg-base-200 rounded-lg p-2 transition-colors border border-transparent hover:border-base-300 hover:shadow-sm user-item">
-                                            <input type="checkbox" name="allowed_users" value="{{ user.id }}" class="checkbox checkbox-sm checkbox-primary rounded" {% if user in wiki.allowed_users %}checked{% endif %} />
-                                            <div class="flex flex-col min-w-0">
-                                                <span class="label-text text-sm font-bold user-name truncate">{{ user.real_name or user.username }}</span>
-                                                <span class="text-[10px] text-base-content/50 font-mono truncate">{{ user.student_id or '无学号' }}</span>
-                                            </div>
-                                        </label>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-stone-50 dark:bg-base-200/40 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-inner">
-                    <div class="flex items-center gap-2 border-b border-base-200/60 pb-3 mb-5">
-                        <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center"><i class="fas fa-palette"></i></div>
-                        <h2 class="text-xl font-bold text-base-content tracking-tight">视觉特效 (外观)</h2>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                        <div class="form-control bg-base-100 p-3 rounded-2xl border border-base-200 shadow-sm flex flex-col justify-between">
-                            <label class="label pb-1"><span class="label-text font-black text-xs uppercase tracking-widest text-base-content/50">主背景色</span></label>
-                            <div class="flex items-center gap-3 mt-1">
-                                <input type="color" name="bg_color" value="{{ wiki.bg_color or '#ffffff' }}" class="h-10 w-16 cursor-pointer rounded-lg border-0 p-0 bg-transparent shadow-sm" />
-                                <span class="text-xs font-mono text-base-content/70 font-medium">主底色</span>
-                            </div>
-                        </div>
-                        <div class="form-control bg-base-100 p-3 rounded-2xl border border-base-200 shadow-sm flex flex-col justify-between">
-                            <label class="label pb-1"><span class="label-text font-black text-xs uppercase tracking-widest text-base-content/50">文字颜色</span></label>
-                            <div class="flex items-center gap-3 mt-1">
-                                <input type="color" name="fg_color" value="{{ wiki.fg_color or '#1f2937' }}" class="h-10 w-16 cursor-pointer rounded-lg border-0 p-0 bg-transparent shadow-sm" />
-                                <span class="text-xs font-mono text-base-content/70 font-medium">需保持对比</span>
-                            </div>
-                        </div>
-                        
-                        <div class="form-control bg-base-100 p-3 rounded-2xl border border-base-200 shadow-sm flex flex-col justify-between">
-                            <label class="label pb-1"><span class="label-text font-black text-xs uppercase tracking-widest text-base-content/50">流体光晕色</span></label>
-                            <div class="flex items-center gap-3 mt-1">
-                                <input type="color" name="gradient_color" value="{{ wiki.gradient_color or wiki.bg_color or '#ffffff' }}" class="h-10 w-16 cursor-pointer rounded-lg border-0 p-0 bg-transparent shadow-sm" />
-                                <span class="text-xs font-mono text-base-content/70 font-medium">与主色混合</span>
-                            </div>
-                        </div>
-                        <div class="form-control bg-base-100 p-3 rounded-2xl border border-base-200 shadow-sm justify-between">
-                            <label class="label pb-1"><span class="label-text font-black text-xs uppercase tracking-widest text-base-content/50">光晕方向</span></label>
-                            <select name="gradient_direction" class="select select-sm select-bordered w-full font-bold mt-1 bg-base-200/50 shadow-inner">
-                                <option value="to bottom right" {% if wiki.gradient_direction == 'to bottom right' %}selected{% endif %}>↘ 右下角 (推荐)</option>
-                                <option value="to right" {% if wiki.gradient_direction == 'to right' %}selected{% endif %}>→ 水平向右</option>
-                                <option value="to bottom" {% if wiki.gradient_direction == 'to bottom' %}selected{% endif %}>↓ 垂直向下</option>
-                                <option value="to bottom left" {% if wiki.gradient_direction == 'to bottom left' %}selected{% endif %}>↙ 左下角</option>
-                                <option value="to top left" {% if wiki.gradient_direction == 'to top left' %}selected{% endif %}>↖ 左上角</option>
-                                <option value="to top right" {% if wiki.gradient_direction == 'to top right' %}selected{% endif %}>↗ 右上角</option>
-                                <option value="circle at center" {% if wiki.gradient_direction == 'circle at center' %}selected{% endif %}>◉ 中心径向</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                        <div class="form-control">
-                            <label class="label"><span class="label-text font-bold text-sm">背景毛玻璃强度 (Blur)</span></label>
-                            <div class="flex items-center gap-4 bg-base-100 px-5 py-3.5 rounded-2xl border border-base-200 shadow-sm">
-                                <span class="text-[10px] text-base-content/40 font-black uppercase">硬朗</span>
-                                <input type="range" name="blur_level" min="0" max="100" step="1" value="{{ wiki.blur_level }}" class="range range-primary range-xs flex-1" />
-                                <span class="text-[10px] text-base-content/40 font-black uppercase">梦幻</span>
-                            </div>
-                        </div>
-
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text font-bold text-sm">白噪声质感强度 (Noise)</span>
-                            </label>
-                            <div class="flex items-center gap-4 bg-base-100 px-5 py-3.5 rounded-2xl border border-base-200 shadow-sm">
-                                <span class="text-[10px] text-base-content/40 font-black uppercase">纯净</span>
-                                <input type="range" name="pattern" min="0" max="0.3" step="0.01" value="{{ wiki.pattern if wiki.pattern and wiki.pattern[0].isdigit() else '0.05' }}" class="range range-secondary range-xs flex-1" />
-                                <span class="text-[10px] text-base-content/40 font-black uppercase">粗糙</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex justify-end pt-4">
-                    <button type="submit" class="btn btn-primary btn-lg rounded-2xl px-16 shadow-xl shadow-primary/30 hover:-translate-y-1 hover:scale-105 transition-all text-white font-black tracking-widest text-lg">
-                        <i class="fas fa-save mr-1"></i> 保存所有修改
-                    </button>
+    <form method="post" class="space-y-6">
+        <div class="card bg-white dark:bg-base-100 shadow-xl rounded-[2rem] p-6 lg:p-10 space-y-10">
+            <div class="bg-base-200/30 rounded-3xl p-6 border border-base-300">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold flex items-center gap-2"><i class="fas fa-sitemap text-indigo-500"></i> 目录排版管理</h2>
+                    <button type="button" onclick="createFolder()" class="btn btn-sm btn-primary rounded-lg">新建文件夹</button>
                 </div>
                 
-            </div>
-        </div>
-
-        <div class="card bg-rose-50/80 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-[2.5rem] mt-4 backdrop-blur-sm">
-            <div class="card-body p-6 lg:p-8 flex flex-col sm:flex-row justify-between items-center gap-6">
-                <div>
-                    <h2 class="text-xl font-black text-rose-600 dark:text-rose-500 flex items-center gap-2 mb-1.5">
-                        <i class="fas fa-exclamation-triangle"></i> 危险区域 (Danger Zone)
-                    </h2>
-                    <p class="text-sm text-rose-600/70 dark:text-rose-400/80 font-medium">删除 Wiki 是不可逆的操作，所有相关的页面、文件和历史记录都将被永久抹除。</p>
+                <div id="wiki-tree-root" class="min-h-[100px] space-y-2">
+                    {% for item in root_items %}
+                        {% if item.type == 'folder' %}
+                        <div class="folder-item bg-base-200/50 border border-base-300 rounded-2xl p-2 mb-2" data-id="{{ item.id }}" data-type="folder">
+                            <div class="flex items-center gap-2 font-bold text-sm p-2 bg-white dark:bg-base-200 rounded-xl shadow-sm drag-handle">
+                                <i class="fas fa-grip-vertical opacity-20"></i>
+                                <i class="fas fa-folder text-warning text-lg"></i>
+                                <span class="folder-name flex-1 ml-1">{{ item.name }}</span>
+                                <button type="button" class="btn btn-xs btn-ghost text-error" onclick="if(confirm('删除文件夹？里面的文章会移出到主目录')){ const p=this.closest('.folder-item'); p.querySelectorAll('.page-item').forEach(i=>document.getElementById('wiki-tree-root').appendChild(i)); p.remove(); debounceSave(); }"><i class="fas fa-trash"></i></button>
+                            </div>
+                            <div class="folder-content min-h-[30px] pl-8 pt-3 space-y-2">
+                                {% for p in item.children %}
+                                <div class="page-item bg-white dark:bg-base-200 border border-base-300 rounded-xl p-3 flex items-center gap-3 drag-handle" data-id="{{ p.id }}" data-type="page">
+                                    <i class="fas fa-grip-vertical opacity-20"></i>
+                                    <i class="far fa-file-alt text-primary"></i>
+                                    <span class="text-sm font-medium">{{ p.title }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="page-item bg-white dark:bg-base-100 border border-base-300 shadow-sm rounded-xl p-3 flex items-center gap-3 drag-handle mb-2" data-id="{{ item.id }}" data-type="page">
+                            <i class="fas fa-grip-vertical opacity-20"></i>
+                            <i class="far fa-file-alt text-primary"></i>
+                            <span class="text-sm font-medium">{{ item.title }}</span>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                 </div>
-                <button type="button" onclick="delete_wiki_modal.showModal()" class="btn btn-error text-white rounded-2xl px-8 shadow-lg shadow-error/20 hover:scale-105 transition-transform flex-shrink-0 font-bold tracking-wide">
-                    删除此 Wiki
-                </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6">
+                <div class="form-control">
+                    <label class="label font-bold">WIKI 标题</label>
+                    <input type="text" name="title" class="input input-bordered w-full font-bold" value="{{ wiki.title }}" required />
+                </div>
+                <div class="form-control">
+                    <label class="label font-bold">描述</label>
+                    <textarea name="description" class="textarea textarea-bordered h-24">{{ wiki.description }}</textarea>
+                </div>
+            </div>
+
+            <div class="bg-base-200/30 rounded-3xl p-6">
+                 <h2 class="text-xl font-bold mb-4">访问权限</h2>
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <label class="visibility-card p-4 border rounded-2xl bg-white cursor-pointer transition-all">
+                         <input type="radio" name="visibility" value="public" class="radio radio-primary radio-xs float-right" {% if wiki.visibility == 'public' %}checked{% endif %} onclick="togglePermissions('public')">
+                         <span class="font-bold block mb-1">公开</span>
+                         <span class="text-xs opacity-50">所有人都可看</span>
+                     </label>
+                     <label class="visibility-card p-4 border rounded-2xl bg-white cursor-pointer transition-all">
+                         <input type="radio" name="visibility" value="restricted" class="radio radio-primary radio-xs float-right" {% if wiki.visibility == 'restricted' %}checked{% endif %} onclick="togglePermissions('restricted')">
+                         <span class="font-bold block mb-1">受限</span>
+                         <span class="text-xs opacity-50">指定班级或人</span>
+                     </label>
+                     <label class="visibility-card p-4 border rounded-2xl bg-white cursor-pointer transition-all">
+                         <input type="radio" name="visibility" value="private" class="radio radio-primary radio-xs float-right" {% if wiki.visibility == 'private' %}checked{% endif %} onclick="togglePermissions('private')">
+                         <span class="font-bold block mb-1">私有</span>
+                         <span class="text-xs opacity-50">仅管理员</span>
+                     </label>
+                 </div>
+                 <div id="permission-details" class="mt-4" style="display:none">
+                    </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit" class="btn btn-primary btn-lg rounded-2xl px-12">保存设置</button>
             </div>
         </div>
-        
     </form>
 </div>
-
-<dialog id="delete_wiki_modal" class="modal bg-black/50 backdrop-blur-md">
-    <div class="modal-box rounded-[2.5rem] p-8 shadow-2xl border border-white/10 dark:border-base-100">
-        <h3 class="font-black text-3xl text-error mb-4 flex items-center gap-3">
-            <div class="w-12 h-12 bg-error/10 text-error rounded-2xl flex items-center justify-center"><i class="fas fa-radiation"></i></div> 
-            确认永久删除?
-        </h3>
-        <p class="text-base-content/70 leading-relaxed font-medium mb-8 text-base">
-            您即将彻底删除 <strong class="text-base-content border-b-2 border-error/30 pb-0.5">{{ wiki.title }}</strong>。<br>
-            此操作<span class="text-error font-bold">无法撤销</span>。系统将在执行删除前为您自动打包备份一份 JSON 数据以防万一。
-        </p>
-        <div class="modal-action mt-0 flex gap-3">
-            <form method="dialog" class="m-0">
-                <button class="btn btn-ghost rounded-xl font-bold bg-base-200/50 hover:bg-base-200">手滑了，取消</button>
-            </form>
-            <form action="{{ url_for('delete_wiki', wiki_id=wiki.id) }}" method="post" class="m-0">
-                <button type="submit" class="btn btn-error text-white rounded-xl px-6 shadow-lg shadow-error/30 font-black tracking-widest">我已了解后果，确认删除</button>
-            </form>
-        </div>
-    </div>
-    <form method="dialog" class="modal-backdrop">
-        <button>close</button>
-    </form>
-</dialog>
 {% endblock %}

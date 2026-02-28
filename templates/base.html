@@ -194,7 +194,75 @@
         .text-fade-edge { display: block; width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%); mask-image: linear-gradient(to right, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%); }
         details.collapse > summary { list-style: none; } details.collapse > summary::-webkit-details-marker { display: none; }
         .mobile-subnav::-webkit-scrollbar { display: none; }
+
+        /* ---------------------------------------------------- */
+        /* --- 全局便签 (Mac-Style Sticky Notes) 专属样式 --- */
+        /* ---------------------------------------------------- */
+        .sticky-note {
+            position: fixed; width: 260px; min-height: 260px; display: flex; flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.6);
+            border-radius: 1rem; overflow: hidden; 
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s; 
+            border: 1px solid rgba(255,255,255,0.4);
+        }
+        .dark .sticky-note { border-color: rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        
+        .sticky-note.dragging { 
+            transform: scale(1.03) rotate(-1deg); 
+            box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.3); 
+            opacity: 0.95; transition: none; 
+        }
+        
+        .note-header { 
+            height: 2.5rem; cursor: grab; display: flex; justify-content: space-between; 
+            align-items: center; padding: 0 0.8rem; background: rgba(0,0,0,0.04); 
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .dark .note-header { background: rgba(255,255,255,0.05); border-bottom-color: rgba(255,255,255,0.05); }
+        .note-header:active { cursor: grabbing; }
+        
+        .note-color-dot { width: 14px; height: 14px; border-radius: 50%; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(0,0,0,0.1); box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); }
+        .note-color-dot:hover { transform: scale(1.2); }
+        
+        .note-body { 
+            flex: 1; width: 100%; padding: 1rem; background: transparent; 
+            resize: vertical; border: none; outline: none; font-size: 0.95rem; 
+            line-height: 1.6; color: rgba(0,0,0,0.8); font-weight: 600; min-height: 200px; 
+        }
+        .dark .note-body { color: rgba(255,255,255,0.9); }
+        .note-body::placeholder { color: rgba(0,0,0,0.3); font-weight: 500; }
+        .dark .note-body::placeholder { color: rgba(255,255,255,0.3); }
+        
+        /* 4 种马卡龙颜色主题 */
+        .note-theme-yellow { background: rgba(253, 230, 138, 0.85); }
+        .note-theme-pink { background: rgba(251, 207, 232, 0.85); }
+        .note-theme-blue { background: rgba(191, 219, 254, 0.85); }
+        .note-theme-green { background: rgba(187, 247, 208, 0.85); }
+        .dark .note-theme-yellow { background: rgba(161, 98, 7, 0.85); }
+        .dark .note-theme-pink { background: rgba(157, 23, 77, 0.85); }
+        .dark .note-theme-blue { background: rgba(30, 58, 138, 0.85); }
+        .dark .note-theme-green { background: rgba(22, 101, 52, 0.85); }
+        #sticky-notes-container { display: none; }
+        html.show-stickies #sticky-notes-container { display: block; }
+
+        /* 便签标题栏操作按钮组 */
+        .note-actions button {
+            width: 24px; height: 24px; border-radius: 6px; 
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(0,0,0,0.4); transition: all 0.2s;
+        }
+        .dark .note-actions button { color: rgba(255,255,255,0.4); }
+        .note-actions button:hover { background: rgba(0,0,0,0.1); color: var(--theme-primary); }
+        .dark .note-actions button:hover { background: rgba(255,255,255,0.1); }
+        .note-actions button.btn-close:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
     </style>
+
+    <script>
+        if(localStorage.getItem('show_stickies') === 'true') {
+            document.documentElement.classList.add('show-stickies');
+        }
+    </script>
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-base-200/40 text-base-content font-sans antialiased min-h-screen relative flex flex-col overflow-x-hidden pt-12 md:pt-16">
@@ -242,17 +310,42 @@
             </div>
             {% endif %}
 
-            {% if wiki %}
+{% if wiki %}
                 <div class="dropdown dropdown-end">
                     <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-sitemap text-primary opacity-80"></i> 页面 <i class="fas fa-chevron-down text-[10px] opacity-50"></i></div>
-                    <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-64 glass-dropdown-content max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
-                        {% if pages %}
-                            {% for p in pages %}
-                            <li>
-                                <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="nav-menu-item flex items-center w-full max-w-full overflow-hidden {{ 'text-primary bg-primary/5' if page and page.id == p.id else '' }}">
-                                    <div class="flex-1 min-w-0"><span class="text-fade-edge w-full text-sm" title="{{ p.title }}">{{ p.title }}</span></div>
-                                </a>
-                            </li>
+                    <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-64 glass-dropdown-content max-h-[70vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+                        {% if root_items %}
+                            {% for item in root_items %}
+                                {% if item.item_type == 'folder' or item.type == 'folder' %}
+                                    <li>
+                                        <details {% if page and page.folder_id == item.id %}open{% endif %}>
+                                            <summary class="text-base-content/80 font-bold py-2.5">
+                                                <i class="fas fa-folder text-warning/90 text-lg"></i> {{ item.name }}
+                                            </summary>
+                                            <ul class="ml-2 border-l border-base-content/10 before:hidden">
+                                                {% for p in item.children %}
+                                                <li>
+                                                    <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" 
+                                                       class="{{ '!text-primary !bg-primary/10 font-bold' if page and page.id == p.id else 'text-base-content/70 hover:!text-primary hover:bg-base-200/50' }}">
+                                                       <span class="text-fade-edge text-[13px]">{{ p.title }}</span>
+                                                    </a>
+                                                </li>
+                                                {% endfor %}
+                                                {% if not item.children %}
+                                                    <li><span class="text-[10px] opacity-30 italic">空文件夹</span></li>
+                                                {% endif %}
+                                            </ul>
+                                        </details>
+                                    </li>
+                                {% elif item.item_type == 'page' or item.type == 'page' %}
+                                    <li>
+                                        <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=item.slug) }}" 
+                                           class="py-2.5 {{ '!text-primary !bg-primary/10 font-bold' if page and page.id == item.id else 'text-base-content/80 font-medium hover:!text-primary hover:bg-base-200/50' }}">
+                                            <i class="far fa-file-alt opacity-40"></i>
+                                            <span class="text-fade-edge w-full text-sm" title="{{ item.title }}">{{ item.title }}</span>
+                                        </a>
+                                    </li>
+                                {% endif %}
                             {% endfor %}
                         {% else %}
                             <li class="text-xs text-base-content/40 p-4 text-center">暂无页面</li>
@@ -349,6 +442,10 @@
             </div>
             {% endif %}
 
+            <button onclick="app.stickyNotes.toggle()" class="nav-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom hover:bg-warning hover:text-white transition-colors" data-tip="显示/隐藏便签">
+                <i class="fas fa-sticky-note text-warning"></i>
+            </button>
+
             <a href="{{ url_for('online_users') }}" class="nav-btn px-2 tooltip tooltip-bottom border-transparent shadow-none" data-tip="在线用户">
                 <div class="w-2 h-2 rounded-full bg-success animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
                 <span class="font-mono font-bold">{{ online_user_count }}</span>
@@ -444,6 +541,7 @@
                         <li><a href="{{ url_for('new_note') }}" class="py-2.5 rounded-xl"><i class="fas fa-plus w-4 text-center"></i> 新建笔记</a></li>
                     {% endif %}
 
+
                     {% if current_user.is_authenticated %}
                         {% if current_app == 'square' and current_user.subscriptions %}
                             <div class="divider my-1 opacity-20"></div>
@@ -506,16 +604,45 @@
         {% endif %}
     </div>
 
-    <dialog id="mobile_pages_modal" class="modal modal-bottom sm:modal-middle z-[200]">
+<dialog id="mobile_pages_modal" class="modal modal-bottom sm:modal-middle z-[200]">
         <div class="modal-box p-0 overflow-hidden rounded-t-3xl bg-white/95 dark:bg-base-100/95 backdrop-blur-2xl">
             <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-200/50">
                 <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-sitemap text-primary"></i> 页面导航</h3>
                 <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
             </div>
-            <ul class="menu p-4 max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
-                {% if pages %}
-                    {% for p in pages %}
-                    <li><a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="nav-menu-item text-sm flex items-center w-full {{ 'text-primary bg-primary/5' if page and page.id == p.id else '' }}"><div class="flex-1 min-w-0"><span class="text-fade-edge w-full">{{ p.title }}</span></div></a></li>
+<ul class="menu p-4 max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+                {% if root_items %}
+                    {% for item in root_items %}
+                        {% if item.item_type == 'folder' or item.type == 'folder' %}
+                            <li>
+                                <details {% if page and page.folder_id == item.id %}open{% endif %}>
+                                    <summary class="text-base-content/80 font-bold py-3 text-sm">
+                                        <i class="fas fa-folder text-warning text-lg"></i> {{ item.name }}
+                                    </summary>
+                                    <ul class="ml-2 border-l border-base-200 before:hidden">
+                                        {% for p in item.children %}
+                                        <li>
+                                            <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" 
+                                               class="py-3 {{ '!text-primary !bg-primary/10 font-bold' if page and page.id == p.id else 'text-base-content/70' }}">
+                                                <span class="text-fade-edge w-full">{{ p.title }}</span>
+                                            </a>
+                                        </li>
+                                        {% endfor %}
+                                        {% if not item.children %}
+                                            <li><span class="text-[10px] opacity-30 italic py-2">空文件夹</span></li>
+                                        {% endif %}
+                                    </ul>
+                                </details>
+                            </li>
+                        {% elif item.item_type == 'page' or item.type == 'page' %}
+                            <li>
+                                <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=item.slug) }}" 
+                                   class="py-3 {{ '!text-primary !bg-primary/10 font-bold' if page and page.id == item.id else 'text-base-content/80 font-bold' }}">
+                                    <i class="far fa-file-alt opacity-40"></i>
+                                    <span class="text-fade-edge w-full">{{ item.title }}</span>
+                                </a>
+                            </li>
+                        {% endif %}
                     {% endfor %}
                 {% else %}
                     <li class="text-sm text-base-content/40 p-4 text-center">暂无页面</li>
@@ -577,6 +704,35 @@
                 </div>
             {% endif %}
     </main>
+
+
+    <div id="sticky-notes-container" class="fixed inset-0 pointer-events-none z-[150]">
+        {% if current_user.is_authenticated and current_user.sticky_notes %}
+            {% for note in current_user.sticky_notes %}
+            <div class="sticky-note note-theme-{{ note.color }} pointer-events-auto" 
+                 data-id="{{ note.id }}" 
+                 style="left: {{ note.pos_x }}px; top: {{ note.pos_y }}px; z-index: {{ note.z_index }};"
+                 onmousedown="app.stickyNotes.bringToFront(this, {{ note.id }})"
+                 ontouchstart="app.stickyNotes.bringToFront(this, {{ note.id }})">
+                
+                <div class="note-header" onmousedown="app.stickyNotes.startDrag(event, this.parentElement)" ontouchstart="app.stickyNotes.startDrag(event.touches[0], this.parentElement)">
+                    <div class="flex gap-1.5">
+                        <div class="note-color-dot bg-[#fde047]" onclick="app.stickyNotes.changeColor({{ note.id }}, 'yellow', this.closest('.sticky-note'))"></div>
+                        <div class="note-color-dot bg-[#f9a8d4]" onclick="app.stickyNotes.changeColor({{ note.id }}, 'pink', this.closest('.sticky-note'))"></div>
+                        <div class="note-color-dot bg-[#93c5fd]" onclick="app.stickyNotes.changeColor({{ note.id }}, 'blue', this.closest('.sticky-note'))"></div>
+                        <div class="note-color-dot bg-[#86efac]" onclick="app.stickyNotes.changeColor({{ note.id }}, 'green', this.closest('.sticky-note'))"></div>
+                    </div>
+                    <div class="note-actions flex items-center gap-1">
+                        <button onclick="app.stickyNotes.create()" title="再贴一张"><i class="fas fa-plus text-xs"></i></button>
+                        <button onclick="app.stickyNotes.toBook(this.closest('.sticky-note'))" title="沉淀为 Book 笔记"><i class="fas fa-book text-xs"></i></button>
+                        <button class="btn-close" onclick="app.stickyNotes.delete({{ note.id }}, this.closest('.sticky-note'))" title="撕掉便签"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <textarea class="note-body custom-scroll" placeholder="记录突发奇想或待办事项..." oninput="app.stickyNotes.debounceUpdate({{ note.id }}, {content: this.value})">{{ note.content }}</textarea>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
 
     <div id="toast-container" class="fixed bottom-8 right-8 flex flex-col gap-3 pointer-events-none z-[160]">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -664,6 +820,7 @@
                 this.heartbeat.init();
                 this.announcements.init();
                 this.badges.init();
+                this.stickyNotes.init();
                 {% endif %}
                 this.generateTOC();
             },
@@ -731,6 +888,7 @@
                     setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(10px) scale(0.95)'; setTimeout(() => el.remove(), 400); }, 4000);
                 }
             },
+            
 
             {% if current_user.is_authenticated %}
             heartbeat: {
@@ -759,6 +917,190 @@
                 showNext() { if (this.isShowing || this.queue.length === 0) return; this.isShowing = true; const badge = this.queue.shift(); this.renderModal(badge); },
                 renderModal(badge) { document.getElementById('new-badge-name').textContent = badge.name; document.getElementById('new-badge-desc').textContent = badge.description; const imgEl = document.getElementById('new-badge-icon-img'); const textEl = document.getElementById('new-badge-icon-text'); if (badge.is_image) { imgEl.src = badge.icon; imgEl.classList.remove('hidden'); textEl.classList.add('hidden'); } else { textEl.textContent = badge.icon; textEl.classList.remove('hidden'); imgEl.classList.add('hidden'); } document.getElementById('new-badge-date').textContent = badge.earned_at; document.getElementById('new-badge-serial').textContent = badge.serial_number; document.getElementById('new-badge-username').textContent = badge.user_name; document.getElementById('new-badge-avatar').textContent = badge.avatar_char; const gradientEl = document.getElementById('new-badge-gradient'); let colorClasses = "bg-gradient-to-bl from-stone-400 to-stone-200"; if (badge.rarity === 'rare') colorClasses = "bg-gradient-to-bl from-[#18293d] to-[#3b82f6]"; else if (badge.rarity === 'epic') colorClasses = "bg-gradient-to-bl from-purple-600 to-fuchsia-400"; else if (badge.rarity === 'legendary') colorClasses = "bg-gradient-to-bl from-amber-500 to-yellow-300"; gradientEl.className = `absolute top-0 right-0 w-64 h-64 opacity-90 transform translate-x-20 -translate-y-20 rotate-12 -z-10 shadow-inner transition-colors duration-700 ${colorClasses}`; const modal = document.getElementById('new_badge_modal'); const box = document.getElementById('new_badge_modal_box'); modal.showModal(); requestAnimationFrame(() => { box.classList.remove('scale-95', 'opacity-0'); box.classList.add('scale-100', 'opacity-100'); }); },
                 closeModal() { const modal = document.getElementById('new_badge_modal'); const box = document.getElementById('new_badge_modal_box'); box.classList.remove('scale-100', 'opacity-100'); box.classList.add('scale-95', 'opacity-0'); setTimeout(() => { modal.close(); this.isShowing = false; setTimeout(() => this.showNext(), 500); }, 400); }
+            }
+            {% endif %}
+            {% if current_user.is_authenticated %}
+, stickyNotes: {
+                container: null,
+                zIndexCounter: 1500,
+                dragState: null,
+                saveTimeout: null,
+                
+                init() {
+                    this.container = document.getElementById('sticky-notes-container');
+                    
+                    // 初始化最大层级
+                    const notes = this.container.querySelectorAll('.sticky-note');
+                    notes.forEach(n => {
+                        const z = parseInt(n.style.zIndex) || 1000;
+                        if(z > this.zIndexCounter) this.zIndexCounter = z;
+                    });
+                    if(notes.length > 0) this.zIndexCounter++;
+                    
+                    // 绑定拖拽事件
+                    document.addEventListener('mousemove', (e) => this.onDrag(e));
+                    document.addEventListener('mouseup', () => this.stopDrag());
+                    document.addEventListener('touchmove', (e) => this.onDrag(e.touches[0]), {passive: false});
+                    document.addEventListener('touchend', () => this.stopDrag());
+                },
+                
+                toggle() {
+                    const isVisible = document.documentElement.classList.toggle('show-stickies');
+                    localStorage.setItem('show_stickies', isVisible);
+                    if(isVisible && this.container.children.length === 0) {
+                        this.create();
+                    }
+                },
+
+                // 💡 转存核心逻辑 (确保这段代码在你文件里！)
+                toBook(el) {
+                    const content = el.querySelector('textarea').value;
+                    if(!content || !content.trim()) {
+                        if(app.toast) app.toast.show('便签是空的，写点东西再转存吧！', 'warning');
+                        return;
+                    }
+                    // 存入浏览器暂存区
+                    sessionStorage.setItem('auto_fill_note', content);
+                    // 顺手写入系统剪贴板 (双重保险)
+                    if(navigator.clipboard) navigator.clipboard.writeText(content).catch(() => {});
+                    
+                    if(app.toast) app.toast.show('已捕获灵感！正在前往 Book...', 'success');
+                    
+                    // 延迟 800ms 跳转，让用户看清提示
+                    setTimeout(() => {
+                        window.location.href = "{{ url_for('new_note') }}";
+                    }, 800);
+                },
+                
+                create() {
+                    if(this.container.children.length >= 5) {
+                        if(app.toast) app.toast.show('屏幕快贴满了，最多保留 5 个便签哦！', 'warning');
+                        return;
+                    }
+                    fetch('/api/sticky_notes', { 
+                        method: 'POST', 
+                        headers: {'Content-Type': 'application/json'}, 
+                        body: JSON.stringify({color: 'yellow'}) 
+                    }).then(r => r.json()).then(data => {
+                        if(data.success) {
+                            this.renderNote(data.note); // 直接前端渲染，不刷新！
+                            if(app.toast) app.toast.show('✨ 新便签已贴在屏幕上！', 'success');
+                        } else {
+                            if(app.toast) app.toast.show(data.error, 'error');
+                        }
+                    });
+                },
+                
+                renderNote(note) {
+                    const el = document.createElement('div');
+                    el.className = `sticky-note note-theme-${note.color} pointer-events-auto`;
+                    
+                    const maxX = window.innerWidth - 260;
+                    const maxY = window.innerHeight - 260;
+                    const safeX = Math.max(0, Math.min(note.pos_x, maxX));
+                    const safeY = Math.max(0, Math.min(note.pos_y, maxY));
+                    
+                    el.style.left = safeX + 'px';
+                    el.style.top = safeY + 'px';
+                    el.style.zIndex = note.z_index;
+                    el.dataset.id = note.id;
+                    
+                    // 💡 注意这里绑定的 onclick="app.stickyNotes.toBook(...)"
+                    el.innerHTML = `
+                        <div class="note-header" onmousedown="app.stickyNotes.startDrag(event, this.parentElement)" ontouchstart="app.stickyNotes.startDrag(event.touches[0], this.parentElement)">
+                            <div class="flex gap-1.5">
+                                <div class="note-color-dot bg-[#fde047]" onclick="app.stickyNotes.changeColor(${note.id}, 'yellow', this.closest('.sticky-note'))"></div>
+                                <div class="note-color-dot bg-[#f9a8d4]" onclick="app.stickyNotes.changeColor(${note.id}, 'pink', this.closest('.sticky-note'))"></div>
+                                <div class="note-color-dot bg-[#93c5fd]" onclick="app.stickyNotes.changeColor(${note.id}, 'blue', this.closest('.sticky-note'))"></div>
+                                <div class="note-color-dot bg-[#86efac]" onclick="app.stickyNotes.changeColor(${note.id}, 'green', this.closest('.sticky-note'))"></div>
+                            </div>
+                            <div class="note-actions flex items-center gap-1">
+                                <button onclick="app.stickyNotes.create()" title="再贴一张"><i class="fas fa-plus text-xs"></i></button>
+                                <button onclick="app.stickyNotes.toBook(this.closest('.sticky-note'))" title="沉淀为 Book 笔记"><i class="fas fa-book text-xs"></i></button>
+                                <button class="btn-close" onclick="app.stickyNotes.delete(${note.id}, this.closest('.sticky-note'))" title="撕掉便签"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <textarea class="note-body custom-scroll" placeholder="记录突发奇想或待办事项..." oninput="app.stickyNotes.debounceUpdate(${note.id}, {content: this.value})">${note.content || ''}</textarea>
+                    `;
+                    
+                    el.addEventListener('mousedown', () => this.bringToFront(el, note.id));
+                    el.addEventListener('touchstart', () => this.bringToFront(el, note.id), {passive: true});
+                    
+                    this.container.appendChild(el);
+                    
+                    // 入场动画
+                    el.style.transform = 'scale(0.8) translateY(20px)';
+                    el.style.opacity = '0';
+                    requestAnimationFrame(() => {
+                        el.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                        el.style.transform = 'scale(1) translateY(0)';
+                        el.style.opacity = '1';
+                        setTimeout(() => el.style.transition = '', 300);
+                    });
+                },
+                
+                delete(id, el) {
+                    if(!confirm('确定要撕掉这张便签吗？\n⚠️ 撕掉后内容将永远消失哦！\n（如果只是想隐藏，请点击右上角导航栏图标）')) return;
+                    el.style.transform = 'scale(0.8) translateY(20px)'; 
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 200);
+                    fetch(`/api/sticky_notes/${id}`, { method: 'DELETE' });
+                },
+                
+                update(id, data) {
+                    fetch(`/api/sticky_notes/${id}`, { 
+                        method: 'PUT', headers: {'Content-Type': 'application/json'}, 
+                        body: JSON.stringify(data) 
+                    });
+                },
+                
+                debounceUpdate(id, data) {
+                    clearTimeout(this.saveTimeout);
+                    this.saveTimeout = setTimeout(() => this.update(id, data), 500);
+                },
+                
+                changeColor(id, color, el) {
+                    el.className = `sticky-note note-theme-${color} pointer-events-auto`;
+                    this.update(id, {color: color});
+                },
+                
+                bringToFront(el, id) {
+                    this.zIndexCounter++;
+                    el.style.zIndex = this.zIndexCounter;
+                    this.update(id, {z_index: this.zIndexCounter});
+                },
+                
+                startDrag(e, el) {
+                    if(e.target.closest('button') || e.target.classList.contains('note-color-dot')) return;
+                    this.dragState = {
+                        el: el, id: el.dataset.id,
+                        offsetX: e.clientX - el.getBoundingClientRect().left,
+                        offsetY: e.clientY - el.getBoundingClientRect().top
+                    };
+                    el.classList.add('dragging');
+                    this.bringToFront(el, this.dragState.id);
+                },
+                
+                onDrag(e) {
+                    if(!this.dragState) return;
+                    let x = e.clientX - this.dragState.offsetX;
+                    let y = e.clientY - this.dragState.offsetY;
+                    x = Math.max(0, Math.min(x, window.innerWidth - 260));
+                    y = Math.max(0, Math.min(y, window.innerHeight - 60)); 
+                    this.dragState.el.style.left = x + 'px';
+                    this.dragState.el.style.top = y + 'px';
+                },
+                
+                stopDrag() {
+                    if(!this.dragState) return;
+                    const el = this.dragState.el;
+                    el.classList.remove('dragging');
+                    this.update(this.dragState.id, {
+                        pos_x: parseInt(el.style.left),
+                        pos_y: parseInt(el.style.top)
+                    });
+                    this.dragState = null;
+                }
             }
             {% endif %}
         };

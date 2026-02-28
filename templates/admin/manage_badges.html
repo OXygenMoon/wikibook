@@ -1,403 +1,505 @@
 {% extends "base.html" %}
 
-{% block title %}徽章管理{% endblock %}
+{% block title %}徽章成就系统管理 - WikiBook{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 页面淡入动画 */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(15px); filter: blur(4px); }
+        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+    .animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    
+    /* 徽章出现动画 */
+    @keyframes popIn {
+        0% { opacity: 0; transform: scale(0.9); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+    .badge-card { animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+    
+    /* 背景动画 */
+    @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.05); }
+        66% { transform: translate(-20px, 20px) scale(0.95); }
+        100% { transform: translate(0px, 0px) scale(1); }
+    }
+    .animate-blob { animation: blob 10s infinite alternate; }
+    .animation-delay-2000 { animation-delay: 2s; }
+    .animation-delay-4000 { animation-delay: 4s; }
+
+    /* 隐藏滚动条但保留功能 */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* 自定义弹窗内的滚动条 */
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.1); border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--bc) / 0.2); }
+</style>
+{% endblock %}
 
 {% block content %}
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-stone-50 dark:bg-[#15191e] transition-colors duration-500">
+    <div class="absolute top-[10%] right-[10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] animate-blob mix-blend-multiply opacity-60 dark:opacity-30"></div>
+    <div class="absolute bottom-[10%] left-[20%] w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[120px] animate-blob animation-delay-4000 mix-blend-multiply opacity-60 dark:opacity-30"></div>
+</div>
 
 {# --- 1. 逻辑处理：提取所有存在的分类 --- #}
 {% set all_categories = [] %}
 {% for badge in badges %}
-    {# 如果没有分类，归为'一般' #}
     {% set _ = all_categories.append(badge.category if badge.category else '一般') %}
 {% endfor %}
-{# 去重 #}
 {% set unique_categories = all_categories|unique|list|sort %}
 
-<div class="space-y-8">
-    <div class="flex flex-col md:flex-row justify-between items-end md:items-center gap-4">
+<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-8 transition-all duration-500 ease-in-out pb-12 animate-fade-in">
+    
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-2">
         <div>
-            <h1 class="text-3xl font-bold text-base-content tracking-tight">徽章管理</h1>
-            <p class="text-base-content/60 mt-1">创建独特的成就体系，激励用户持续探索</p>
+            <h1 class="text-3xl font-black text-stone-800 dark:text-stone-100 tracking-tight flex items-center gap-3">
+                <i class="fas fa-medal text-amber-500 opacity-90 drop-shadow-md"></i> 成就与徽章系统
+            </h1>
+            <p class="text-sm text-base-content/60 mt-1.5 font-medium ml-1">创建独特的成就体系，配置获取条件，激励用户持续探索</p>
         </div>
-        <button onclick="document.getElementById('create_modal').showModal()" class="btn btn-primary shadow-md gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+        <button onclick="document.getElementById('create_modal').showModal()" class="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all gap-2 text-white font-bold">
+            <i class="fas fa-plus"></i>
             新建徽章
         </button>
     </div>
 
-    <div class="stats shadow w-full bg-base-100 border border-base-200">
-        <div class="stat">
-            <div class="stat-figure text-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-sm hover:shadow-md border border-black/5 dark:border-white/5 rounded-2xl transition-all hover:-translate-y-0.5">
+            <div class="card-body p-6 flex flex-row items-center gap-5">
+                <div class="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 flex items-center justify-center text-2xl shadow-inner">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-base-content/50 mb-0.5 uppercase tracking-wider">徽章总数</p>
+                    <p class="text-3xl font-black text-base-content leading-none" id="total_badge_count">{{ badges|length }}</p>
+                </div>
             </div>
-            <div class="stat-title">徽章总数</div>
-            <div class="stat-value" id="total_badge_count">{{ badges|length }}</div>
-            <div class="stat-desc">所有已创建的成就</div>
         </div>
         
-        <div class="stat">
-            <div class="stat-figure text-secondary">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+        <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-sm hover:shadow-md border border-black/5 dark:border-white/5 rounded-2xl transition-all hover:-translate-y-0.5">
+            <div class="card-body p-6 flex flex-row items-center gap-5">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 flex items-center justify-center text-2xl shadow-inner">
+                    <i class="fas fa-gift"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-base-content/50 mb-0.5 uppercase tracking-wider">累计发放人次</p>
+                    <p class="text-3xl font-black text-base-content leading-none">
+                        {% set ns = namespace(count=0) %}
+                        {% for b in badges %}{% set ns.count = ns.count + b.issued_count %}{% endfor %}
+                        {{ ns.count }}
+                    </p>
+                </div>
             </div>
-            <div class="stat-title">累计发放</div>
-            <div class="stat-value text-secondary">
-                {% set ns = namespace(count=0) %}
-                {% for b in badges %}{% set ns.count = ns.count + b.issued_count %}{% endfor %}
-                {{ ns.count }}
-            </div>
-            <div class="stat-desc">人次</div>
         </div>
         
-        <div class="stat">
-            <div class="stat-figure text-accent">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-sm hover:shadow-md border border-black/5 dark:border-white/5 rounded-2xl transition-all hover:-translate-y-0.5">
+            <div class="card-body p-6 flex flex-row items-center gap-5">
+                <div class="w-14 h-14 rounded-2xl bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 flex items-center justify-center text-2xl shadow-inner">
+                    <i class="fas fa-tags"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-base-content/50 mb-0.5 uppercase tracking-wider">现有分类</p>
+                    <p class="text-3xl font-black text-base-content leading-none">{{ unique_categories|length }}</p>
+                </div>
             </div>
-            <div class="stat-title">分类数量</div>
-            <div class="stat-value text-accent">{{ unique_categories|length }}</div>
-            <div class="stat-desc">现有徽章类型</div>
         </div>
     </div>
 
-    {# --- 2. 新增：分类筛选栏 --- #}
-    {% if unique_categories %}
-    <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        <span class="text-sm font-bold text-base-content/50 mr-2 flex-shrink-0">筛选:</span>
-        
-        <button onclick="filterBadges('all', this)" class="btn btn-sm btn-active filter-btn flex-shrink-0" data-cat="all">
-            全部
-            <span class="badge badge-xs badge-ghost ml-1">{{ badges|length }}</span>
-        </button>
+    <div class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl border border-black/5 dark:border-white/5 shadow-xl shadow-stone-200/20 dark:shadow-none overflow-hidden rounded-[2rem]">
+        <div class="card-body p-6 lg:p-10">
+            
+            {# --- 2. 筛选栏 (胶囊风格) --- #}
+            {% if unique_categories %}
+            <div class="flex items-center gap-3 overflow-x-auto pb-6 scrollbar-hide border-b border-base-200/60 mb-6">
+                <span class="text-sm font-bold text-base-content/40 mr-1 flex-shrink-0 flex items-center gap-1">
+                    <i class="fas fa-filter text-xs"></i> 快速筛选
+                </span>
+                
+                <button onclick="filterBadges('all', this)" class="btn btn-sm rounded-full font-medium filter-btn flex-shrink-0 border-none bg-primary text-white shadow-md shadow-primary/20" data-cat="all">
+                    全部
+                    <span class="badge badge-xs bg-white/20 text-white border-none ml-1">{{ badges|length }}</span>
+                </button>
 
-        {% for cat in unique_categories %}
-            {# 计算该分类下的数量 #}
-            {% set count = badges|selectattr('category', 'equalto', cat)|list|length %}
-            {% if not count and cat == '一般' %}
-                 {# 处理 category 为 None 的情况 #}
-                 {% set count = badges|selectattr('category', 'none')|list|length %}
+                {% for cat in unique_categories %}
+                    {% set count = badges|selectattr('category', 'equalto', cat)|list|length %}
+                    {% if not count and cat == '一般' %}
+                         {% set count = badges|selectattr('category', 'none')|list|length %}
+                    {% endif %}
+                    
+                    <button onclick="filterBadges('{{ cat }}', this)" class="btn btn-sm rounded-full font-medium filter-btn flex-shrink-0 btn-ghost bg-base-200/50 hover:bg-base-200 text-base-content/70" data-cat="{{ cat }}">
+                        {{ cat }}
+                        <span class="badge badge-xs bg-base-content/10 border-none ml-1">{{ count }}</span>
+                    </button>
+                {% endfor %}
+            </div>
             {% endif %}
-            
-            <button onclick="filterBadges('{{ cat }}', this)" class="btn btn-sm btn-ghost filter-btn flex-shrink-0" data-cat="{{ cat }}">
-                {{ cat }}
-                <span class="badge badge-xs badge-ghost ml-1">{{ count }}</span>
-            </button>
-        {% endfor %}
-    </div>
-    {% endif %}
 
-    {% if badges %}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="badge_grid">
-            {% for badge in badges %}
-            
-            {# --- 3. 核心修改：增加 data-category 属性 --- #}
-            <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-shadow group relative badge-card" 
-                 data-category="{{ badge.category or '一般' }}">
-                 
-                {% if badge.is_hidden %}
-                <div class="absolute top-2 right-2 badge badge-warning badge-sm gap-1 z-10 opacity-80">
-                    隐藏
-                </div>
-                {% endif %}
-
-                <div class="card-body p-5 items-center text-center">
-                    <div class="w-16 h-16 mb-2 flex items-center justify-center rounded-full bg-base-200/50 group-hover:scale-110 transition-transform duration-300">
-                        {% set _icon = badge.icon %}
-                        {% if _icon|is_image_icon %}
-                            <img src="{{ _icon|badge_icon_url }}" class="w-12 h-12 object-contain drop-shadow-sm" alt="{{ badge.name }}">
-                        {% else %}
-                            <span class="text-4xl filter drop-shadow-sm">{{ _icon }}</span>
+            {# --- 3. 徽章网格区 --- #}
+            {% if badges %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="badge_grid">
+                    {% for badge in badges %}
+                    
+                    <div class="card bg-stone-50/50 dark:bg-base-200/30 border border-black/5 dark:border-white/5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 group relative badge-card" data-category="{{ badge.category or '一般' }}">
+                         
+                        {% if badge.is_hidden %}
+                        <div class="absolute top-3 right-3 badge badge-sm bg-base-content/80 text-base-100 border-none gap-1 z-10 font-bold backdrop-blur-md">
+                            <i class="fas fa-eye-slash text-[10px]"></i> 隐藏
+                        </div>
                         {% endif %}
-                    </div>
 
-                    <h2 class="card-title text-base-content">{{ badge.name }}</h2>
-                    <div class="badge badge-outline badge-sm text-xs opacity-70 mb-2">{{ badge.category or '一般' }}</div>
-                    <p class="text-sm text-base-content/60 line-clamp-2 h-10 w-full">{{ badge.description }}</p>
+                        <div class="card-body p-6 items-center text-center">
+                            <div class="w-20 h-20 mb-3 grid place-items-center rounded-[1.2rem] bg-gradient-to-br from-white to-stone-100 dark:from-base-200 dark:to-base-300 shadow-inner border border-white/50 dark:border-white/5 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 relative">
+                                {% set _icon = badge.icon %}
+                                {% if _icon|is_image_icon %}
+                                    <img src="{{ _icon|badge_icon_url }}" class="w-14 h-14 object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.15)] z-10" alt="{{ badge.name }}">
+                                {% else %}
+                                    <span class="text-5xl filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.15)] z-10 leading-none">{{ _icon }}</span>
+                                {% endif %}
+                                <div class="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-0"></div>
+                            </div>
 
-                    <div class="w-full grid grid-cols-2 gap-2 my-3 text-xs text-base-content/70 bg-base-200/30 p-2 rounded-lg">
-                        <div class="flex flex-col">
-                            <span class="opacity-50 text-[10px] uppercase">获得人数</span>
-                            <span class="font-bold">{{ badge.issued_count }}</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="opacity-50 text-[10px] uppercase">限量</span>
-                            <span class="font-bold {{ 'text-warning' if badge.total_limit else '' }}">
-                                {{ badge.total_limit if badge.total_limit is not none else '∞' }}
-                            </span>
-                        </div>
-                    </div>
+                            <div class="badge badge-sm bg-primary/10 text-primary border-none font-bold text-[10px] mb-2">{{ badge.category or '一般' }}</div>
+                            <h2 class="text-lg font-black text-stone-800 dark:text-stone-100 tracking-tight leading-tight w-full truncate" title="{{ badge.name }}">{{ badge.name }}</h2>
+                            <p class="text-xs text-base-content/60 line-clamp-2 h-8 w-full mt-1.5 font-medium">{{ badge.description }}</p>
 
-                    <div class="w-full flex justify-between items-center text-xs px-1 mb-4">
-                        <span class="flex items-center gap-1" title="触发条件">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                            <span class="font-mono opacity-80">{{ badge.condition_type }}</span>
-                        </span>
-                        <span class="flex items-center gap-1" title="贴纸奖励">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
-                            x{{ badge.sticker_count }}
-                        </span>
-                    </div>
+                            <div class="w-full flex justify-between gap-2 mt-4 bg-white/60 dark:bg-base-100/60 p-2.5 rounded-xl border border-black/5 shadow-sm">
+                                <div class="flex flex-col flex-1 items-center border-r border-base-200">
+                                    <span class="opacity-40 text-[10px] font-bold uppercase tracking-wider mb-0.5">已发放</span>
+                                    <span class="font-black text-base-content/80 font-mono">{{ badge.issued_count }}</span>
+                                </div>
+                                <div class="flex flex-col flex-1 items-center">
+                                    <span class="opacity-40 text-[10px] font-bold uppercase tracking-wider mb-0.5">限量</span>
+                                    <span class="font-black font-mono {{ 'text-warning' if badge.total_limit else 'text-base-content/80' }}">
+                                        {{ badge.total_limit if badge.total_limit is not none else '∞' }}
+                                    </span>
+                                </div>
+                            </div>
 
-                    <div class="card-actions w-full justify-between items-center pt-2 border-t border-base-200">
-                        <div class="flex gap-2">
-                            <a href="{{ url_for('edit_badge', badge_id=badge.id) }}" class="btn btn-xs btn-ghost tooltip" data-tip="编辑">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                            </a>
-                            <form method="post" action="{{ url_for('delete_badge', badge_id=badge.id) }}" onsubmit="return confirm('确定要删除这个徽章吗？此操作无法撤销。')">
-                                <button type="submit" class="btn btn-xs btn-ghost text-error tooltip" data-tip="删除">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            <div class="w-full flex justify-between items-center text-[11px] px-2 mt-4 mb-2 font-medium text-base-content/50">
+                                <span class="flex items-center gap-1.5 truncate" title="触发条件">
+                                    <i class="fas fa-bolt text-amber-500"></i>
+                                    <span class="truncate max-w-[100px]">{{ badge.condition_type }}</span>
+                                </span>
+                                <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold" title="贴纸奖励数量">
+                                    <i class="fas fa-note-sticky"></i> x{{ badge.sticker_count }}
+                                </span>
+                            </div>
+
+                            <div class="w-full flex justify-between items-center pt-4 border-t border-base-200/60 mt-2">
+                                <div class="flex gap-2">
+                                    <a href="{{ url_for('edit_badge', badge_id=badge.id) }}" class="w-8 h-8 flex items-center justify-center rounded-full bg-stone-200 dark:bg-base-200 text-stone-600 dark:text-stone-400 hover:bg-primary/10 hover:text-primary transition-all tooltip" data-tip="编辑设置">
+                                        <i class="fas fa-pen text-xs"></i>
+                                    </a>
+                                    
+                                    <form method="post" action="{{ url_for('delete_badge', badge_id=badge.id) }}" onsubmit="return confirm('确定要永久删除这个徽章吗？\n删除后，已获得该徽章的用户也将失去它！此操作不可逆。')" class="m-0">
+                                        <button type="submit" class="w-8 h-8 flex items-center justify-center rounded-full bg-stone-200 dark:bg-base-200 text-stone-600 dark:text-stone-400 hover:bg-error/10 hover:text-error transition-all tooltip" data-tip="永久删除">
+                                            <i class="fas fa-trash-alt text-xs"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                
+                                {% if badge.condition_type == 'manual' %}
+                                {% set earned_ids = badge.users.all() | map(attribute='user_id') | join(',') %}
+                                <button onclick="openAwardModal({{ badge.id }}, '{{ badge.name }}', '{{ earned_ids }}')" class="h-8 px-4 inline-flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-sm font-bold gap-1.5">
+                                    <i class="fas fa-hand-holding-heart text-[10px]"></i> 派发/管理
                                 </button>
-                            </form>
+                                {% endif %}
+                            </div>
                         </div>
-                        
-                        {% if badge.condition_type == 'manual' %}
-                        <button onclick="openAwardModal({{ badge.id }}, '{{ badge.name }}')" class="btn btn-xs btn-primary">手动发放</button>
-                        {% endif %}
                     </div>
+                    {% endfor %}
                 </div>
-            </div>
-            {% endfor %}
-        </div>
-        
-        <div id="no_filter_results" class="hidden py-12 text-center bg-base-100 border border-base-200 rounded-lg border-dashed">
-            <p class="text-base-content/40">该分类下暂无徽章</p>
-        </div>
-        
-    {% else %}
-        <div class="hero bg-base-100 rounded-box border border-base-200 py-12">
-            <div class="hero-content text-center">
-                <div class="max-w-md">
-                    <div class="text-6xl mb-4">🏆</div>
-                    <h1 class="text-2xl font-bold">暂无徽章</h1>
-                    <p class="py-6 text-base-content/60">目前还没有创建任何徽章。创建一个新徽章来开始激励您的用户吧！</p>
-                    <button onclick="document.getElementById('create_modal').showModal()" class="btn btn-primary">创建第一个徽章</button>
+                
+                <div id="no_filter_results" class="hidden py-16 text-center bg-base-200/30 rounded-2xl border-2 border-dashed border-base-300">
+                    <div class="w-16 h-16 mx-auto bg-base-100 rounded-full flex items-center justify-center mb-3 shadow-sm">
+                        <i class="fas fa-search text-2xl text-base-content/20"></i>
+                    </div>
+                    <h3 class="font-bold text-base-content/60">该分类下暂无徽章</h3>
+                    <p class="text-sm text-base-content/40 mt-1">请尝试切换其他分类查看</p>
                 </div>
-            </div>
+                
+            {% else %}
+                <div class="flex flex-col items-center justify-center py-20 bg-stone-50/50 dark:bg-base-200/30 rounded-[2rem] border-2 border-dashed border-base-content/10">
+                    <div class="w-24 h-24 bg-white dark:bg-base-200 rounded-full flex items-center justify-center mb-6 shadow-md border border-black/5 dark:border-white/5">
+                        <span class="text-5xl drop-shadow-md">🏆</span>
+                    </div>
+                    <h1 class="text-2xl font-black text-stone-800 dark:text-stone-200 mb-2 tracking-tight">暂无任何徽章</h1>
+                    <p class="text-base-content/60 font-medium mb-8">建立您的成就体系，开始给优秀的协作者或学员颁发勋章吧！</p>
+                    <button onclick="document.getElementById('create_modal').showModal()" class="btn btn-primary btn-lg rounded-full px-10 shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all gap-2 text-white font-bold">
+                        <i class="fas fa-magic"></i> 立即创建第一枚徽章
+                    </button>
+                </div>
+            {% endif %}
         </div>
-    {% endif %}
+    </div>
 </div>
 
 {% include "admin/partials/badge_modals.html" ignore missing %}
-{# 注意：因为没有分文件，这里直接复制你原来文件底部的 Modal 代码即可，为了简洁我略过了 Modal 部分的重复代码，请保留你原有的 Modal 代码 #}
 
-<dialog id="create_modal" class="modal modal-bottom sm:modal-middle">
-    <div class="modal-box w-11/12 max-w-2xl">
-        <form method="dialog">
-            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-        </form>
+<dialog id="create_modal" class="modal bg-black/40 backdrop-blur-sm">
+    <div class="modal-box w-11/12 max-w-3xl rounded-[2rem] p-0 overflow-hidden shadow-2xl border border-base-200">
         
-        <h3 class="font-bold text-lg mb-6 flex items-center gap-2">
-            <span class="w-1 h-6 bg-primary rounded-full"></span>
-            新建徽章
-        </h3>
+        <div class="px-8 py-6 bg-stone-50 dark:bg-base-200/50 border-b border-base-200 flex justify-between items-center relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl"></div>
+            
+            <h3 class="font-black text-2xl text-stone-800 dark:text-stone-100 flex items-center gap-3 relative z-10">
+                <i class="fas fa-plus-circle text-primary opacity-80"></i> 新建专属徽章
+            </h3>
+            <form method="dialog" class="relative z-10">
+                <button class="w-8 h-8 flex items-center justify-center rounded-full bg-base-200/50 hover:bg-base-300 text-base-content/70 transition-colors">✕</button>
+            </form>
+        </div>
         
-        <form method="post" class="flex flex-col gap-5" enctype="multipart/form-data">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-medium">徽章名称</span></label>
-                    <input type="text" name="name" class="input input-bordered" placeholder="例如：阅读达人" required />
-                </div>
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-medium">分类标签</span></label>
-                    <input type="text" name="category" class="input input-bordered" value="一般" list="category-list" />
-                    <datalist id="category-list">
-                        <option value="一般"><option value="学习"><option value="社交"><option value="创作"><option value="活动">
-                    </datalist>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-medium">稀有度</span></label>
-                    <select name="rarity" class="select select-bordered w-full">
-                        <option value="common" selected>Common (普通)</option>
-                        <option value="rare">Rare (稀有)</option>
-                        <option value="epic">Epic (史诗)</option>
-                        <option value="legendary">Legendary (传说)</option>
-                    </select>
-                </div>
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-medium">神秘成就</span></label>
-                    <label class="label cursor-pointer justify-start gap-3 bg-base-100 border border-base-200 p-3 rounded-lg">
-                        <input type="checkbox" name="is_secret" class="checkbox checkbox-secondary" />
-                        <span class="label-text">未解锁时完全保密 (???)</span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="form-control">
-                <label class="label"><span class="label-text font-medium">图标</span></label>
-                <input type="file" name="icon_file" accept="image/*" class="file-input file-input-bordered w-full" required />
-                <label class="label"><span class="label-text-alt text-base-content/50">支持 PNG, JPG, GIF, WebP</span></label>
-            </div>
-
-            <div class="form-control">
-                <label class="label"><span class="label-text font-medium">描述</span></label>
-                <textarea name="description" class="textarea textarea-bordered h-20" placeholder="简单描述获取条件或徽章含义"></textarea>
-            </div>
-
-            <div class="divider text-xs text-base-content/30 my-0">规则设置</div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-base-200/50 p-4 rounded-lg">
-                <div class="form-control md:col-span-2">
-                    <label class="label"><span class="label-text font-medium">触发条件类型</span></label>
-                    <select name="condition_type" class="select select-bordered w-full" required onchange="toggleConditionInputs(this)">
-                        <option value="manual">手动发放 (管理员分配)</option>
-                        <option value="all_users">全员获取 (新老用户)</option>
-                        <option value="login_days_in_range">限时登录天数 (指定时间段内)</option>
-                        <option value="streak_days">连续打卡天数</option>
-                        <option value="study_hours">累计学习小时数</option>
-                        <option value="note_count">累计笔记数量</option>
-                        <option value="featured_count">累计精选笔记数量</option>
-                        <option value="wiki_edit_count">Wiki 编辑次数</option>
-                        <option value="wiki_create_count">Wiki 创建次数</option>
-                        <option value="comment_count">评论发布数量</option>
-                        <option value="share_count">分享笔记次数</option>
-                        <option value="total_views_received">笔记被阅读次数 (影响力)</option>
-                        <option value="night_owl_sessions">深夜学习天数 (23:00-04:00)</option>
-                        <option value="early_bird">早起鸟 (05:00-08:00)</option>
-                        <option value="weekend_warrior">周末卷王 (周六日累计小时)</option>
-                        <option value="long_session_count">深度专注次数 (单次>2小时)</option>
-                    </select>
-                </div>
-
-                <div class="form-control" id="condition_value_group">
-                    <label class="label"><span class="label-text font-medium">条件阈值</span></label>
-                    <div class="join">
-                        <input type="number" name="condition_value" class="input input-bordered join-item w-full" placeholder="0" />
-                        <span class="btn btn-disabled join-item text-xs font-normal">次/天/个</span>
+        <form method="post" class="p-8 flex flex-col gap-6 custom-scroll" enctype="multipart/form-data" style="max-height: calc(100vh - 12rem); overflow-y: auto;">
+            
+            <div class="bg-base-100 rounded-2xl border border-base-200 p-5 shadow-sm space-y-4">
+                <div class="text-xs font-black text-base-content/40 tracking-widest uppercase mb-2">基础信息</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text font-bold text-base-content/80">徽章名称</span></label>
+                        <input type="text" name="name" class="input input-bordered focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl" placeholder="例如：日更狂魔、百科全书" required />
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text font-bold text-base-content/80">分类标签</span></label>
+                        <input type="text" name="category" class="input input-bordered focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl" value="一般" list="category-list" />
+                        <datalist id="category-list">
+                            <option value="一般"><option value="学习"><option value="社交"><option value="创作"><option value="活动">
+                        </datalist>
                     </div>
                 </div>
 
                 <div class="form-control">
-                    <label class="label"><span class="label-text font-medium">条件描述（可选）</span></label>
-                    <input type="text" name="custom_condition_text" class="input input-bordered" placeholder="例如：连续7天早起打卡" />
-                    <label class="label"><span class="label-text-alt">如果填写，将在成就卡片上优先显示此文本，否则自动生成</span></label>
+                    <label class="label pb-1"><span class="label-text font-bold text-base-content/80">图标文件</span></label>
+                    <input type="file" name="icon_file" accept="image/*" class="file-input file-input-bordered w-full rounded-xl focus:border-primary" required />
+                    <label class="label pt-1"><span class="label-text-alt text-base-content/50">支持透明背景的 PNG/WebP，推荐比例 1:1，表现效果最佳</span></label>
                 </div>
 
                 <div class="form-control">
-                    <label class="label"><span class="label-text font-medium">贴纸奖励</span></label>
-                    <input type="number" name="sticker_count" class="input input-bordered" value="1" min="1" />
+                    <label class="label pb-1"><span class="label-text font-bold text-base-content/80">徽章描述</span></label>
+                    <textarea name="description" class="textarea textarea-bordered h-24 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl resize-none leading-relaxed" placeholder="生动地描述这枚徽章代表的荣誉，或者达成它的条件..."></textarea>
+                </div>
+            </div>
+
+            <div class="bg-base-100 rounded-2xl border border-base-200 p-5 shadow-sm space-y-4">
+                <div class="text-xs font-black text-base-content/40 tracking-widest uppercase mb-2">稀有度与状态</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text font-bold text-base-content/80">视觉稀有度</span></label>
+                        <select name="rarity" class="select select-bordered focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl font-medium">
+                            <option value="common" selected>⚪ Common (普通 - 灰色光泽)</option>
+                            <option value="rare">🔵 Rare (稀有 - 蓝色光泽)</option>
+                            <option value="epic">🟣 Epic (史诗 - 紫色光泽)</option>
+                            <option value="legendary">🟡 Legendary (传说 - 金色光泽)</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text font-bold text-base-content/80">发行限量</span></label>
+                        <div class="relative">
+                            <i class="fas fa-infinity absolute left-4 top-1/2 -translate-y-1/2 text-base-content/30 text-xs"></i>
+                            <input type="number" name="total_limit" class="input input-bordered w-full pl-9 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl" placeholder="留空表示无限量发放" />
+                        </div>
+                    </div>
                 </div>
 
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium">发行限量</span>
-                        <span class="tooltip tooltip-right" data-tip="留空表示无限量"><span class="badge badge-xs badge-ghost">?</span></span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                    <label class="label cursor-pointer justify-start gap-3 bg-base-200/50 hover:bg-base-200 border border-transparent hover:border-base-300 p-3 rounded-xl transition-colors">
+                        <input type="checkbox" name="is_hidden" class="checkbox checkbox-sm rounded" />
+                        <div class="flex flex-col">
+                            <span class="label-text font-bold">隐藏成就</span>
+                            <span class="text-[10px] text-base-content/50">未获得该徽章的用户无法查看详细条件</span>
+                        </div>
                     </label>
-                    <input type="number" name="total_limit" class="input input-bordered" placeholder="∞" />
+                    <label class="label cursor-pointer justify-start gap-3 bg-base-200/50 hover:bg-base-200 border border-transparent hover:border-base-300 p-3 rounded-xl transition-colors">
+                        <input type="checkbox" name="is_secret" class="checkbox checkbox-sm checkbox-secondary rounded" />
+                        <div class="flex flex-col">
+                            <span class="label-text font-bold text-secondary">绝对保密</span>
+                            <span class="text-[10px] text-base-content/50">未解锁前名字和图标全部显示为问号 (???)</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-800/30 p-5 shadow-sm space-y-4 relative overflow-hidden">
+                <div class="absolute right-0 top-0 w-24 h-24 bg-indigo-500/5 rounded-bl-full pointer-events-none"></div>
+                <div class="text-xs font-black text-indigo-500/60 dark:text-indigo-400/60 tracking-widest uppercase mb-2">获取规则引擎</div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
+                    <div class="form-control md:col-span-2">
+                        <label class="label pb-1"><span class="label-text font-bold text-indigo-900 dark:text-indigo-200">系统触发条件</span></label>
+                        <select name="condition_type" class="select select-bordered border-indigo-200 dark:border-indigo-800 bg-white dark:bg-base-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl font-bold text-indigo-700 dark:text-indigo-300" required onchange="toggleConditionInputs(this)">
+                            <option value="manual">✋ 手动发放 (仅管理员分配)</option>
+                            <option value="all_users">🌟 全员普发 (新老用户直接获得)</option>
+                            <option value="login_days_in_range">📅 限时活动 (指定时间段内登录天数)</option>
+                            <option value="streak_days">🔥 连胜机制 (连续打卡天数)</option>
+                            <option value="study_hours">⏱️ 专注大师 (累计学习小时数)</option>
+                            <option value="note_count">📝 笔记作者 (累计笔记数量)</option>
+                            <option value="featured_count">💎 精华贡献 (累计精选笔记数)</option>
+                            <option value="wiki_edit_count">🛠️ Wiki 建设者 (Wiki 编辑次数)</option>
+                            <option value="wiki_create_count">📚 架构师 (Wiki 创建次数)</option>
+                            <option value="comment_count">💬 社交达人 (评论发布数量)</option>
+                            <option value="total_views_received">📈 意见领袖 (笔记总被阅读次数)</option>
+                            <option value="night_owl_sessions">🦉 夜猫子 (深夜专注 23:00-04:00)</option>
+                            <option value="early_bird">🌅 早起鸟 (清晨专注 05:00-08:00)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-control" id="condition_value_group">
+                        <label class="label pb-1"><span class="label-text font-bold text-indigo-900 dark:text-indigo-200">目标数值 / 阈值</span></label>
+                        <div class="join w-full shadow-sm rounded-xl">
+                            <input type="number" name="condition_value" class="input input-bordered border-indigo-200 dark:border-indigo-800 bg-white dark:bg-base-100 join-item w-full focus:border-indigo-500 focus:z-10" placeholder="0" />
+                            <span class="btn btn-disabled join-item bg-indigo-50 dark:bg-indigo-900/50 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-300 font-bold">次/天/时</span>
+                        </div>
+                    </div>
+
+                    <div class="form-control" id="time_range_group">
+                        <label class="label pb-1"><span class="label-text font-bold text-indigo-900 dark:text-indigo-200">限定时间范围</span></label>
+                        <div class="flex items-center gap-2">
+                            <input type="date" name="start_time" class="input input-bordered border-indigo-200 dark:border-indigo-800 bg-white dark:bg-base-100 rounded-xl w-full text-sm" />
+                            <span class="text-indigo-300 font-bold">-</span>
+                            <input type="date" name="end_time" class="input input-bordered border-indigo-200 dark:border-indigo-800 bg-white dark:bg-base-100 rounded-xl w-full text-sm" />
+                        </div>
+                    </div>
                 </div>
 
-                <div class="form-control">
-                    <label class="label"><span class="label-text">发行方</span></label>
-                    <input type="text" name="issuer" value="WikiBook" class="input input-bordered w-full" placeholder="例如: WikiBook, 活动名称等" />
-                </div>
-
-                <div class="form-control md:col-span-2 hidden" id="time_range_group">
-                    <label class="label"><span class="label-text font-medium">有效时间范围</span></label>
-                    <div class="flex gap-2">
-                        <input type="date" name="start_time" class="input input-bordered w-1/2" />
-                        <span class="self-center">-</span>
-                        <input type="date" name="end_time" class="input input-bordered w-1/2" />
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-2 relative z-10">
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text font-bold text-indigo-900 dark:text-indigo-200">自定义条件文本</span></label>
+                        <input type="text" name="custom_condition_text" class="input input-bordered border-indigo-200 dark:border-indigo-800 bg-white dark:bg-base-100 focus:border-indigo-500 rounded-xl" placeholder="覆盖系统默认的文案，如: 参与2026开学季" />
+                    </div>
+                    
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text font-bold text-indigo-900 dark:text-indigo-200">附赠贴纸数量</span></label>
+                        <div class="relative">
+                            <i class="fas fa-note-sticky absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400"></i>
+                            <input type="number" name="sticker_count" class="input input-bordered border-indigo-200 dark:border-indigo-800 bg-white dark:bg-base-100 w-full pl-10 focus:border-indigo-500 rounded-xl font-bold" value="1" min="0" />
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="form-control mt-4">
-                <label class="label cursor-pointer justify-start gap-4">
-                    <input type="checkbox" name="is_hidden" class="checkbox" />
-                    <span class="label-text">隐藏成就 (未获得时不显示详细条件)</span>
-                </label>
-            </div>
-
-            <div class="form-control mt-2">
-                <label class="label cursor-pointer justify-start gap-4">
-                    <input type="checkbox" name="is_secret" class="checkbox" />
-                    <span class="label-text">秘密成就 (未获得时完全显示为问号)</span>
-                </label>
-            </div>
-
-            <div class="modal-action">
-                <button type="submit" class="btn btn-primary px-8">立即创建</button>
+            <div class="modal-action border-t border-base-200 pt-5 mt-2 flex gap-3">
+                <button type="button" class="btn btn-ghost rounded-xl font-medium" onclick="document.getElementById('create_modal').close()">取消</button>
+                <button type="submit" class="btn btn-primary rounded-xl px-10 shadow-lg shadow-primary/30 font-bold text-white flex-1 md:flex-none">
+                    <i class="fas fa-hammer"></i> 锻造徽章
+                </button>
             </div>
         </form>
     </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
 
-<dialog id="award_modal" class="modal">
-  <div class="modal-box w-11/12 max-w-lg h-[600px] flex flex-col">
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-lg">发放徽章: <span id="award_badge_name" class="text-primary"></span></h3>
-        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+<dialog id="award_modal" class="modal bg-black/50 backdrop-blur-sm">
+  <div class="modal-box w-11/12 max-w-xl h-[650px] flex flex-col rounded-[2rem] p-0 shadow-2xl border border-base-200 overflow-hidden">
+    
+    <div class="px-6 py-5 bg-gradient-to-r from-primary/10 to-transparent border-b border-base-200 flex justify-between items-center">
+        <h3 class="font-black text-xl flex items-center gap-2 text-stone-800 dark:text-stone-100">
+            <i class="fas fa-gift text-primary"></i>
+            发放管理: <span id="award_badge_name" class="text-primary tracking-tight"></span>
+        </h3>
+        <form method="dialog">
+            <button class="w-8 h-8 flex items-center justify-center rounded-full bg-base-200/50 hover:bg-base-300 text-base-content/70 transition-colors">✕</button>
+        </form>
     </div>
     
-    <div class="form-control mb-4">
-        <div class="input-group">
-            <span class="bg-base-200 px-3 flex items-center border border-r-0 border-base-300 rounded-l-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            </span>
-            <input type="text" id="user_search" class="input input-bordered w-full" placeholder="搜索用户名..." onkeyup="filterUsers()">
+    <div class="p-6 flex flex-col flex-1 overflow-hidden bg-base-100/50">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-4 gap-3">
+            <div class="relative flex-1">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-base-content/30"></i>
+                <input type="text" id="user_search" class="input input-bordered w-full pl-11 rounded-xl focus:border-primary shadow-sm" placeholder="搜索用户名或邮箱..." onkeyup="filterUsers()">
+            </div>
+            <button type="button" class="btn btn-outline btn-primary rounded-xl shrink-0 gap-2" onclick="toggleSelectAllUnearned()">
+                <i class="fas fa-check-double"></i> 全选/反选
+            </button>
+        </div>
+
+        <div class="flex items-center justify-between px-2 mb-3 mt-2 border-b border-base-200 pb-2">
+            <span class="text-sm font-bold text-base-content/60">勾选发放，取消勾选撤销</span>
+            <span class="badge badge-sm border-none bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold px-2 py-3" id="already_earned_text">0 人已拥有</span>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto custom-scroll pr-2 space-y-1.5" id="user_list_container">
+            {% for user in users %}
+            <label class="label cursor-pointer justify-start gap-4 p-3 rounded-xl border border-transparent hover:border-base-300 hover:bg-white dark:hover:bg-base-200 transition-all user-row group" data-user-id="{{ user.id }}">
+                <input type="checkbox" class="checkbox checkbox-sm checkbox-primary rounded user-checkbox" value="{{ user.id }}" />
+                <div class="avatar placeholder">
+                    <div class="bg-gradient-to-br from-stone-200 to-stone-300 dark:from-base-300 dark:to-base-200 text-stone-700 dark:text-stone-300 rounded-lg w-10 h-10 shadow-inner grid place-items-center font-bold">
+                        <span class="leading-none">{{ user.username[0]|upper }}</span>
+                    </div>
+                </div>
+                <div class="flex flex-col flex-1 min-w-0 justify-center">
+                    <span class="label-text font-bold text-sm user-name truncate group-hover:text-primary transition-colors">{{ user.username }}</span>
+                    <span class="text-[11px] text-base-content/50 truncate font-mono mt-0.5">{{ user.email or (user.class_name ~ ' ' ~ user.student_id) }}</span>
+                </div>
+                <span class="badge badge-sm border-none bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold hidden earned-badge-tag shrink-0"><i class="fas fa-check mr-1"></i>已拥有</span>
+            </label>
+            {% endfor %}
+            
+            <div id="no_users_msg" class="hidden flex flex-col items-center justify-center py-12 opacity-50">
+                <i class="fas fa-search-minus text-4xl mb-3"></i>
+                <p class="font-bold">未找到匹配的用户</p>
+            </div>
         </div>
     </div>
 
-    <p class="text-sm text-base-content/60 mb-2">请勾选要发放的用户：</p>
-    
-    <div class="flex-1 overflow-y-auto border border-base-300 rounded-lg p-2 bg-base-100 shadow-inner" id="user_list_container">
-        {% for user in users %}
-        <label class="label cursor-pointer justify-start gap-3 hover:bg-base-200 rounded p-2 transition-colors user-row">
-            <input type="checkbox" class="checkbox checkbox-primary user-checkbox" value="{{ user.id }}" />
-            <div class="flex flex-col">
-                <span class="label-text font-medium user-name">{{ user.username }}</span>
-                <span class="text-xs text-base-content/40">{{ user.email }}</span>
-            </div>
-        </label>
-        {% endfor %}
-        <div id="no_users_msg" class="hidden text-center py-8 text-base-content/40">没有找到匹配的用户</div>
-    </div>
-
-    <div class="modal-action border-t border-base-200 pt-4 mt-0">
-        <div class="flex-1 text-sm self-center text-base-content/50">已选 <span id="selected_count">0</span> 人</div>
-        <button class="btn" onclick="document.getElementById('award_modal').close()">取消</button>
-        <button class="btn btn-primary" onclick="submitAward()">确认发放</button>
+    <div class="px-6 py-4 bg-stone-50 dark:bg-base-200/50 border-t border-base-200 flex justify-between items-center">
+        <div class="text-sm font-medium text-base-content/60 bg-base-200 px-3 py-1.5 rounded-lg">
+            本次派发给 <span id="selected_count" class="font-black text-primary text-lg mx-1">0</span> 人
+        </div>
+        <div class="flex gap-3">
+            <button class="btn btn-ghost rounded-xl font-medium" onclick="document.getElementById('award_modal').close()">取消</button>
+            <button class="btn btn-primary rounded-xl px-8 shadow-lg shadow-primary/30 font-bold" onclick="submitAward()">
+                <i class="fas fa-save mr-1"></i> 保存同步
+            </button>
+        </div>
     </div>
   </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-// --- 新增：前端筛选逻辑 ---
+// --- 前端筛选逻辑 ---
 function filterBadges(category, btnElement) {
     const cards = document.querySelectorAll('.badge-card');
     const btns = document.querySelectorAll('.filter-btn');
     const emptyMsg = document.getElementById('no_filter_results');
     let visibleCount = 0;
 
-    // 1. 更新按钮状态
     btns.forEach(btn => {
         if (btn === btnElement) {
-            btn.classList.remove('btn-ghost');
-            btn.classList.add('btn-active');
+            btn.classList.remove('btn-ghost', 'bg-base-200/50', 'text-base-content/70');
+            btn.classList.add('bg-primary', 'text-white', 'shadow-md', 'shadow-primary/20');
+            const innerBadge = btn.querySelector('.badge');
+            if(innerBadge) innerBadge.className = 'badge badge-xs bg-white/20 text-white border-none ml-1';
         } else {
-            btn.classList.add('btn-ghost');
-            btn.classList.remove('btn-active');
+            btn.classList.add('btn-ghost', 'bg-base-200/50', 'text-base-content/70');
+            btn.classList.remove('bg-primary', 'text-white', 'shadow-md', 'shadow-primary/20');
+            const innerBadge = btn.querySelector('.badge');
+            if(innerBadge) innerBadge.className = 'badge badge-xs bg-base-content/10 border-none ml-1';
         }
     });
 
-    // 2. 筛选卡片
     cards.forEach(card => {
         const cardCat = card.getAttribute('data-category');
         if (category === 'all' || cardCat === category) {
-            card.style.display = ''; // 恢复 Grid 默认布局 (block/flex等)
-            // 添加淡入动画效果
-            card.classList.add('animate-fade-in');
-            setTimeout(() => card.classList.remove('animate-fade-in'), 500);
+            card.style.display = ''; 
+            card.style.animation = 'none';
+            card.offsetHeight; /* trigger reflow */
+            card.style.animation = null; 
             visibleCount++;
         } else {
             card.style.display = 'none';
         }
     });
 
-    // 3. 处理空状态
     if (visibleCount === 0) {
         emptyMsg.classList.remove('hidden');
     } else {
@@ -405,7 +507,7 @@ function filterBadges(category, btnElement) {
     }
 }
 
-// 保留原有的 Modal 逻辑
+// 弹窗逻辑
 function toggleConditionInputs(select) {
     const val = select.value;
     const timeGroup = document.getElementById('time_range_group');
@@ -423,14 +525,46 @@ function toggleConditionInputs(select) {
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    const select = document.querySelector('select[name="condition_type"]');
+    if (select) toggleConditionInputs(select);
+});
+
+// ================= 发放与撤销弹窗控制逻辑 =================
 let currentBadgeId = null;
 
-function openAwardModal(badgeId, badgeName) {
+function openAwardModal(badgeId, badgeName, earnedIdsStr) {
     currentBadgeId = badgeId;
     document.getElementById('award_badge_name').innerText = badgeName;
     document.getElementById('user_search').value = '';
-    filterUsers();
-    document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = false);
+    
+    const earnedIdsArray = earnedIdsStr ? earnedIdsStr.split(',').map(id => id.trim()) : [];
+    let earnedCount = 0;
+    
+    const rows = document.querySelectorAll('.user-row');
+    rows.forEach(row => {
+        const userId = row.getAttribute('data-user-id');
+        const checkbox = row.querySelector('.user-checkbox');
+        const tag = row.querySelector('.earned-badge-tag');
+        
+        // 初始状态重置
+        row.style.display = "flex";
+        row.classList.remove('bg-emerald-50/50', 'dark:bg-emerald-900/10', 'border-emerald-200', 'dark:border-emerald-800');
+        tag.classList.add('hidden');
+        checkbox.checked = false; 
+        
+        // 如果已拥有，不再 disable，只是变色高亮和打勾
+        if (earnedIdsArray.includes(userId)) {
+            earnedCount++;
+            row.classList.add('bg-emerald-50/50', 'dark:bg-emerald-900/10', 'border-emerald-200', 'dark:border-emerald-800');
+            tag.classList.remove('hidden');
+            checkbox.checked = true; 
+        }
+    });
+
+    document.getElementById('already_earned_text').innerHTML = `<i class="fas fa-users text-[10px] mr-1"></i>${earnedCount} 人当前拥有`;
+    document.getElementById('no_users_msg').classList.add('hidden');
+    
     updateSelectedCount();
     document.getElementById('award_modal').showModal();
 }
@@ -445,13 +579,18 @@ function filterUsers() {
         const nameSpan = rows[i].querySelector('.user-name');
         const txtValue = nameSpan.textContent || nameSpan.innerText;
         if (txtValue.toLowerCase().indexOf(filter) > -1) {
-            rows[i].style.display = "";
+            rows[i].style.display = "flex";
             hasVisible = true;
         } else {
             rows[i].style.display = "none";
         }
     }
-    document.getElementById('no_users_msg').style.display = hasVisible ? 'none' : 'block';
+    
+    if(hasVisible) {
+        document.getElementById('no_users_msg').classList.add('hidden');
+    } else {
+        document.getElementById('no_users_msg').classList.remove('hidden');
+    }
 }
 
 document.getElementById('user_list_container').addEventListener('change', function(e) {
@@ -465,19 +604,38 @@ function updateSelectedCount() {
     document.getElementById('selected_count').innerText = count;
 }
 
+function toggleSelectAllUnearned() {
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    let allChecked = true;
+    checkboxes.forEach(cb => {
+        if (cb.closest('.user-row').style.display !== 'none' && !cb.checked) {
+            allChecked = false;
+        }
+    });
+
+    checkboxes.forEach(cb => {
+        if (cb.closest('.user-row').style.display !== 'none') {
+            cb.checked = !allChecked;
+        }
+    });
+    updateSelectedCount();
+}
+
 async function submitAward() {
     if (!currentBadgeId) return;
+    
     const selectedUsers = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
     
-    if (!selectedUsers.length) {
-        alert('请至少选择一个用户');
-        return;
+    if (selectedUsers.length === 0) {
+        if (!confirm('你没有勾选任何人。如果提交，这将会撤销所有人已获得的该徽章。确定要继续吗？')) {
+            return;
+        }
     }
     
     const btn = document.querySelector('#award_modal .btn-primary');
-    const originalText = btn.innerText;
+    const originalText = btn.innerHTML;
     btn.setAttribute('disabled', 'disabled');
-    btn.innerText = '发放中...';
+    btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span> 同步中...';
     
     try {
         const res = await fetch(`/admin/badges/${currentBadgeId}/award`, {
@@ -489,36 +647,27 @@ async function submitAward() {
         
         if (data.success) {
             document.getElementById('award_modal').close();
-            alert(`✅ 成功发放给 ${data.count} 位用户`);
-            location.reload();
+            if(window.app && window.app.toast) {
+                app.toast.show(`✨ 操作成功，该徽章当前由 ${data.count} 人拥有！`, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                alert(`✅ 操作成功，该徽章当前由 ${data.count} 位用户拥有`);
+                location.reload();
+            }
         } else {
-            alert('❌ ' + (data.error || '发放失败'));
+            if(window.app && window.app.toast) app.toast.show(data.error || '保存失败', 'error');
+            else alert('❌ ' + (data.error || '保存失败'));
+            
+            btn.removeAttribute('disabled');
+            btn.innerHTML = originalText;
         }
     } catch (e) {
-        alert('❌ 网络或服务器错误');
-    } finally {
+        if(window.app && window.app.toast) app.toast.show('网络或服务器错误', 'error');
+        else alert('❌ 网络或服务器错误');
+        
         btn.removeAttribute('disabled');
-        btn.innerText = originalText;
+        btn.innerHTML = originalText;
     }
 }
 </script>
-
-<style>
-/* 简单的淡入动画 */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
-}
-/* 隐藏滚动条但保留功能 */
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;
-}
-.scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-</style>
 {% endblock %}

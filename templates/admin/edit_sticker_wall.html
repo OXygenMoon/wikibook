@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}编辑贴纸墙 - {{ wall.name }}{% endblock %}
+
+{% block scripts %}
+<script>
+    function togglePermissions(visibility) {
+        const details = document.getElementById('permission-details');
+        const radioCards = document.querySelectorAll('.visibility-card');
+        
+        // 视觉上高亮选中的卡片
+        radioCards.forEach(card => {
+            if (card.querySelector('input').checked) {
+                card.classList.add('border-primary', 'bg-primary/5', 'ring-1', 'ring-primary');
+                card.classList.remove('border-base-300', 'bg-base-100');
+            } else {
+                card.classList.remove('border-primary', 'bg-primary/5', 'ring-1', 'ring-primary');
+                card.classList.add('border-base-300', 'bg-base-100');
+            }
+        });
+
+        // 展开/收起具体权限设置
+        if (visibility === 'restricted') {
+            details.style.display = 'block';
+            // 简单的展开动画
+            requestAnimationFrame(() => {
+                details.classList.remove('opacity-0', '-translate-y-4');
+                details.classList.add('opacity-100', 'translate-y-0');
+            });
+        } else {
+            details.classList.remove('opacity-100', 'translate-y-0');
+            details.classList.add('opacity-0', '-translate-y-4');
+            setTimeout(() => {
+                details.style.display = 'none';
+            }, 300);
+        }
+    }
+    
+    function toggleSection(sectionId, iconId) {
+        const section = document.getElementById(sectionId);
+        const icon = document.getElementById(iconId);
+        if (section.classList.contains('hidden')) {
+            section.classList.remove('hidden');
+            icon.classList.add('rotate-180');
+        } else {
+            section.classList.add('hidden');
+            icon.classList.remove('rotate-180');
+        }
+    }
+    
+    function filterUsers() {
+        const input = document.getElementById('userSearch');
+        const filter = input.value.toLowerCase();
+        const items = document.getElementsByClassName('user-item');
+        
+        for (let i = 0; i < items.length; i++) {
+            const name = items[i].querySelector('.user-name').textContent || "";
+            if (name.toLowerCase().indexOf(filter) > -1) {
+                items[i].style.display = "";
+            } else {
+                items[i].style.display = "none";
+            }
+        }
+    }
+
+    // 初始化加载时的状态
+    document.addEventListener('DOMContentLoaded', () => {
+        const checkedRadio = document.querySelector('input[name="visibility"]:checked');
+        if(checkedRadio) togglePermissions(checkedRadio.value);
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-4xl mx-auto flex flex-col gap-6 pb-12">
+    
+    <div class="flex items-center justify-between mb-2 mt-2">
+        <h1 class="text-3xl font-black text-stone-800 dark:text-stone-100 tracking-tight flex items-center gap-3">
+            <i class="fas fa-cog text-primary opacity-80"></i> 编辑贴纸墙
+        </h1>
+        <a href="{{ url_for('manage_sticker_walls') }}" class="btn btn-ghost bg-base-200/50 hover:bg-base-200 border-none rounded-xl gap-2 font-medium">
+            <i class="fas fa-arrow-left text-base-content/50"></i> 返回列表
+        </a>
+    </div>
+
+    <form method="post" class="grid grid-cols-1 gap-8">
+        <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-xl border border-black/5 dark:border-white/5 rounded-[2rem] overflow-hidden">
+            <div class="card-body p-6 lg:p-10 space-y-8">
+                
+                <div class="space-y-5">
+                    <div class="flex items-center gap-2 border-b border-base-200 pb-2">
+                        <i class="fas fa-info-circle text-blue-500"></i>
+                        <h2 class="text-lg font-bold text-base-content">基本信息</h2>
+                    </div>
+                    
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text font-bold text-base-content/80">墙面名称</span></label>
+                        <input type="text" name="name" class="input input-lg input-bordered w-full font-bold text-lg focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all shadow-sm" value="{{ wall.name }}" required />
+                    </div>
+                    
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text font-bold text-base-content/80">简短描述</span></label>
+                        <input type="text" name="description" class="input input-bordered w-full focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all shadow-sm" value="{{ wall.description or '' }}" placeholder="简短描述这面墙的用途..." />
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text font-bold text-base-content/80">背景样式</span></label>
+                        <select name="bg_style" class="select select-bordered w-full">
+                            <option value="dots" {% if wall.bg_style == 'dots' %}selected{% endif %}>点阵 (Dots)</option>
+                            <option value="grid" {% if wall.bg_style == 'grid' %}selected{% endif %}>方格 (Grid)</option>
+                            <option value="lines" {% if wall.bg_style == 'lines' %}selected{% endif %}>斜线 (Lines)</option>
+                            <option value="empty" {% if wall.bg_style == 'empty' %}selected{% endif %}>空白 (Empty)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-stone-50 dark:bg-base-200/40 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-inner">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fas fa-shield-alt text-emerald-500"></i>
+                        <h2 class="text-lg font-bold text-base-content">访问控制</h2>
+                    </div>
+                    
+                    <div class="form-control mb-2">
+                        <label class="label"><span class="label-text font-medium text-base-content/70">可见性范围</span></label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="visibility-card cursor-pointer border border-base-300 p-4 rounded-xl bg-base-100 hover:border-primary/50 transition-all flex flex-col gap-1 relative overflow-hidden">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-base-content flex items-center gap-2"><i class="fas fa-globe-americas text-blue-500"></i> 公开</span>
+                                    <input type="radio" name="visibility" value="public" class="radio radio-primary radio-sm" {% if wall.visibility == 'public' %}checked{% endif %} onclick="togglePermissions('public')" />
+                                </div>
+                                <span class="text-xs text-base-content/50 mt-1">允许所有已登录的用户查看、阅读。</span>
+                            </label>
+                            
+                            <label class="visibility-card cursor-pointer border border-base-300 p-4 rounded-xl bg-base-100 hover:border-primary/50 transition-all flex flex-col gap-1 relative overflow-hidden">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-base-content flex items-center gap-2"><i class="fas fa-users-cog text-orange-500"></i> 受限</span>
+                                    <input type="radio" name="visibility" value="restricted" class="radio radio-primary radio-sm" {% if wall.visibility == 'restricted' %}checked{% endif %} onclick="togglePermissions('restricted')" />
+                                </div>
+                                <span class="text-xs text-base-content/50 mt-1">仅允许你指定的班级、小组或个人查看。</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="permission-details" class="transition-all duration-300 opacity-0 -translate-y-4 pt-6 mt-4 border-t border-base-300 border-dashed" style="display: none;">
+                        
+                        <div class="space-y-4">
+                            <div class="form-control bg-base-100 rounded-xl border border-base-300 overflow-hidden">
+                                <label class="label cursor-pointer p-4 hover:bg-base-200/50 transition-colors" onclick="toggleSection('classes-section', 'icon-classes')">
+                                    <span class="font-bold text-sm text-base-content flex items-center gap-2"><i class="fas fa-graduation-cap text-base-content/40"></i> 授权班级</span>
+                                    <i id="icon-classes" class="fas fa-chevron-down text-base-content/40 text-xs transition-transform duration-300"></i>
+                                </label>
+                                <div id="classes-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-2 p-4 bg-base-200/30 border-t border-base-200 max-h-48 overflow-y-auto">
+                                    {% for cls in classes %}
+                                    <label class="label cursor-pointer justify-start gap-3 hover:bg-white dark:hover:bg-base-200 rounded-lg p-2 transition-colors border border-transparent hover:border-base-300 hover:shadow-sm">
+                                        <input type="checkbox" name="allowed_classes" value="{{ cls.id }}" class="checkbox checkbox-sm checkbox-primary rounded" {% if cls in wall.allowed_classes %}checked{% endif %} />
+                                        <span class="label-text text-sm font-medium">{{ cls.name }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="form-control bg-base-100 rounded-xl border border-base-300 overflow-hidden">
+                                <label class="label cursor-pointer p-4 hover:bg-base-200/50 transition-colors" onclick="toggleSection('groups-section', 'icon-groups')">
+                                    <span class="font-bold text-sm text-base-content flex items-center gap-2"><i class="fas fa-layer-group text-base-content/40"></i> 授权小组</span>
+                                    <i id="icon-groups" class="fas fa-chevron-down text-base-content/40 text-xs transition-transform duration-300"></i>
+                                </label>
+                                <div id="groups-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-2 p-4 bg-base-200/30 border-t border-base-200 max-h-48 overflow-y-auto">
+                                    {% for grp in groups %}
+                                    <label class="label cursor-pointer justify-start gap-3 hover:bg-white dark:hover:bg-base-200 rounded-lg p-2 transition-colors border border-transparent hover:border-base-300 hover:shadow-sm">
+                                        <input type="checkbox" name="allowed_groups" value="{{ grp.id }}" class="checkbox checkbox-sm checkbox-primary rounded" {% if grp in wall.allowed_groups %}checked{% endif %} />
+                                        <span class="label-text text-sm font-medium">{{ grp.name }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="form-control bg-base-100 rounded-xl border border-base-300 overflow-hidden">
+                                <label class="label cursor-pointer p-4 hover:bg-base-200/50 transition-colors" onclick="toggleSection('users-section', 'icon-users')">
+                                    <span class="font-bold text-sm text-base-content flex items-center gap-2"><i class="fas fa-user-check text-base-content/40"></i> 授权特定用户</span>
+                                    <i id="icon-users" class="fas fa-chevron-down text-base-content/40 text-xs transition-transform duration-300"></i>
+                                </label>
+                                <div id="users-section" class="hidden p-4 bg-base-200/30 border-t border-base-200">
+                                    <div class="relative mb-3 w-full md:w-1/2">
+                                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-base-content/30 text-sm"></i>
+                                        <input type="text" id="userSearch" placeholder="搜索用户名或学号..." class="input input-sm input-bordered w-full pl-9 rounded-lg focus:border-primary" onkeyup="filterUsers()" />
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-2" id="userList">
+                                        {% for user in all_users %}
+                                        <label class="label cursor-pointer justify-start gap-3 hover:bg-white dark:hover:bg-base-200 rounded-lg p-2 transition-colors border border-transparent hover:border-base-300 hover:shadow-sm user-item">
+                                            <input type="checkbox" name="allowed_users" value="{{ user.id }}" class="checkbox checkbox-sm checkbox-primary rounded" {% if user in wall.allowed_users %}checked{% endif %} />
+                                            <div class="flex flex-col min-w-0">
+                                                <span class="label-text text-sm font-bold user-name truncate">{{ user.real_name or user.username }}</span>
+                                                <span class="text-[10px] text-base-content/50 font-mono truncate">{{ user.student_id or '无学号' }}</span>
+                                            </div>
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="btn btn-primary btn-lg rounded-full px-12 shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all text-white font-bold tracking-widest text-base">
+                        保存所有修改
+                    </button>
+                </div>
+                
+            </div>
+        </div>
+        
+    </form>
+</div>
+{% endblock %}

@@ -1,41 +1,49 @@
 {% extends "base.html" %}
 
-{% block title %}创建 Wiki{% block scripts %}
-<script>
-    function togglePermissions(visibility) {
-        const details = document.getElementById('permission-details');
-        if (visibility === 'restricted') {
-            details.classList.remove('hidden');
-        } else {
-            details.classList.add('hidden');
-        }
-    }
-    
-    function filterUsers() {
-        const input = document.getElementById('userSearch');
-        const filter = input.value.toLowerCase();
-        const items = document.getElementsByClassName('user-item');
-        
-        for (let i = 0; i < items.length; i++) {
-            const name = items[i].querySelector('.user-name').textContent || "";
-            if (name.toLowerCase().indexOf(filter) > -1) {
-                items[i].style.display = "";
-            } else {
-                items[i].style.display = "none";
-            }
-        }
-    }
-</script>
-{% endblock %}
+{% block title %}创建 Wiki{% endblock %}
 
 {% block scripts %}
 <script>
     function togglePermissions(visibility) {
         const details = document.getElementById('permission-details');
+        const radioCards = document.querySelectorAll('.visibility-card');
+        
+        // 视觉上高亮选中的卡片
+        radioCards.forEach(card => {
+            if (card.querySelector('input').checked) {
+                card.classList.add('border-primary', 'bg-primary/5', 'ring-1', 'ring-primary');
+                card.classList.remove('border-base-300', 'bg-base-100');
+            } else {
+                card.classList.remove('border-primary', 'bg-primary/5', 'ring-1', 'ring-primary');
+                card.classList.add('border-base-300', 'bg-base-100');
+            }
+        });
+
+        // 展开/收起具体权限设置
         if (visibility === 'restricted') {
-            details.classList.remove('hidden');
+            details.style.display = 'block';
+            requestAnimationFrame(() => {
+                details.classList.remove('opacity-0', '-translate-y-4');
+                details.classList.add('opacity-100', 'translate-y-0');
+            });
         } else {
-            details.classList.add('hidden');
+            details.classList.remove('opacity-100', 'translate-y-0');
+            details.classList.add('opacity-0', '-translate-y-4');
+            setTimeout(() => {
+                details.style.display = 'none';
+            }, 300);
+        }
+    }
+    
+    function toggleSection(sectionId, iconId) {
+        const section = document.getElementById(sectionId);
+        const icon = document.getElementById(iconId);
+        if (section.classList.contains('hidden')) {
+            section.classList.remove('hidden');
+            icon.classList.add('rotate-180');
+        } else {
+            section.classList.add('hidden');
+            icon.classList.remove('rotate-180');
         }
     }
     
@@ -53,265 +61,223 @@
             }
         }
     }
+
+    // 初始化时应用选中状态的样式
+    document.addEventListener('DOMContentLoaded', () => {
+        const checkedRadio = document.querySelector('input[name="visibility"]:checked');
+        if(checkedRadio) {
+            // 只触发卡片样式更新，不强制展开详细面板（除非选了restricted）
+            const radioCards = document.querySelectorAll('.visibility-card');
+            radioCards.forEach(card => {
+                if (card.querySelector('input').checked) {
+                    card.classList.add('border-primary', 'bg-primary/5', 'ring-1', 'ring-primary');
+                    card.classList.remove('border-base-300', 'bg-base-100');
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto animate-fade-in">
-    <!-- Breadcrumb -->
-    <div class="text-sm breadcrumbs mb-6 text-base-content/80">
-        <ul>
-            <li><a href="{{ url_for('index') }}">首页</a></li>
-            <li>管理</li>
-            <li class="font-bold text-base-content">创建 Wiki</li>
-        </ul>
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-stone-50 dark:bg-[#15191e] transition-colors duration-500">
+    <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] animate-blob mix-blend-multiply opacity-50 dark:opacity-30"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[120px] animate-blob animation-delay-4000 mix-blend-multiply opacity-50 dark:opacity-30"></div>
+</div>
+
+<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6 transition-all duration-500 ease-in-out pb-12 animate-fade-in">
+    
+    <div class="flex items-center justify-between mb-2 mt-2">
+        <h1 class="text-3xl font-black text-stone-800 dark:text-stone-100 tracking-tight flex items-center gap-3">
+            <i class="fas fa-book-medical text-primary opacity-80"></i> 新建知识库
+        </h1>
+        <a href="{{ url_for('index') }}" class="btn btn-ghost bg-base-200/50 hover:bg-base-200 border-none rounded-xl gap-2 font-medium">
+            <i class="fas fa-arrow-left text-base-content/50"></i> 取消并返回
+        </a>
     </div>
 
-    <div class="card bg-base-100 border border-base-200 shadow-xl shadow-stone-200/20 overflow-hidden">
-        <!-- Header -->
-        <div class="px-8 py-6 border-b border-base-300 bg-stone-50/30 flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <i class="fas fa-book-medical text-2xl"></i>
-            </div>
-            <div>
-                <h2 class="card-title text-2xl text-base-content">创建新的知识库</h2>
-                <p class="text-sm text-base-content/80 mt-1">创建一个全新的 Wiki 空间来组织和分享文档</p>
-            </div>
-        </div>
-
-        <div class="card-body p-8">
-            <form method="post" class="space-y-6">
-                <!-- Title Input -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-bold text-base-content">Wiki 名称</span>
-                        <span class="label-text-alt text-error">* 必填</span>
-                    </label>
-                    <div class="relative">
-                        <input type="text" name="title" placeholder="例如：Python 进阶教程" 
-                               class="input input-bordered w-full pl-10 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" 
-                               required autofocus />
-                        <i class="fas fa-heading absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/50"></i>
+    <form method="post" class="grid grid-cols-1 gap-8">
+        <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-xl shadow-stone-200/40 dark:shadow-none border border-black/5 dark:border-white/5 rounded-[2rem] overflow-hidden">
+            <div class="card-body p-6 lg:p-10 space-y-8">
+                
+                <div class="space-y-5">
+                    <div class="flex items-center gap-2 border-b border-base-200 pb-2">
+                        <i class="fas fa-info-circle text-blue-500"></i>
+                        <h2 class="text-lg font-bold text-base-content">基础配置</h2>
                     </div>
-                    <label class="label">
-                        <span class="label-text-alt text-base-content/50">起一个简短且具有描述性的名称</span>
-                    </label>
-                </div>
-
-                <!-- Description Input -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-bold text-base-content">简介描述</span>
-                    </label>
-                    <div class="relative">
-                        <textarea name="description" 
-                                  class="textarea textarea-bordered h-32 w-full pl-10 pt-3 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-base leading-relaxed" 
-                                  placeholder="简要介绍这个 Wiki 的主要内容和目标受众..."></textarea>
-                        <i class="fas fa-align-left absolute left-3.5 top-3.5 text-base-content/50"></i>
-                    </div>
-                </div>
-
-                <!-- Permissions Settings -->
-                <div class="bg-stone-50 rounded-xl p-4 border border-base-300">
-                    <h3 class="text-sm font-bold text-base-content/80 mb-3 flex items-center gap-2">
-                        <i class="fas fa-lock text-red-500"></i> 权限设置
-                    </h3>
                     
-                    <div class="form-control mb-4">
-                        <label class="label"><span class="label-text font-medium">可见性范围</span></label>
-                        <div class="flex gap-4">
-                            <label class="label cursor-pointer gap-2 border border-base-200 p-3 rounded-lg bg-base-100 hover:border-primary/50 flex-1">
-                                <input type="radio" name="visibility" value="public" class="radio radio-primary" checked onclick="togglePermissions('public')" />
-                                <div>
-                                    <span class="label-text font-bold block">公开 (Public)</span>
-                                    <span class="text-xs text-base-content/50">所有登录用户可见</span>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text font-bold text-base-content/80">Wiki 名称</span><span class="label-text-alt text-error font-bold">* 必填</span></label>
+                        <input type="text" name="title" placeholder="例如：Python 进阶教程、团队协作指南..." class="input input-lg input-bordered w-full font-bold text-lg focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all shadow-sm" required autofocus />
+                    </div>
+                    
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text font-bold text-base-content/80">简介描述</span></label>
+                        <textarea name="description" class="textarea textarea-bordered h-28 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all shadow-sm resize-none leading-relaxed" placeholder="简要介绍这个 Wiki 的主要内容和目标受众..."></textarea>
+                    </div>
+                </div>
+
+                <div class="bg-stone-50 dark:bg-base-200/40 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-inner">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fas fa-shield-alt text-emerald-500"></i>
+                        <h2 class="text-lg font-bold text-base-content">访问控制 (默认公开)</h2>
+                    </div>
+                    
+                    <div class="form-control mb-2">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                            <label class="visibility-card cursor-pointer border border-base-300 p-4 rounded-xl bg-base-100 hover:border-primary/50 transition-all flex flex-col gap-1 relative overflow-hidden">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-base-content flex items-center gap-2"><i class="fas fa-globe-americas text-blue-500"></i> 公开</span>
+                                    <input type="radio" name="visibility" value="public" class="radio radio-primary radio-sm" checked onclick="togglePermissions('public')" />
                                 </div>
+                                <span class="text-xs text-base-content/50 mt-1">允许所有已登录的用户查看。</span>
                             </label>
-                            <label class="label cursor-pointer gap-2 border border-base-200 p-3 rounded-lg bg-base-100 hover:border-primary/50 flex-1">
-                                <input type="radio" name="visibility" value="restricted" class="radio radio-primary" onclick="togglePermissions('restricted')" />
-                                <div>
-                                    <span class="label-text font-bold block">受限 (Restricted)</span>
-                                    <span class="text-xs text-base-content/50">仅特定班级/组/用户可见</span>
+                            
+                            <label class="visibility-card cursor-pointer border border-base-300 p-4 rounded-xl bg-base-100 hover:border-primary/50 transition-all flex flex-col gap-1 relative overflow-hidden">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-base-content flex items-center gap-2"><i class="fas fa-users-cog text-orange-500"></i> 受限</span>
+                                    <input type="radio" name="visibility" value="restricted" class="radio radio-primary radio-sm" onclick="togglePermissions('restricted')" />
                                 </div>
+                                <span class="text-xs text-base-content/50 mt-1">仅允许指定的班级、小组或个人查看。</span>
                             </label>
-                            <label class="label cursor-pointer gap-2 border border-base-200 p-3 rounded-lg bg-base-100 hover:border-primary/50 flex-1">
-                                <input type="radio" name="visibility" value="private" class="radio radio-primary" onclick="togglePermissions('private')" />
-                                <div>
-                                    <span class="label-text font-bold block">私有 (Private)</span>
-                                    <span class="text-xs text-base-content/50">仅创建者和编辑可见</span>
+
+                            <label class="visibility-card cursor-pointer border border-base-300 p-4 rounded-xl bg-base-100 hover:border-primary/50 transition-all flex flex-col gap-1 relative overflow-hidden">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-base-content flex items-center gap-2"><i class="fas fa-lock text-rose-500"></i> 私有</span>
+                                    <input type="radio" name="visibility" value="private" class="radio radio-primary radio-sm" onclick="togglePermissions('private')" />
                                 </div>
+                                <span class="text-xs text-base-content/50 mt-1">仅你自己和后续添加的协作者可见。</span>
                             </label>
                         </div>
                     </div>
 
-                    <div id="permission-details" class="hidden space-y-4 border-t border-base-200 pt-4">
-                        <!-- Allowed Classes -->
-                        <div class="form-control">
-                            <label class="label cursor-pointer justify-between" onclick="document.getElementById('classes-section').classList.toggle('hidden')">
-                                <span class="label-text font-medium">允许的班级</span>
-                                <i class="fas fa-chevron-down text-base-content/50 text-xs"></i>
-                            </label>
-                            <div id="classes-section" class="hidden grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 bg-base-100 p-3 rounded-lg border border-base-200 max-h-40 overflow-y-auto">
-                                {% for cls in classes %}
-                                <label class="label cursor-pointer justify-start gap-2 hover:bg-stone-50 rounded p-1">
-                                    <input type="checkbox" name="allowed_classes" value="{{ cls.id }}" class="checkbox checkbox-xs checkbox-primary" />
-                                    <span class="label-text text-sm">{{ cls.name }}</span>
+                    <div id="permission-details" class="transition-all duration-300 opacity-0 -translate-y-4 pt-6 mt-4 border-t border-base-300 border-dashed" style="display: none;">
+                        <div class="space-y-4">
+                            <div class="form-control bg-base-100 rounded-xl border border-base-300 overflow-hidden">
+                                <label class="label cursor-pointer p-4 hover:bg-base-200/50 transition-colors" onclick="toggleSection('classes-section', 'icon-classes')">
+                                    <span class="font-bold text-sm text-base-content flex items-center gap-2"><i class="fas fa-graduation-cap text-base-content/40"></i> 授权班级可见</span>
+                                    <i id="icon-classes" class="fas fa-chevron-down text-base-content/40 text-xs transition-transform duration-300"></i>
                                 </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-
-                        <!-- Allowed Groups -->
-                        <div class="form-control">
-                            <label class="label cursor-pointer justify-between" onclick="document.getElementById('groups-section').classList.toggle('hidden')">
-                                <span class="label-text font-medium">允许的小组</span>
-                                <i class="fas fa-chevron-down text-base-content/50 text-xs"></i>
-                            </label>
-                            <div id="groups-section" class="hidden grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 bg-base-100 p-3 rounded-lg border border-base-200 max-h-40 overflow-y-auto">
-                                {% for grp in groups %}
-                                <label class="label cursor-pointer justify-start gap-2 hover:bg-stone-50 rounded p-1">
-                                    <input type="checkbox" name="allowed_groups" value="{{ grp.id }}" class="checkbox checkbox-xs checkbox-primary" />
-                                    <span class="label-text text-sm">{{ grp.name }}</span>
-                                </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-
-                        <!-- Allowed Users -->
-                        <div class="form-control">
-                            <label class="label cursor-pointer justify-between" onclick="document.getElementById('users-section').classList.toggle('hidden')">
-                                <span class="label-text font-medium">允许的特定用户</span>
-                                <i class="fas fa-chevron-down text-base-content/50 text-xs"></i>
-                            </label>
-                            <div id="users-section" class="hidden mt-2 bg-base-100 p-3 rounded-lg border border-base-200">
-                                <input type="text" id="userSearch" placeholder="搜索用户..." class="input input-bordered input-sm w-full mb-2" onkeyup="filterUsers()" />
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-1 max-h-40 overflow-y-auto" id="userList">
-                                    {% for user in all_users %}
-                                    <label class="label cursor-pointer justify-start gap-2 hover:bg-stone-50 rounded p-1 user-item">
-                                        <input type="checkbox" name="allowed_users" value="{{ user.id }}" class="checkbox checkbox-xs checkbox-primary" />
-                                        <span class="label-text text-sm user-name">{{ user.real_name or user.username }} <span class="text-xs text-base-content/50">({{ user.student_id or '无学号' }})</span></span>
+                                <div id="classes-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-2 p-4 bg-base-200/30 border-t border-base-200 max-h-48 overflow-y-auto">
+                                    {% for cls in classes %}
+                                    <label class="label cursor-pointer justify-start gap-3 hover:bg-white dark:hover:bg-base-200 rounded-lg p-2 transition-colors border border-transparent hover:border-base-300 hover:shadow-sm">
+                                        <input type="checkbox" name="allowed_classes" value="{{ cls.id }}" class="checkbox checkbox-sm checkbox-primary rounded" />
+                                        <span class="label-text text-sm font-medium">{{ cls.name }}</span>
                                     </label>
                                     {% endfor %}
                                 </div>
                             </div>
+
+                            <div class="form-control bg-base-100 rounded-xl border border-base-300 overflow-hidden">
+                                <label class="label cursor-pointer p-4 hover:bg-base-200/50 transition-colors" onclick="toggleSection('groups-section', 'icon-groups')">
+                                    <span class="font-bold text-sm text-base-content flex items-center gap-2"><i class="fas fa-layer-group text-base-content/40"></i> 授权小组可见</span>
+                                    <i id="icon-groups" class="fas fa-chevron-down text-base-content/40 text-xs transition-transform duration-300"></i>
+                                </label>
+                                <div id="groups-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-2 p-4 bg-base-200/30 border-t border-base-200 max-h-48 overflow-y-auto">
+                                    {% for grp in groups %}
+                                    <label class="label cursor-pointer justify-start gap-3 hover:bg-white dark:hover:bg-base-200 rounded-lg p-2 transition-colors border border-transparent hover:border-base-300 hover:shadow-sm">
+                                        <input type="checkbox" name="allowed_groups" value="{{ grp.id }}" class="checkbox checkbox-sm checkbox-primary rounded" />
+                                        <span class="label-text text-sm font-medium">{{ grp.name }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="form-control bg-base-100 rounded-xl border border-base-300 overflow-hidden">
+                                <label class="label cursor-pointer p-4 hover:bg-base-200/50 transition-colors" onclick="toggleSection('users-section', 'icon-users')">
+                                    <span class="font-bold text-sm text-base-content flex items-center gap-2"><i class="fas fa-user-check text-base-content/40"></i> 授权特定用户可见</span>
+                                    <i id="icon-users" class="fas fa-chevron-down text-base-content/40 text-xs transition-transform duration-300"></i>
+                                </label>
+                                <div id="users-section" class="hidden p-4 bg-base-200/30 border-t border-base-200">
+                                    <div class="relative mb-3 w-full md:w-1/2">
+                                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-base-content/30 text-sm"></i>
+                                        <input type="text" id="userSearch" placeholder="搜索用户名或学号..." class="input input-sm input-bordered w-full pl-9 rounded-lg focus:border-primary" onkeyup="filterUsers()" />
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-2" id="userList">
+                                        {% for user in all_users %}
+                                        <label class="label cursor-pointer justify-start gap-3 hover:bg-white dark:hover:bg-base-200 rounded-lg p-2 transition-colors border border-transparent hover:border-base-300 hover:shadow-sm user-item">
+                                            <input type="checkbox" name="allowed_users" value="{{ user.id }}" class="checkbox checkbox-sm checkbox-primary rounded" />
+                                            <div class="flex flex-col min-w-0">
+                                                <span class="label-text text-sm font-bold user-name truncate">{{ user.real_name or user.username }}</span>
+                                                <span class="text-[10px] text-base-content/50 font-mono truncate">{{ user.student_id or '无学号' }}</span>
+                                            </div>
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Appearance Settings -->
-                <div class="bg-stone-50 rounded-xl p-4 border border-base-300">
-                    <h3 class="text-sm font-bold text-base-content/80 mb-3 flex items-center gap-2">
-                        <i class="fas fa-palette text-purple-500"></i> 外观设置
-                    </h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="form-control">
-                            <label class="label"><span class="label-text font-medium">背景颜色</span></label>
-                            <div class="flex items-center gap-2">
-                                <input type="color" name="bg_color" value="#ffffff" class="h-10 w-full cursor-pointer rounded-lg border border-base-200 p-1" />
-                            </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-stone-50 dark:bg-base-200/40 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-inner">
+                        <div class="flex items-center gap-2 mb-5">
+                            <i class="fas fa-palette text-purple-500"></i>
+                            <h2 class="text-lg font-bold text-base-content">视觉风格</h2>
                         </div>
-                        <div class="form-control">
-                            <label class="label"><span class="label-text font-medium">前景/纹理颜色</span></label>
-                            <div class="flex items-center gap-2">
-                                <input type="color" name="fg_color" value="#1f2937" class="h-10 w-full cursor-pointer rounded-lg border border-base-200 p-1" />
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between bg-base-100 p-3 rounded-xl border border-base-200 shadow-sm">
+                                <span class="text-sm font-bold text-base-content/80">主题底色</span>
+                                <input type="color" name="bg_color" value="#ffffff" class="h-8 w-16 cursor-pointer rounded-lg border-0 p-0 bg-transparent" />
                             </div>
+                            <div class="flex items-center justify-between bg-base-100 p-3 rounded-xl border border-base-200 shadow-sm">
+                                <span class="text-sm font-bold text-base-content/80">卡片文字色</span>
+                                <input type="color" name="fg_color" value="#1f2937" class="h-8 w-16 cursor-pointer rounded-lg border-0 p-0 bg-transparent" />
+                            </div>
+                            <p class="text-xs text-base-content/40 mt-2"><i class="fas fa-info-circle mr-1"></i> 更复杂的渐变、噪点、模糊度等高级外观设置，可在创建成功后通过「Wiki 设置」进行调整。</p>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div class="form-control">
-                            <label class="label"><span class="label-text font-medium">渐变颜色 (可选)</span></label>
-                            <div class="flex items-center gap-2">
-                                <input type="color" name="gradient_color" value="#ffffff" class="h-10 w-full cursor-pointer rounded-lg border border-base-200 p-1" />
-                            </div>
-                            <p class="text-xs text-base-content/50 mt-1">设置背景渐变的第二种颜色，与背景色混合。</p>
+                    <div class="bg-stone-50 dark:bg-base-200/40 rounded-2xl p-6 border border-black/5 dark:border-white/5 shadow-inner">
+                        <div class="flex items-center gap-2 mb-5">
+                            <i class="fas fa-magic text-amber-500"></i>
+                            <h2 class="text-lg font-bold text-base-content">初始化选项</h2>
                         </div>
-                        <div class="form-control">
-                            <label class="label"><span class="label-text font-medium">渐变方向/类型</span></label>
-                            <select name="gradient_direction" class="select select-bordered w-full h-10 min-h-0">
-                                <option value="to bottom right" selected>↘ 右下 (默认)</option>
-                                <option value="to right">→ 向右</option>
-                                <option value="to bottom">↓ 向下</option>
-                                <option value="to bottom left">↙ 左下</option>
-                                <option value="to left">← 向左</option>
-                                <option value="to top left">↖ 左上</option>
-                                <option value="to top">↑ 向上</option>
-                                <option value="to top right">↗ 右上</option>
-                                <option value="circle at center">◉ 径向 (中心)</option>
-                            </select>
+                        <div class="form-control bg-base-100 p-4 rounded-xl border border-base-200 shadow-sm h-full">
+                            <label class="label cursor-pointer justify-start gap-3 p-0">
+                                <input type="checkbox" name="init_home" class="checkbox checkbox-primary" checked />
+                                <span class="label-text font-bold text-base-content">自动生成欢迎页 (Home)</span>
+                            </label>
+                            <p class="text-sm text-base-content/60 mt-3 leading-relaxed pl-9">
+                                强烈建议勾选。系统会自动为您生成一个包含欢迎辞、快速导航指南的首页，方便读者了解此 Wiki。
+                            </p>
                         </div>
-                    </div>
-
-                    <div class="form-control mt-4">
-                        <label class="label"><span class="label-text font-medium">背景模糊度 (高斯模糊)</span></label>
-                        <div class="flex items-center gap-4">
-                            <span class="text-xs text-base-content/50">清晰</span>
-                            <input type="range" name="blur_level" min="0" max="100" step="1" value="60" class="range range-primary range-sm" />
-                            <span class="text-xs text-base-content/50">模糊</span>
-                        </div>
-                        <p class="text-xs text-base-content/50 mt-2">调整卡片背景的高斯模糊程度。</p>
-                    </div>
-
-                    <div class="form-control mt-4">
-                        <label class="label"><span class="label-text font-medium">Arc 风格颗粒度</span></label>
-                        <div class="flex items-center gap-4">
-                            <span class="text-xs text-base-content/50">细腻</span>
-                            <input type="range" name="pattern" min="0" max="0.3" step="0.01" value="0.05" class="range range-primary range-sm" />
-                            <span class="text-xs text-base-content/50">粗糙</span>
-                        </div>
-                        <p class="text-xs text-base-content/50 mt-2">调整表面噪点的强度，营造 Arc 浏览器的纸质/磨砂质感。</p>
                     </div>
                 </div>
 
-                <!-- Initialization Options -->
-                <div class="bg-stone-50 rounded-xl p-4 border border-base-300">
-                    <h3 class="text-sm font-bold text-base-content/80 mb-3 flex items-center gap-2">
-                        <i class="fas fa-magic text-amber-500"></i> 初始化选项
-                    </h3>
-                    <div class="form-control">
-                        <label class="label cursor-pointer justify-start gap-3">
-                            <input type="checkbox" name="init_home" class="checkbox checkbox-primary checkbox-sm" checked />
-                            <span class="label-text text-base-content/80">自动创建首页 (Home)</span>
-                        </label>
-                        <p class="text-xs text-base-content/50 pl-8">勾选后将自动创建一个包含简介内容的初始页面。</p>
-                    </div>
-                </div>
-
-                <!-- Actions -->
-                <div class="card-actions justify-end pt-4 mt-4 border-t border-base-300">
-                    <a href="{{ url_for('index') }}" class="btn btn-ghost text-base-content/80 hover:bg-stone-100">取消</a>
-                    <button type="submit" class="btn btn-primary px-8 gap-2 shadow-lg shadow-primary/20">
-                        <i class="fas fa-plus"></i>
-                        立即创建
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="btn btn-primary btn-lg rounded-full px-12 shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all text-white font-bold tracking-widest text-base gap-2">
+                        <i class="fas fa-rocket"></i>
+                        立即创建 Wiki
                     </button>
                 </div>
-            </form>
+                
+            </div>
         </div>
-    </div>
+    </form>
     
-    <!-- Tips -->
-    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-        <div class="p-4 rounded-xl bg-base-100 border border-base-300 shadow-sm">
-            <div class="w-8 h-8 mx-auto bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-2">
-                <i class="fas fa-layer-group"></i>
+    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6 text-center opacity-80 hover:opacity-100 transition-opacity duration-300">
+        <div class="p-6 rounded-2xl bg-white/50 dark:bg-base-200/50 backdrop-blur-sm border border-black/5 shadow-sm hover:shadow-md transition-shadow">
+            <div class="w-12 h-12 mx-auto bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-full flex items-center justify-center mb-3 shadow-inner">
+                <i class="fas fa-layer-group text-lg"></i>
             </div>
-            <h4 class="text-sm font-bold text-base-content">结构化组织</h4>
-            <p class="text-xs text-base-content/50 mt-1">支持多级目录和标签分类</p>
+            <h4 class="text-base font-bold text-stone-800 dark:text-stone-200">结构化组织</h4>
+            <p class="text-xs text-base-content/60 mt-2 font-medium">支持多级目录排序和灵活的标签分类系统</p>
         </div>
-        <div class="p-4 rounded-xl bg-base-100 border border-base-300 shadow-sm">
-            <div class="w-8 h-8 mx-auto bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-2">
-                <i class="fas fa-users"></i>
+        <div class="p-6 rounded-2xl bg-white/50 dark:bg-base-200/50 backdrop-blur-sm border border-black/5 shadow-sm hover:shadow-md transition-shadow">
+            <div class="w-12 h-12 mx-auto bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full flex items-center justify-center mb-3 shadow-inner">
+                <i class="fas fa-users text-lg"></i>
             </div>
-            <h4 class="text-sm font-bold text-base-content">协作编辑</h4>
-            <p class="text-xs text-base-content/50 mt-1">邀请他人共同维护文档</p>
+            <h4 class="text-base font-bold text-stone-800 dark:text-stone-200">多人协作</h4>
+            <p class="text-xs text-base-content/60 mt-2 font-medium">轻松邀请团队成员共同编写、维护核心知识</p>
         </div>
-        <div class="p-4 rounded-xl bg-base-100 border border-base-300 shadow-sm">
-            <div class="w-8 h-8 mx-auto bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mb-2">
-                <i class="fab fa-markdown"></i>
+        <div class="p-6 rounded-2xl bg-white/50 dark:bg-base-200/50 backdrop-blur-sm border border-black/5 shadow-sm hover:shadow-md transition-shadow">
+            <div class="w-12 h-12 mx-auto bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 rounded-full flex items-center justify-center mb-3 shadow-inner">
+                <i class="fab fa-markdown text-xl"></i>
             </div>
-            <h4 class="text-sm font-bold text-base-content">Markdown</h4>
-            <p class="text-xs text-base-content/50 mt-1">支持标准的 Markdown 语法</p>
+            <h4 class="text-base font-bold text-stone-800 dark:text-stone-200">极客体验</h4>
+            <p class="text-xs text-base-content/60 mt-2 font-medium">完全支持标准 Markdown，以及网页端代码运行</p>
         </div>
     </div>
 </div>

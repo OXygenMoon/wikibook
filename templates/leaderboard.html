@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}巅峰竞技场 - WikiBook{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 隐藏滚动条 */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* 进场动画 */
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); filter: blur(4px); }
+        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+    .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+
+    /* 背景装饰光晕 */
+    .hero-glow {
+        position: absolute;
+        width: 800px;
+        height: 400px;
+        background: radial-gradient(ellipse at top, rgba(234,88,12,0.1) 0%, rgba(250,204,21,0.05) 40%, rgba(255,255,255,0) 70%);
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 0;
+        pointer-events: none;
+    }
+    .dark .hero-glow {
+        background: radial-gradient(ellipse at top, rgba(234,88,12,0.15) 0%, rgba(250,204,21,0.05) 40%, rgba(0,0,0,0) 70%);
+    }
+
+    /* 表格样式优化 */
+    .modern-table th {
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: hsl(var(--bc) / 0.4);
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid hsl(var(--bc) / 0.05);
+    }
+    .modern-table td {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid hsl(var(--bc) / 0.03);
+    }
+    .modern-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    /* Top 3 专属行高亮 */
+    .rank-row-1 { background-color: rgba(250, 204, 21, 0.05); }
+    .rank-row-2 { background-color: rgba(148, 163, 184, 0.05); }
+    .rank-row-3 { background-color: rgba(217, 119, 6, 0.05); }
+    
+    .dark .rank-row-1 { background-color: rgba(250, 204, 21, 0.08); }
+    .dark .rank-row-2 { background-color: rgba(148, 163, 184, 0.08); }
+    .dark .rank-row-3 { background-color: rgba(217, 119, 6, 0.08); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero-glow"></div>
+
+<div class="w-full max-w-5xl mx-auto flex flex-col gap-6 animate-slide-up pb-32 relative z-10 mt-2">
+    
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white/70 dark:bg-base-100/70 backdrop-blur-2xl p-4 md:px-6 md:py-4 rounded-[2rem] border border-black/5 dark:border-white/5 shadow-sm opacity-0 animate-slide-up delay-1">
+        
+        <div class="flex items-center gap-3 w-full md:w-auto justify-center md:justify-start">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-400 to-yellow-500 text-white flex items-center justify-center text-xl shadow-lg shadow-orange-500/30">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-black tracking-tight text-base-content leading-tight">巅峰竞技场</h1>
+                <p class="text-[10px] text-base-content/50 font-bold tracking-[0.2em] uppercase">Leaderboard</p>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            <div class="flex items-center p-1 bg-stone-100 dark:bg-base-200/60 rounded-xl border border-black/5 w-full sm:w-auto">
+                <a href="{{ url_for('leaderboard', metric=metric, period='weekly') }}" class="flex-1 sm:flex-none text-center px-4 py-1.5 rounded-lg text-xs font-bold transition-all {{ 'bg-white dark:bg-base-100 shadow-sm text-primary' if period == 'weekly' else 'text-base-content/50 hover:text-base-content' }}">本周风云</a>
+                <a href="{{ url_for('leaderboard', metric=metric, period='all') }}" class="flex-1 sm:flex-none text-center px-4 py-1.5 rounded-lg text-xs font-bold transition-all {{ 'bg-white dark:bg-base-100 shadow-sm text-primary' if period == 'all' else 'text-base-content/50 hover:text-base-content' }}">全服总榜</a>
+            </div>
+            
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-center">
+                <a href="{{ url_for('leaderboard', metric='duration', period=period) }}" class="btn btn-sm h-9 rounded-xl border-none {{ 'bg-primary text-white shadow-md shadow-primary/30 hover:bg-primary-focus' if metric == 'duration' else 'bg-base-200/50 text-base-content/60 hover:bg-base-200' }}">
+                    ⏱️ 肝帝
+                </a>
+                <a href="{{ url_for('leaderboard', metric='contribution', period=period) }}" class="btn btn-sm h-9 rounded-xl border-none {{ 'bg-primary text-white shadow-md shadow-primary/30 hover:bg-primary-focus' if metric == 'contribution' else 'bg-base-200/50 text-base-content/60 hover:bg-base-200' }}">
+                    📝 贡献
+                </a>
+                <a href="{{ url_for('leaderboard', metric='streak', period=period) }}" class="btn btn-sm h-9 rounded-xl border-none {{ 'bg-primary text-white shadow-md shadow-primary/30 hover:bg-primary-focus' if metric == 'streak' else 'bg-base-200/50 text-base-content/60 hover:bg-base-200' }}">
+                    🔥 毅力
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white/80 dark:bg-base-100/80 backdrop-blur-xl border border-black/5 dark:border-white/5 rounded-[2rem] shadow-[0_15px_40px_-15px_rgba(0,0,0,0.05)] opacity-0 animate-slide-up delay-2 overflow-visible">
+        <div class="w-full pb-2">
+            <table class="table w-full modern-table">
+                <thead class="bg-stone-50/50 dark:bg-base-200/30">
+                    <tr>
+                        <th class="w-16 md:w-24 text-center rounded-tl-[2rem]">排名</th>
+                        <th>用户信息</th>
+                        <th class="hidden md:table-cell text-center">所属班级</th>
+                        <th class="text-right pr-6 md:pr-10 rounded-tr-[2rem]">成绩数据</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in ranking_data %}
+                    <tr class="hover:bg-stone-50 dark:hover:bg-base-200/50 transition-colors group {% if data.rank == 1 %}rank-row-1{% elif data.rank == 2 %}rank-row-2{% elif data.rank == 3 %}rank-row-3{% endif %}">
+                        
+                        <td class="text-center font-black">
+                            {% if data.rank == 1 %}
+                                <div class="text-yellow-500 text-2xl drop-shadow-sm flex items-center justify-center gap-1">
+                                    <i class="fas fa-crown text-sm -mt-3"></i> 1
+                                </div>
+                            {% elif data.rank == 2 %}
+                                <div class="text-slate-400 text-xl drop-shadow-sm">2</div>
+                            {% elif data.rank == 3 %}
+                                <div class="text-amber-600 text-lg drop-shadow-sm">3</div>
+                            {% else %}
+                                <div class="text-base-content/30 text-base group-hover:text-primary transition-colors">{{ data.rank }}</div>
+                            {% endif %}
+                        </td>
+                        
+                        <td>
+<div class="flex items-center gap-3 md:gap-4 w-fit">
+                                
+                                <div class="relative group/avatar cursor-pointer">
+                                    
+                                    <div class="avatar placeholder">
+                                        <div class="rounded-xl shadow-inner font-black
+                                            {% if data.rank == 1 %} w-12 h-12 text-xl bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-700 ring-2 ring-yellow-400/50
+                                            {% elif data.rank == 2 %} w-10 h-10 text-lg bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 ring-2 ring-slate-300/50
+                                            {% elif data.rank == 3 %} w-10 h-10 text-lg bg-gradient-to-br from-orange-100 to-orange-200 text-orange-800 ring-2 ring-amber-400/50
+                                            {% else %} w-9 h-9 text-base bg-stone-100 dark:bg-base-300 text-stone-600 dark:text-stone-300
+                                            {% endif %}">
+                                            <span>{{ (data.user.real_name or data.user.username)[0]|upper }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if data.user.selected_badge %}
+                                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-white dark:bg-base-200 rounded-full flex items-center justify-center shadow-sm border border-black/5 dark:border-white/5 z-10 group-hover/avatar:scale-110 transition-transform">
+                                            {% if data.user.selected_badge.icon|is_image_icon %}
+                                                <img src="{{ data.user.selected_badge.icon|badge_icon_url }}" class="w-2.5 h-2.5 object-contain">
+                                            {% else %}
+                                                <span class="text-[8px]">{{ data.user.selected_badge.icon }}</span>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="absolute left-1/2 -translate-x-6 top-full mt-2 w-64 bg-white dark:bg-base-200 rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all duration-300 z-[150] pointer-events-none transform scale-95 group-hover/avatar:scale-100 origin-top-left border border-black/5 overflow-hidden">
+                                            {% set rarity_colors = {
+                                                'common': 'from-stone-400 to-stone-200',
+                                                'rare': 'from-[#18293d] to-[#3b82f6]',
+                                                'epic': 'from-purple-600 to-fuchsia-400',
+                                                'legendary': 'from-amber-500 to-yellow-300'
+                                            } %}
+                                            {% set current_rarity = data.user.selected_badge.rarity | default('common') %}
+                                            {% set gradient_class = rarity_colors.get(current_rarity, rarity_colors['common']) %}
+                                            
+                                            <div class="absolute top-0 right-0 w-24 h-24 opacity-90 transform translate-x-6 -translate-y-6 rotate-12 -z-10 shadow-inner bg-gradient-to-bl {{ gradient_class }}"></div>
+                                            <div class="absolute top-0 right-0 w-full h-full bg-white dark:bg-base-200 opacity-20 transform -rotate-[30deg] translate-x-10 -translate-y-4 z-0"></div>
+
+                                            <div class="relative z-10 p-5 pb-5 text-left">
+                                                <div class="flex justify-between items-start mb-2">
+                                                    <p class="text-[#00a8ff] font-extrabold text-[0.65rem] tracking-widest uppercase flex items-center gap-1 mt-1">✨ 佩戴贴纸</p>
+                                                    <div class="w-12 h-12 drop-shadow-md opacity-100 -mt-2 -mr-1">
+                                                        {% if data.user.selected_badge.icon|is_image_icon %}
+                                                            <img src="{{ data.user.selected_badge.icon|badge_icon_url }}" class="w-full h-full object-contain">
+                                                        {% else %}
+                                                            <span class="text-4xl leading-none block text-center">{{ data.user.selected_badge.icon }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <h4 class="text-base font-black text-stone-800 dark:text-white leading-tight mb-1.5 tracking-tight">{{ data.user.selected_badge.name }}</h4>
+                                                <p class="text-[0.65rem] text-stone-500 dark:text-stone-400 line-clamp-2 leading-relaxed font-medium">{{ data.user.selected_badge.description }}</p>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="flex flex-col min-w-0">
+                                    <span class="font-bold text-base-content truncate group-hover:text-primary transition-colors {% if data.rank <= 3 %}text-base md:text-lg tracking-tight{% else %}text-sm{% endif %}">
+                                        {{ data.user.real_name or data.user.username }}
+                                    </span>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-[10px] text-base-content/40 font-mono">@{{ data.user.username }}</span>
+                                        {% if data.user.student_class %}
+                                        <span class="md:hidden badge badge-xs border-none bg-base-200 text-base-content/60 text-[9px] font-bold px-1.5 py-2">
+                                            {{ data.user.student_class.name }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <td class="hidden md:table-cell text-center">
+                            {% if data.user.student_class %}
+                                <span class="badge badge-sm border-none bg-stone-100 dark:bg-base-300 text-base-content/70 font-bold px-3 py-3 rounded-lg shadow-sm">
+                                    {{ data.user.student_class.name }}
+                                </span>
+                            {% else %}
+                                <span class="text-xs text-base-content/30 font-bold">-</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td class="text-right pr-6 md:pr-10">
+                            <div class="flex flex-col items-end justify-center h-full">
+                                <span class="font-black font-mono leading-none tracking-tight
+                                    {% if data.rank == 1 %} text-2xl md:text-3xl text-yellow-600 dark:text-yellow-500
+                                    {% elif data.rank == 2 %} text-xl md:text-2xl text-slate-600 dark:text-slate-400
+                                    {% elif data.rank == 3 %} text-lg md:text-xl text-amber-700 dark:text-amber-500
+                                    {% else %} text-base md:text-lg text-base-content/80
+                                    {% endif %}">
+                                    {{ data.score }}
+                                </span>
+                                <span class="text-[9px] md:text-[10px] font-bold tracking-widest uppercase mt-1
+                                    {% if data.rank <= 3 %} text-base-content/60 {% else %} text-base-content/40 {% endif %}">
+                                    {{ data.unit }}
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-24 text-base-content/30">
+                            <i class="fas fa-ghost text-4xl mb-3 opacity-50"></i>
+                            <p class="font-bold tracking-widest uppercase text-sm">该赛道暂无数据</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if my_rank_info %}
+<div class="fixed bottom-0 left-0 w-full z-50 animate-slide-up" style="animation-delay: 0.6s;">
+    <div class="h-8 w-full bg-gradient-to-t from-white/95 dark:from-[#15191e]/95 to-transparent"></div>
+    
+    <div class="bg-white/90 dark:bg-[#15191e]/90 backdrop-blur-2xl border-t border-black/5 dark:border-white/5 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] pb-safe-bottom">
+        <div class="max-w-[1400px] mx-auto px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between gap-4">
+            
+            <div class="flex items-center gap-3 sm:gap-5">
+                <div class="flex flex-col items-center justify-center w-12 sm:w-14 bg-gradient-to-b from-primary/10 to-primary/5 rounded-2xl py-1.5 border border-primary/10 shadow-inner">
+                    <span class="text-[9px] font-black text-primary opacity-70 uppercase tracking-widest mb-0.5">Rank</span>
+                    <span class="text-xl sm:text-2xl font-black text-primary leading-none">{{ my_rank_info.rank }}</span>
+                </div>
+                
+                <div class="flex flex-col">
+                    <div class="flex items-baseline gap-2">
+                        <span class="font-bold text-base-content text-sm sm:text-base">我的成绩</span>
+                        <span class="font-mono text-lg sm:text-xl font-black text-base-content">{{ my_rank_info.score }}</span> 
+                        <span class="text-[10px] text-base-content/50 font-bold tracking-widest uppercase">{{ my_rank_info.unit }}</span>
+                    </div>
+                    
+                    {% if my_rank_info.rank > 1 %}
+                    <span class="text-xs text-base-content/60 font-medium mt-0.5 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
+                        距离超越上一名还差 <strong class="text-error font-mono">{{ gap_to_next }}</strong> {{ my_rank_info.unit }}
+                    </span>
+                    {% else %}
+                    <span class="text-xs text-warning font-black mt-0.5 flex items-center gap-1.5">
+                        <i class="fas fa-crown text-[10px]"></i> 全场第一，独孤求败！
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="shrink-0 hidden sm:block">
+                {% if metric == 'duration' or metric == 'streak' %}
+                <a href="{{ url_for('index') }}" class="btn btn-primary rounded-2xl font-bold shadow-lg shadow-primary/30 px-6 hover:-translate-y-1 transition-transform">
+                    <i class="fas fa-rocket mr-1"></i> 去挂时长
+                </a>
+                {% elif metric == 'contribution' %}
+                <a href="{{ url_for('new_note') }}" class="btn btn-secondary text-white rounded-2xl font-bold shadow-lg shadow-secondary/30 px-6 hover:-translate-y-1 transition-transform">
+                    <i class="fas fa-pen-nib mr-1"></i> 创作笔记
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

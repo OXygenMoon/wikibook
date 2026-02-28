@@ -4,59 +4,73 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('markdown_css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/easymde.min.css') }}">
+
 <style>
     /* 侧边栏 TOC 专用样式 */
     .toc-link {
-        display: block;
-        padding: 0.25rem 0.5rem 0.25rem 0.75rem;
-        font-size: 0.8rem;
-        color: #78716c; /* stone-500 */
-        border-left: 2px solid #e7e5e4; /* stone-200 */
-        transition: all 0.2s;
-        text-decoration: none;
-        line-height: 1.4;
+        display: block; padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+        font-size: 0.85rem; color: hsl(var(--bc) / 0.6); 
+        border-left: 2px solid hsl(var(--bc) / 0.1); 
+        transition: all 0.2s ease-in-out; text-decoration: none;
+        line-height: 1.4; border-radius: 0 4px 4px 0;
     }
-    .toc-link:hover {
-        color: #1c1917; /* stone-900 */
-        border-left-color: #a8a29e; /* stone-400 */
-        background-color: rgba(0,0,0,0.02);
-    }
-    .toc-link.active {
-        color: #ea580c; /* primary (orange) */
-        border-left-color: #ea580c;
-        font-weight: 600;
-        background-color: transparent;
-    }
+    .toc-link:hover { color: hsl(var(--bc)); border-left-color: hsl(var(--bc) / 0.3); background-color: hsl(var(--bc) / 0.05); }
+    .toc-link.active { color: var(--theme-primary); border-left-color: var(--theme-primary); font-weight: 700; background-color: hsl(var(--p) / 0.1); }
     
-    /* 层级缩进 */
-    .toc-h1 { padding-left: 0.75rem; }
+    .toc-h1 { padding-left: 0.75rem; font-weight: 600; margin-top: 0.5rem; }
     .toc-h2 { padding-left: 1.25rem; }
-    .toc-h3 { padding-left: 1.75rem; }
+    .toc-h3 { padding-left: 1.75rem; font-size: 0.8rem; }
     
-    /* 页面列表当前页高亮 */
-    .page-link-active {
-        background-color: #fff7ed;
-        color: #ea580c;
-        font-weight: 600;
-        border-right: 2px solid #ea580c;
-    }
+    .page-link-active { background-color: hsl(var(--p) / 0.1); color: var(--theme-primary); font-weight: 700; position: relative; }
+    .page-link-active::after { content: ''; position: absolute; right: 0; top: 20%; bottom: 20%; width: 3px; background-color: var(--theme-primary); border-radius: 4px 0 0 4px; }
+
+    /* Mac 风格代码视窗 */
+    .code-window { background: #0d1117; border-radius: 0.75rem; border: 1px solid hsl(var(--bc) / 0.15); overflow: hidden; margin: 1.5rem 0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; }
+    .code-header { display: flex; align-items: center; justify-content: space-between; background: #161b22; padding: 0.6rem 1rem; border-bottom: 1px solid #30363d; user-select: none; }
+    .mac-dots { display: flex; gap: 6px; }
+    .mac-dot { width: 11px; height: 11px; border-radius: 50%; opacity: 0.8; transition: opacity 0.2s;}
+    .code-window:hover .mac-dot { opacity: 1; }
+    .mac-dot.red { background: #ff5f56; }
+    .mac-dot.yellow { background: #ffbd2e; }
+    .mac-dot.green { background: #27c93f; }
+    
+    .code-lang { color: #8b949e; font-size: 0.7rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; position: absolute; left: 50%; transform: translateX(-50%); font-family: monospace; }
+    
+    .code-actions { display: flex; gap: 8px; position: relative; z-index: 10; }
+    .code-btn { background: transparent; color: #8b949e; border: 1px solid transparent; cursor: pointer; padding: 0.2rem 0.6rem; border-radius: 0.35rem; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.35rem; transition: all 0.2s ease; }
+    .code-btn:hover { background: rgba(255,255,255,0.08); color: #c9d1d9; }
+    .code-btn.run-btn:hover { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+    .code-btn.stdin-btn:hover { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
+
+    .code-output { background: #010409; border-top: 1px dashed #30363d; padding: 1rem 1.25rem; color: #a5d6ff; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto; display: none; }
+    .code-output::-webkit-scrollbar { width: 6px; }
+    .code-output::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    .code-output::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+    .hljs { background: transparent !important; border-radius: 0 !important; padding: 1rem 1.25rem !important; margin: 0 !important; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.9em; line-height: 1.6; }
+
+    /* 侧边编辑器自定义样式 */
+    .custom-mde-wrapper .EasyMDEContainer .CodeMirror { border: none !important; border-radius: 0 0 0.75rem 0.75rem !important; background: transparent !important; }
+    .custom-mde-wrapper .editor-toolbar { border: none !important; border-bottom: 1px solid hsl(var(--bc) / 0.1) !important; background: rgba(0,0,0,0.02) !important; border-radius: 0.75rem 0.75rem 0 0 !important; padding: 6px; }
+    
+    body.is-split-active .hero-glow { opacity: 0.2; }
 </style>
 {% endblock %}
 
 {% block sidebar_menu %}
-    {% include "wiki/sidebar.html" %}
-
-    <div class="h-px bg-stone-200 my-4 mx-2"></div>
-
-    <div class="menu-section-title flex items-center justify-between">
+    {% include "wiki/sidebar.html" ignore missing %}
+    <div class="h-px bg-base-content/10 my-6 mx-4"></div>
+    <div class="menu-section-title flex items-center justify-between px-4">
         <span>页面列表</span>
-        <span class="bg-base-300 text-base-content/80 px-1.5 py-0.5 rounded text-[10px]">{{ pages|length }}</span>
+        <span class="bg-base-200 text-base-content/70 px-2 py-0.5 rounded-md text-[10px] font-bold">{{ pages|length }}</span>
     </div>
     
-    <div class="space-y-0.5 mb-6">
+    <div class="space-y-1 mb-8 px-2">
         {% for p in pages %}
         <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" 
-           class="block px-3 py-2 text-sm rounded-lg transition-colors duration-200 truncate {{ 'page-link-active' if page and p.slug == page.slug else 'text-base-content/80 hover:bg-base-300 hover:text-stone-900' }}" 
+           class="block px-3 py-2 text-sm rounded-xl transition-all duration-200 truncate {% if page and p.slug == page.slug %}page-link-active shadow-sm{% else %}text-base-content/70 hover:bg-base-200 hover:text-base-content{% endif %}" 
            title="{{ p.title }}">
             {{ p.title }}
         </a>
@@ -64,281 +78,558 @@
     </div>
 
     {% if page %}
-    <div id="sidebar-toc-wrapper" class="hidden">
-        <div class="menu-section-title">本页目录</div>
-        <nav id="toc-container" class="mb-8 pr-2">
-            </nav>
+    <div id="sidebar-toc-wrapper" class="hidden px-2">
+        <div class="menu-section-title px-2">本页目录</div>
+        <nav id="toc-container" class="mb-8"></nav>
     </div>
     {% endif %}
-
 {% endblock %}
 
-{% block content %}
-<div id="main-content-wrapper" class="w-full max-w-5xl mx-auto flex flex-col gap-6 transition-all duration-300 ease-in-out">
+
+{% block raw_content %}
+
+<script type="application/json" id="recent-notes-data">
+{
+    {% if my_recent_notes %}
+        {% for note in my_recent_notes %}
+        "{{ note.id }}": {
+            "title": {{ note.title | tojson }},
+            "content": {{ note.content_md | default('') | tojson }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    {% endif %}
+}
+</script>
+
+<div id="split-container" class="flex transition-all duration-500 ease-in-out relative w-full mx-auto max-w-5xl">
     
-    <div class="card bg-base-100 shadow-sm border border-base-300">
-        <div class="card-body p-4 sm:p-5 flex-row items-start justify-between gap-4">
-            <div class="flex-1 min-w-0 group relative">
-                <h2 class="text-xl font-bold text-base-content truncate" title="{{ wiki.title }}">{{ wiki.title }}</h2>
-                <p class="text-sm text-base-content/80 mt-1 line-clamp-1 group-hover:line-clamp-none transition-all duration-300 bg-base-100 z-10">
-                    {{ wiki.description }}
-                </p>
-                {% if wiki.description|length > 50 %}
-                <div class="hidden group-hover:block absolute top-full left-0 mt-2 p-3 bg-stone-800 text-white text-xs rounded shadow-lg z-50 max-w-md">
-                    {{ wiki.description }}
+    <div id="wiki-main-content" class="flex-1 min-w-0 transition-all duration-500">
+        
+        <div class="card bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-white/60 dark:border-white/5 rounded-[2rem] mb-6">
+            <div class="card-body p-4 sm:p-5 flex-row items-center justify-between gap-4">
+                
+                <div class="flex-1 min-w-0 group relative flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary grid place-items-center font-bold text-lg shadow-inner flex-shrink-0">
+                        <span class="leading-none">{{ wiki.title[0]|upper }}</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <h2 class="text-xl font-bold text-base-content truncate tracking-tight" title="{{ wiki.title }}">{{ wiki.title }}</h2>
+                        <p class="text-xs text-base-content/60 mt-0.5 line-clamp-1 group-hover:line-clamp-none transition-all duration-300">
+                            {{ wiki.description or '暂无简介' }}
+                        </p>
+                    </div>
                 </div>
+
+                <div class="hidden sm:flex items-center gap-3 px-3 py-1.5 bg-stone-50 dark:bg-base-200/50 rounded-full border border-black/5 dark:border-white/5 cursor-pointer hover:bg-stone-100 dark:hover:bg-base-200 hover:shadow-sm transition-all" onclick="window.location.href='{{ url_for('wiki_contributors', wiki_id=wiki.id) }}'">
+                    <div class="text-[11px] font-semibold text-base-content/50 tracking-widest uppercase flex items-center gap-1 pl-1">
+                        <i class="fas fa-users text-[10px]"></i> 贡献者
+                    </div>
+                    <div class="flex items-center -space-x-1.5">
+                        {% if wiki.created_by %}
+                        <div class="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-[11px] font-bold ring-2 ring-stone-50 dark:ring-base-200 shadow-sm" title="创建者: {{ wiki.created_by.username }}">
+                            <span class="leading-none">{{ wiki.created_by.username[0]|upper }}</span>
+                        </div>
+                        {% endif %}
+                        {% for c in contributors[:3] %}
+                            {% if c[0] and c[0].id != wiki.created_by_id %}
+                            <div class="w-7 h-7 rounded-full bg-white dark:bg-stone-700 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-none flex items-center justify-center text-[11px] font-bold ring-2 ring-stone-50 dark:ring-base-200 shadow-sm" title="贡献者: {{ c[0].username }}">
+                                <span class="leading-none">{{ c[0].username[0]|upper }}</span>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                        {% if contributors|length > 3 %}
+                        <div class="w-7 h-7 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-500 dark:text-stone-400 flex items-center justify-center text-[10px] font-bold ring-2 ring-stone-50 dark:ring-base-200 shadow-sm" title="查看全部 {{ contributors|length }} 位贡献者">
+                            <span class="leading-none">+{{ contributors|length - 3 }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="sm:hidden flex btn btn-xs btn-ghost bg-base-200/50 text-base-content/70 rounded-lg gap-1.5 border-none shadow-sm flex-shrink-0 px-3">
+                    <i class="fas fa-users text-[10px]"></i> 贡献者
+                </a>
+            </div>
+        </div>
+
+        <div class="card bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-white/60 dark:border-white/5 min-h-[75vh] rounded-[2rem] relative">
+            
+            {% if page %}
+            <div class="absolute top-4 right-4 md:top-6 md:right-6 flex items-center bg-base-200/50 p-1.5 rounded-xl border border-base-300/50 shadow-sm overflow-x-auto scrollbar-hide z-20 backdrop-blur-md">
+                
+                <form action="{{ url_for('subscribe_wiki', wiki_id=wiki.id, next=request.full_path) }}" method="post" class="m-0 p-0 flex">
+                    {% if is_subscribed %}
+                    <button type="submit" class="btn btn-sm btn-ghost hover:bg-rose-50 dark:hover:bg-rose-900/20 border-none transition-all rounded-lg overflow-hidden relative group w-[90px] h-8 px-0" title="点击取消订阅">
+                        <div class="absolute inset-0 flex items-center justify-center gap-1.5 transition-transform duration-300 group-hover:-translate-y-full">
+                            <i class="fas fa-check-circle text-emerald-500 text-[11px]"></i>
+                            <span class="text-emerald-600 dark:text-emerald-500 text-xs font-medium">已订阅</span>
+                        </div>
+                        <div class="absolute inset-0 flex items-center justify-center gap-1.5 transition-transform duration-300 translate-y-full group-hover:translate-y-0">
+                            <i class="fas fa-times-circle text-rose-500 text-[11px]"></i>
+                            <span class="text-rose-600 dark:text-rose-500 text-xs font-bold">取消订阅</span>
+                        </div>
+                    </button>
+                    {% else %}
+                    <button type="submit" class="btn btn-sm btn-ghost hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-base-content/70 hover:text-emerald-600 border-none transition-all rounded-lg flex items-center justify-center gap-1.5 w-[90px] h-8 px-0" title="订阅此 Wiki 获取更新">
+                        <i class="far fa-star text-[11px]"></i>
+                        <span class="text-xs font-medium">订阅</span>
+                    </button>
+                    {% endif %}
+                </form>
+
+                <div class="w-px h-4 bg-base-content/20 mx-1"></div>
+
+                <button id="width-toggle-btn" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-base-content/70 hover:text-primary border-none transition-all rounded-lg hidden lg:flex items-center justify-center gap-1.5 w-[90px] h-8 px-0" title="切换宽屏/窄屏">
+                    <i class="fas fa-expand text-[11px]"></i>
+                    <span class="text-xs font-medium" id="width-toggle-text">宽屏模式</span>
+                </button>
+                
+                <button id="toggle-split-btn" onclick="toggleSplitScreen()" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-base-content/70 hover:text-primary border-none transition-all rounded-lg hidden lg:flex items-center justify-center gap-1.5 w-[90px] h-8 px-0" title="开启/关闭分屏笔记">
+                    <i class="fas fa-columns text-[11px]"></i>
+                    <span class="text-xs font-medium">分屏笔记</span>
+                </button>
+
+                <div class="w-px h-4 bg-base-content/20 mx-1 hidden lg:block"></div>
+
+                <button onclick="convert_wiki_page()" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-base-content/70 hover:text-primary border-none transition-all rounded-lg flex items-center justify-center gap-1.5 w-[76px] h-8 px-0" title="转换为我的笔记">
+                    <i class="fas fa-exchange-alt text-[11px]"></i>
+                    <span class="text-xs font-medium">转存</span>
+                </button>
+
+                {% if can_edit %}
+                    <div class="w-px h-4 bg-base-content/20 mx-1"></div>
+                    <a href="{{ url_for('edit_page', wiki_id=wiki.id, slug=page.slug) }}" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-base-content/70 hover:text-primary border-none transition-all rounded-lg flex items-center justify-center gap-1.5 w-[76px] h-8 px-0">
+                        <i class="fas fa-edit text-[11px]"></i>
+                        <span class="text-xs font-medium">编辑</span>
+                    </a>
+
+                    <div class="w-px h-4 bg-base-content/20 mx-1"></div>
+                    <a href="{{ url_for('page_history', wiki_id=wiki.id, slug=page.slug) }}" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-base-content/70 hover:text-primary border-none transition-all rounded-lg flex items-center justify-center gap-1.5 w-[76px] h-8 px-0">
+                        <i class="fas fa-history text-[11px]"></i>
+                        <span class="text-xs font-medium">历史</span>
+                    </a>
                 {% endif %}
             </div>
+            {% endif %}
 
-            <!-- Contributors Section -->
-            <div class="flex items-center -space-x-2 flex-shrink-0">
-                <!-- Author -->
-                {% if wiki.created_by %}
-                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar tooltip tooltip-bottom" data-tip="作者: {{ wiki.created_by.username if wiki.created_by and wiki.created_by.username else 'Unknown' }}">
-                    <div class="w-8 h-8 rounded-full border-2 border-white bg-primary text-primary-content text-xs font-bold flex items-center justify-center relative z-30 !flex !items-center !justify-center leading-none">
-                        <span class="transform -translate-y-[1px]">{{ wiki.created_by.username[0]|upper if wiki.created_by and wiki.created_by.username else '?' }}</span>
+            <div class="card-body p-6 lg:p-12 relative z-10">
+                {% if page %}
+                    <div class="flex flex-col mb-10 pb-6 border-b border-base-200/60 mt-12 md:mt-16">
+                        <h1 class="text-4xl lg:text-5xl font-black text-stone-800 dark:text-stone-100 tracking-tight leading-tight break-words mb-4">
+                            {{ page.title }}
+                        </h1>
+                        <div class="flex items-center gap-3 flex-wrap mb-6 text-sm">
+                            <span class="text-base-content/50 font-mono tracking-wider flex items-center gap-1.5">
+                                <i class="far fa-calendar-alt"></i> {{ page.updated_at.strftime('%Y-%m-%d') }}
+                            </span>
+                            {% if page.tags %}
+                            <span class="text-base-content/20 select-none pb-0.5">|</span>
+                            <div class="flex items-center gap-2">
+                                {% for tag in page.tags %}
+                                <span class="badge badge-sm bg-primary/10 text-primary border-none font-medium px-2.5 py-3 rounded-md"># {{ tag.name }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
-                </a>
-                {% endif %}
-                
-                <!-- Top Contributors -->
-                {% for c in contributors[:2] %}
-                {% if c[0] %}
-                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar tooltip tooltip-bottom" data-tip="贡献者: {{ c[0].username if c[0] and c[0].username else 'Unknown' }}">
-                    <div class="w-8 h-8 rounded-full border-2 border-white bg-stone-200 text-base-content/80 text-xs font-bold flex items-center justify-center hover:bg-stone-300 transition-colors relative z-20 !flex !items-center !justify-center leading-none">
-                        <span class="transform -translate-y-[1px]">{{ c[0].username[0]|upper if c[0] and c[0].username else '?' }}</span>
+
+                    {% if not can_view_wiki(wiki.id) and not is_subscribed %}
+                        <div class="alert shadow-lg bg-orange-50 border border-orange-200 text-orange-800 rounded-2xl">
+                            <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6 text-orange-500" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                <div class="ml-2">
+                                    <h3 class="font-bold text-lg">内容已锁定</h3>
+                                    <p class="text-sm opacity-80 mt-1">请先点击右上角的“订阅”按钮以查看完整内容。</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="markdown-body prose prose-stone max-w-none lg:prose-lg prose-headings:font-bold prose-a:text-primary hover:prose-a:text-primary-focus selection:bg-primary/20 selection:text-base-content">
+                          {{ html|safe }}
+                        </div>
+                        
+                        {% if page.comment_enabled %}
+                        <div class="border-t-[3px] border-base-200 mt-16 pt-10">
+                            <h3 class="text-xl font-black text-base-content mb-8 flex items-center gap-3">
+                                <span class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                    <i class="fas fa-comment-alt text-sm"></i>
+                                </span>
+                                探讨与交流 <span class="text-base-content/40 font-mono text-base font-medium">({{ page.comments|length }})</span>
+                            </h3>
+                            <div class="space-y-6 mb-10">
+                                {% for comment in page.comments %}
+                                <div class="flex gap-4 group">
+                                    <div class="flex-shrink-0 w-10 h-10 bg-stone-100 dark:bg-base-200 border border-stone-200 dark:border-base-300 text-stone-600 dark:text-stone-300 rounded-full flex items-center justify-center font-bold shadow-sm">
+                                        <span class="leading-none">{{ comment.user.username[0] | upper }}</span>
+                                    </div>
+                                    <div class="flex-1 bg-base-100 border border-base-200 rounded-2xl rounded-tl-none p-4 shadow-sm hover:shadow-md transition-shadow relative">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <span class="font-bold text-sm text-base-content">{{ comment.user.username }}</span>
+                                            <span class="text-[10px] text-base-content/40 font-mono">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                        </div>
+                                        <div class="text-sm text-base-content/80 whitespace-pre-wrap leading-relaxed">{{ comment.content }}</div>
+                                        {% if current_user.is_admin or current_user.id == comment.user_id %}
+                                        <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post" class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button type="submit" class="btn btn-ghost btn-xs btn-circle text-base-content/30 hover:text-error hover:bg-error/10" title="删除评论" onclick="return confirm('确定要删除这条评论吗？')">
+                                                <i class="fas fa-trash-alt text-[10px]"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-12 bg-base-200/30 rounded-2xl border border-dashed border-base-300">
+                                    <i class="fas fa-comment-slash text-3xl text-base-content/20 mb-3"></i>
+                                    <p class="text-base-content/50 font-medium text-sm">还没有人发表评论，来抢个沙发吧！</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <form action="{{ url_for('comment_wiki_page', wiki_id=wiki.id, slug=page.slug) }}" method="post" class="flex gap-4 items-start bg-base-100 p-4 rounded-2xl border border-primary/20 shadow-[0_0_15px_rgba(234,88,12,0.05)] focus-within:shadow-[0_0_20px_rgba(234,88,12,0.15)] transition-all">
+                                <div class="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-primary to-orange-400 text-white rounded-full flex items-center justify-center font-bold shadow-md">
+                                    <span class="leading-none">{{ current_user.username[0] | upper }}</span>
+                                </div>
+                                <div class="flex-1 flex flex-col gap-3">
+                                    <textarea name="content" class="textarea border-none bg-transparent w-full h-20 resize-none focus:outline-none p-2 text-base" placeholder="分享你的见解或疑问..." required></textarea>
+                                    <div class="flex justify-end border-t border-base-200 pt-3">
+                                        <button type="submit" class="btn btn-primary rounded-full px-8 shadow-md hover:-translate-y-0.5 transition-transform">发布</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    <div class="hero h-full min-h-[50vh]">
+                      <div class="hero-content text-center flex flex-col">
+                        <div class="w-24 h-24 rounded-3xl bg-primary/10 text-primary flex items-center justify-center text-5xl font-black mb-6 shadow-inner rotate-3">
+                            <span class="leading-none">{{ wiki.title[0]|upper }}</span>
+                        </div>
+                        <div class="max-w-md">
+                          <h1 class="text-4xl font-black text-stone-800 dark:text-stone-100 mb-4 tracking-tight">欢迎来到 Wiki</h1>
+                          <p class="text-lg font-medium text-stone-500 mb-8">{{ wiki.title }}</p>
+                          {% if can_edit %}
+                          <a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="btn btn-primary btn-lg rounded-full shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all group">
+                              <i class="fas fa-plus group-hover:rotate-90 transition-transform duration-300"></i> 创建第一页
+                          </a>
+                          {% else %}
+                          <div class="bg-base-200/50 border border-base-300 rounded-2xl p-4 inline-block text-base-content/60 font-medium">
+                              内容正在路上，敬请期待...
+                          </div>
+                          {% endif %}
+                        </div>
+                      </div>
                     </div>
-                </a>
-                {% endif %}
-                {% endfor %}
-                
-                <!-- More Count -->
-                {% if contributors|length > 2 %}
-                <a href="{{ url_for('wiki_contributors', wiki_id=wiki.id) }}" class="avatar placeholder tooltip tooltip-bottom" data-tip="查看全部 {{ contributors|length }} 位贡献者">
-                    <div class="w-8 h-8 rounded-full border-2 border-white bg-base-300 text-base-content/80 text-xs font-bold flex items-center justify-center hover:bg-stone-200 transition-colors relative z-10 !flex !items-center !justify-center leading-none">
-                        <span class="transform -translate-y-[1px]">+{{ contributors|length - 2 }}</span>
-                    </div>
-                </a>
                 {% endif %}
             </div>
         </div>
     </div>
 
-    <div class="card bg-base-100 shadow-sm border-[3px] border-base-200 min-h-[70vh]">
-        <div class="card-body p-6 lg:p-10">
-            {% if page %}
-                <div class="flex items-center justify-between mb-8 pb-4 border-b border-base-300">
-                  <div class="min-w-0 flex-1 mr-4">
-                    <h1 class="text-3xl font-bold text-base-content break-words">{{ page.title }}</h1>
-                    {% if page.tags %}
-                    <div class="flex items-center gap-2 mt-2 flex-wrap">
-                        {% for tag in page.tags %}
-                        <span class="badge badge-sm badge-outline">{{ tag.name }}</span>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                  </div>
-                  
-                  <div class="flex items-center gap-1 flex-shrink-0">
+    <div id="book-side-panel" class="w-0 opacity-0 transition-all duration-500 ease-in-out flex-shrink-0 lg:block hidden sticky top-20 h-[calc(100vh-6rem)] z-40">
+        <div class="w-[420px] xl:w-[480px] p-6 pb-8 h-full flex flex-col bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl rounded-[2rem] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] border border-white/60 dark:border-white/5">
+            
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-2.5 text-base-content font-black text-xl tracking-tight">
+                    <i class="fas fa-book-open text-primary drop-shadow-sm"></i> 
+                    <span id="panel-title-text">私人随手记</span>
+                </div>
+<div class="flex items-center gap-2 h-8">
+                    <button onclick="quoteSelection()" class="btn btn-sm btn-square h-8 w-8 min-h-[32px] p-0 flex items-center justify-center rounded-xl btn-ghost bg-primary/10 hover:bg-primary hover:text-white text-primary tooltip tooltip-bottom transition-colors border-none" data-tip="划选左侧文字后点击引用">
+                        <i class="fas fa-quote-left"></i>
+                    </button>
                     
-                    <button id="width-toggle-btn" class="btn btn-sm btn-ghost gap-1 text-base-content/80 hover:text-base-content hidden lg:inline-flex" title="切换宽屏/窄屏">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                        </svg>
-                    </button>
-
-                    <div class="divider divider-horizontal mx-1 py-1 h-6 self-center"></div>
-
-                    <button onclick="convert_wiki_page()" class="btn btn-sm btn-ghost gap-1 text-base-content/80 hover:text-primary transition-colors" title="转换为我的笔记">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                        <span class="hidden xl:inline">转为笔记</span>
-                    </button>
-
-                    {% if can_edit %}
-                    <div class="dropdown dropdown-end">
-                        <label tabindex="0" class="btn btn-sm btn-ghost gap-1 text-base-content/80">
-                            更多
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                        </label>
-                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-300 z-20">
-                            <li>
-                                <a href="{{ url_for('edit_page', wiki_id=wiki.id, slug=page.slug) }}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    编辑页面
+<div class="dropdown dropdown-end h-8 flex">
+                        <button tabindex="0" class="btn btn-sm btn-square h-8 w-8 min-h-[32px] p-0 flex items-center justify-center rounded-xl btn-ghost bg-base-200/50 hover:bg-primary/20 hover:text-primary tooltip tooltip-bottom transition-colors border-none m-0" data-tip="打开已有笔记">
+                            <i class="fas fa-folder-open"></i>
+                        </button>
+                        <ul tabindex="0" class="dropdown-content z-[150] menu p-2 shadow-xl bg-white dark:bg-base-200 rounded-2xl w-72 flex flex-col flex-nowrap border border-black/5 dark:border-white/5 mt-3 max-h-[60vh] overflow-y-auto custom-scroll">
+                            
+                            <li class="flex-shrink-0">
+                                <a onclick="startNewNote()" class="text-primary font-bold cursor-pointer py-2.5">
+                                    <i class="fas fa-plus mr-1"></i> 新写一篇
                                 </a>
                             </li>
-                            <li>
-                                <a href="{{ url_for('page_history', wiki_id=wiki.id, slug=page.slug) }}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    历史版本
-                                </a>
-                            </li>
+                            
+                            <div class="divider my-1 opacity-30 flex-shrink-0"></div>
+                            <li class="menu-title text-[10px] opacity-50 flex-shrink-0 px-4 py-1">载入近期笔记</li>
+                            
+                            {% if my_recent_notes %}
+                                {% for note in my_recent_notes %}
+                                <li class="flex-shrink-0 w-full">
+                                    <a onclick="openExistingNote('{{ note.id }}')" class="cursor-pointer w-full !flex !flex-col !items-start !py-2 !px-3 hover:bg-base-200/50 rounded-xl transition-colors group">
+                                        <div class="flex items-center gap-2 w-full">
+                                            <i class="far fa-file-alt opacity-40 text-xs flex-shrink-0 group-hover:text-primary transition-colors"></i>
+                                            <span class="truncate flex-1 text-sm font-medium text-left text-base-content/90">{{ note.title }}</span>
+                                        </div>
+                                        <div class="text-[10px] text-base-content/40 font-mono pl-5 mt-0.5 text-left w-full group-hover:text-base-content/60 transition-colors">
+                                            更新于 {{ note.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                                        </div>
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            {% else %}
+                                <li class="px-4 py-5 text-xs text-center text-base-content/50 flex-shrink-0">
+                                    <i class="fas fa-inbox text-xl mb-1 opacity-30"></i>
+                                    <br>你的 Book 还是空的
+                                </li>
+                            {% endif %}
                         </ul>
                     </div>
-                    {% endif %}
-                  </div>
-                </div>
-                
-                <div class="flex justify-end mb-4">
-                     <span class="text-xs text-base-content/50">更新于 {{ page.updated_at.strftime('%Y-%m-%d') }}</span>
-                </div>
-
-                {% if not can_view_wiki(wiki.id) and not is_subscribed %}
-                    <div class="alert alert-warning shadow-lg">
-                        <div>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                            <span>请先订阅此 Wiki 以查看完整内容。</span>
-                        </div>
-                    </div>
-                {% else %}
-                    <div class="markdown-body prose prose-stone max-w-none lg:prose-lg">
-                      {{ html|safe }}
-                    </div>
                     
-                    {% if page.comment_enabled %}
-                    <div class="border-t border-base-300 mt-12 pt-8">
-                        <h3 class="text-lg font-bold text-base-content mb-6 flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
-                            评论 ({{ page.comments|length }})
-                        </h3>
-                        
-                        <div class="space-y-6 mb-8">
-                            {% for comment in page.comments %}
-                            <div class="flex gap-4 group">
-                                <div class="avatar placeholder">
-                                    <div class="bg-stone-200 text-base-content/80 rounded-full w-10 h-10">
-                                        <span class="text-sm">{{ comment.user.username[0] | upper }}</span>
-                                    </div>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <span class="font-bold text-sm text-base-content">{{ comment.user.username }}</span>
-                                        <span class="text-xs text-base-content/50">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                                        {% if current_user.is_admin or current_user.id == comment.user_id %}
-                                        <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post" class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button type="submit" class="btn btn-ghost btn-xs text-error" title="删除评论" onclick="return confirm('确定要删除这条评论吗？')">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
-                                        </form>
-                                        {% endif %}
-                                    </div>
-                                    <div class="p-3 bg-base-200 rounded-lg rounded-tl-none text-sm text-base-content/80 whitespace-pre-wrap">{{ comment.content }}</div>
-                                </div>
-                            </div>
-                            {% else %}
-                            <div class="text-center py-8 text-base-content/50 italic">暂无评论</div>
-                            {% endfor %}
-                        </div>
-                        
-                        <form action="{{ url_for('comment_wiki_page', wiki_id=wiki.id, slug=page.slug) }}" method="post" class="flex gap-4">
-                            <div class="avatar placeholder">
-                                <div class="bg-primary text-primary-content rounded-full w-10 h-10">
-                                    <span class="text-sm">{{ current_user.username[0] | upper }}</span>
-                                </div>
-                            </div>
-                            <div class="flex-1 flex gap-2">
-                                <textarea name="content" class="textarea textarea-bordered w-full h-20 resize-none bg-base-200 focus:bg-base-100" placeholder="发表评论..." required></textarea>
-                                <button type="submit" class="btn btn-primary h-auto">发表</button>
-                            </div>
-                        </form>
-                    </div>
-                    {% endif %}
-                {% endif %}
-            {% else %}
-                <div class="hero h-full">
-                  <div class="hero-content text-center">
-                    <div class="max-w-md">
-                      <h1 class="text-3xl font-bold text-stone-300 mb-4">欢迎来到 {{ wiki.title }}</h1>
-                      {% if can_edit %}
-                      <p class="py-6 text-base-content/80">点击左侧管理菜单创建第一个页面</p>
-                      <a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="btn btn-primary">立即创建</a>
-                      {% else %}
-                      <p class="text-base-content/50">此 Wiki 暂无内容，敬请期待。</p>
-                      {% endif %}
-                    </div>
-                  </div>
+                    <button onclick="toggleSplitScreen()" class="btn btn-sm btn-circle h-8 w-8 min-h-[32px] p-0 flex items-center justify-center btn-ghost bg-base-200 hover:bg-rose-100 hover:text-rose-500 border-none transition-colors ml-1">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-            {% endif %}
+            </div>
+
+            <input type="text" id="quick-note-title" class="input input-bordered w-full mb-4 bg-white dark:bg-base-200 focus:border-primary font-bold shadow-inner" placeholder="笔记标题 (留空则默认当前时间)">
+            
+            <div class="flex-1 overflow-hidden flex flex-col bg-white dark:bg-base-200 rounded-2xl border border-base-300 shadow-inner custom-mde-wrapper relative">
+                <textarea id="quick-note-editor"></textarea>
+                <div id="editor-loading" class="absolute inset-0 bg-white/50 dark:bg-base-200/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <span class="loading loading-ring loading-md text-primary"></span>
+                </div>
+            </div>
+
+            <div class="mt-5 flex justify-between items-center px-1">
+                <span class="text-xs text-base-content/40 font-bold flex items-center gap-1.5"><i class="fab fa-markdown text-base"></i> 支持 Markdown</span>
+                <button onclick="saveQuickNote(this)" class="btn btn-primary shadow-lg shadow-primary/30 rounded-xl px-6 font-bold hover:-translate-y-0.5 transition-transform border-none">
+                    <i class="fas fa-paper-plane mr-1"></i> 发送至 Book
+                </button>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/java.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/go.min.js"></script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+<script src="{{ url_for('static', filename='js/easymde.min.js') }}"></script>
+
 <script>
+// ==========================================
+// 💡 全局状态与后端数据注入
+// ==========================================
+window.isSplitMode = false;
+window.quickEditor = null;
+window.applyLayout = null;
+window.currentEditNoteId = null;
+
+// 💡 极速且绝对安全的数据解析：从 HTML script 标签中读取纯 JSON 字符串
+window.myNotesData = {};
+try {
+    const dataEl = document.getElementById('recent-notes-data');
+    if (dataEl) {
+        window.myNotesData = JSON.parse(dataEl.textContent);
+    }
+} catch (e) {
+    console.error("Failed to parse recent notes data", e);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // --- 核心修改点 3: 宽屏/窄屏切换逻辑 ---
-    const widthBtn = document.getElementById('width-toggle-btn');
-    const contentWrapper = document.getElementById('main-content-wrapper');
     
-    // 图标 SVG 字符串
-    const iconExpand = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>';
-    const iconCompress = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>'; 
-    // 或者使用收缩箭头:
-    const iconContract = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H6m0 0v4m0-4l5 5m7-5h4m-4 0v4m0-4l-5 5m-7-5h-4m4 0v-4m0 4l-5-5m11 5l5-5m-5 5v-4m0 4h4" /></svg>'; // 随便找个类似的，或者用上面的笔记图标
+    // 执行原生高亮
+    hljs.highlightAll();
 
-    if (widthBtn && contentWrapper) {
-        // 1. 初始化状态
+    // ==========================================
+    // 🖥 宽屏/窄屏切换逻辑
+    // ==========================================
+    const widthBtn = document.getElementById('width-toggle-btn');
+    const splitContainer = document.getElementById('split-container');
+    
+    const iconExpand = '<i class="fas fa-expand text-[11px]"></i><span class="text-xs font-medium">宽屏模式</span>';
+    const iconCompress = '<i class="fas fa-compress text-[11px]"></i><span class="text-xs font-medium">居中模式</span>'; 
+
+    if (widthBtn && splitContainer) {
         const savedMode = localStorage.getItem('wiki_width_mode');
-        // 默认是窄屏 (savedMode === 'wide' 才是宽屏)
-        let isWide = savedMode === 'wide';
+        let isWide = savedMode ? savedMode === 'wide' : true;
         
-        // 应用状态函数
-        function applyLayout(wide) {
+        window.applyLayout = function(wide) {
+            if (window.isSplitMode) return; 
             if (wide) {
-                // 宽屏模式：移除 max-w-5xl，设为接近全屏
-                contentWrapper.classList.remove('max-w-5xl');
-                contentWrapper.classList.add('max-w-[98%]'); // 或者 'max-w-none', 'px-4'
-                widthBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'; // 收缩图标
+                splitContainer.classList.remove('max-w-5xl');
+                splitContainer.classList.add('max-w-[96%]', '2xl:max-w-[1600px]'); 
+                widthBtn.innerHTML = iconCompress; 
                 widthBtn.setAttribute('title', '恢复窄屏');
+                widthBtn.classList.add('bg-base-300/50', 'shadow-inner'); 
             } else {
-                // 窄屏模式 (默认)
-                contentWrapper.classList.add('max-w-5xl');
-                contentWrapper.classList.remove('max-w-[98%]');
-                widthBtn.innerHTML = iconExpand; // 展开图标
+                splitContainer.classList.add('max-w-5xl');
+                splitContainer.classList.remove('max-w-[96%]', '2xl:max-w-[1600px]');
+                widthBtn.innerHTML = iconExpand; 
                 widthBtn.setAttribute('title', '切换宽屏');
+                widthBtn.classList.remove('bg-base-300/50', 'shadow-inner');
             }
-        }
+        };
 
-        // 初始应用
-        applyLayout(isWide);
+        window.applyLayout(isWide);
 
-        // 2. 点击事件
         widthBtn.addEventListener('click', function() {
+            if (window.isSplitMode) {
+                if(app && app.toast) app.toast.show('分屏模式下强制使用宽屏，请先关闭分屏', 'info');
+                return;
+            }
             isWide = !isWide;
-            applyLayout(isWide);
+            window.applyLayout(isWide);
             localStorage.setItem('wiki_width_mode', isWide ? 'wide' : 'narrow');
         });
     }
 
-    // --- 原有代码块复制功能 ---
-    document.querySelectorAll('pre code').forEach((block) => {
+    // ==========================================
+    // ✨ Mac 风格代码视窗 & Python 运行逻辑
+    // ==========================================
+    let pyodideInstance = null;
+    let isPyodideLoading = false;
+
+    function formatOutput(text, isError = false) {
+        const safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        if (isError) return `<span class="text-rose-400">${safeText}</span>\n`;
+        return safeText + '\n';
+    }
+
+    document.querySelectorAll('pre code').forEach((block, index) => {
         const pre = block.parentNode;
-        const wrapper = document.createElement('div');
-        wrapper.className = 'relative group';
-        pre.parentNode.insertBefore(wrapper, pre);
-        wrapper.appendChild(pre);
+        let lang = 'text';
+        block.classList.forEach(c => { if (c.startsWith('language-')) lang = c.replace('language-', ''); });
+
+        const windowDiv = document.createElement('div');
+        windowDiv.className = 'code-window';
+        pre.parentNode.insertBefore(windowDiv, pre);
+
+        const header = document.createElement('div');
+        header.className = 'code-header';
         
-        const button = document.createElement('button');
-        button.className = 'absolute top-2 right-2 p-1.5 rounded-lg bg-base-100/10 text-white/70 hover:bg-base-100/20 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100';
-        button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>';
-        button.title = '复制';
+        const dots = document.createElement('div');
+        dots.className = 'mac-dots';
+        dots.innerHTML = `<div class="mac-dot red"></div><div class="mac-dot yellow"></div><div class="mac-dot green"></div>`;
         
-        button.addEventListener('click', async () => {
-            const code = block.textContent;
+        const langLabel = document.createElement('div');
+        langLabel.className = 'code-lang';
+        langLabel.textContent = lang === 'python' ? 'PYTHON 3.11' : lang;
+
+        const actions = document.createElement('div');
+        actions.className = 'code-actions';
+
+        let outputDiv = null;
+        let stdinWrapper = null;
+        let stdinTextarea = null;
+
+        if (lang === 'python') {
+            const stdinBtn = document.createElement('button');
+            stdinBtn.className = 'code-btn stdin-btn';
+            stdinBtn.innerHTML = '<i class="fas fa-keyboard"></i> <span class="hidden sm:inline">输入</span>';
+            
+            stdinWrapper = document.createElement('div');
+            stdinWrapper.style.display = 'none';
+            stdinWrapper.className = 'border-t border-dashed border-[#30363d] flex flex-col bg-[#0d1117]';
+            stdinWrapper.innerHTML = `
+                <div class="text-[11px] text-[#8b949e] px-4 py-1.5 bg-[#161b22]/50 font-mono flex justify-between items-center select-none">
+                    <span><i class="fas fa-terminal mr-1"></i> 标准输入 (多行测试数据)</span>
+                    <i class="fas fa-times cursor-pointer hover:text-white transition-colors" title="关闭输入面板"></i>
+                </div>
+                <textarea class="w-full bg-transparent text-[#c9d1d9] font-mono text-sm p-4 outline-none resize-y min-h-[80px]" placeholder="在此填入运行代码需要的输入用例...\\n如果是交互式 input()，不填此框将自动触发浏览器原生弹窗交互。"></textarea>
+            `;
+            stdinTextarea = stdinWrapper.querySelector('textarea');
+            
+            stdinBtn.addEventListener('click', () => {
+                stdinWrapper.style.display = stdinWrapper.style.display === 'none' ? 'flex' : 'none';
+                if (stdinWrapper.style.display === 'flex') stdinTextarea.focus();
+            });
+            stdinWrapper.querySelector('.fa-times').addEventListener('click', () => { stdinWrapper.style.display = 'none'; });
+            actions.appendChild(stdinBtn);
+
+            const runBtn = document.createElement('button');
+            runBtn.className = 'code-btn run-btn';
+            runBtn.innerHTML = '<i class="fas fa-play"></i> <span>运行</span>';
+            
+            outputDiv = document.createElement('div');
+            outputDiv.className = 'code-output';
+            outputDiv.id = `code-terminal-${index}`;
+
+            runBtn.addEventListener('click', async () => {
+                const code = block.textContent; 
+                outputDiv.style.display = 'block'; 
+                runBtn.disabled = true;
+                runBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> <span>执行中</span>';
+                outputDiv.innerHTML = '<span class="text-emerald-500/80 animate-pulse"># 正在初始化 Pyodide 运行环境... (首次需下载约 10MB)</span>\n';
+
+                try {
+                    if (!pyodideInstance && !isPyodideLoading) {
+                        isPyodideLoading = true;
+                        pyodideInstance = await loadPyodide({
+                            stdout: (msg) => { if(outputDiv.innerHTML.includes('正在初始化')) outputDiv.innerHTML = ''; outputDiv.innerHTML += formatOutput(msg); },
+                            stderr: (msg) => { if(outputDiv.innerHTML.includes('正在初始化')) outputDiv.innerHTML = ''; outputDiv.innerHTML += formatOutput(msg, true); }
+                        });
+                        isPyodideLoading = false;
+                    } else if (isPyodideLoading) {
+                        while(isPyodideLoading) { await new Promise(r => setTimeout(r, 200)); }
+                    }
+                    outputDiv.innerHTML = ''; 
+                    const userStdin = stdinTextarea.value;
+                    pyodideInstance.globals.set("__user_stdin__", userStdin);
+                    const pythonSetupCode = `
+import sys\nimport io\nimport builtins\nimport js\nsys.stdin = io.StringIO(__user_stdin__)
+def custom_input(prompt=""):
+    line = sys.stdin.readline()
+    if line:
+        if prompt: print(prompt, end="")
+        print(line, end="")
+        return line.rstrip('\\n')
+    res = js.prompt(prompt)
+    if res is None: raise EOFError("EOF when reading a line")
+    if prompt: print(prompt, end="")
+    print(res)
+    return res
+builtins.input = custom_input
+`;
+                    await pyodideInstance.runPythonAsync(pythonSetupCode);
+                    pyodideInstance.setStdout({ batched: (msg) => outputDiv.innerHTML += formatOutput(msg) });
+                    pyodideInstance.setStderr({ batched: (msg) => outputDiv.innerHTML += formatOutput(msg, true) });
+                    await pyodideInstance.runPythonAsync(code);
+                    if(outputDiv.innerHTML.trim() === '') outputDiv.innerHTML = '<span class="text-stone-500 italic"># 代码执行成功，无任何打印输出。</span>';
+                } catch (err) {
+                    if(outputDiv.innerHTML.includes('正在初始化')) outputDiv.innerHTML = '';
+                    outputDiv.innerHTML += formatOutput(err.toString(), true);
+                } finally {
+                    runBtn.disabled = false;
+                    runBtn.innerHTML = '<i class="fas fa-play"></i> <span>运行</span>';
+                    if(stdinWrapper.style.display === 'flex') stdinWrapper.style.display = 'none';
+                }
+            });
+            actions.appendChild(runBtn);
+        }
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'code-btn';
+        copyBtn.innerHTML = '<i class="far fa-copy"></i> <span class="hidden sm:inline">复制</span>';
+        copyBtn.addEventListener('click', async () => {
+            const code = block.textContent; 
             try {
-                await navigator.clipboard.writeText(code);
-                const originalIcon = button.innerHTML;
-                button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
-                setTimeout(() => { button.innerHTML = originalIcon; }, 2000);
-            } catch (err) { console.error('Failed to copy!', err); }
+                if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(code); } 
+                else {
+                    const ta = document.createElement("textarea"); ta.value = code; ta.style.position = "fixed"; ta.style.left = "-999999px";
+                    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+                }
+                copyBtn.innerHTML = '<i class="fas fa-check text-emerald-400"></i> <span class="text-emerald-400 hidden sm:inline">已复制</span>';
+                setTimeout(() => { copyBtn.innerHTML = '<i class="far fa-copy"></i> <span class="hidden sm:inline">复制</span>'; }, 2000);
+            } catch (err) { alert("当前浏览器限制，请手动选中代码复制。"); }
         });
-        wrapper.appendChild(button);
+        actions.appendChild(copyBtn);
+
+        header.appendChild(dots);
+        header.appendChild(langLabel);
+        header.appendChild(actions);
+        windowDiv.appendChild(header);
+        windowDiv.appendChild(pre);
+        if (stdinWrapper) windowDiv.appendChild(stdinWrapper);
+        if (outputDiv) windowDiv.appendChild(outputDiv);
     });
 
-    // --- 原有 TOC 生成逻辑 ---
+    // ==========================================
+    // 目录 TOC 联动逻辑
+    // ==========================================
     const content = document.querySelector('.markdown-body');
     const tocContainer = document.getElementById('toc-container');
     const tocWrapper = document.getElementById('sidebar-toc-wrapper');
@@ -356,12 +647,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 link.className = 'toc-link toc-' + header.tagName.toLowerCase();
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
-                    header.scrollIntoView({ behavior: 'smooth' });
+                    const y = header.getBoundingClientRect().top + window.scrollY - 80;
+                    window.scrollTo({top: y, behavior: 'smooth'});
                     updateTOCVisibility(index);
                 });
                 tocContainer.appendChild(link);
                 tocLinks.push(link);
             });
+            
             function updateTOCVisibility(activeIndex) {
                 tocLinks.forEach((link, idx) => {
                     if (idx === activeIndex) {
@@ -393,8 +686,187 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function convert_wiki_page() {
-    if (confirm('确定要将当前页面内容转换为您的个人笔记吗？')) {
+// ==========================================
+// 📖 核心功能：分屏阅读与写作 (Wiki + Book)
+// ==========================================
+
+window.toggleSplitScreen = function() {
+    const container = document.getElementById('split-container');
+    const bookPanel = document.getElementById('book-side-panel');
+    const toggleBtn = document.getElementById('toggle-split-btn');
+
+    window.isSplitMode = !window.isSplitMode;
+
+    if (window.isSplitMode) {
+        container.classList.remove('max-w-5xl');
+        container.classList.add('max-w-[96%]', '2xl:max-w-[1600px]');
+        document.body.classList.add('is-split-active');
+
+        bookPanel.classList.remove('w-0', 'opacity-0', 'hidden');
+        bookPanel.classList.add('w-[420px]', 'xl:w-[480px]', 'opacity-100', 'ml-6');
+        
+        if (toggleBtn) {
+            toggleBtn.classList.add('bg-base-300/50', 'shadow-inner');
+            toggleBtn.classList.remove('hover:bg-white', 'dark:hover:bg-base-100');
+            toggleBtn.innerHTML = '<i class="fas fa-times text-[11px] text-error"></i><span class="text-xs font-medium text-error">关闭分屏</span>';
+            toggleBtn.setAttribute('title', '关闭分屏笔记');
+        }
+        
+        if (!window.quickEditor) {
+            setTimeout(() => {
+                const loadingEl = document.getElementById('editor-loading');
+                if (loadingEl) loadingEl.style.display = 'none';
+                
+                window.quickEditor = new EasyMDE({
+                    element: document.getElementById('quick-note-editor'),
+                    spellChecker: false,
+                    autofocus: true,
+                    status: false,
+                    maxHeight: "calc(100vh - 280px)",
+                    placeholder: "在这里记录你的灵感、代码或者读书笔记...",
+                    toolbar: ["bold", "italic", "heading", "|", "quote", "code", "unordered-list", "ordered-list", "|", "preview"]
+                });
+            }, 400);
+        } else {
+            setTimeout(() => window.quickEditor.codemirror.focus(), 300);
+        }
+    } else {
+        bookPanel.classList.remove('w-[420px]', 'xl:w-[480px]', 'opacity-100', 'ml-6');
+        bookPanel.classList.add('w-0', 'opacity-0');
+        document.body.classList.remove('is-split-active');
+        
+        if (toggleBtn) {
+            toggleBtn.classList.remove('bg-base-300/50', 'shadow-inner');
+            toggleBtn.classList.add('hover:bg-white', 'dark:hover:bg-base-100');
+            toggleBtn.innerHTML = '<i class="fas fa-columns text-[11px]"></i><span class="text-xs font-medium">分屏笔记</span>';
+            toggleBtn.setAttribute('title', '开启分屏笔记');
+        }
+        
+        if (typeof window.applyLayout === 'function') {
+            const savedMode = localStorage.getItem('wiki_width_mode');
+            window.applyLayout(savedMode ? savedMode === 'wide' : true);
+        }
+    }
+};
+
+window.quoteSelection = function() {
+    const selection = window.getSelection().toString().trim();
+    if (selection && window.quickEditor) {
+        const currentContent = window.quickEditor.value();
+        const sourceUrl = window.location.href;
+        const pageTitle = {{ (page.title or '') | tojson }};
+        const quoteText = `> ${selection}\n> \n> *—— 摘自 [《${pageTitle}》](${sourceUrl})*\n\n`;
+        
+        window.quickEditor.value(currentContent + (currentContent ? '\n\n' : '') + quoteText);
+        window.quickEditor.codemirror.focus();
+        window.quickEditor.codemirror.setCursor(window.quickEditor.codemirror.lineCount(), 0);
+        
+        if(app && app.toast) app.toast.show('已成功抓取选中文本！', 'success');
+    } else {
+        if(app && app.toast) app.toast.show('请先在左侧用鼠标选中一段文字', 'warning');
+    }
+};
+
+// ==========================================
+// 💡 彻底修复：安全的读取已存在笔记
+// ==========================================
+window.startNewNote = function() {
+    window.currentEditNoteId = null;
+    document.getElementById('quick-note-title').value = '';
+    if (window.quickEditor) window.quickEditor.value('');
+    document.getElementById('panel-title-text').innerText = '私人随手记';
+    if(document.activeElement) document.activeElement.blur(); 
+};
+
+window.openExistingNote = function(id) {
+    if(document.activeElement) document.activeElement.blur(); 
+    
+    // id 在这里会是字符串
+    const note = window.myNotesData[id];
+    if (note) {
+        window.currentEditNoteId = id;
+        document.getElementById('quick-note-title').value = note.title;
+        if (window.quickEditor) window.quickEditor.value(note.content);
+        document.getElementById('panel-title-text').innerHTML = '正在编辑 <span class="text-xs badge badge-ghost ml-1">已有笔记</span>';
+        if(app && app.toast) app.toast.show('载入成功，可以开始续写了', 'info');
+    } else {
+        if(app && app.toast) app.toast.show('读取数据失败', 'error');
+    }
+};
+
+// 保存笔记
+window.saveQuickNote = async function(btn) {
+    if (!window.quickEditor) return;
+    
+    const content = window.quickEditor.value().trim();
+    let title = document.getElementById('quick-note-title').value.trim();
+
+    if (!content && !title) {
+        if(app && app.toast) app.toast.show('内容和标题不能同时为空', 'error');
+        return;
+    }
+
+    if (!title) {
+        title = "[随手记] " + {{ (page.title or '') | tojson }};
+    }
+
+    btn.classList.add('loading', 'opacity-70', 'pointer-events-none');
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '正在保存...';
+
+    try {
+        if (window.currentEditNoteId) {
+            // 更新已存在笔记
+            const formData = new URLSearchParams();
+            formData.append('title', title);
+            formData.append('content_md', content);
+            formData.append('comment_enabled', 'on');
+            
+            const res = await fetch(`/book/notes/${window.currentEditNoteId}/edit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            });
+            
+            if (res.ok) {
+                // 更新本地缓存
+                window.myNotesData[window.currentEditNoteId].title = title;
+                window.myNotesData[window.currentEditNoteId].content = content;
+                
+                if(app && app.toast) app.toast.show('🎉 笔记已成功更新！', 'success', `/book/notes/${window.currentEditNoteId}`);
+            } else {
+                throw new Error('Save failed');
+            }
+        } else {
+            // 新建笔记
+            const res = await fetch('/book/notes/quick_create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: title, content: content })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                if(app && app.toast) app.toast.show('🎉 新笔记已成功封存至 Book！', 'success', `/book/notes/${data.note_id}`);
+                // 存入本地变量并切换为编辑状态
+                window.myNotesData[data.note_id] = { title: title, content: content };
+                window.currentEditNoteId = data.note_id;
+                document.getElementById('panel-title-text').innerHTML = '正在编辑 <span class="text-xs badge badge-ghost ml-1">已有笔记</span>';
+            } else {
+                if(app && app.toast) app.toast.show(data.error || '保存失败', 'error');
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        if(app && app.toast) app.toast.show('网络错误，请稍后重试', 'error');
+    } finally {
+        btn.classList.remove('loading', 'opacity-70', 'pointer-events-none');
+        btn.innerHTML = oldHtml;
+    }
+};
+
+window.convert_wiki_page = function() {
+    if (confirm('确定要将当前页面内容转换为您的私人笔记吗？')) {
         fetch("{{ url_for('convert_wiki_page', wiki_id=wiki.id, slug=page.slug) }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
@@ -402,7 +874,7 @@ function convert_wiki_page() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                if (confirm('转换成功！是否现在查看该笔记？')) {
+                if (confirm('转换成功！是否现在跳往私人 Book 查看该笔记？')) {
                     window.location.href = `/book/notes/${data.note_id}`;
                 }
             } else {
@@ -411,6 +883,6 @@ function convert_wiki_page() {
         })
         .catch(error => { console.error('Error:', error); alert('请求发生错误'); });
     }
-}
+};
 </script>
 {% endblock %}

@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}新建页面 - {{ wiki.title }}{% endblock %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/github.min.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/easymde.min.css') }}">
@@ -12,34 +14,42 @@
         display: flex;
         flex-direction: column;
         background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        /* 默认固定高度：这里控制整体编辑器有多高 */
-        height: 600px; 
+        border: 1px solid hsl(var(--bc) / 0.1);
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        /* 改进：不写死 600px，改用视口高度百分比，更具弹性 */
+        min-height: 65vh; 
+        transition: border-color 0.3s ease;
+    }
+    
+    /* 容器获取焦点时的光晕 */
+    .EasyMDEContainer:focus-within {
+        border-color: var(--theme-primary);
+        box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.1); /* 假设 primary 是橙色 */
     }
 
     /* 当编辑器进入【全屏模式】时 */
     .EasyMDEContainer.fullscreen {
-        height: 100vh !important; /* 撑满屏幕高度 */
+        height: 100vh !important; 
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
-        width: 100% !important;
-        z-index: 99999 !important; /* 确保盖住所有侧边栏和顶栏 */
+        width: 100vw !important;
+        z-index: 999999 !important; 
         border-radius: 0 !important;
+        background: hsl(var(--b1)) !important; /* 防止透明露底 */
     }
 
     /* =========================================
        2. 工具栏样式
        ========================================= */
     .editor-toolbar {
-        flex-shrink: 0; /* 禁止工具栏被压缩 */
+        flex-shrink: 0; 
         border: none !important;
-        border-bottom: 1px solid #e5e7eb !important;
-        background-color: #f9fafb;
-        border-radius: 0.5rem 0.5rem 0 0;
-        padding: 0.5rem !important;
+        border-bottom: 1px solid hsl(var(--bc) / 0.05) !important;
+        background-color: hsl(var(--b2) / 0.3);
+        border-radius: 1rem 1rem 0 0;
+        padding: 0.5rem 1rem !important;
         
         /* 强制单行显示，支持横向滚动 */
         white-space: nowrap;
@@ -49,29 +59,38 @@
         gap: 6px;
     }
     
-    /* 全屏时去掉圆角 */
+    /* 工具栏按钮悬浮优化 */
+    .editor-toolbar button {
+        border-radius: 0.5rem !important;
+        color: hsl(var(--bc) / 0.7) !important;
+        transition: all 0.2s;
+    }
+    .editor-toolbar button:hover, .editor-toolbar button.active {
+        background-color: hsl(var(--bc) / 0.1) !important;
+        color: var(--theme-primary) !important;
+    }
+    
     .EasyMDEContainer.fullscreen .editor-toolbar {
         border-radius: 0;
     }
 
-    /* 隐藏工具栏滚动条 */
     .editor-toolbar::-webkit-scrollbar { height: 0; }
 
     /* =========================================
        3. 编辑区 (CodeMirror) 样式
        ========================================= */
     .CodeMirror {
-        flex-grow: 1; /* 自动填满剩余高度 */
-        height: auto !important; /* 覆盖默认高度，让 Flexbox 接管 */
+        flex-grow: 1; 
+        height: auto !important; 
         border: none !important;
-        border-radius: 0 0 0.5rem 0.5rem;
-        font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-        font-size: 14px;
-        line-height: 1.6;
-        background: #fff;
+        border-radius: 0 0 1rem 1rem;
+        font-family: 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Courier New', monospace;
+        font-size: 15px;
+        line-height: 1.7;
+        background: transparent;
+        padding: 1rem;
     }
     
-    /* 内部滚动条区域 */
     .CodeMirror-scroll {
         min-height: 100% !important;
     }
@@ -79,76 +98,78 @@
     /* =========================================
        4. 分屏预览区 (Side by Side) 样式
        ========================================= */
-    /* 默认状态下的预览区 */
     .editor-preview-side {
         border: none !important;
-        border-left: 1px solid #e5e7eb !important;
-        background-color: #fafaf9;
+        border-left: 1px solid hsl(var(--bc) / 0.1) !important;
+        background-color: hsl(var(--b1)); /* 和主题底色一致 */
         position: absolute;
         bottom: 0;
         right: 0;
-        top: 50px; /* 预留工具栏高度，JS会自动微调但CSS做保底 */
-        height: auto !important; /* 跟随容器 */
+        top: 50px; 
+        height: auto !important; 
         z-index: 50;
+        padding: 2rem !important; /* 增加内边距更易读 */
     }
 
-    /* 【关键修复】：当激活分屏模式且非全屏时 (.sided--no-fullscreen)
-       强制 CodeMirror 和 预览区 并排且各占 50% 
-    */
     .EasyMDEContainer.sided--no-fullscreen .CodeMirror {
         width: 50% !important;
     }
     
     .EasyMDEContainer.sided--no-fullscreen .editor-preview-side {
         width: 50% !important;
-        top: 61px !important; /* 修正顶部距离，对应工具栏高度 */
+        top: 52px !important; /* 修正顶部距离，对应工具栏高度 */
         display: block !important;
     }
 
-    /* 修复公式间距 */
     .editor-preview-side p { margin: 0.5em 0; }
 </style>
 {% endblock %}
 
 {% block sidebar_menu %}
-    {% include "wiki/sidebar.html" %}
+    {% include "wiki/sidebar.html" ignore missing %}
 {% endblock %}
 
 {% block content %}
-<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6">
+<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6 pb-12">
     
-    <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-bold text-base-content">新建页面</h2>
-        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost btn-sm gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-            返回 Wiki
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2 mb-2">
+        <div class="flex items-center gap-3">
+            <div class="w-1.5 h-6 bg-primary rounded-full"></div>
+            <h1 class="text-2xl md:text-3xl font-black text-stone-800 dark:text-stone-100 tracking-tight">新建页面</h1>
+        </div>
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost bg-base-200/50 hover:bg-base-200 border-none rounded-xl gap-2 font-medium self-start sm:self-auto">
+            <i class="fas fa-arrow-left text-base-content/50"></i> 返回 Wiki
         </a>
     </div>
 
-    <div class="card bg-base-100 shadow-sm border border-base-300">
-        <div class="card-body p-4 sm:p-6">
-            <form method="post" class="flex flex-col gap-5">
-                <div class="flex flex-col md:flex-row gap-4">
+    <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-xl shadow-stone-200/40 dark:shadow-none border border-black/5 dark:border-white/5 rounded-[2rem] overflow-hidden">
+        <div class="card-body p-6 lg:p-10">
+            <form method="post" class="flex flex-col gap-6">
+                
+                <div class="flex flex-col md:flex-row gap-5">
                     <div class="form-control flex-1">
-                        <input class="input input-bordered w-full focus:input-primary font-bold text-lg" name="title" placeholder="在此输入页面标题..." required>
+                        <label class="label hidden md:flex pb-1"><span class="label-text font-bold text-xs uppercase tracking-wider text-base-content/50">页面标题</span></label>
+                        <input class="input input-lg input-bordered w-full focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl font-bold text-xl tracking-tight shadow-sm" name="title" placeholder="在此输入页面标题..." required>
                     </div>
                     <div class="form-control w-full md:w-32">
-                        <input class="input input-bordered w-full text-center" name="slug" type="number" step="1" placeholder="排序ID" title="数字越小越靠前" required>
+                        <label class="label hidden md:flex pb-1"><span class="label-text font-bold text-xs uppercase tracking-wider text-base-content/50">排序序号</span></label>
+                        <input class="input input-lg input-bordered w-full text-center font-mono focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl shadow-sm" name="slug" type="number" step="1" placeholder="ID" title="数字越小，在目录中越靠前" required>
                     </div>
                 </div>
                 
-                <div class="form-control">
-                    <input class="input input-bordered w-full text-sm" name="tags" placeholder="标签 (例如：算法, 笔记)，用逗号分隔">
+                <div class="form-control relative">
+                    <i class="fas fa-tags absolute left-4 top-1/2 -translate-y-1/2 text-base-content/30"></i>
+                    <input class="input input-bordered w-full pl-10 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl shadow-sm text-sm" name="tags" placeholder="添加标签 (例如：算法, 读书笔记)，多个标签用逗号分隔">
                 </div>
 
-                <div class="form-control">
+                <div class="form-control mt-2">
                     <textarea id="md-editor" name="content_md"></textarea>
                 </div>
 
-                <div class="flex justify-end pt-2">
-                    <button class="btn btn-primary px-8 gap-2" type="submit">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        保存页面
+                <div class="flex justify-end pt-6 border-t border-base-200 mt-2">
+                    <button class="btn btn-primary btn-lg rounded-full px-10 shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all gap-2 text-white font-bold" type="submit">
+                        <i class="fas fa-paper-plane"></i>
+                        发布页面
                     </button>
                 </div>
             </form>
@@ -170,8 +191,6 @@
 
   const easyMDE = new EasyMDE({
     element: document.getElementById('md-editor'),
-    // 不要在 JS 里写 minHeight/maxHeight 了，完全交给 CSS 控制
-    // 这样 Fullscreen 才能生效
     
     // 允许分屏
     sideBySideFullscreen: false, 
@@ -181,7 +200,7 @@
         "bold", "italic", "strikethrough", "heading", "|", 
         "quote", "unordered-list", "ordered-list", "|", 
         "link", "image", "upload-image", "code", "|",  
-        "preview", "side-by-side", "fullscreen", "|", // side-by-side 和 fullscreen 都会正常工作
+        "preview", "side-by-side", "fullscreen", "|", 
         "guide"
     ],
 
@@ -192,31 +211,40 @@
     imageMaxSize: 1024 * 1024 * 16,
     imageAccept: "image/png, image/jpeg, image/gif, image/webp",
     imageTexts: {
-        sbInit: "上传图片",
-        sbOnDragEnter: "松开上传",
-        sbOnDragLeave: "取消",
-        sbProgress: "上传中...",
-        sbOnUploaded: "成功",
+        sbInit: "在此拖拽或点击上传图片",
+        sbOnDragEnter: "松开鼠标即可上传",
+        sbOnDragLeave: "取消上传",
+        sbProgress: "正在努力上传中...",
+        sbOnUploaded: "上传成功！",
         sizeUnits: "b,kb,mb"
     },
-    errorCallback: (msg) => alert("上传失败: " + msg),
+    errorCallback: (msg) => {
+        if(window.app && window.app.toast) {
+            app.toast.show("上传失败: " + msg, "error");
+        } else {
+            alert("上传失败: " + msg);
+        }
+    },
 
     previewRender: function(plainText) {
         const preview = document.getElementsByClassName("editor-preview-side")[0];
+        // 渲染 Markdown
         preview.innerHTML = this.parent.markdown(plainText);
+        // 执行代码高亮
         preview.querySelectorAll('pre code').forEach((block) => hljs.highlightElement(block));
+        // 执行公式渲染
         if (typeof MathJax !== 'undefined') MathJax.typesetPromise([preview]);
+        
         return preview.innerHTML;
     },
   });
 
   // 页面加载后自动开启分屏
-  // 延迟一点以确保 CSS 布局计算完成
   setTimeout(function() {
-      if (!easyMDE.isSideBySideActive()) {
+      if (!easyMDE.isSideBySideActive() && window.innerWidth > 1024) { // 仅在大屏幕上自动开启分屏
           easyMDE.toggleSideBySide();
       }
-  }, 200);
+  }, 300);
 
 </script>
 {% endblock %}

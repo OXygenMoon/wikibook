@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}贴纸墙管理 - WikiBook{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold">贴纸墙管理</h1>
+            <p class="text-base-content/60 text-sm">创建和管理全员可见的徽章贴纸墙</p>
+        </div>
+        <button onclick="document.getElementById('create_modal').showModal()" class="btn btn-primary gap-2">
+            <i class="fas fa-plus"></i> 新建墙面
+        </button>
+    </div>
+
+    <div class="bg-base-100 rounded-2xl border border-base-200 overflow-hidden">
+        <table class="table w-full">
+            <thead class="bg-base-200">
+                <tr>
+                    <th>名称</th>
+                    <th>可见性</th>
+                    <th>背景样式</th>
+                    <th>描述</th>
+                    <th>贴纸数量</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in walls %}
+                <tr>
+                    <td class="font-bold">{{ w.name }}</td>
+                    <td>
+                        <div class="badge badge-sm {{ 'badge-success' if w.visibility == 'public' else 'badge-warning' }}">
+                            {{ w.visibility }}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="badge badge-ghost badge-sm font-mono text-xs">{{ w.bg_style }}</div>
+                    </td>
+                    <td class="max-w-xs truncate text-xs text-base-content/60" title="{{ w.description }}">{{ w.description }}</td>
+                    <td class="font-mono">{{ w.stickers|length }}</td>
+                    <td class="text-sm">{{ w.created_at.strftime("%Y-%m-%d") }}</td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <a href="{{ url_for('edit_sticker_wall', wall_id=w.id) }}" class="btn btn-xs btn-primary btn-outline">编辑</a>
+                            <form method="post" action="{{ url_for('delete_sticker_wall', wall_id=w.id) }}" onsubmit="return confirm('确定要删除这面墙及上面的所有贴纸吗？')">
+                                <button type="submit" class="btn btn-xs btn-error btn-outline">删除</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center py-8 text-base-content/50">暂无创建的墙面</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<dialog id="create_modal" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">新建贴纸墙</h3>
+        <form method="post" class="space-y-4">
+            <div class="form-control">
+                <label class="label"><span class="label-text">墙面名称</span></label>
+                <input type="text" name="name" class="input input-bordered" required placeholder="如：2026荣誉墙" />
+            </div>
+            
+            <div class="form-control">
+                <label class="label"><span class="label-text">墙面描述 (副标题)</span></label>
+                <input type="text" name="description" class="input input-bordered" placeholder="简短描述这面墙的用途..." />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-control">
+                    <label class="label"><span class="label-text">权限</span></label>
+                    <select name="visibility" class="select select-bordered w-full">
+                        <option value="public">公开 (所有登录用户可见)</option>
+                        <option value="restricted">受限 (暂未开放)</option>
+                    </select>
+                </div>
+                
+                <div class="form-control">
+                    <label class="label"><span class="label-text">背景样式</span></label>
+                    <select name="bg_style" class="select select-bordered w-full">
+                        <option value="dots">点阵 (Dots)</option>
+                        <option value="grid">方格 (Grid)</option>
+                        <option value="lines">斜线 (Lines)</option>
+                        <option value="empty">空白 (Empty)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn" onclick="document.getElementById('create_modal').close()">取消</button>
+                <button type="submit" class="btn btn-primary">确认创建</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endblock %}

@@ -7,7 +7,7 @@ PORT=5009
 cd $CDIR
 
 # Activate virtual environment
-source venv/bin/activate
+# source venv/bin/activate
 
 # Stop the service if running
 if [ -f "$PIDFILE" ]; then
@@ -22,7 +22,7 @@ if [ -f "$PIDFILE" ]; then
 fi
 
 echo "Starting Wikibook service on port $PORT..."
-gunicorn -c gunicorn.conf.py app:app
+./venv/bin/gunicorn -c gunicorn.conf.py app:app
 
 if [ $? -eq 0 ]; then
     sleep 2

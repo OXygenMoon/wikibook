@@ -1,24 +1,8 @@
 <!DOCTYPE html>
 {% set is_book_mode = request.path.startswith('/book') %}
-<html lang="zh-CN">
-<script>
-    // 立即执行主题检查，防止闪烁
-    (function() {
-        const savedTheme = localStorage.getItem('theme');
-        const isBookMode = window.location.pathname.startsWith('/book');
-        // 定义你的亮色和暗色主题
-        const lightTheme = isBookMode ? 'winter' : 'cupcake';
-        const darkTheme = 'business'; // 'business' 是 DaisyUI 一个很棒的深色商务主题
+{% set current_app = 'book' if is_book_mode else ('sticker' if request.endpoint == 'sticker_walls_view' else ('leaderboard' if request.endpoint == 'leaderboard' else 'square')) %}
 
-        if (savedTheme === 'dark') {
-            document.documentElement.setAttribute('data-theme', darkTheme);
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.setAttribute('data-theme', lightTheme);
-            document.documentElement.classList.remove('dark');
-        }
-    })();
-</script>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -28,8 +12,8 @@
     <link href="{{ url_for('static', filename='css/daisyui.full.css') }}" rel="stylesheet" type="text/css" />
     <script src="{{ url_for('static', filename='js/tailwindcss.js') }}"></script>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <link rel="stylesheet" href="{{ url_for('static', filename='css/easymde.min.css') }}">
     <script src="{{ url_for('static', filename='js/easymde.min.js') }}"></script>
@@ -40,379 +24,561 @@
     <script src="{{ url_for('static', filename='js/highlight.min.js') }}"></script>
     <script>hljs.highlightAll();</script>
 
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const isBookMode = window.location.pathname.startsWith('/book');
+            const lightTheme = isBookMode ? 'winter' : 'cupcake';
+            const darkTheme = 'business'; 
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', darkTheme);
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', lightTheme);
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+
     <style>
-        /* 亮色模式变量 */
         :root {
             --theme-primary: #ea580c;
             --theme-primary-hover: #d97706;
-            --theme-bg-sidebar: #faf7f5;
-            --toggle-bg: #f59e0b;
-        }
-
-        /* 暗色模式变量重写 (匹配你的 class="dark") */
-        :root.dark {
-            --theme-primary: #f97316; /* 暗色下稍微提亮一点主色以保证对比度 */
-            --theme-primary-hover: #fb923c;
-            --theme-bg-sidebar: #1d232a; /* 对应 business 主题的底色，或 #1f2937 */
             --toggle-bg: #ea580c;
         }
 
-        /* 修复 CSS 语法错误：将 Jinja 逻辑移出 CSS 块或确保正确闭合 */
+        :root.dark {
+            --theme-primary: #f97316;
+            --theme-primary-hover: #fb923c;
+            --toggle-bg: #f97316;
+        }
+        
+        ::selection { background-color: var(--theme-primary); color: #ffffff; }
+
         {% if is_book_mode %}
         :root {
-            /* Book 模式 (Indigo/Purple) */
-            --theme-primary: #4f46e5; /* Indigo-600 */
-            --theme-primary-hover: #4338ca; /* Indigo-700 */
-            --theme-bg-sidebar: #f5f7fa;
+            --theme-primary: #4f46e5;
+            --theme-primary-hover: #4338ca;
             --toggle-bg: #4f46e5;
         }
         {% endif %}
 
-        /* --- Scrollbar --- */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: hsl(var(--b3)); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        ::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: hsl(var(--bc) / 0.4); }
 
-        /* --- EasyMDE Overrides --- */
-        .EasyMDEContainer { background-color: hsl(var(--b1)); border-radius: 0.5rem; overflow: hidden; }
-        .editor-toolbar { border-color: hsl(var(--b3)); border-radius: 0.5rem 0.5rem 0 0; }
-        .CodeMirror { border-color: hsl(var(--b3)); border-radius: 0 0 0.5rem 0.5rem; min-height: 400px; }
+        .EasyMDEContainer { background-color: hsl(var(--b1)); border-radius: 1rem; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .editor-toolbar { border-color: transparent; border-bottom: 1px solid hsl(var(--b2)); background: hsl(var(--b2) / 0.2); padding: 10px; }
+        .CodeMirror { border-color: transparent; min-height: 400px; font-family: 'Inter', sans-serif; }
         .editor-statusbar { display: none; }
 
-        /* --- Sidebar Menu Items --- */
-        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .text-primary { color: var(--theme-primary) !important; }
+        .bg-primary { background-color: var(--theme-primary) !important; }
+        .border-primary { border-color: var(--theme-primary) !important; }
         
-        .menu-item {
-            position: relative;
-            transition: all 0.2s ease;
-            color: hsl(var(--bc));
-            border-radius: 0.75rem;
-        }
-        .menu-item:hover {
-            background-color: hsl(var(--b1));
-            color: var(--theme-primary);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-        .menu-item.active {
-            background-color: #ffffff !important;
-            color: var(--theme-primary-hover) !important;
-            font-weight: 700;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        }
-        .menu-item.active::before {
-            content: ''; position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
-            height: 6px; width: 6px; border-radius: 50%;
-            background-color: var(--theme-primary-hover);
-        }
-        .menu-section-title {
-            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
-            color: #a8a29e; font-weight: 800; padding: 1.5rem 1rem 0.5rem 1rem;
+        .btn-primary { background-color: var(--theme-primary) !important; border-color: var(--theme-primary) !important; color: white !important; }
+        .btn-primary:hover { background-color: var(--theme-primary-hover) !important; border-color: var(--theme-primary-hover) !important; }
+        .text-primary svg { opacity: 1 !important; }
+
+        /* ---------------------------------------------------- */
+        /* --- 全开放式悬浮导航岛 (Floating Islands) --- */
+        /* ---------------------------------------------------- */
+        
+        /* 绝对定位的左上角 Logo (随滚动消失) */
+        .top-logo-area {
+            position: absolute; top: 1.5rem; left: 2.5rem; z-index: 50;
         }
 
-        /* --- Layout --- */
-        @media (min-width: 1024px) { .main-content { margin-left: 16rem; } }
-
-        /* --- Toggle Switch --- */
-        .mode-toggle-label {
-            position: relative; display: flex; align-items: center; justify-content: space-between;
-            width: 100%; height: 2rem; border-radius: 9999px;
-            background-color: #f3f4f6; border: 1px solid #e5e7eb; cursor: pointer; padding: 0.25rem;
-        }
-        .mode-toggle-slider {
-            position: absolute; top: 0.25rem; bottom: 0.25rem; left: 0.25rem;
-            width: calc(50% - 0.25rem); border-radius: 9999px;
-            background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease, background-color 0.3s;
-        }
-        /* Logic handled by CSS variable for color, JS logic for position */
-        {% if is_book_mode %}
-        .mode-toggle-slider { transform: translateX(100%); background-color: var(--toggle-bg); }
-        .text-book { color: white !important; }
-        {% else %}
-        .mode-toggle-slider { transform: translateX(0); background-color: var(--toggle-bg); }
-        .text-wiki { color: white !important; }
-        {% endif %}
-
-        .mode-text { z-index: 10; flex: 1; text-align: center; font-size: 0.75rem; font-weight: 600; color: #6b7280; transition: color 0.3s; }
-
-        /* --- Badge & UI --- */
-        .badge-icon-container { transition: transform 0.2s; }
-        .badge-icon-container:hover { transform: scale(1.1); background-color: rgba(0,0,0,0.1); }
-
-        /* --- Arc-like Liquid Grain Card --- */
-        .liquid-card {
-            position: relative;
-            overflow: hidden;
-            background-color: var(--bg-color, hsl(var(--b1)));
-            /* Important: background-image must override background-color if set */
-            background-image: var(--bg-image, none);
-            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s ease;
-            transform-style: preserve-3d;
-            isolation: isolate; /* Create new stacking context */
+        /* 左侧系统级悬浮岛 */
+        .top-left-island {
+            position: fixed; top: 1.25rem; left: 1.5rem; z-index: 100;
+            display: flex; gap: 0.5rem; align-items: center; pointer-events: none;
         }
         
-        .liquid-card::before, .liquid-card::after {
-            content: '';
-            position: absolute;
-            border-radius: 50%;
-            /* Use blur-level variable */
-            filter: blur(var(--blur-level, 60px));
-            z-index: -1;
-            transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-            pointer-events: none;
-            mix-blend-mode: normal;
-        }
-        /* Blob 1: Main Gradient Accent */
-        .liquid-card::before {
-            width: 140%;
-            height: 140%;
-            top: -20%;
-            left: -20%;
-            background: radial-gradient(circle at center, var(--blob-color-1, rgba(255, 100, 100, 0.15)), transparent 60%);
-            transform: translate(var(--blob-1-x, 0), var(--blob-1-y, 0));
+        /* 右侧上下文悬浮岛 */
+        .top-right-island {
+            position: fixed; top: 1.25rem; right: 1.5rem; z-index: 100;
+            display: flex; gap: 0.5rem; align-items: center; pointer-events: none;
         }
 
-        /* Blob 2: Secondary Gradient Accent */
-        .liquid-card::after {
-            width: 140%;
-            height: 140%;
-            bottom: -20%;
-            right: -20%;
-            background: radial-gradient(circle at center, var(--blob-color-2, rgba(100, 100, 255, 0.15)), transparent 60%);
-            transform: translate(var(--blob-2-x, 0), var(--blob-2-y, 0));
+        /* 恢复交互 */
+        .top-left-island > *, .top-right-island > * {
+            pointer-events: auto;
         }
 
-        /* High-Quality Grain Overlay (Arc-style) */
-        .liquid-noise {
-            position: absolute;
-            inset: 0;
-            z-index: 10;
-            opacity: var(--grain-opacity, 0.05); /* Default lower for subtlety */
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
-            pointer-events: none;
-            mix-blend-mode: overlay; /* Soft Light or Overlay for better blending */
-            filter: contrast(120%) brightness(100%); /* Enhance grain pop */
+        /* 通用毛玻璃悬浮按钮 */
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255,255,255,0.6);
+            border-radius: 9999px; padding: 0.4rem 0.85rem;
+            display: flex; align-items: center; gap: 0.4rem;
+            font-size: 0.85rem; font-weight: 700; color: hsl(var(--bc) / 0.7);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; height: 2.25rem;
+        }
+        .dark .nav-btn {
+            background: rgba(30, 30, 30, 0.75); border-color: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.3); color: hsl(var(--bc) / 0.8);
+        }
+        .nav-btn:hover, .dropdown.dropdown-open > .nav-btn {
+            transform: translateY(-2px); color: var(--theme-primary); box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.1);
         }
 
-        .liquid-card:hover {
-            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.05); /* Subtle depth */
+        /* 并排多按钮的胶囊组 (APP Switcher) */
+        .nav-pill-group {
+            background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255,255,255,0.6);
+            border-radius: 9999px; padding: 0.2rem;
+            display: flex; align-items: center; gap: 0.15rem; height: 2.25rem;
         }
+        .dark .nav-pill-group { background: rgba(30, 30, 30, 0.75); border-color: rgba(255, 255, 255, 0.05); }
+
+        .nav-pill-item {
+            padding: 0.3rem 0.8rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 700;
+            color: hsl(var(--bc) / 0.6); transition: all 0.3s; cursor: pointer;
+            display: flex; align-items: center; gap: 0.35rem; height: 100%;
+        }
+        .nav-pill-item:hover { color: hsl(var(--bc) / 0.9); background: rgba(0,0,0,0.03); }
+        .dark .nav-pill-item:hover { background: rgba(255, 255, 255, 0.08); }
+        .nav-pill-item.active { background: var(--theme-primary); color: white; box-shadow: 0 2px 8px -2px var(--theme-primary); }
+
+        /* 模式切换小胶囊 (PC端) */
+        .nav-mode-toggle {
+            padding: 0.2rem; display: flex; align-items: center;
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(20px); border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
+            border-radius: 9999px; cursor: pointer; height: 2.25rem; position: relative;
+        }
+        .dark .nav-mode-toggle { background: rgba(40, 40, 40, 0.85); border-color: rgba(255,255,255,0.05); }
+
+        .nav-mode-option {
+            padding: 0 0.75rem; height: 100%; display: flex; align-items: center;
+            font-size: 0.75rem; font-weight: 800; z-index: 10;
+            transition: color 0.3s; color: hsl(var(--bc) / 0.5); border-radius: 9999px;
+        }
+        .nav-mode-option.active { color: white; }
+
+        .nav-mode-slider {
+            position: absolute; top: 0.2rem; bottom: 0.2rem; left: 0.2rem;
+            width: calc(50% - 0.2rem); background-color: var(--toggle-bg);
+            border-radius: 9999px; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 5; box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+        {% if is_book_mode %} .nav-mode-slider { transform: translateX(100%); } {% else %} .nav-mode-slider { transform: translateX(0); } {% endif %}
+        
+        /* 右侧用户头像特化 */
+        .user-nav-dropdown {
+            background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(20px); border-radius: 9999px;
+            padding: 0.2rem 0.6rem 0.2rem 0.2rem; display: flex; align-items: center; gap: 0.4rem;
+            cursor: pointer; box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255,255,255,0.6);
+            border: 1px solid rgba(255, 255, 255, 0.5); transition: transform 0.2s; height: 2.25rem;
+        }
+        .dark .user-nav-dropdown { background: rgba(30, 30, 30, 0.75); border-color: rgba(255, 255, 255, 0.05); }
+        .user-nav-dropdown:hover { transform: translateY(-2px); }
+        
+        .nav-avatar-circle { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.75rem; color: white; box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.1); }
+
+        /* 下拉菜单通用样式 */
+        .glass-dropdown-content {
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 1.2rem; box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15);
+        }
+        .dark .glass-dropdown-content { background: rgba(30, 30, 30, 0.95); border-color: rgba(255, 255, 255, 0.1); }
+        
+        .nav-menu-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.8rem; border-radius: 0.5rem; color: hsl(var(--bc) / 0.8); transition: all 0.2s; font-weight: 600; font-size: 0.85rem; }
+        .nav-menu-item:hover { background: hsl(var(--bc) / 0.05); color: var(--theme-primary); }
+
+        .text-fade-edge { display: block; width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%); mask-image: linear-gradient(to right, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%); }
+        details.collapse > summary { list-style: none; } details.collapse > summary::-webkit-details-marker { display: none; }
+        .mobile-subnav::-webkit-scrollbar { display: none; }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-base-200 text-base-content font-sans">
-    {% macro render_menu_item(endpoint, label, icon_d, badge=None, extra_active_endpoints=[]) %}
-        {% set is_active = request.endpoint == endpoint or request.endpoint in extra_active_endpoints %}
-        <li>
-            <a href="{{ url_for(endpoint) }}" class="menu-item flex items-center gap-3 px-3 py-3 {{ 'active' if is_active else '' }}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="{{ icon_d }}" />
-                </svg>
-                <span class="truncate flex-1">{{ label }}</span>
-                {% if badge %}
-                    <span class="badge badge-xs badge-ghost">{{ badge }}</span>
-                {% endif %}
-            </a>
-        </li>
-    {% endmacro %}
-
-    <div id="mobile-navbar" class="lg:hidden navbar bg-base-100/90 backdrop-blur-md shadow-sm fixed top-0 w-full transition-transform duration-300 z-50">
-        <div class="navbar-start">
-            <button id="mobile-menu-btn" class="btn btn-ghost btn-circle" aria-label="Menu">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-            </button>
+<body class="bg-base-200/40 text-base-content font-sans antialiased min-h-screen relative flex flex-col overflow-x-hidden pt-12 md:pt-16">
+    <div class="top-left-island hidden md:flex {% if not is_book_mode %}{% endif %} transition-all duration-300">
+        <div class="nav-mode-toggle mr-1" onclick="window.location.href='{{ url_for('index') if is_book_mode else url_for('book_index') }}'">
+            <div class="nav-mode-slider"></div>
+            <div class="nav-mode-option {{ 'active' if not is_book_mode else '' }}"><i class="fas fa-globe mr-1 opacity-70"></i>Wiki</div>
+            <div class="nav-mode-option {{ 'active' if is_book_mode else '' }}"><i class="fas fa-book mr-1 opacity-70"></i>Book</div>
+            <div id="announcement-dot" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full hidden cursor-pointer z-50 ring-2 ring-white shadow-md animate-pulse" onclick="app.announcements.showHistory(event)"></div>
         </div>
-        <div class="navbar-center">
-            <a href="{{ url_for('index') }}" class="text-xl font-bold bg-gradient-to-r {% if is_book_mode %}from-indigo-500 to-purple-600{% else %}from-amber-500 to-orange-600{% endif %} bg-clip-text text-transparent relative group">
-                W<span class="relative inline-block">i<span id="announcement-dot" class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full hidden cursor-pointer z-50 ring-1 ring-white" onclick="app.announcements.showHistory(event)"></span></span>kiBook
-            </a>
-        </div>
-        <div class="navbar-end">
-            <!-- <button id="theme-toggle-btn" class="btn btn-ghost btn-circle">
-                <svg class="h-5 w-5 swap-on fill-current dark:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7-.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/></svg>
-                <svg class="h-5 w-5 swap-off fill-current hidden dark:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z"/></svg>
-            </button> -->
 
-            {% if current_user.is_authenticated %}
-            <a href="{{ url_for('online_users') }}" class="btn btn-ghost btn-sm gap-2 normal-case">
-                <div class="badge badge-success badge-xs animate-pulse"></div>
-                <span class="text-xs">{{ online_user_count }}</span>
-            </a>
+        <div class="nav-pill-group">
+            {% if not is_book_mode %}
+                <a href="{{ url_for('index') }}" class="nav-pill-item {{ 'active' if current_app == 'square' else '' }}"><i class="fas fa-compass"></i> 广场</a>
+                <a href="{{ url_for('sticker_walls_view') }}" class="nav-pill-item {{ 'active' if current_app == 'sticker' else '' }}"><i class="fas fa-border-all"></i> 贴纸墙</a>
+                <a href="{{ url_for('leaderboard') }}" class="nav-pill-item {{ 'active' if current_app == 'leaderboard' else '' }}"><i class="fas fa-trophy"></i> 排行榜</a>
+            {% else %}
+                <a href="{{ url_for('book_index') }}" class="nav-pill-item {{ 'active' if request.endpoint == 'book_index' else '' }}"><i class="fas fa-layer-group"></i> 我的笔记</a>
+                <a href="{{ url_for('book_calendar') }}" class="nav-pill-item {{ 'active' if request.endpoint == 'book_calendar' else '' }}"><i class="fas fa-calendar-alt"></i> 日历</a>
+                <a href="{{ url_for('book_received') }}" class="nav-pill-item {{ 'active' if request.endpoint == 'book_received' else '' }}"><i class="fas fa-inbox"></i> 收到</a>
             {% endif %}
         </div>
     </div>
 
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden lg:hidden transition-opacity z-[51]"></div>
-
-    <aside id="sidebar" style="background-color: var(--theme-bg-sidebar);" class="fixed left-0 top-0 h-screen w-64 border-r-[3px] border-base-200/60 shadow-xl sidebar-transition transform -translate-x-full lg:translate-x-0 flex flex-col z-[52]">
+    <div class="top-right-island hidden md:flex">
         
-        <div class="h-20 flex items-center px-6 border-b border-base-200/50 flex-shrink-0">
-            <div class="w-full">
-                <div class="mode-toggle-label" onclick="window.location.href='{{ url_for('index') if is_book_mode else url_for('book_index') }}'">
-                    <div class="mode-toggle-slider"></div>
-                    <span class="mode-text text-wiki">Wiki</span>
-                    <span class="mode-text text-book">Book</span>
+        {% if current_app == 'square' %}
+            
+            {% if current_user.is_authenticated and current_user.subscriptions %}
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="nav-btn">
+                    <i class="fas fa-bookmark text-primary opacity-80"></i> 订阅 <i class="fas fa-chevron-down text-[10px] opacity-50"></i>
                 </div>
+                <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-64 glass-dropdown-content max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+                    <li class="menu-title text-xs opacity-50 px-3 py-1">我订阅的Wiki</li>
+                    {% for sub in current_user.subscriptions %}
+                    <li>
+                        <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" class="nav-menu-item flex items-center w-full max-w-full overflow-hidden">
+                            <div class="w-1.5 h-1.5 rounded-full bg-primary opacity-50 shrink-0"></div>
+                            <div class="flex-1 min-w-0 ml-1.5"><span class="text-fade-edge w-full text-sm" title="{{ sub.wiki.title }}">{{ sub.wiki.title }}</span></div>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
-        </div>
+            {% endif %}
 
-        <nav class="flex-1 overflow-y-auto sidebar-content px-4 py-4">
-            {% block sidebar_menu %}
-                {% if not is_book_mode %}
-                    <div class="menu-section-title">发现</div>
-                    <ul class="space-y-1">
-                        {{ render_menu_item('index', 'Wiki 广场', 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10') }}
-                    </ul>
-
-                    {% if current_user.is_authenticated %}
-                        {% if current_user.subscriptions %}
-                        <div class="menu-section-title flex justify-between items-center group cursor-pointer">
-                            <span>我的订阅</span>
-                            <span class="badge badge-xs badge-ghost group-hover:bg-stone-200 transition-colors">{{ current_user.subscriptions|length }}</span>
-                        </div>
-
-                        <ul class="space-y-2 mt-1"> {% for sub in current_user.subscriptions %}
-                            {% set is_active = request.view_args and request.view_args.get('wiki_id') == sub.wiki.id and request.endpoint in ['wiki_detail', 'view_page', 'edit_page', 'new_page'] %}
-                            
-                            {% set bg_colors = ['bg-red-50 text-red-600', 'bg-orange-50 text-orange-600', 'bg-amber-50 text-amber-600', 'bg-green-50 text-green-600', 'bg-teal-50 text-teal-600', 'bg-blue-50 text-blue-600', 'bg-indigo-50 text-indigo-600', 'bg-purple-50 text-purple-600', 'bg-pink-50 text-pink-600'] %}
-                            {% set icon_bg = bg_colors[(sub.wiki.id) % 9] %}
-
+            {% if wiki %}
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-sitemap text-primary opacity-80"></i> 页面 <i class="fas fa-chevron-down text-[10px] opacity-50"></i></div>
+                    <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-64 glass-dropdown-content max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+                        {% if pages %}
+                            {% for p in pages %}
                             <li>
-                                <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" 
-                                class="group relative flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 border border-transparent 
-                                        {{ 'bg-base-100 border-base-200/60 shadow-sm' if is_active else 'hover:bg-base-100 hover:shadow-sm hover:border-base-300' }}">
-                                    
-                                    <div class="w-8 h-8 rounded-[0.6rem] shrink-0 grid place-items-center overflow-hidden border border-black/5 
-                                                {{ icon_bg if not sub.wiki.icon_url else 'bg-base-100' }} shadow-sm group-hover:scale-105 transition-transform duration-200">
-                                        
-                                        {% if sub.wiki.icon %}
-                                            {% if sub.wiki.icon.startswith('http') or sub.wiki.icon.startswith('/') %}
-                                                <img src="{{ sub.wiki.icon }}" class="w-full h-full object-cover" alt="icon">
-                                            {% else %}
-                                                <span class="text-sm font-bold select-none">{{ sub.wiki.icon }}</span>
-                                            {% endif %}
-                                        {% else %}
-                                            <span class="text-xs font-bold select-none">{{ sub.wiki.title[0] }}</span>
-                                        {% endif %}
-                                    </div>
-
-                                    <div class="flex-1 min-w-0 flex flex-col justify-center h-8">
-                                        <span class="text-[0.85rem] leading-tight font-medium text-base-content/80 group-hover:text-stone-900 
-                                                    {{ 'text-stone-900 font-bold' if is_active else '' }}
-                                                    line-clamp-2 break-words" 
-                                            title="{{ sub.wiki.title }}">
-                                            {{ sub.wiki.title }}
-                                        </span>
-                                    </div>
-
-                                    {% if is_active %}
-                                    <div class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-1 h-4 bg-primary rounded-r-full"></div>
-                                    {% endif %}
+                                <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="nav-menu-item flex items-center w-full max-w-full overflow-hidden {{ 'text-primary bg-primary/5' if page and page.id == p.id else '' }}">
+                                    <div class="flex-1 min-w-0"><span class="text-fade-edge w-full text-sm" title="{{ p.title }}">{{ p.title }}</span></div>
                                 </a>
                             </li>
                             {% endfor %}
-                        </ul>
+                        {% else %}
+                            <li class="text-xs text-base-content/40 p-4 text-center">暂无页面</li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                {% if page %}
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-list-ul text-primary opacity-80"></i> 大纲 <i class="fas fa-chevron-down text-[10px] opacity-50"></i></div>
+                    <ul tabindex="0" id="desktop-toc-list" class="dropdown-content z-[120] menu p-2 mt-2 w-56 glass-dropdown-content max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+                        <li class="px-4 py-2 text-xs text-base-content/40 text-center">加载中...</li>
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if can_edit_wiki(wiki.id) %}
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-cog text-primary opacity-80"></i> 管理 <i class="fas fa-chevron-down text-[10px] opacity-50"></i></div>
+                    <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-48 glass-dropdown-content flex-nowrap overflow-x-hidden">
+                        <li><a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="nav-menu-item"><i class="fas fa-plus w-4 text-center"></i> 新建页面</a></li>
+                        {% if page %}
+                        <li><a href="{{ url_for('edit_page', wiki_id=wiki.id, slug=page.slug) }}" class="nav-menu-item"><i class="fas fa-edit w-4 text-center"></i> 编辑当前</a></li>
+                        <li><a href="{{ url_for('page_history', wiki_id=wiki.id, slug=page.slug) }}" class="nav-menu-item"><i class="fas fa-history w-4 text-center"></i> 历史版本</a></li>
+                        {% endif %}
+                        <div class="divider my-1 opacity-20"></div>
+                        <li><a href="{{ url_for('edit_wiki', wiki_id=wiki.id) }}" class="nav-menu-item"><i class="fas fa-sliders-h w-4 text-center"></i> Wiki 设置</a></li>
+                    </ul>
+                </div>
+                {% endif %}
+            {% endif %}
+
+        {% elif current_app == 'sticker' %}
+            {% if walls is defined and walls|length > 0 %}
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="nav-btn border border-black/5 bg-white shadow-sm"><i class="fas fa-map text-primary opacity-80"></i> <span id="topbar-wall-name">{{ walls[0].name }}</span> <i class="fas fa-chevron-down text-[10px] ml-1 opacity-50"></i></div>
+                <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-52 glass-dropdown-content flex-nowrap">
+                    {% for w in walls %}
+                    <li><a onclick="if(typeof switchWall === 'function') switchWallTo({{ loop.index0 }})" class="nav-menu-item"><i class="fas fa-layer-group w-4 opacity-40"></i> {{ w.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <div class="nav-btn cursor-default hover:translate-y-0 hover:shadow-none bg-base-200/50">
+                额度: <span class="badge badge-sm border-none ml-1 font-bold font-mono {% if my_total_stickers is defined and my_total_stickers >= 10 %}bg-error text-white animate-pulse{% else %}bg-primary text-white{% endif %}" id="topbar-quota">{{ my_total_stickers if my_total_stickers is defined else 0 }}/10</span>
+            </div>
+
+        {% elif current_app == 'leaderboard' %}
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-calendar-alt text-primary opacity-80"></i> {{ '本周风云' if period == 'weekly' else '全服总榜' }} <i class="fas fa-chevron-down text-[10px] opacity-50 ml-1"></i></div>
+                <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-36 glass-dropdown-content">
+                    <li><a href="{{ url_for('leaderboard', metric=metric|default('duration'), period='weekly') }}" class="nav-menu-item {{ 'text-primary' if period == 'weekly' else '' }}">本周风云</a></li>
+                    <li><a href="{{ url_for('leaderboard', metric=metric|default('duration'), period='all') }}" class="nav-menu-item {{ 'text-primary' if period == 'all' else '' }}">全服总榜</a></li>
+                </ul>
+            </div>
+            
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-filter text-primary opacity-80"></i> 
+                    {% if metric == 'duration' %}肝帝榜{% elif metric == 'contribution' %}贡献榜{% elif metric == 'streak' %}毅力榜{% else %}选择榜单{% endif %} 
+                <i class="fas fa-chevron-down text-[10px] opacity-50 ml-1"></i></div>
+                <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-40 glass-dropdown-content">
+                    <li><a href="{{ url_for('leaderboard', metric='duration', period=period|default('all')) }}" class="nav-menu-item {{ 'text-primary' if metric == 'duration' else '' }}">⏱️ 肝帝榜</a></li>
+                    <li><a href="{{ url_for('leaderboard', metric='contribution', period=period|default('all')) }}" class="nav-menu-item {{ 'text-primary' if metric == 'contribution' else '' }}">📝 贡献榜</a></li>
+                    <li><a href="{{ url_for('leaderboard', metric='streak', period=period|default('all')) }}" class="nav-menu-item {{ 'text-primary' if metric == 'streak' else '' }}">🔥 毅力榜</a></li>
+                </ul>
+            </div>
+
+            {% if my_rank_info is defined and my_rank_info %}
+            <div class="nav-btn cursor-default hover:translate-y-0 hover:shadow-none bg-primary/5 text-primary">
+                <span class="font-black text-xs mr-1">No.{{ my_rank_info.rank }}</span> 
+                <span class="font-mono font-bold text-[10px] opacity-80">{{ my_rank_info.score }}{{ my_rank_info.unit }}</span>
+            </div>
+            {% endif %}
+
+        {% elif current_app == 'book' %}
+            <a href="{{ url_for('new_note') }}" class="nav-btn bg-primary text-white border-transparent shadow-md shadow-primary/20 hover:bg-primary-focus"><i class="fas fa-pen"></i> 新写一篇</a>
+        {% endif %}
+
+        {% if current_user.is_authenticated %}
+            <div class="w-[1px] h-5 bg-black/10 dark:bg-white/10 mx-1"></div>
+            
+            {% if current_user.is_admin %}
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="nav-btn text-error hover:text-error hover:bg-error/10 border-transparent shadow-none"><i class="fas fa-shield-alt"></i></div>
+                <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-48 glass-dropdown-content flex-nowrap overflow-x-hidden">
+                    <li class="menu-title text-xs opacity-50 px-3 py-1">控制台</li>
+                    <li><a href="{{ url_for('manage_sticker_walls') }}" class="nav-menu-item"><i class="fas fa-border-all w-4 text-center"></i> 贴纸墙</a></li>
+                    <li><a href="{{ url_for('manage_announcements') }}" class="nav-menu-item"><i class="fas fa-bullhorn w-4 text-center"></i> 通知</a></li>
+                    <li><a href="{{ url_for('manage_users') }}" class="nav-menu-item"><i class="fas fa-users-cog w-4 text-center"></i> 用户</a></li>
+                    <li><a href="{{ url_for('manage_badges') }}" class="nav-menu-item"><i class="fas fa-medal w-4 text-center"></i> 徽章</a></li>
+                    <li><a href="{{ url_for('create_wiki') }}" class="nav-menu-item"><i class="fas fa-plus-square w-4 text-center"></i> 新建 Wiki</a></li>
+                </ul>
+            </div>
+            {% endif %}
+
+            <a href="{{ url_for('online_users') }}" class="nav-btn px-2 tooltip tooltip-bottom border-transparent shadow-none" data-tip="在线用户">
+                <div class="w-2 h-2 rounded-full bg-success animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                <span class="font-mono font-bold">{{ online_user_count }}</span>
+            </a>
+
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="user-nav-dropdown group">
+                    {% set style_class = ['bg-rose-500', 'bg-orange-500', 'bg-emerald-500', 'bg-cyan-500', 'bg-blue-500', 'bg-violet-500', 'bg-fuchsia-500'][(current_user.id) % 7] %}
+                    <div class="nav-avatar-circle {{ style_class }} shadow-inner relative group-hover:scale-105 transition-transform">
+                        {{ current_user.username[0] | upper }}
+                        {% if current_user.selected_badge %}
+                            <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-white dark:bg-base-200 rounded-full flex items-center justify-center shadow-sm">
+                                {% if current_user.selected_badge.icon|is_image_icon %}
+                                    <img src="{{ current_user.selected_badge.icon|badge_icon_url }}" class="w-2.5 h-2.5 object-contain">
+                                {% else %}
+                                    <span class="text-[7px]">{{ current_user.selected_badge.icon }}</span>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <span class="text-sm font-extrabold truncate max-w-[80px] pl-1">{{ current_user.username }}</span>
+                    
+                    {% if current_user.selected_badge %}
+                        <div class="absolute top-full right-0 mt-4 w-64 bg-white dark:bg-base-200 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-[110] pointer-events-none transform scale-95 group-hover:scale-100 origin-top-right border border-black/5 overflow-hidden">
+                            {% set rarity_colors = {'common': 'from-stone-400 to-stone-200', 'rare': 'from-[#18293d] to-[#3b82f6]', 'epic': 'from-purple-600 to-fuchsia-400', 'legendary': 'from-amber-500 to-yellow-300'} %}
+                            {% set current_rarity = current_user.selected_badge.rarity | default('common') %}
+                            {% set gradient_class = rarity_colors.get(current_rarity, rarity_colors['common']) %}
+                            <div class="absolute top-0 right-0 w-24 h-24 opacity-90 transform translate-x-6 -translate-y-6 rotate-12 -z-10 shadow-inner bg-gradient-to-bl {{ gradient_class }}"></div>
+                            <div class="absolute top-0 right-0 w-full h-full bg-white dark:bg-base-200 opacity-20 transform -rotate-[30deg] translate-x-10 -translate-y-4 z-0"></div>
+
+                            <div class="relative z-10 p-5 pb-5 text-left">
+                                <div class="flex justify-between items-start mb-2">
+                                    <p class="text-[#00a8ff] font-extrabold text-[0.65rem] tracking-widest uppercase flex items-center gap-1 mt-1">✨ 佩戴贴纸</p>
+                                    <div class="w-12 h-12 drop-shadow-md opacity-100 -mt-2 -mr-1">
+                                        {% if current_user.selected_badge.icon|is_image_icon %}
+                                            <img src="{{ current_user.selected_badge.icon|badge_icon_url }}" class="w-full h-full object-contain">
+                                        {% else %}
+                                            <span class="text-4xl leading-none block text-center">{{ current_user.selected_badge.icon }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <h4 class="text-base font-black text-stone-800 dark:text-white leading-tight mb-1.5 tracking-tight">{{ current_user.selected_badge.name }}</h4>
+                                <p class="text-[0.65rem] text-stone-500 dark:text-stone-400 line-clamp-2 leading-relaxed font-medium">{{ current_user.selected_badge.description }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <ul tabindex="0" class="dropdown-content z-[120] menu flex-nowrap p-2 mt-2 w-52 glass-dropdown-content">
+                    <li class="px-3 py-2 text-xs opacity-60 font-bold border-b border-base-200 mb-1 flex justify-between">
+                        <span>今日学习</span><span class="text-primary">{{ current_user.study_time_today_human }}</span>
+                    </li>
+                    <li><a href="{{ url_for('user_profile') }}" class="nav-menu-item"><i class="fas fa-user-circle text-lg w-5 text-center"></i> 个人主页</a></li>
+                    <li><a href="{{ url_for('settings') }}" class="nav-menu-item"><i class="fas fa-cog text-lg w-5 text-center"></i> 偏好设置</a></li>
+                    <li><a href="{{ url_for('logout') }}" class="nav-menu-item text-error hover:text-error hover:bg-error/10 mt-1"><i class="fas fa-sign-out-alt text-lg w-5 text-center"></i> 退出登录</a></li>
+                </ul>
+            </div>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="nav-btn bg-primary text-white border-transparent hover:bg-primary-focus"><i class="fas fa-sign-in-alt"></i> 登录</a>
+        {% endif %}
+    </div>
+
+    <div class="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 dark:bg-base-100/80 backdrop-blur-xl border-b border-black/5 z-[100] flex items-center justify-between px-3">
+        
+        <div class="relative flex items-center bg-base-200/60 dark:bg-base-300/60 rounded-full p-1 cursor-pointer w-[120px]" onclick="window.location.href='{{ url_for('index') if is_book_mode else url_for('book_index') }}'">
+            <div class="absolute left-1 top-1 bottom-1 w-[calc(50%-4px)] bg-white dark:bg-base-100 rounded-full shadow-sm transition-transform duration-300 {% if is_book_mode %}translate-x-full{% else %}translate-x-0{% endif %}"></div>
+            <div class="flex-1 text-center relative z-10 text-[11px] font-bold py-1 {% if not is_book_mode %}text-primary{% else %}text-base-content/60{% endif %}">Wiki</div>
+            <div class="flex-1 text-center relative z-10 text-[11px] font-bold py-1 {% if is_book_mode %}text-primary{% else %}text-base-content/60{% endif %}">Book</div>
+            <div id="announcement-dot-mobile" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full hidden animate-pulse shadow-md border-2 border-white"></div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('online_users') }}" class="nav-btn px-2 shadow-none border-transparent h-8">
+                <div class="w-2 h-2 rounded-full bg-success animate-pulse"></div>
+                <span class="font-mono font-bold text-xs">{{ online_user_count }}</span>
+            </a>
+            {% endif %}
+            
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="btn btn-sm btn-circle btn-ghost"><i class="fas fa-bars text-lg text-primary"></i></div>
+                <ul tabindex="0" class="dropdown-content z-[110] menu flex-nowrap overflow-x-hidden box-border p-2 mt-4 w-[260px] max-h-[85vh] overflow-y-auto custom-scroll glass-dropdown-content">
+                    
+                    <li class="menu-title text-[10px] opacity-50 px-2 py-1">全部应用</li>
+                    {% if not is_book_mode %}
+                        <li><a href="{{ url_for('index') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'square' else '' }}"><i class="fas fa-globe w-4 text-center"></i> Wiki 广场</a></li>
+                        <li><a href="{{ url_for('sticker_walls_view') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'sticker' else '' }}"><i class="fas fa-border-all w-4 text-center"></i> 贴纸墙</a></li>
+                        <li><a href="{{ url_for('leaderboard') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'leaderboard' else '' }}"><i class="fas fa-trophy w-4 text-center"></i> 巅峰风云榜</a></li>
+                    {% else %}
+                        <li><a href="{{ url_for('book_index') }}" class="py-2.5 rounded-xl font-bold text-primary bg-primary/5"><i class="fas fa-book w-4 text-center"></i> 我的笔记</a></li>
+                        <li><a href="{{ url_for('book_calendar') }}" class="py-2.5 rounded-xl"><i class="fas fa-calendar-alt w-4 text-center"></i> 日历视图</a></li>
+                        <li><a href="{{ url_for('book_received') }}" class="py-2.5 rounded-xl"><i class="fas fa-inbox w-4 text-center"></i> 收到笔记</a></li>
+                        <li><a href="{{ url_for('new_note') }}" class="py-2.5 rounded-xl"><i class="fas fa-plus w-4 text-center"></i> 新建笔记</a></li>
+                    {% endif %}
+
+                    {% if current_user.is_authenticated %}
+                        {% if current_app == 'square' and current_user.subscriptions %}
+                            <div class="divider my-1 opacity-20"></div>
+                            <li class="menu-title text-[10px] opacity-50 px-2 py-1">我的订阅</li>
+                            {% for sub in current_user.subscriptions %}
+                                <li>
+                                    <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" class="py-2.5 rounded-xl overflow-hidden flex items-center w-full">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-primary opacity-50 shrink-0"></div>
+                                        <div class="flex-1 min-w-0 ml-1"><span class="text-fade-edge w-full text-xs" title="{{ sub.wiki.title }}">{{ sub.wiki.title }}</span></div>
+                                    </a>
+                                </li>
+                            {% endfor %}
                         {% endif %}
 
                         {% if current_user.is_admin %}
-                            {% set admin_endpoints = ['manage_announcements', 'manage_users', 'create_wiki', 'edit_markdown_css'] %}
-                            {% set is_admin_expanded = request.endpoint in admin_endpoints %}
-
-                            <details class="group" {{ 'open' if is_admin_expanded else '' }}>
-                                
-                                <summary class="menu-section-title flex items-center justify-between cursor-pointer select-none list-none hover:text-base-content/80 transition-colors">
-                                    <span>管理控制台</span>
-                                    
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-180 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </summary>
-
-                                <ul class="space-y-1 mt-1 animate-slide-down">
-                                    {{ render_menu_item('manage_announcements', '系统通知', 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z') }}
-                                    
-                                    {{ render_menu_item('manage_users', '用户管理', 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z') }}
-                                    
-                                    {{ render_menu_item('create_wiki', '新建 Wiki', 'M12 4v16m8-8H4') }}
-                                    
-                                    {{ render_menu_item('edit_markdown_css', 'Markdown 样式', 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01') }}
-                                </ul>
+                            <div class="divider my-1 opacity-20"></div>
+                            <details class="collapse collapse-arrow bg-base-200/30 rounded-xl mb-1">
+                                <summary class="collapse-title text-xs font-bold px-4 min-h-0 py-3 text-base-content/80"><i class="fas fa-sliders-h text-primary mr-2 opacity-80"></i>管理控制台</summary>
+                                <div class="collapse-content px-1 pb-1">
+                                    <ul class="menu flex-nowrap overflow-x-hidden p-0">
+                                        <li><a href="{{ url_for('manage_sticker_walls') }}" class="py-2.5 rounded-lg"><i class="fas fa-border-all w-4 text-center"></i> 贴纸墙</a></li>
+                                        <li><a href="{{ url_for('manage_announcements') }}" class="py-2.5 rounded-lg"><i class="fas fa-bullhorn w-4 text-center"></i> 系统通知</a></li>
+                                        <li><a href="{{ url_for('manage_users') }}" class="py-2.5 rounded-lg"><i class="fas fa-users-cog w-4 text-center"></i> 用户管理</a></li>
+                                        <li><a href="{{ url_for('manage_badges') }}" class="py-2.5 rounded-lg"><i class="fas fa-medal w-4 text-center"></i> 徽章</a></li>
+                                        <li><a href="{{ url_for('create_wiki') }}" class="py-2.5 rounded-lg"><i class="fas fa-plus-square w-4 text-center"></i> 新建 Wiki</a></li>
+                                    </ul>
+                                </div>
                             </details>
                         {% endif %}
+
+                        <div class="divider my-1 opacity-20"></div>
+                        <div class="menu-title text-[10px] opacity-50 px-2 py-1 flex justify-between items-center text-primary"><span>{{ current_user.username }}</span></div>
+                        
+                        <div class="grid grid-cols-3 gap-1 px-1 pb-1 mt-1 overflow-hidden box-border">
+                            <a href="{{ url_for('user_profile') }}" class="btn btn-ghost bg-base-200/50 hover:bg-primary/10 hover:text-primary flex flex-col gap-1 h-auto py-2.5 rounded-xl border-none"><i class="fas fa-user-circle text-lg opacity-80"></i><span class="text-[10px] font-normal tracking-wider leading-none">主页</span></a>
+                            <a href="{{ url_for('settings') }}" class="btn btn-ghost bg-base-200/50 hover:bg-primary/10 hover:text-primary flex flex-col gap-1 h-auto py-2.5 rounded-xl border-none"><i class="fas fa-cog text-lg opacity-80"></i><span class="text-[10px] font-normal tracking-wider leading-none">设置</span></a>
+                            <a href="{{ url_for('logout') }}" class="btn btn-ghost bg-error/10 text-error hover:bg-error hover:text-white flex flex-col gap-1 h-auto py-2.5 rounded-xl border-none transition-all"><i class="fas fa-sign-out-alt text-lg"></i><span class="text-[10px] font-bold tracking-wider leading-none">退出</span></a>
+                        </div>
+                    {% else %}
+                        <div class="divider my-1 opacity-20"></div>
+                        <li><a href="{{ url_for('login') }}" class="py-2.5 bg-primary text-white font-bold rounded-xl justify-center"><i class="fas fa-sign-in-alt text-center"></i> 立刻登录</a></li>
                     {% endif %}
-                
-                {% else %}
-                    <div class="menu-section-title">Book</div>
-                    <ul class="space-y-1">
-                        {{ render_menu_item('book_index', '我的笔记', 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253') }}
-                        {{ render_menu_item('book_calendar', '日历视图', 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z') }}
-                        {{ render_menu_item('book_received', '收到笔记', 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z') }}
-                        {{ render_menu_item('new_note', '新建笔记', 'M12 4v16m8-8H4') }}
-                    </ul>
-                {% endif %}
-            {% endblock %}
-        </nav>
-
-        <div class="p-4 border-t border-base-200/50 bg-[#faf7f5]/50 backdrop-blur-sm">
-            {% if current_user.is_authenticated %}
-                {% set style_class = ['bg-rose-100 text-rose-700', 'bg-orange-100 text-orange-700', 'bg-emerald-100 text-emerald-700', 'bg-cyan-100 text-cyan-700', 'bg-blue-100 text-blue-700', 'bg-violet-100 text-violet-700', 'bg-fuchsia-100 text-fuchsia-700'][(current_user.id) % 7] %}
-                
-                <div class="flex items-center gap-3 w-full p-3 bg-base-100 rounded-xl shadow-sm border border-base-300">
-                    <div class="avatar placeholder">
-                        <div class="{{ style_class }} w-9 h-9 rounded-full grid place-items-center ring-2 ring-stone-50 border border-current/20">
-                            <span class="text-sm font-bold leading-none select-none">{{ current_user.username[0] | upper }}</span>
-                        </div>
-                    </div>
-
-
-                    <div class="flex-1 min-w-0 text-left cursor-pointer group" onclick="window.location.href='{{ url_for('user_profile') }}'">
-                        <div class="flex items-center gap-1">
-                            <p class="text-sm font-bold text-base-content truncate group-hover:text-primary transition-colors">{{ current_user.username }}</p>
-                            {% if current_user.selected_badge %}
-                                <div class="badge-icon-container w-5 h-5" title="{{ current_user.selected_badge.name }}">
-                                    {% if current_user.selected_badge.icon|is_image_icon %}
-                                        <img src="{{ current_user.selected_badge.icon|badge_icon_url }}" alt="badge">
-                                    {% else %}
-                                        <span class="text-xs">{{ current_user.selected_badge.icon }}</span>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        <p class="text-xs text-base-content/50 truncate">{{ '管理员' if current_user.is_admin else '用户' }}</p>
-                    </div>
-                    <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-red-500 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                    </a>
-                </div>
-            {% else %}
-                <a href="{{ url_for('login') }}" class="btn btn-primary w-full text-white shadow-lg shadow-primary/30">立即登录</a>
-            {% endif %}
-        </div>
-    </aside>
-
-    <main class="min-h-screen main-content pt-16 lg:pt-0 transition-all duration-300 relative flex flex-col bg-base-200">
-        {% if current_user.is_authenticated %}
-        <div class="hidden lg:flex fixed top-6 right-8 z-40">
-            <a href="{{ url_for('online_users') }}" class="btn btn-sm gap-2 normal-case glass shadow-md text-base-content/80 bg-base-100/80 hover:bg-base-100 border/50">
-                <div class="badge badge-success badge-xs animate-pulse"></div>
-                <span class="font-medium">{{ online_user_count }} 人在线</span>
-            </a>
-        </div>
-        {% endif %}
-        
-        <div class="flex-1 p-2 lg:p-4">
-            <div class="min-h-[calc(100vh-6rem)] lg:min-h-[calc(100vh-2rem)] bg-base-100/60 border-[1px] border-black shadow-xl shadow-stone-200/40 rounded-[2rem] relative backdrop-blur-xl overflow-hidden">
-                <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white to-transparent pointer-events-none z-0"></div>
-                
-                <div class="p-4 sm:p-6 lg:p-10 relative z-10">
-                    {% block content %}{% endblock %}
-                </div>
+                </ul>
             </div>
         </div>
+    </div>
+
+    {% if wiki %}
+    <div class="md:hidden fixed top-14 left-0 right-0 z-[90] flex items-center gap-2 overflow-x-auto mobile-subnav px-3 py-2 bg-white/70 dark:bg-base-100/70 backdrop-blur-md border-b border-black/5">
+        <a href="{{ url_for('index') }}" class="nav-btn py-1.5 px-3 text-xs shadow-sm bg-white/90 dark:bg-base-100/90 shrink-0"><i class="fas fa-arrow-left"></i> 广场</a>
+        
+        <button onclick="mobile_pages_modal.showModal()" class="nav-btn py-1.5 px-3 text-xs shadow-sm bg-white/90 dark:bg-base-100/90 shrink-0"><i class="fas fa-sitemap text-primary"></i> 页面 <i class="fas fa-chevron-down text-[10px] ml-0.5 opacity-50"></i></button>
+        
+        {% if page %}
+        <button onclick="mobile_toc_modal.showModal()" class="nav-btn py-1.5 px-3 text-xs shadow-sm bg-white/90 dark:bg-base-100/90 shrink-0"><i class="fas fa-list-ul text-primary"></i> 大纲 <i class="fas fa-chevron-down text-[10px] ml-0.5 opacity-50"></i></button>
+        {% endif %}
+        
+        {% if can_edit_wiki(wiki.id) %}
+        <button onclick="mobile_admin_modal.showModal()" class="nav-btn py-1.5 px-3 text-xs shadow-sm bg-white/90 dark:bg-base-100/90 shrink-0"><i class="fas fa-cog text-primary"></i> 管理 <i class="fas fa-chevron-down text-[10px] ml-0.5 opacity-50"></i></button>
+        {% endif %}
+    </div>
+
+    <dialog id="mobile_pages_modal" class="modal modal-bottom sm:modal-middle z-[200]">
+        <div class="modal-box p-0 overflow-hidden rounded-t-3xl bg-white/95 dark:bg-base-100/95 backdrop-blur-2xl">
+            <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-200/50">
+                <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-sitemap text-primary"></i> 页面导航</h3>
+                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+            </div>
+            <ul class="menu p-4 max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+                {% if pages %}
+                    {% for p in pages %}
+                    <li><a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="nav-menu-item text-sm flex items-center w-full {{ 'text-primary bg-primary/5' if page and page.id == p.id else '' }}"><div class="flex-1 min-w-0"><span class="text-fade-edge w-full">{{ p.title }}</span></div></a></li>
+                    {% endfor %}
+                {% else %}
+                    <li class="text-sm text-base-content/40 p-4 text-center">暂无页面</li>
+                {% endif %}
+            </ul>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    {% if page %}
+    <dialog id="mobile_toc_modal" class="modal modal-bottom sm:modal-middle z-[200]">
+        <div class="modal-box p-0 overflow-hidden rounded-t-3xl bg-white/95 dark:bg-base-100/95 backdrop-blur-2xl">
+            <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-200/50">
+                <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-list-ul text-primary"></i> 本页大纲</h3>
+                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+            </div>
+            <ul id="mobile-toc-list-modal" class="menu p-4 max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+                <li class="text-sm text-base-content/40 p-4 text-center">加载中...</li>
+            </ul>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+    {% endif %}
+
+    {% if can_edit_wiki(wiki.id) %}
+    <dialog id="mobile_admin_modal" class="modal modal-bottom sm:modal-middle z-[200]">
+        <div class="modal-box p-0 overflow-hidden rounded-t-3xl bg-white/95 dark:bg-base-100/95 backdrop-blur-2xl">
+            <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-200/50">
+                <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-cog text-primary"></i> Wiki 管理</h3>
+                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+            </div>
+            <ul class="menu p-4 max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+                <li><a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-plus w-5"></i> 新建页面</a></li>
+                {% if page %}
+                <li><a href="{{ url_for('edit_page', wiki_id=wiki.id, slug=page.slug) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-edit w-5"></i> 编辑当前页</a></li>
+                <li><a href="{{ url_for('page_history', wiki_id=wiki.id, slug=page.slug) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-history w-5"></i> 历史版本</a></li>
+                {% endif %}
+                <div class="divider my-1 opacity-20"></div>
+                <li><a href="{{ url_for('edit_wiki', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-sliders-h w-5"></i> Wiki 设置</a></li>
+                <li><a href="{{ url_for('manage_editors', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-users w-5"></i> 成员管理</a></li>
+                <li><a href="{{ url_for('manage_files', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-folder-open w-5"></i> 文件管理</a></li>
+                <li><a href="{{ url_for('wiki_stats', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-chart-bar w-5"></i> 数据统计</a></li>
+            </ul>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+    {% endif %}
+    {% endif %}
+
+    <main class="flex-1 w-full max-w-[1600px] mx-auto pt-6 px-4 sm:px-6 lg:px-10 pb-12 transition-all duration-300 relative z-10 {% if wiki %}mt-10 md:mt-12{% else %}mt-12{% endif %}">
+            
+            {% if self.raw_content() %}
+                {% block raw_content %}{% endblock %}
+            {% else %}
+                <div class="min-h-[calc(100vh-6rem)] bg-white/60 dark:bg-base-100/60 border border-white/60 dark:border-white/5 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] rounded-[2rem] lg:rounded-[2.5rem] relative backdrop-blur-3xl overflow-hidden">
+                    <div class="p-4 sm:p-6 lg:p-10 relative z-10 h-full">
+                        {% block content %}{% endblock %}
+                    </div>
+                </div>
+            {% endif %}
     </main>
 
-    <div id="toast-container" class="fixed bottom-6 right-6 flex flex-col gap-3 pointer-events-none z-[60]">
+    <div id="toast-container" class="fixed bottom-8 right-8 flex flex-col gap-3 pointer-events-none z-[160]">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -422,61 +588,120 @@
         {% endwith %}
     </div>
 
-    <!-- Back to Top Button -->
     <button id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" 
-            class="fixed bottom-24 right-6 btn btn-circle btn-primary shadow-lg z-40 opacity-0 pointer-events-none translate-y-10 transition-all duration-300"
-            aria-label="Back to top">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-        </svg>
+            class="fixed bottom-10 right-10 btn btn-circle btn-primary shadow-xl shadow-primary/30 z-[150] opacity-0 pointer-events-none translate-y-10 transition-all duration-500 hover:-translate-y-1 hover:scale-110">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
     </button>
 
-    <dialog id="announcement_modal" class="modal">
-        <div class="modal-box w-11/12 max-w-3xl border border-base-200 shadow-2xl">
-            <h3 id="ann_modal_title" class="font-bold text-2xl mb-4 text-base-content"></h3>
-            <div id="ann_modal_content" class="prose max-w-none text-base-content/80"></div>
-            <div class="modal-action">
-                <button class="btn btn-primary" onclick="app.announcements.confirm()">我已收到</button>
-            </div>
+    <dialog id="announcement_modal" class="modal bg-black/40 backdrop-blur-sm z-[200]">
+        <div class="modal-box w-11/12 max-w-2xl border border-base-200 shadow-2xl rounded-[1.5rem]">
+            <h3 id="ann_modal_title" class="font-bold text-2xl mb-4 text-base-content border-l-4 border-primary pl-3"></h3>
+            <div id="ann_modal_content" class="prose prose-sm md:prose-base max-w-none text-base-content/80 bg-base-200/30 p-4 md:p-6 rounded-xl"></div>
+            <div class="modal-action mt-8"><button class="btn btn-primary px-8 rounded-full shadow-lg shadow-primary/30" onclick="app.announcements.confirm()">我已收到</button></div>
         </div>
     </dialog>
 
-    <dialog id="history_modal" class="modal">
-        <div class="modal-box w-11/12 max-w-3xl border border-base-200 shadow-2xl h-[80vh] flex flex-col p-0">
+    <dialog id="history_modal" class="modal bg-black/40 backdrop-blur-sm z-[200]">
+        <div class="modal-box w-11/12 max-w-3xl border border-base-200 shadow-2xl h-[80vh] flex flex-col p-0 rounded-[1.5rem] overflow-hidden">
             <div class="p-6 border-b border-base-300 flex justify-between items-center bg-base-200/50">
-                <h3 class="font-bold text-xl text-base-content flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-base-content/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    历史公告
-                </h3>
-                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+                <h3 class="font-bold text-xl text-base-content flex items-center gap-2"><i class="fas fa-bullhorn text-primary"></i> 历史公告</h3>
+                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost bg-base-200 hover:bg-base-300">✕</button></form>
             </div>
-            <div id="history_list" class="flex-1 overflow-y-auto p-6 flex flex-col gap-4"></div>
+            <div id="history_list" class="flex-1 overflow-y-auto p-6 flex flex-col gap-4 bg-base-100/50"></div>
         </div>
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
     
+    <dialog id="new_badge_modal" class="modal bg-black/50 backdrop-blur-md z-[200]">
+        <div class="modal-box w-11/12 max-w-[420px] bg-white rounded-[2rem] p-8 md:p-10 relative overflow-hidden shadow-2xl text-left transform transition-all scale-95 opacity-0 duration-500 ease-out" id="new_badge_modal_box">
+            <div id="new-badge-gradient" class="absolute top-0 right-0 w-64 h-64 opacity-90 transform translate-x-20 -translate-y-20 rotate-12 -z-10 shadow-inner transition-colors duration-500"></div>
+            <div class="absolute top-0 right-0 w-full h-full bg-white opacity-10 transform -rotate-[30deg] translate-x-32 -translate-y-10 z-0 pointer-events-none"></div>
+
+            <div class="relative z-10">
+                <p class="text-[#00a8ff] font-extrabold text-sm tracking-widest mb-4 flex items-center gap-2 drop-shadow-sm">✨ 收集到一枚贴纸！</p>
+                <h3 id="new-badge-name" class="text-4xl md:text-5xl font-black text-stone-800 mb-4 leading-[1.1] tracking-tight w-4/5 drop-shadow-sm"></h3>
+                <p id="new-badge-desc" class="text-stone-500 font-medium mb-16 pr-12 leading-relaxed text-sm md:text-base"></p>
+                
+                <div class="absolute right-[-1.5rem] top-[2.5rem] md:top-[3.5rem] w-44 h-44 md:w-52 md:h-52 drop-shadow-2xl hover:scale-110 transition-transform duration-500 flex items-center justify-center pointer-events-none">
+                    <img id="new-badge-icon-img" src="" alt="贴纸" class="max-w-full max-h-full object-contain hidden filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.2)]" />
+                    <span id="new-badge-icon-text" class="text-8xl md:text-9xl hidden drop-shadow-lg"></span>
+                </div>
+
+                <div class="mt-20 flex flex-col gap-5 pt-2">
+                    <div class="flex items-end gap-10 text-stone-400 text-xs font-mono">
+                        <div><p class="text-stone-300 mb-1 tracking-widest text-[0.65rem] uppercase">收集日期</p><p id="new-badge-date" class="font-bold text-stone-500 text-sm tracking-wider"></p></div>
+                        <div class="pl-4 border-l border-stone-200"><p class="text-stone-300 mb-1 tracking-widest text-[0.65rem] uppercase">贴纸编号</p><p id="new-badge-serial" class="font-bold text-stone-500 text-sm tracking-wider"></p></div>
+                    </div>
+                    <div class="flex items-center justify-between w-full mt-2 pt-5 border-t border-stone-100">
+                        <div class="flex items-center gap-2.5 bg-stone-50 py-1.5 px-3 rounded-full border border-stone-200/50 shadow-sm">
+                            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-[#f8d8d8] to-[#e0e8f5] grid place-items-center text-stone-700 font-extrabold text-[0.65rem] overflow-hidden shadow-inner"><span id="new-badge-avatar"></span></div>
+                            <span id="new-badge-username" class="text-stone-600 font-bold text-xs tracking-wide pr-1"></span>
+                        </div>
+                        <div class="flex items-center gap-1.5 font-bold text-stone-400 italic text-sm tracking-tighter cursor-default"><div class="w-4 h-4 rounded-full bg-gradient-to-tr from-[#00a8ff] to-[#18293d] shadow-sm"></div>WikiBook</div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="app.badges.closeModal()" class="absolute top-4 right-4 btn btn-circle btn-sm btn-ghost bg-black/5 text-stone-500 hover:text-stone-900 hover:bg-black/10 z-20 transition-all">✕</button>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button onclick="app.badges.closeModal()">close</button></form>
+    </dialog>
+
     {% block scripts %}{% endblock %}
     
     <script>
-        /**
-         * App Global Module
-         * Encapsulates logic to prevent global namespace pollution
-         */
+        function switchWallTo(index) {
+            if(typeof window.switchWall === 'function') {
+                window.switchWall(index);
+                document.getElementById('topbar-wall-name').innerText = wallsData[index].name;
+            }
+        }
+
         const app = {
             init() {
-                this.sidebar.init();
                 this.toast.init();
                 this.backToTop.init();
                 {% if current_user.is_authenticated %}
                 this.heartbeat.init();
                 this.announcements.init();
+                this.badges.init();
                 {% endif %}
+                this.generateTOC();
             },
 
-            // --- Back to Top Logic ---
+            generateTOC() {
+                const contentDiv = document.querySelector('.prose'); 
+                if (!contentDiv) return;
+                
+                const headings = contentDiv.querySelectorAll('h1, h2, h3, h4');
+                const tocLists = document.querySelectorAll('#desktop-toc-list, #mobile-toc-list-modal');
+                
+                if (headings.length > 0 && tocLists.length > 0) {
+                    let html = '';
+                    headings.forEach((h, index) => {
+                        if (!h.id) h.id = 'heading-' + index;
+                        const level = parseInt(h.tagName.substring(1));
+                        const padding = (level - 1) * 1.2; 
+                        const dotColor = level === 1 ? 'bg-primary' : 'bg-base-content/20';
+                        const fontWeight = level === 1 ? 'font-bold text-base-content' : 'font-normal text-base-content/70';
+                        
+                        html += `
+                            <li>
+                                <a href="#${h.id}" onclick="document.getElementById('mobile_toc_modal')?.close()" class="nav-menu-item flex items-center w-full max-w-full overflow-hidden" style="padding-left: ${padding}rem">
+                                    <div class="w-1.5 h-1.5 rounded-full ${dotColor} shrink-0"></div>
+                                    <div class="flex-1 min-w-0 ml-1.5">
+                                        <span class="text-fade-edge w-full text-xs ${fontWeight}" title="${h.innerText}">${h.innerText}</span>
+                                    </div>
+                                </a>
+                            </li>`;
+                    });
+                    tocLists.forEach(list => list.innerHTML = html);
+                } else if (tocLists.length > 0) {
+                    tocLists.forEach(list => list.innerHTML = '<li class="px-4 py-6 text-xs text-base-content/40 text-center">本页暂无层级标题</li>');
+                }
+            },
+
             backToTop: {
                 el: document.getElementById('back-to-top'),
-                
                 init() {
                     if (!this.el) return;
                     window.addEventListener('scroll', () => {
@@ -488,224 +713,56 @@
                 }
             },
 
-            // --- Sidebar Logic ---
-            sidebar: {
-                el: document.getElementById('sidebar'),
-                overlay: document.getElementById('sidebar-overlay'),
-                mobileBtn: document.getElementById('mobile-menu-btn'),
-                mobileNavbar: document.getElementById('mobile-navbar'),
-
-                init() {
-                    this.mobileBtn?.addEventListener('click', () => this.toggle());
-                    this.overlay?.addEventListener('click', () => this.toggle());
-                    
-                    // Mobile Navbar Auto-hide on scroll
-                    let lastScroll = 0;
-                    window.addEventListener('scroll', () => {
-                        const currentScroll = window.scrollY;
-                        if (currentScroll > 50 && currentScroll > lastScroll && !this.el.classList.contains('translate-x-0')) {
-                            this.mobileNavbar?.classList.add('-translate-y-full');
-                        } else {
-                            this.mobileNavbar?.classList.remove('-translate-y-full');
-                        }
-                        lastScroll = currentScroll;
-                    }, { passive: true });
-                },
-
-                toggle() {
-                    if (this.el.classList.contains('-translate-x-full')) {
-                        this.el.classList.remove('-translate-x-full');
-                        this.overlay.classList.remove('hidden');
-                    } else {
-                        this.el.classList.add('-translate-x-full');
-                        this.overlay.classList.add('hidden');
-                    }
-                }
-            },
-
-            // --- Toast Logic ---
             toast: {
                 container: document.getElementById('toast-container'),
-                
                 init() {
-                    // Load server-side messages
                     document.querySelectorAll('.server-toast').forEach((el, idx) => {
-                        setTimeout(() => this.show(el.textContent, el.dataset.category), idx * 200);
+                        setTimeout(() => this.show(el.textContent, el.dataset.category), idx * 250);
                     });
                 },
-
                 show(message, type = 'info', link = null) {
                     const el = document.createElement('div');
-                    const iconMap = {
-                        success: '<i class="fas fa-check-circle text-green-400"></i>',
-                        error: '<i class="fas fa-times-circle text-red-400"></i>',
-                        warning: '<i class="fas fa-exclamation-triangle text-yellow-400"></i>',
-                        info: '<i class="fas fa-info-circle text-blue-400"></i>'
-                    };
-
-                    el.className = `pointer-events-auto bg-stone-900/80 backdrop-blur-md text-white border border-white/10 ring-1 ring-white/5 shadow-xl rounded-2xl p-4 min-w-[320px] max-w-[400px] flex items-start gap-3 transition-all duration-500 translate-y-10 opacity-0`;
-                    
-                    if (link) {
-                        el.classList.add('cursor-pointer', 'hover:bg-stone-800');
-                        el.onclick = (e) => !e.target.closest('button') && (window.location.href = link);
-                    }
-
-                    el.innerHTML = `
-                        <div class="mt-0.5 text-lg">${iconMap[type] || iconMap.info}</div>
-                        <div class="flex-1 text-sm font-medium leading-relaxed">${message}</div>
-                        <button onclick="this.parentElement.remove()" class="btn btn-xs btn-ghost btn-circle text-white/50 hover:text-white">✕</button>
-                    `;
-
+                    const iconMap = { success: '<i class="fas fa-check-circle text-emerald-400"></i>', error: '<i class="fas fa-times-circle text-rose-400"></i>', warning: '<i class="fas fa-exclamation-triangle text-amber-400"></i>', info: '<i class="fas fa-info-circle text-blue-400"></i>' };
+                    el.className = `pointer-events-auto bg-stone-900/85 backdrop-blur-xl text-white border border-white/10 shadow-2xl rounded-2xl p-4 min-w-[320px] max-w-[400px] flex items-start gap-3 transition-all duration-500 translate-y-10 opacity-0`;
+                    if (link) { el.classList.add('cursor-pointer', 'hover:bg-stone-800'); el.onclick = (e) => !e.target.closest('button') && (window.location.href = link); }
+                    el.innerHTML = `<div class="mt-0.5 text-lg">${iconMap[type] || iconMap.info}</div><div class="flex-1 text-sm font-medium leading-relaxed tracking-wide">${message}</div><button onclick="this.parentElement.remove()" class="btn btn-xs btn-ghost btn-circle text-white/40 hover:text-white">✕</button>`;
                     this.container.appendChild(el);
                     requestAnimationFrame(() => el.classList.remove('translate-y-10', 'opacity-0'));
-                    setTimeout(() => {
-                        el.style.opacity = '0';
-                        el.style.transform = 'translateY(10px)';
-                        setTimeout(() => el.remove(), 300);
-                    }, 4000);
+                    setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(10px) scale(0.95)'; setTimeout(() => el.remove(), 400); }, 4000);
                 }
             },
 
             {% if current_user.is_authenticated %}
-            // --- Heartbeat Logic ---
             heartbeat: {
-                lastTime: 0,
-                interval: 30000,
-                
-                init() {
-                    this.send();
-                    // Throttle user activity events
-                    ['mousedown', 'keydown', 'touchstart'].forEach(evt => {
-                        window.addEventListener(evt, () => this.schedule(), { passive: true });
-                    });
-                    document.addEventListener('visibilitychange', () => !document.hidden && this.send());
-                },
-
-                schedule() {
-                    if (Date.now() - this.lastTime > this.interval) this.send();
-                },
-
+                lastTime: 0, interval: 30000,
+                init() { this.send(); ['mousedown', 'keydown', 'touchstart'].forEach(evt => window.addEventListener(evt, () => this.schedule(), { passive: true })); document.addEventListener('visibilitychange', () => !document.hidden && this.send()); },
+                schedule() { if (Date.now() - this.lastTime > this.interval) this.send(); },
                 send() {
-                    if (document.hidden) return;
-                    this.lastTime = Date.now();
-                    
-                    fetch('/api/heartbeat', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ path: window.location.pathname })
-                    })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.notifications?.length) {
-                            data.notifications.forEach(n => app.toast.show(n.message, 'info', n.link));
-                            fetch('/api/notifications/read/all', { method: 'POST' });
-                        }
-                    })
-                    .catch(() => {}); // Silent fail
+                    if (document.hidden) return; this.lastTime = Date.now();
+                    fetch('/api/heartbeat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ path: window.location.pathname }) }).then(r => r.json()).then(data => {
+                        if (data.notifications?.length) { data.notifications.forEach(n => app.toast.show(n.message, 'info', n.link)); fetch('/api/notifications/read/all', { method: 'POST' }); }
+                        if (data.has_new_badges) app.badges.checkNew();
+                    }).catch(() => {});
                 }
             },
-
-            // --- Announcements Logic ---
             announcements: {
                 currentId: null,
-
-                init() {
-                    this.check();
-                },
-
-                check() {
-                    fetch('/api/announcements/check')
-                        .then(r => r.json())
-                        .then(data => {
-                            const dot = document.getElementById('announcement-dot');
-                            if (dot) dot.classList.toggle('hidden', !data.has_history);
-                            
-                            if (data.has_unconfirmed) {
-                                this.currentId = data.announcement.id;
-                                document.getElementById('ann_modal_title').textContent = data.announcement.title;
-                                document.getElementById('ann_modal_content').innerHTML = data.announcement.html;
-                                setTimeout(() => document.getElementById('announcement_modal').showModal(), 1000);
-                            }
-                        })
-                        .catch(console.error);
-                },
-
-                confirm() {
-                    if (!this.currentId) return;
-                    const btn = document.querySelector('#announcement_modal .btn-primary');
-                    btn.disabled = true;
-                    
-                    fetch(`/api/announcements/${this.currentId}/confirm`, { method: 'POST' })
-                        .then(r => r.json())
-                        .then(data => {
-                            if (data.success) {
-                                document.getElementById('announcement_modal').close();
-                                document.getElementById('announcement-dot').classList.remove('hidden');
-                                app.toast.show('已确认收到通知', 'success');
-                            }
-                        })
-                        .finally(() => btn.disabled = false);
-                },
-
-                showHistory(e) {
-                    e?.preventDefault();
-                    e?.stopPropagation();
-                    const list = document.getElementById('history_list');
-                    document.getElementById('history_modal').showModal();
-                    list.innerHTML = '<div class="grid place-items-center h-full"><span class="loading loading-spinner"></span></div>';
-
-                    fetch('/api/announcements/history')
-                        .then(r => r.json())
-                        .then(data => {
-                            list.innerHTML = '';
-                            if (!data.announcements?.length) {
-                                list.innerHTML = '<div class="text-center text-base-content/50 py-10">暂无历史公告</div>';
-                                return;
-                            }
-                            data.announcements.forEach(ann => {
-                                const el = document.createElement('div');
-                                el.className = 'collapse collapse-arrow bg-base-100 border border-base-200 rounded-xl';
-                                el.innerHTML = `
-                                    <input type="checkbox" />
-                                    <div class="collapse-title font-medium flex justify-between pr-12">
-                                        <span>${ann.title}</span>
-                                        <div class="flex items-center gap-2">
-                                            ${!ann.is_confirmed ? '<span class="badge badge-xs badge-error">未读</span>' : ''}
-                                            <span class="text-xs text-base-content/50 font-mono">${ann.created_at}</span>
-                                        </div>
-                                    </div>
-                                    <div class="collapse-content border-t border-base-300 bg-base-200/50 pt-4 prose max-w-none text-sm">${ann.html}</div>
-                                `;
-                                list.appendChild(el);
-                            });
-                        });
-                }
+                init() { this.check(); },
+                check() { fetch('/api/announcements/check').then(r => r.json()).then(data => { const dot = document.getElementById('announcement-dot'); const dotM = document.getElementById('announcement-dot-mobile'); if (dot) dot.classList.toggle('hidden', !data.has_history); if (dotM) dotM.classList.toggle('hidden', !data.has_history); if (data.has_unconfirmed) { this.currentId = data.announcement.id; document.getElementById('ann_modal_title').textContent = data.announcement.title; document.getElementById('ann_modal_content').innerHTML = data.announcement.html; setTimeout(() => document.getElementById('announcement_modal').showModal(), 1000); } }).catch(console.error); },
+                confirm() { if (!this.currentId) return; const btn = document.querySelector('#announcement_modal .btn-primary'); btn.disabled = true; fetch(`/api/announcements/${this.currentId}/confirm`, { method: 'POST' }).then(r => r.json()).then(data => { if (data.success) { document.getElementById('announcement_modal').close(); document.getElementById('announcement-dot').classList.remove('hidden'); document.getElementById('announcement-dot-mobile').classList.remove('hidden'); app.toast.show('已确认收到通知', 'success'); } }).finally(() => btn.disabled = false); },
+                showHistory(e) { e?.preventDefault(); e?.stopPropagation(); const list = document.getElementById('history_list'); document.getElementById('history_modal').showModal(); list.innerHTML = '<div class="grid place-items-center h-full"><span class="loading loading-spinner text-primary"></span></div>'; fetch('/api/announcements/history').then(r => r.json()).then(data => { list.innerHTML = ''; if (!data.announcements?.length) { list.innerHTML = '<div class="text-center text-base-content/40 py-16 font-medium">暂无历史公告</div>'; return; } data.announcements.forEach(ann => { const el = document.createElement('div'); el.className = 'collapse collapse-arrow bg-base-100 border border-base-200 rounded-2xl shadow-sm hover:border-base-300 transition-colors'; el.innerHTML = `<input type="checkbox" /><div class="collapse-title font-bold flex justify-between pr-12 items-center text-base"><span>${ann.title}</span><div class="flex items-center gap-3">${!ann.is_confirmed ? '<span class="badge badge-sm badge-error text-white">未读</span>' : ''}<span class="text-xs text-base-content/40 font-mono bg-base-200 px-2 py-1 rounded-lg">${ann.created_at}</span></div></div><div class="collapse-content border-t border-base-100 bg-base-50 pt-5 prose prose-sm max-w-none">${ann.html}</div>`; list.appendChild(el); }); }); }
+            },
+            badges: {
+                queue: [], isShowing: false,
+                init() { setTimeout(() => this.checkNew(), 1500); },
+                checkNew() { fetch('/api/badges/unnotified').then(r => r.json()).then(data => { if (data && data.length > 0) { this.queue.push(...data); this.showNext(); } }).catch(console.error); },
+                showNext() { if (this.isShowing || this.queue.length === 0) return; this.isShowing = true; const badge = this.queue.shift(); this.renderModal(badge); },
+                renderModal(badge) { document.getElementById('new-badge-name').textContent = badge.name; document.getElementById('new-badge-desc').textContent = badge.description; const imgEl = document.getElementById('new-badge-icon-img'); const textEl = document.getElementById('new-badge-icon-text'); if (badge.is_image) { imgEl.src = badge.icon; imgEl.classList.remove('hidden'); textEl.classList.add('hidden'); } else { textEl.textContent = badge.icon; textEl.classList.remove('hidden'); imgEl.classList.add('hidden'); } document.getElementById('new-badge-date').textContent = badge.earned_at; document.getElementById('new-badge-serial').textContent = badge.serial_number; document.getElementById('new-badge-username').textContent = badge.user_name; document.getElementById('new-badge-avatar').textContent = badge.avatar_char; const gradientEl = document.getElementById('new-badge-gradient'); let colorClasses = "bg-gradient-to-bl from-stone-400 to-stone-200"; if (badge.rarity === 'rare') colorClasses = "bg-gradient-to-bl from-[#18293d] to-[#3b82f6]"; else if (badge.rarity === 'epic') colorClasses = "bg-gradient-to-bl from-purple-600 to-fuchsia-400"; else if (badge.rarity === 'legendary') colorClasses = "bg-gradient-to-bl from-amber-500 to-yellow-300"; gradientEl.className = `absolute top-0 right-0 w-64 h-64 opacity-90 transform translate-x-20 -translate-y-20 rotate-12 -z-10 shadow-inner transition-colors duration-700 ${colorClasses}`; const modal = document.getElementById('new_badge_modal'); const box = document.getElementById('new_badge_modal_box'); modal.showModal(); requestAnimationFrame(() => { box.classList.remove('scale-95', 'opacity-0'); box.classList.add('scale-100', 'opacity-100'); }); },
+                closeModal() { const modal = document.getElementById('new_badge_modal'); const box = document.getElementById('new_badge_modal_box'); box.classList.remove('scale-100', 'opacity-100'); box.classList.add('scale-95', 'opacity-0'); setTimeout(() => { modal.close(); this.isShowing = false; setTimeout(() => this.showNext(), 500); }, 400); }
             }
             {% endif %}
         };
-
-        // Boot
-        document.addEventListener('DOMContentLoaded', () => {
-            app.init();
-        });
-
-        document.getElementById('theme-toggle-btn')?.addEventListener('click', () => {
-    const htmlEl = document.documentElement;
-    const isBookMode = window.location.pathname.startsWith('/book');
-    const lightTheme = isBookMode ? 'winter' : 'cupcake';
-    const darkTheme = 'business';
-    
-    // 如果当前是暗色，则切回亮色
-    if (htmlEl.classList.contains('dark')) {
-        htmlEl.classList.remove('dark');
-        htmlEl.setAttribute('data-theme', lightTheme);
-        localStorage.setItem('theme', 'light');
-    } else {
-        htmlEl.classList.add('dark');
-        htmlEl.setAttribute('data-theme', darkTheme);
-        localStorage.setItem('theme', 'dark');
-    }
-});
+        document.addEventListener('DOMContentLoaded', () => { app.init(); });
     </script>
 </body>
 </html>

@@ -364,6 +364,7 @@ class UserBadge(db.Model):
     badge_id = db.Column(db.Integer, db.ForeignKey("badge.id"), nullable=False)
     earned_at = db.Column(db.DateTime, default=now_utc8)
     serial_number = db.Column(db.String(50), unique=True, nullable=True) # Unique Serial Number
+    is_notified = db.Column(db.Boolean, default=False)
 
     def __init__(self, **kwargs):
         super(UserBadge, self).__init__(**kwargs)
@@ -472,6 +473,9 @@ class WikiPage(db.Model):
 
     tags = db.relationship('Tag', secondary='wiki_page_tags', backref=db.backref('pages', lazy='dynamic'))
     comments = db.relationship('Comment', backref='wiki_page', cascade="all, delete-orphan", order_by="desc(Comment.created_at)")
+
+    folder_id = db.Column(db.Integer, db.ForeignKey('wiki_folder.id'), nullable=True)
+    order_weight = db.Column(db.Integer, default=0) # 用于排序
 
 class UserActiveStatus(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), primary_key=True)
@@ -813,63 +817,49 @@ def backup_wiki(wiki_id):
 
     return backup_dir
 
+# 新增一个全局标志位，防止重复检查
+_db_initialized = False
+
 @app.before_request
 def ensure_db():
-    with app.app_context():
-        db.create_all()
-        if MarkdownStyle.query.first() is None:
-            s = MarkdownStyle(css_text="")
-            db.session.add(s)
-            db.session.commit()
+    global _db_initialized
+    if not _db_initialized:
+        with app.app_context():
+            db.create_all()
+            try:
+                upgrade_db() # 确保每次启动应用都会自动检查并升级表结构
+            except Exception as e:
+                print(f"DB Upgrade error: {e}")
+                
+            if MarkdownStyle.query.first() is None:
+                s = MarkdownStyle(css_text="")
+                db.session.add(s)
+                db.session.commit()
+        _db_initialized = True
 
 @app.route("/")
 def index():
     q = request.args.get("q", "").strip()
     user_id = request.args.get("user_id")
     target_user = None
+    
     if user_id:
-        if not current_user.is_authenticated:
-            # 未登录用户不允许查看其他人的贴纸，重定向到登录页或返回主页
-            # 这里选择忽略 user_id，直接按默认首页（无 target_user）处理
-            # 也可以选择: return redirect(url_for('login'))
-            pass 
-        else:
+        if current_user.is_authenticated:
             try:
                 potential_target = User.query.get(int(user_id))
                 if potential_target:
-                    # 检查权限：是自己，或者是学友（互相关注）
-                    # 注意：原始需求是“学友”，即互相关注。
-                    # 如果只是关注（follower），使用 current_user.is_following(potential_target)
-                    # 如果必须互相关注，需检查双向。
-                    # 根据上下文，之前的API检查是 is_following。
-                    # 用户新需求："应该同时存在登录用户和被查看用户的id在url中，且要计算是否是对方的学友"
-                    # 我们定义“学友”为互相关注。
-                    
                     if potential_target.id == current_user.id:
                         target_user = potential_target
                     else:
-                        # 检查是否互相关注 (is_friend / study_partner)
-                        # User模型没有直接的 is_friend 方法，但我们可以检查双向关注
-                        # A follows B AND B follows A
                         if current_user.is_following(potential_target) and potential_target.is_following(current_user):
                             target_user = potential_target
-                        else:
-                            # 不是学友，不允许查看，target_user 保持 None
-                            # 可选：flash("您和该用户不是学友关系，无法参观贴纸板")
-                            pass
             except:
                 pass
-            
+                
     if q:
-        # 搜索 Wiki 标题
         wikis = Wiki.query.filter(Wiki.title.contains(q)).order_by(Wiki.created_at.desc()).all()
-        
-        # 搜索 Wiki 页面内容
-        pages = WikiPage.query.filter(
-            (WikiPage.title.contains(q)) | (WikiPage.content_md.contains(q))
-        ).all()
+        pages = WikiPage.query.filter((WikiPage.title.contains(q)) | (WikiPage.content_md.contains(q))).all()
     else:
-        # Filter logic
         visibility_filter = request.args.get("visibility", "all")
         query = Wiki.query
         
@@ -908,45 +898,57 @@ def index():
             except:
                 query = query.filter(Wiki.visibility == 'public')
         else:
-            # Default: Show public wikis + visible restricted ones
-            # Actually, the original logic showed ALL wikis regardless of visibility
-            # Now we should probably filter visible ones if we are strict, 
-            # but 'index' usually shows public catalog.
-            # Let's keep showing all for 'all' filter but maybe mark them?
-            # Or better: Only show what user CAN view.
-            
-            # For now, let's just return all for 'all', but maybe filter public only?
-            # User requirement: "Filter visibility, i.e., filter class/group visible wikis"
-            # If I select "All", I expect to see Public wikis.
-            # If I select "Class", I see wikis for my class.
-            
-            # Let's implement a proper visibility filter
             pass
 
         wikis = query.order_by(Wiki.created_at.desc()).all()
-                    
-        # Post-filtering for visibility if not admin
         visible_wikis = []
         for w in wikis:
-            if w.is_visible_to(current_user if current_user.is_authenticated else User(is_admin=False, id=-1)): # Dummy user for anon check
+            if w.is_visible_to(current_user if current_user.is_authenticated else User(is_admin=False, id=-1)): 
                 visible_wikis.append(w)
         
-        # 修改这里：取消掉之前 if visibility_filter != 'all': 的 pass 判断
-        # 无论什么筛选状态，都直接使用鉴权过滤后的可见列表
         wikis = visible_wikis
-
         pages = []
         
-    # Context data for filters (only for admin)
+    # Context data for filters
     all_classes = []
     all_groups = []
     if current_user.is_authenticated and current_user.is_admin:
         all_classes = Class.query.order_by(Class.name).all()
         all_groups = Group.query.order_by(Group.name).all()
 
-    return render_template("index.html", wikis=wikis, pages=pages, q=q, target_user=target_user, 
-                          current_filter=request.args.get("visibility", "all"),
-                          all_classes=all_classes, all_groups=all_groups)
+    # --- 💡 核心修复：独立出来，并修复了 Emoji 的丢失逻辑 ---
+    my_home_stickers = []
+    if current_user.is_authenticated:
+        stickers = UserSticker.query.filter_by(user_id=current_user.id, page_type='profile').all()
+        for s in stickers:
+            if not s.badge:
+                continue
+                
+            # 判断是不是图片，如果是图片调用转化函数，如果是 Emoji 则保留原样！
+            icon_val = s.badge.icon
+            final_icon = badge_icon_url(icon_val) if is_image_icon(icon_val) else icon_val
+            
+            my_home_stickers.append({
+                "id": s.id, 
+                "badge_id": s.badge_id,
+                "badge_icon": final_icon,
+                "badge_name": s.badge.name,
+                "x": s.x, 
+                "y": s.y, 
+                "rotation": s.rotation, 
+                "scale": s.scale, 
+                "z_index": s.z_index
+            })
+
+    return render_template("index.html", 
+                           wikis=wikis, 
+                           pages=pages, 
+                           q=q, 
+                           target_user=target_user, 
+                           current_filter=request.args.get("visibility", "all"),
+                           all_classes=all_classes, 
+                           all_groups=all_groups,
+                           my_home_stickers=my_home_stickers)
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -975,6 +977,38 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for("index"))
+
+@app.route("/settings", methods=["GET", "POST"])
+@login_required
+def settings():
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        
+        # Update password if requested
+        if new_password:
+            if not current_password:
+                flash("修改密码需要输入当前密码进行验证")
+                return redirect(url_for("settings"))
+                
+            if not current_user.check_password(current_password):
+                flash("当前密码错误")
+                return redirect(url_for("settings"))
+                
+            if new_password != confirm_password:
+                flash("两次输入的新密码不一致")
+                return redirect(url_for("settings"))
+                
+            current_user.set_password(new_password)
+            db.session.commit()
+            flash("密码已修改")
+        else:
+            flash("未做任何修改")
+            
+        return redirect(url_for("settings"))
+        
+    return render_template("settings.html")
 
 @app.route("/admin/wikis/new", methods=["GET", "POST"])
 @login_required
@@ -1063,7 +1097,7 @@ def wiki_detail(wiki_id):
     # ...详情页允许所有登录用户访问，以便订阅
     all_pages = WikiPage.query.filter_by(wiki_id=wiki_id).all()
     
-    # 排序逻辑（复用）
+    # 排序逻辑
     def page_sort_key(page):
         try:
             val = int(page.slug)
@@ -1087,7 +1121,7 @@ def wiki_detail(wiki_id):
         first_page.view_count += 1
         db.session.commit()
     
-    # Fetch contributors for title card (Same as view_page)
+    # Fetch contributors for title card
     contributors = []
     try:
         if pages:
@@ -1107,8 +1141,25 @@ def wiki_detail(wiki_id):
     except Exception as e:
         print(f"Error fetching contributors in wiki_detail: {e}")
         contributors = []
-    
-    return render_template("wiki/view_page.html", wiki=w, page=first_page, pages=pages, html=html, can_edit=is_editor, is_subscribed=is_subscribed, is_home=True, contributors=contributors)
+        
+    # ========================================================
+    # 💡 核心修复：在这里也必须获取 my_recent_notes，因为这个路由也渲染 view_page.html
+    # ========================================================
+    my_recent_notes = []
+    if current_user.is_authenticated:
+        my_recent_notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.updated_at.desc()).limit(15).all()
+
+    # 💡 别忘了在 return 里把 my_recent_notes 传给模板
+    return render_template("wiki/view_page.html", 
+                           wiki=w, 
+                           page=first_page, 
+                           pages=pages, 
+                           html=html, 
+                           can_edit=is_editor, 
+                           is_subscribed=is_subscribed, 
+                           is_home=True, 
+                           contributors=contributors,
+                           my_recent_notes=my_recent_notes)
 
 @app.route("/admin/wikis/<int:wiki_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -1914,6 +1965,19 @@ def update_user_class(user_id):
     flash(f"用户 {u.username} 班级已更新")
     return redirect(url_for("manage_users"))
 
+@app.route("/admin/users/<int:user_id>/reset_password", methods=["POST"])
+@login_required
+def reset_user_password(user_id):
+    if not current_user.is_admin:
+        abort(403)
+        
+    u = User.query.get_or_404(user_id)
+    u.set_password("123456")
+    db.session.commit()
+    
+    flash(f"用户 {u.username} 的密码已重置为 123456")
+    return redirect(url_for("manage_users"))
+
 @app.route("/admin/badges", methods=["GET", "POST"])
 @login_required
 def manage_badges():
@@ -2296,8 +2360,14 @@ def edit_badge(badge_id):
             flash("徽章已更新 (手动发放类型不进行自动检查)")
             
         return redirect(url_for("manage_badges"))
-        
-    return render_template("admin/edit_badge.html", badge=b)
+    
+    # ====== 新增获取成员名单逻辑 ======
+    # 获取所有用户，按班级和学号排序方便查找
+    users = User.query.order_by(User.class_name, User.student_id).all()
+    # 提取出已经拥有该徽章的 user_id 列表
+    earned_user_ids = [ub.user_id for ub in b.users.all()]
+
+    return render_template("admin/edit_badge.html", badge=b, users=users, earned_user_ids=earned_user_ids)
 
 @app.route("/admin/badges/<int:badge_id>/award", methods=["POST"])
 @login_required
@@ -2309,29 +2379,50 @@ def award_badge_manually(badge_id):
     if b.condition_type != 'manual':
         return jsonify({"error": "Only manual badges can be manually awarded"}), 400
         
-    user_ids = request.json.get("user_ids", [])
-    if not user_ids:
-        return jsonify({"error": "No users selected"}), 400
-        
-    count = 0
-    for uid in user_ids:
-        user = User.query.get(uid)
-        if user:
-            # Check limit
-            if b.total_limit is not None and b.issued_count >= b.total_limit:
-                break
-
-            # Check if already has badge
-            if not UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first():
-                ub = UserBadge(user_id=user.id, badge_id=b.id)
-                db.session.add(ub)
-                b.issued_count += 1
-                count += 1
+    data = request.get_json()
+    # 获取前端传来的目标用户 ID 列表（必须包含所有应该拥有此徽章的用户）
+    target_user_ids = [int(uid) for uid in data.get("user_ids", [])]
+    
+    # 获取数据库中当前拥有该徽章的 UserBadge 记录
+    current_ubs = UserBadge.query.filter_by(badge_id=b.id).all()
+    current_user_ids = [ub.user_id for ub in current_ubs]
+    
+    # 集合运算：计算出需要新增的，和需要撤销的
+    to_add_ids = set(target_user_ids) - set(current_user_ids)
+    to_remove_ids = set(current_user_ids) - set(target_user_ids)
+    
+    try:
+        # 1. 撤销/移除被取消勾选的用户徽章
+        if to_remove_ids:
+            # 批量删除 UserBadge 关联记录
+            UserBadge.query.filter(UserBadge.badge_id == b.id, UserBadge.user_id.in_(to_remove_ids)).delete(synchronize_session=False)
+            # 防错机制：如果这些被撤销的用户恰好正在“佩戴”这个徽章，强制帮他们卸下
+            User.query.filter(User.selected_badge_id == b.id, User.id.in_(to_remove_ids)).update({"selected_badge_id": None}, synchronize_session=False)
+            
+        # 2. 新增发放给刚勾选的用户
+        added_count = 0
+        for uid in to_add_ids:
+            # 严格检查限量发行规则 (当前拥有数 = 原有数量 - 撤销数量 + 已在循环中新增的数量)
+            current_total = b.issued_count - len(to_remove_ids) + added_count
+            if b.total_limit is not None and current_total >= b.total_limit:
+                break # 如果达到限量，停止后续发放
                 
-    db.session.commit()
-    if b.total_limit is not None and b.issued_count >= b.total_limit:
-        return jsonify({"success": True, "count": count, "message": "Badge limit reached"})
-    return jsonify({"success": True, "count": count})
+            ub = UserBadge(user_id=uid, badge_id=b.id)
+            db.session.add(ub)
+            added_count += 1
+            
+        # 3. 重新校准该徽章的总发放数量
+        b.issued_count = b.issued_count - len(to_remove_ids) + added_count
+        
+        db.session.commit()
+        
+        # 返回最终拥有此徽章的总人数给前端展示
+        return jsonify({"success": True, "count": b.issued_count})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": f"数据库操作失败: {str(e)}"}), 500
+
 
 @app.route("/admin/badges/<int:badge_id>/delete", methods=["POST"])
 @login_required
@@ -3243,7 +3334,41 @@ def heartbeat():
             "created_at": n.created_at.strftime("%H:%M")
         })
 
-    return {"status": "ok", "notifications": notifications}
+    has_new_badges = UserBadge.query.filter_by(user_id=current_user.id, is_notified=False).count() > 0
+
+    return {"status": "ok", "notifications": notifications, "has_new_badges": has_new_badges}
+
+
+@app.route("/api/badges/unnotified", methods=["GET"])
+@login_required
+def api_unnotified_badges():
+    ubs = UserBadge.query.filter_by(user_id=current_user.id, is_notified=False).all()
+    if not ubs:
+        return jsonify([])
+    
+    data = []
+    for ub in ubs:
+        ub.is_notified = True 
+        icon_val = ub.badge.icon
+        is_image = is_image_icon(icon_val)
+        
+        # 安全获取时间，防止旧数据没有时间导致 500 报错
+        time_str = ub.earned_at.strftime("%y-%m-%d") if ub.earned_at else now_utc8().strftime("%y-%m-%d")
+        
+        data.append({
+            "name": ub.badge.name,
+            "description": ub.badge.description,
+            "icon": badge_icon_url(icon_val) if is_image else icon_val,
+            "is_image": is_image,
+            "earned_at": time_str,
+            "serial_number": ub.serial_number or f"SF-{int(time.time())}",
+            "user_name": ub.user.username,
+            "avatar_char": ub.user.username[0].upper() if ub.user.username else "U",
+            "rarity": ub.badge.rarity  # <--- 新增：把稀有度传给前端
+        })
+        
+    db.session.commit()
+    return jsonify(data)
 
 @app.route("/api/notes/new_view", methods=["POST"])
 @login_required
@@ -3288,7 +3413,7 @@ def check_and_award_badges(user):
             continue
 
         earned = False
-        
+         
         if badge.condition_type == 'all_users':
             earned = True
             
@@ -3456,102 +3581,7 @@ def check_and_award_badges(user):
     if awarded_count > 0:
         db.session.commit()
 
-# Sticker API
-@app.route("/api/stickers/<page_type>", methods=["GET", "POST"])
-@login_required
-def api_stickers(page_type):
-    if page_type not in ['wiki', 'book', 'profile']:
-        return jsonify({"error": "Invalid page type"}), 400
-        
-    if request.method == "GET":
-        target_user_id = current_user.id
-        user_id_param = request.args.get('user_id')
-        if user_id_param:
-            try:
-                target_user_id = int(user_id_param)
-            except ValueError:
-                pass
-        
-        # Permission Check for Live Board
-        if target_user_id != current_user.id:
-            target_user = User.query.get(target_user_id)
-            if not target_user:
-                return jsonify({"error": "User not found"}), 404
-            
-            # Check if follower (assuming Live Board is visible to followers)
-            # Using is_following method: current_user.is_following(target_user)
-            # BUT for Study Partner logic, we might want mutual follow?
-            # User requirement: "should compute if they are study partners (mutual follow)"
-            # If the index route only allows mutual follow, the API should probably enforce the same or similar.
-            # Currently the index route enforces mutual follow.
-            # The API currently enforces "I follow Target".
-            # If I follow Target but Target doesn't follow me back (not study partner),
-            # Index route sets target_user=None, so banner doesn't show.
-            # BUT sticker.js might still try to load stickers?
-            # StickerManager only inits if target_user is present in DOM.
-            # So if Index route is strict, API being loose is okay-ish (just security in depth).
-            # But let's align API to be strict too if that's what user implies.
-            # "且要计算是否是对方的学友" -> This was for the index route logic.
-            # Let's keep API as is (one-way follow is usually enough for "viewing", mutual is for "interaction")
-            # OR, update API to match index route policy: Mutual Follow required?
-            # Let's update API to require Mutual Follow to be safe and consistent.
-            
-            is_mutual = current_user.is_following(target_user) and target_user.is_following(current_user)
-            if not is_mutual:
-                 # Strict privacy for Live Board: Only self and study partners can see
-                 return jsonify({"error": "Permission denied: Not study partners"}), 403
 
-        stickers = UserSticker.query.filter_by(user_id=target_user_id, page_type=page_type).all()
-        return jsonify({
-            "stickers": [{
-                "id": s.id,
-                "badge_id": s.badge_id,
-                "badge_icon": badge_icon_url(s.badge.icon) if s.badge else "",
-                "x": s.x,
-                "y": s.y,
-                "rotation": s.rotation,
-                "scale": s.scale,
-                "z_index": s.z_index
-            } for s in stickers]
-        })
-        
-    elif request.method == "POST":
-        data = request.json
-        stickers_data = data.get("stickers", [])
-        
-        # Full replacement strategy for simplicity
-        UserSticker.query.filter_by(user_id=current_user.id, page_type=page_type).delete()
-        
-        # Validate counts
-        badge_counts = {}
-        
-        for s in stickers_data:
-            badge_id = s.get("badge_id")
-            # Verify user owns this badge
-            ub = UserBadge.query.filter_by(user_id=current_user.id, badge_id=badge_id).first()
-            if ub:
-                # Check limit
-                badge = ub.badge
-                current_count = badge_counts.get(badge_id, 0)
-                if current_count >= badge.sticker_count:
-                    continue # Skip if limit reached
-                    
-                badge_counts[badge_id] = current_count + 1
-                
-                new_sticker = UserSticker(
-                    user_id=current_user.id,
-                    badge_id=badge_id,
-                    page_type=page_type,
-                    x=s.get("x", 50),
-                    y=s.get("y", 50),
-                    rotation=s.get("rotation", 0),
-                    scale=s.get("scale", 1),
-                    z_index=s.get("z_index", 1)
-                )
-                db.session.add(new_sticker)
-        
-        db.session.commit()
-        return jsonify({"success": True})
 
 @app.route("/api/stickers/<page_type>/publish", methods=["POST"])
 @login_required
@@ -3895,82 +3925,79 @@ def delete_announcement_file(file_id):
 def upgrade_db():
     """Upgrade database schema manually"""
     with app.app_context():
-        # Check if Badge table has start_time column
         inspector = db.inspect(db.engine)
-        columns = [c['name'] for c in inspector.get_columns('badge')]
         
-        if 'start_time' not in columns:
-            print("Upgrading Badge table: Adding start_time column...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE badge ADD COLUMN start_time DATETIME"))
-                conn.commit()
-                
-        if 'end_time' not in columns:
-            print("Upgrading Badge table: Adding end_time column...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE badge ADD COLUMN end_time DATETIME"))
-                conn.commit()
+        # 1. Check Badge table
+        if 'badge' in inspector.get_table_names():
+            columns = [c['name'] for c in inspector.get_columns('badge')]
+            if 'start_time' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN start_time DATETIME"))
+                    conn.commit()
+            if 'end_time' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN end_time DATETIME"))
+                    conn.commit()
+            if 'sticker_count' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN sticker_count INTEGER DEFAULT 1"))
+                    conn.commit()
+            if 'total_limit' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN total_limit INTEGER"))
+                    conn.commit()
+            if 'issued_count' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN issued_count INTEGER DEFAULT 0"))
+                    conn.commit()
+            if 'category' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN category VARCHAR(50) DEFAULT '一般'"))
+                    conn.commit()
+            if 'custom_condition_text' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN custom_condition_text VARCHAR(255)"))
+                    conn.commit()
+            if 'rarity' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN rarity VARCHAR(20) DEFAULT 'common'"))
+                    conn.commit()
+            if 'is_secret' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN is_secret BOOLEAN DEFAULT 0"))
+                    conn.commit()
 
-        if 'sticker_count' not in columns:
-            print("Upgrading Badge table: Adding sticker_count column...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE badge ADD COLUMN sticker_count INTEGER DEFAULT 1"))
-                conn.commit()
+        # 2. Check Wiki table
+        if 'wiki' in inspector.get_table_names():
+            wiki_columns = [c['name'] for c in inspector.get_columns('wiki')]
+            if 'bg_color' not in wiki_columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE wiki ADD COLUMN bg_color VARCHAR(20) DEFAULT '#ffffff'"))
+                    conn.execute(db.text("ALTER TABLE wiki ADD COLUMN fg_color VARCHAR(20) DEFAULT '#1f2937'"))
+                    conn.execute(db.text("ALTER TABLE wiki ADD COLUMN pattern VARCHAR(50) DEFAULT 'pattern-none'"))
+                    conn.commit()
 
-        if 'total_limit' not in columns:
-            print("Upgrading Badge table: Adding total_limit column...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE badge ADD COLUMN total_limit INTEGER"))
-                conn.commit()
+        # 3. Check Note table
+        if 'note' in inspector.get_table_names():
+            note_columns = [c['name'] for c in inspector.get_columns('note')]
+            if 'icon' not in note_columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE note ADD COLUMN icon VARCHAR(255)"))
+                    conn.commit()
 
-        if 'issued_count' not in columns:
-            print("Upgrading Badge table: Adding issued_count column...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE badge ADD COLUMN issued_count INTEGER DEFAULT 0"))
-                conn.commit()
-
-        if 'category' not in columns:
-            print("Upgrading Badge table: Adding category column...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE badge ADD COLUMN category VARCHAR(50) DEFAULT '一般'"))
-                conn.commit()
-
-        if 'custom_condition_text' not in columns:
-            print("Upgrading Badge table: Adding custom_condition_text column...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE badge ADD COLUMN custom_condition_text VARCHAR(255)"))
-                conn.commit()
-
-        if 'rarity' not in columns:
-            print("Upgrading Badge table: Adding rarity column...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE badge ADD COLUMN rarity VARCHAR(20) DEFAULT 'common'"))
-                conn.commit()
-
-        if 'is_secret' not in columns:
-            print("Upgrading Badge table: Adding is_secret column...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE badge ADD COLUMN is_secret BOOLEAN DEFAULT 0"))
-                conn.commit()
-
-        # Check Wiki table for appearance settings
-        wiki_columns = [c['name'] for c in inspector.get_columns('wiki')]
-        if 'bg_color' not in wiki_columns:
-            print("Upgrading Wiki table: Adding appearance columns...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE wiki ADD COLUMN bg_color VARCHAR(20) DEFAULT '#ffffff'"))
-                conn.execute(db.text("ALTER TABLE wiki ADD COLUMN fg_color VARCHAR(20) DEFAULT '#1f2937'"))
-                conn.execute(db.text("ALTER TABLE wiki ADD COLUMN pattern VARCHAR(50) DEFAULT 'pattern-none'"))
-                conn.commit()
-
-        # Check Note table
-        note_columns = [c['name'] for c in inspector.get_columns('note')]
-        if 'icon' not in note_columns:
-            print("Upgrading Note table: Adding icon column...")
-            with db.engine.connect() as conn:
-                conn.execute(db.text("ALTER TABLE note ADD COLUMN icon VARCHAR(255)"))
-                conn.commit()
-
+        # 4. Check UserBadge table (核心修复)
+        if 'user_badge' in inspector.get_table_names():
+            user_badge_columns = [c['name'] for c in inspector.get_columns('user_badge')]
+            if 'is_notified' not in user_badge_columns:
+                print("Upgrading UserBadge table: Adding is_notified column...")
+                with db.engine.connect() as conn:
+                    # DEFAULT 1 防止老贴纸弹窗
+                    conn.execute(db.text("ALTER TABLE user_badge ADD COLUMN is_notified BOOLEAN DEFAULT 1"))
+                    conn.commit()
+            if 'serial_number' not in user_badge_columns:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("ALTER TABLE user_badge ADD COLUMN serial_number VARCHAR(50)"))
+                    conn.commit()
 
 
 @app.route('/service/wiki/pages')
@@ -4119,7 +4146,440 @@ def view_page(wiki_id, slug):
         # traceback.print_exc()
         contributors = []
 
-    return render_template("wiki/view_page.html", wiki=w, page=p, pages=sorted_pages, html=html, can_edit=can_edit_wiki(wiki_id), is_subscribed=is_subscribed, contributors=contributors)
+    my_recent_notes = []
+    if current_user.is_authenticated:
+        my_recent_notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.updated_at.desc()).limit(15).all()
+
+    return render_template("wiki/view_page.html", wiki=w, page=p, pages=sorted_pages, html=html, can_edit=can_edit_wiki(wiki_id), is_subscribed=is_subscribed, contributors=contributors, my_recent_notes=my_recent_notes)
+
+
+# ==========================================
+# ✨ 全员贴纸墙 (Global Sticker Wall) 模型与路由
+# ==========================================
+
+# 贴纸墙权限关联表
+wall_classes = db.Table('wall_classes',
+    db.Column('wall_id', db.Integer, db.ForeignKey('sticker_wall.id'), primary_key=True),
+    db.Column('class_id', db.Integer, db.ForeignKey('class.id'), primary_key=True)
+)
+wall_groups = db.Table('wall_groups',
+    db.Column('wall_id', db.Integer, db.ForeignKey('sticker_wall.id'), primary_key=True),
+    db.Column('group_id', db.Integer, db.ForeignKey('group.id'), primary_key=True)
+)
+wall_users = db.Table('wall_users',
+    db.Column('wall_id', db.Integer, db.ForeignKey('sticker_wall.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
+)
+
+class StickerWall(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(255))
+    created_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    visibility = db.Column(db.String(20), default="public") # public, restricted
+    bg_style = db.Column(db.String(50), default="dots") # dots, grid, lines, empty
+    
+    allowed_classes = db.relationship('Class', secondary=wall_classes, lazy='subquery')
+    allowed_groups = db.relationship('Group', secondary=wall_groups, lazy='subquery')
+    allowed_users = db.relationship('User', secondary=wall_users, lazy='subquery')
+    
+    stickers = db.relationship("WallSticker", backref="wall", cascade="all, delete-orphan")
+
+    def is_visible_to(self, user):
+        if self.visibility == 'public': return True
+        if not user.is_authenticated: return False
+        if user.is_admin: return True
+        if user in self.allowed_users: return True
+        if user.student_class and user.student_class in self.allowed_classes: return True
+        if not set(user.groups).isdisjoint(set(self.allowed_groups)): return True
+        return False
+
+class WallSticker(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    wall_id = db.Column(db.Integer, db.ForeignKey("sticker_wall.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    badge_id = db.Column(db.Integer, db.ForeignKey("badge.id"), nullable=False)
+    x = db.Column(db.Float, nullable=False) # X坐标百分比
+    y = db.Column(db.Float, nullable=False) # Y坐标百分比
+    rotation = db.Column(db.Float, default=0.0) # 旋转角度
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    
+    user = db.relationship("User")
+    badge = db.relationship("Badge")
+
+
+class WikiFolder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    wiki_id = db.Column(db.Integer, db.ForeignKey('wiki.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    order_weight = db.Column(db.Integer, default=0) # 用于排序
+
+    # 关联
+    wiki = db.relationship('Wiki', backref=db.backref('folders', cascade='all, delete-orphan'))
+
+
+
+# --- 后台管理员路由：管理贴纸墙 ---
+@app.route("/admin/sticker_walls", methods=["GET", "POST"])
+@login_required
+def manage_sticker_walls():
+    if not current_user.is_admin:
+        abort(403)
+        
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        visibility = request.form.get("visibility", "public")
+        bg_style = request.form.get("bg_style", "dots")
+        if name:
+            wall = StickerWall(name=name, description=description, visibility=visibility, bg_style=bg_style, created_by_id=current_user.id)
+            db.session.add(wall)
+            db.session.commit()
+            flash("贴纸墙创建成功！")
+        return redirect(url_for("manage_sticker_walls"))
+        
+    walls = StickerWall.query.order_by(StickerWall.created_at.desc()).all()
+    return render_template("admin/manage_sticker_walls.html", walls=walls)
+
+@app.route("/admin/sticker_walls/<int:wall_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_sticker_wall(wall_id):
+    if not current_user.is_admin:
+        abort(403)
+        
+    wall = StickerWall.query.get_or_404(wall_id)
+    
+    if request.method == "POST":
+        wall.name = request.form.get("name", "").strip()
+        wall.description = request.form.get("description", "").strip()
+        wall.visibility = request.form.get("visibility", "public")
+        wall.bg_style = request.form.get("bg_style", "dots")
+        
+        # 处理权限
+        if wall.visibility == 'restricted':
+            # 更新班级权限
+            class_ids = request.form.getlist("allowed_classes")
+            wall.allowed_classes = Class.query.filter(Class.id.in_(class_ids)).all()
+            
+            # 更新小组权限
+            group_ids = request.form.getlist("allowed_groups")
+            wall.allowed_groups = Group.query.filter(Group.id.in_(group_ids)).all()
+            
+            # 更新用户权限
+            user_ids = request.form.getlist("allowed_users")
+            wall.allowed_users = User.query.filter(User.id.in_(user_ids)).all()
+        else:
+            # 如果是公开的，清空所有限制
+            wall.allowed_classes = []
+            wall.allowed_groups = []
+            wall.allowed_users = []
+            
+        db.session.commit()
+        flash("贴纸墙设置已更新！")
+        return redirect(url_for("manage_sticker_walls"))
+        
+    classes = Class.query.order_by(Class.name).all()
+    groups = Group.query.order_by(Group.name).all()
+    all_users = User.query.order_by(User.username).all()
+    
+    return render_template("admin/edit_sticker_wall.html", 
+                         wall=wall, 
+                         classes=classes, 
+                         groups=groups, 
+                         all_users=all_users)
+
+@app.route("/admin/sticker_walls/<int:wall_id>/delete", methods=["POST"])
+@login_required
+def delete_sticker_wall(wall_id):
+    if not current_user.is_admin:
+        abort(403)
+    wall = StickerWall.query.get_or_404(wall_id)
+    db.session.delete(wall)
+    db.session.commit()
+    flash("贴纸墙已删除")
+    return redirect(url_for("manage_sticker_walls"))
+
+@app.route("/sticker_walls")
+@login_required
+def sticker_walls_view():
+    all_walls = StickerWall.query.order_by(StickerWall.created_at.desc()).all()
+    # 过滤出当前用户可见的墙
+    visible_walls = [w for w in all_walls if w.is_visible_to(current_user)]
+    
+    # 1. 获取用户拥有的所有徽章数量 (分组统计)
+    user_badges = UserBadge.query.filter_by(user_id=current_user.id).all()
+    badge_counts = {}
+    for ub in user_badges:
+        if ub.badge_id not in badge_counts:
+            badge_counts[ub.badge_id] = {'badge': ub.badge, 'owned': 0}
+        badge_counts[ub.badge_id]['owned'] += 1
+        
+    # 2. 获取用户在【所有贴纸墙】上已经贴出的徽章数量 (用于计算各徽章的使用量和全局 10 张限制)
+    used_stickers = WallSticker.query.filter_by(user_id=current_user.id).all()
+    used_counts = {}
+    for s in used_stickers:
+        used_counts[s.badge_id] = used_counts.get(s.badge_id, 0) + 1
+        
+    # 3. 构造前端抽屉所需的库存数据
+    my_inventory = []
+    for bid, data in badge_counts.items():
+        used = used_counts.get(bid, 0)
+        my_inventory.append({
+            'badge': data['badge'],
+            'owned': data['owned'],
+            'used': used,
+            'available': data['owned'] - used
+        })
+    
+    # 按剩余可用数量排序
+    my_inventory.sort(key=lambda x: (-x['available'], x['badge'].id))
+    my_total_stickers = len(used_stickers) # 全局已用总数
+    
+    return render_template("sticker_walls.html", walls=visible_walls, my_inventory=my_inventory, my_total_stickers=my_total_stickers)
+
+
+# ==========================================
+# 2. API路由：接管 sticker.js 的保存和加载
+# ==========================================
+# ==========================================
+# API路由：接管 sticker.js 的保存和加载
+# ==========================================
+@app.route("/api/stickers/<page_type>", methods=["GET", "POST"])
+@login_required
+def api_stickers(page_type):
+    # 验证页面类型，新增了 'wall' 支持
+    if page_type not in ['wiki', 'book', 'profile', 'wall']:
+        return jsonify({"error": "Invalid page type"}), 400
+        
+    if request.method == "GET":
+        # --------------------------------------------------
+        # 1. 贴纸墙 (wall) 获取逻辑
+        # --------------------------------------------------
+        if page_type == 'wall':
+            # sticker.js 默认通过 user_id 参数传目标 ID，对于 wall 来说，它就是 wall_id
+            wall_id = request.args.get('user_id', type=int) 
+            wall = StickerWall.query.get_or_404(wall_id)
+            
+            # 权限校验
+            if not wall.is_visible_to(current_user):
+                return jsonify({"error": "Permission denied"}), 403
+                
+            # 拉取该墙面上所有的贴纸（包括别人的）
+            stickers = WallSticker.query.filter_by(wall_id=wall_id).all()
+            
+            # 计算当前用户在所有墙上的贴纸使用总量，用于前端实时更新库存状态
+            global_used = db.session.query(WallSticker.badge_id, db.func.count(WallSticker.id))\
+                .filter_by(user_id=current_user.id)\
+                .group_by(WallSticker.badge_id).all()
+            inventory_usage = {bid: count for bid, count in global_used}
+
+            return jsonify({
+                "stickers": [{
+                    "id": s.id,
+                    "badge_id": s.badge_id,
+                    # 兼容不同类型的图标渲染
+                    "badge_icon": badge_icon_url(s.badge.icon) if is_image_icon(s.badge.icon) else s.badge.icon,
+                    "badge_name": s.badge.name,
+                    "x": s.x,
+                    "y": s.y,
+                    "rotation": s.rotation,
+                    "scale": 1.0, # 贴纸墙固定大小，但需要传给前端保持数据结构
+                    "z_index": s.id,
+                    "user_name": s.user.username,
+                    "created_at": s.created_at.strftime("%Y-%m-%d %H:%M"),
+                    # 关键控制权限：只有当前贴纸的主人才能选中/拖拽/删除
+                    "is_editable": s.user_id == current_user.id 
+                } for s in stickers],
+                "inventory_usage": inventory_usage
+            })
+            
+        # --------------------------------------------------
+        # 2. 原有的 Profile / Wiki / Book 获取逻辑
+        # --------------------------------------------------
+        target_user_id = request.args.get('user_id', current_user.id, type=int)
+        
+        # 如果是看别人的贴纸板，校验学友权限
+        if target_user_id != current_user.id:
+            target_user = User.query.get(target_user_id)
+            if not target_user or not (current_user.is_following(target_user) and target_user.is_following(current_user)):
+                 return jsonify({"error": "Permission denied: Not study partners"}), 403
+
+        stickers = UserSticker.query.filter_by(user_id=target_user_id, page_type=page_type).all()
+        return jsonify({
+            "stickers": [{
+                "id": s.id, 
+                "badge_id": s.badge_id,
+                "badge_name": s.badge.name, # <--- 新增这一行，解决悬浮窗报错
+                "badge_icon": badge_icon_url(s.badge.icon) if s.badge else "",
+                "x": s.x, 
+                "y": s.y, 
+                "rotation": s.rotation, 
+                "scale": s.scale, 
+                "z_index": s.z_index,
+                # 个人主页/笔记类：如果是当前用户自己，就有编辑权限
+                "is_editable": target_user_id == current_user.id 
+            } for s in stickers]
+        })
+        
+    elif request.method == "POST":
+        data = request.json
+        stickers_data = data.get("stickers", [])
+        
+        # --------------------------------------------------
+        # 1. 贴纸墙 (wall) 保存逻辑 (协作模式增量覆盖)
+        # --------------------------------------------------
+        if page_type == 'wall':
+            wall_id = request.args.get('user_id', type=int)
+            wall = StickerWall.query.get_or_404(wall_id)
+            
+            # [全局额度强校验]
+            # 计算除了当前墙以外，该用户在其他所有的墙上贴了多少张
+            other_walls_count = WallSticker.query.filter(
+                WallSticker.user_id == current_user.id, 
+                WallSticker.wall_id != wall_id
+            ).count()
+            
+            # 本次要保存的贴纸数量
+            incoming_count = len(stickers_data)
+            
+            # 严格限制最多只能贴 10 张
+            if other_walls_count + incoming_count > 10:
+                # db.session.rollback() # Flask-SQLAlchemy 自动管理事务，通常不需要手动 rollback 除非在同一个 session 内还要继续操作
+                return jsonify({"error": "保存失败：您的全局贴纸总数不可超过 10 张！请先收回其他墙面的贴纸。"}), 400
+
+            # [安全校验：防止篡改他人贴纸]
+            # 后端只信任当前登录用户 (current_user.id)，无视前端传来的 user_id 或贴纸归属信息
+            # 我们采取“先清空我的，再插入新的”策略，这样无论前端传什么，操作范围永远局限于“我的贴纸”
+            
+            # 1. 仅删掉当前用户在这面墙上的旧贴纸
+            WallSticker.query.filter_by(user_id=current_user.id, wall_id=wall_id).delete()
+            
+            # 2. 插入前端传过来的最新贴纸数组
+            for s in stickers_data:
+                # 忽略前端传来的 id, user_id 等敏感字段，全部强制归属为当前用户
+                new_sticker = WallSticker(
+                    wall_id=wall_id, 
+                    user_id=current_user.id, 
+                    badge_id=s.get("badge_id"),
+                    x=s.get("x", 50), 
+                    y=s.get("y", 50), 
+                    rotation=s.get("rotation", 0)
+                )
+                db.session.add(new_sticker)
+                    
+            db.session.commit()
+            return jsonify({"success": True})
+            
+        # --------------------------------------------------
+        # 2. 原有的 Profile / Book / Wiki 保存逻辑
+        # --------------------------------------------------
+        # 完全清空该用户在这个场景下的所有贴纸
+        UserSticker.query.filter_by(user_id=current_user.id, page_type=page_type).delete()
+        
+        # 重新插入
+        for s in stickers_data:
+            new_sticker = UserSticker(
+                user_id=current_user.id, 
+                badge_id=s.get("badge_id"), 
+                page_type=page_type,
+                x=s.get("x", 50), 
+                y=s.get("y", 50), 
+                rotation=s.get("rotation", 0),
+                scale=s.get("scale", 1), 
+                z_index=s.get("z_index", 1)
+            )
+            db.session.add(new_sticker)
+            
+        db.session.commit()
+        return jsonify({"success": True})
+
+
+# ==========================================
+# 🏆 巅峰竞技场 (Leaderboard) 路由
+# ==========================================
+@app.route("/leaderboard")
+@login_required
+def leaderboard():
+    metric = request.args.get('metric', 'duration') # duration(肝帝), contribution(贡献), streak(毅力)
+    period = request.args.get('period', 'all') # all(全服总榜), weekly(本周风云)
+    
+    users = User.query.all()
+    ranking_data = []
+    
+    now = now_utc8()
+    if period == 'weekly':
+        # 计算本周一的凌晨0点作为起点
+        start_date = now - timedelta(days=now.weekday())
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        start_date = datetime.min
+        
+    for u in users:
+        score = 0
+        unit = ""
+        
+        # 1. 肝帝榜：累计专注时长
+        if metric == 'duration':
+            sessions = StudySession.query.filter(StudySession.user_id == u.id, StudySession.start_time >= start_date).all()
+            total_sec = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+            score = round(total_sec / 3600, 1)
+            unit = "小时"
+            
+        # 2. 贡献榜：笔记数 + Wiki编辑数 (暂定权重 笔记10分，编辑2分)
+        elif metric == 'contribution':
+            notes_query = Note.query.filter_by(user_id=u.id)
+            edits_query = WikiPageHistory.query.filter_by(user_id=u.id)
+            if period == 'weekly':
+                notes_query = notes_query.filter(Note.created_at >= start_date)
+                edits_query = edits_query.filter(WikiPageHistory.created_at >= start_date)
+            
+            note_count = notes_query.count()
+            edit_count = edits_query.count()
+            score = note_count * 10 + edit_count * 2
+            unit = "源力"
+            
+        # 3. 毅力榜：连续打卡 (这个属性自带实时性，本周筛选意义不大，直接取当前连续天数)
+        elif metric == 'streak':
+            stats = u.calculate_stats()
+            score = stats.get("streak_days", 0)
+            unit = "天"
+            
+        # 为了不让榜单太长，只展示有分数的，或者当前用户自己
+        if score > 0 or u.id == current_user.id:
+            # 提取前3个最稀有的徽章用于展示
+            display_badges = [ub.badge for ub in u.earned_badges[:3]]
+            
+            ranking_data.append({
+                'user': u,
+                'score': score,
+                'unit': unit,
+                'badges': display_badges
+            })
+            
+    # 按照分数降序排序
+    ranking_data.sort(key=lambda x: x['score'], reverse=True)
+    
+    # 赋予排名，并找出当前用户的数据
+    my_rank_info = None
+    for i, data in enumerate(ranking_data):
+        data['rank'] = i + 1
+        if data['user'].id == current_user.id:
+            my_rank_info = data
+            
+    # 计算距离上一名的分差（用于刺激互动）
+    gap_to_next = 0
+    if my_rank_info and my_rank_info['rank'] > 1:
+        next_person = ranking_data[my_rank_info['rank'] - 2]
+        gap_to_next = round(next_person['score'] - my_rank_info['score'], 1)
+        
+    return render_template("leaderboard.html", 
+                           ranking_data=ranking_data, 
+                           metric=metric, 
+                           period=period, 
+                           my_rank_info=my_rank_info,
+                           gap_to_next=gap_to_next)
+
 
 if __name__ == "__main__":
     with app.app_context():

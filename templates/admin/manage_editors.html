@@ -1,63 +1,144 @@
 {% extends "base.html" %}
 
+{% block title %}编辑授权 - {{ wiki.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 简单的淡入动画 */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(15px); filter: blur(4px); }
+        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+    .animate-fade-in {
+        animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+    
+    /* 背景动画 */
+    @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.05); }
+        66% { transform: translate(-20px, 20px) scale(0.95); }
+        100% { transform: translate(0px, 0px) scale(1); }
+    }
+    .animate-blob {
+        animation: blob 10s infinite alternate;
+    }
+    .animation-delay-4000 {
+        animation-delay: 4s;
+    }
+</style>
+{% endblock %}
+
 {% block sidebar_menu %}
-    {% include "wiki/sidebar.html" %}
+    {% include "wiki/sidebar.html" ignore missing %}
 {% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto card bg-base-100 shadow">
-  <div class="card-body">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="card-title">编辑授权 - {{ wiki.title }}</h2>
-        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost btn-sm">返回 Wiki</a>
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-stone-50 dark:bg-[#15191e] transition-colors duration-500">
+    <div class="absolute top-[10%] right-[15%] w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] animate-blob mix-blend-multiply opacity-50 dark:opacity-30"></div>
+    <div class="absolute bottom-[20%] left-[10%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] animate-blob animation-delay-4000 mix-blend-multiply opacity-50 dark:opacity-30"></div>
+</div>
+
+<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6 transition-all duration-500 ease-in-out pb-12 animate-fade-in">
+    
+    <div class="flex items-center justify-between mb-2 mt-2">
+        <h1 class="text-3xl font-black text-stone-800 dark:text-stone-100 tracking-tight flex items-center gap-3">
+            <i class="fas fa-user-shield text-primary opacity-80"></i> 权限与协作者
+        </h1>
+        <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-ghost bg-base-200/50 hover:bg-base-200 border-none rounded-xl gap-2 font-medium">
+            <i class="fas fa-arrow-left text-base-content/50"></i> 返回 Wiki
+        </a>
     </div>
-    <form method="post" class="flex items-center gap-2 mb-8">
-      <input class="input input-bordered w-full" name="username" placeholder="输入用户名以添加编辑者..." required>
-      <button class="btn btn-primary whitespace-nowrap" type="submit">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-        添加
-      </button>
-    </form>
-    
-    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-content/70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-        当前编辑者 ({{ editors|length }})
-    </h3>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {% for user in editors %}
-      <div class="card bg-base-200 border border-base-300 compact">
-        <div class="card-body flex-row items-center justify-between p-4">
-            <div class="flex items-center gap-3 overflow-hidden">
-                <div class="avatar placeholder">
-                    <div class="bg-neutral text-neutral-content rounded-full w-10">
-                        <span class="text-lg">{{ user.username[0]|upper }}</span>
-                    </div>
+
+    <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-sm border border-black/5 dark:border-white/5 rounded-2xl mb-2">
+        <div class="card-body p-4 sm:p-5 flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary grid place-items-center font-bold text-lg shadow-inner flex-shrink-0">
+                    <span class="leading-none">{{ wiki.title[0]|upper }}</span>
                 </div>
-                <div class="flex flex-col min-w-0">
-                    <span class="font-bold truncate">{{ user.username }}</span>
-                    <span class="text-xs text-base-content/60 truncate">{{ user.email }}</span>
+                <div class="flex flex-col">
+                    <h2 class="text-lg font-bold text-base-content tracking-tight">{{ wiki.title }}</h2>
+                    <p class="text-xs text-base-content/60 mt-0.5 font-mono">已有 {{ editors|length }} 位协作者加入该文档的编辑</p>
                 </div>
             </div>
-            
-            {% if user.id != wiki.created_by_id %}
-            <form action="{{ url_for('remove_editor', wiki_id=wiki.id, user_id=user.id) }}" method="post" onsubmit="return confirm('确定要移除该用户的编辑权限吗？');">
-                <button type="submit" class="btn btn-ghost btn-square btn-sm text-error hover:bg-error/10" title="移除权限">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-            </form>
-            {% else %}
-            <div class="badge badge-sm badge-ghost" title="创建者不可移除">创建者</div>
-            {% endif %}
         </div>
-      </div>
-      {% else %}
-      <div class="col-span-full text-center py-12 text-base-content/40 bg-base-200/50 rounded-lg border border-dashed border-base-300">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-          <p>暂无其他编辑者</p>
-      </div>
-      {% endfor %}
     </div>
-  </div>
+
+    <div class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl border border-black/5 dark:border-white/5 shadow-xl shadow-stone-200/20 dark:shadow-none overflow-hidden rounded-[2rem]">
+        <div class="card-body p-6 lg:p-10">
+            
+            <div class="bg-stone-50 dark:bg-base-200/50 rounded-2xl p-6 border border-black/5 dark:border-white/5 mb-8">
+                <h3 class="font-bold text-lg mb-4 flex items-center gap-2 text-stone-800 dark:text-stone-200">
+                    <div class="w-1.5 h-5 bg-primary rounded-full shadow-[0_0_8px_rgba(234,88,12,0.4)]"></div>
+                    邀请新成员
+                </h3>
+                <form method="post" class="flex flex-col sm:flex-row items-center gap-3 relative">
+                    <div class="relative w-full flex-1">
+                        <i class="fas fa-user-plus absolute left-4 top-1/2 -translate-y-1/2 text-base-content/30"></i>
+                        <input class="input input-lg input-bordered w-full pl-11 bg-white dark:bg-base-100 shadow-sm focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl transition-all font-medium" name="username" placeholder="输入用户名，邀请TA共同编辑..." required autocomplete="off">
+                    </div>
+                    <button class="btn btn-primary btn-lg rounded-xl shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all w-full sm:w-auto px-8" type="submit">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        发送邀请
+                    </button>
+                </form>
+            </div>
+            
+            <div>
+                <h3 class="font-black text-xl mb-6 flex items-center gap-2 text-stone-800 dark:text-stone-100 px-1">
+                    协作者名单 
+                    <span class="badge badge-sm border-none bg-base-200 text-base-content/60 font-mono">{{ editors|length }}</span>
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {% for user in editors %}
+                    <div class="group flex items-center justify-between p-4 bg-white dark:bg-base-200/60 rounded-2xl border border-black/5 dark:border-white/5 hover:shadow-lg hover:-translate-y-1 hover:border-primary/20 transition-all duration-300">
+                        <div class="flex items-center gap-4 overflow-hidden">
+                            <div class="avatar placeholder flex-shrink-0">
+                                <div class="bg-gradient-to-br from-stone-100 to-stone-200 dark:from-base-300 dark:to-base-200 text-stone-700 dark:text-stone-300 rounded-[1rem] w-12 h-12 shadow-inner border border-white/50 dark:border-white/5 grid place-items-center font-black text-xl group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300">
+                                    <span class="leading-none">{{ user.username[0]|upper }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-base text-stone-800 dark:text-stone-200 truncate group-hover:text-primary transition-colors tracking-tight">{{ user.username }}</span>
+                                    {% if user.id == wiki.created_by_id %}
+                                    <span class="badge badge-xs bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50 shadow-sm font-bold scale-90 origin-left">👑 创建者</span>
+                                    {% endif %}
+                                </div>
+                                <span class="text-xs text-base-content/50 truncate font-medium mt-0.5">{{ user.email or '未提供邮箱' }}</span>
+                            </div>
+                        </div>
+                        
+                        {% if user.id != wiki.created_by_id %}
+                        <form action="{{ url_for('remove_editor', wiki_id=wiki.id, user_id=user.id) }}" method="post" onsubmit="return confirm('确定要移除该用户的编辑权限吗？\n移除后，TA将无法再修改该 Wiki 的任何内容。');" class="flex-shrink-0 ml-2">
+                            <button type="submit" class="btn btn-ghost btn-square btn-sm text-error bg-error/5 hover:bg-error hover:text-white transition-all tooltip tooltip-left" data-tip="移除权限">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </form>
+                        {% else %}
+                        <div class="flex-shrink-0 ml-2 tooltip tooltip-left" data-tip="不可移除创建者">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-amber-500/50 bg-amber-50 dark:bg-amber-500/10">
+                                <i class="fas fa-shield-alt text-xs"></i>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="col-span-full flex flex-col items-center justify-center py-16 bg-stone-50/50 dark:bg-base-200/30 rounded-3xl border-2 border-dashed border-base-content/10">
+                        <div class="w-20 h-20 bg-white dark:bg-base-200 rounded-full flex items-center justify-center mb-4 shadow-sm border border-black/5 dark:border-white/5">
+                            <i class="fas fa-user-friends text-3xl text-base-content/20"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-base-content/70">孤军奋战中</h3>
+                        <p class="text-sm text-base-content/40 mt-1">目前只有您可以编辑此文档，快去邀请伙伴吧！</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
 </div>
+
 {% endblock %}

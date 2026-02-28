@@ -1,0 +1,18 @@
+{
+    "wiki": {
+        "id": 2,
+        "title": "假装有第二个 wiki",
+        "description": "芝士就像卡片一样, 我们需要凝练芝士, 也需要分享芝士. 让这个世界充满芝士🧀!",
+        "created_by_id": 1,
+        "created_at": "2026-01-30T12:29:55.424989"
+    },
+    "pages": [],
+    "files": [],
+    "editors": [],
+    "subscribers": [
+        22,
+        12,
+        5,
+        1
+    ]
+}

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-6">
+    <div class="flex items-center gap-4 mb-8">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-focus shadow-lg shadow-primary/30 flex items-center justify-center text-white text-3xl font-bold">
+            <i class="fas fa-user-cog"></i>
+        </div>
+        <div>
+            <h1 class="text-3xl font-bold text-base-content">个人设置</h1>
+            <p class="text-base-content/60">管理您的个人资料和账户安全</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- 左侧导航/概览 -->
+        <div class="col-span-1">
+            <div class="card bg-base-100 shadow-xl border border-base-200">
+                <div class="card-body items-center text-center">
+                    <div class="avatar placeholder mb-4">
+                        <div class="bg-neutral text-neutral-content rounded-full w-24 ring ring-primary ring-offset-base-100 ring-offset-2">
+                            <span class="text-3xl font-bold">{{ current_user.username[0] | upper }}</span>
+                        </div>
+                    </div>
+                    <h2 class="card-title">{{ current_user.username }}</h2>
+                    <p class="text-sm text-base-content/60">{{ current_user.email }}</p>
+                    
+                    <div class="divider my-2"></div>
+                    
+                    <div class="w-full text-left text-sm space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">注册时间</span>
+                            <span class="font-medium">{{ current_user.created_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">累计学习</span>
+                            <span class="font-medium">{{ current_user.study_time_today_human }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧表单 -->
+        <div class="col-span-1 md:col-span-2 space-y-6">
+            <form method="post" action="{{ url_for('settings') }}">
+                <!-- 个人资料卡片 -->
+                <div class="card bg-base-100 shadow-xl border border-base-200">
+                    <div class="card-body">
+                        <h3 class="card-title text-lg mb-4 flex items-center gap-2">
+                            <i class="fas fa-id-card text-primary"></i> 个人资料
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">用户名</span>
+                                </label>
+                                <input type="text" value="{{ current_user.username }}" class="input input-bordered w-full bg-base-200" disabled />
+                                <label class="label">
+                                    <span class="label-text-alt text-warning">用户名不可修改</span>
+                                </label>
+                            </div>
+                            
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">电子邮箱</span>
+                                </label>
+                                <input type="email" value="{{ current_user.email }}" class="input input-bordered w-full bg-base-200" disabled />
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">真实姓名</span>
+                                </label>
+                                <input type="text" value="{{ current_user.real_name or '' }}" class="input input-bordered w-full bg-base-200" disabled />
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">学号</span>
+                                </label>
+                                <input type="text" value="{{ current_user.student_id or '' }}" class="input input-bordered w-full bg-base-200" disabled />
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">院系</span>
+                                </label>
+                                <input type="text" value="{{ current_user.department or '' }}" class="input input-bordered w-full bg-base-200" disabled />
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">班级</span>
+                                </label>
+                                <input type="text" value="{{ current_user.class_name or '' }}" class="input input-bordered w-full bg-base-200" disabled />
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-base-content/40 flex items-center gap-1">
+                            <i class="fas fa-lock"></i> 个人资料仅供查看，如需修改请联系管理员。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 修改密码卡片 -->
+                <div class="card bg-base-100 shadow-xl border border-base-200 mt-6">
+                    <div class="card-body">
+                        <h3 class="card-title text-lg mb-4 flex items-center gap-2">
+                            <i class="fas fa-lock text-primary"></i> 修改密码
+                        </h3>
+                        <div class="alert alert-info shadow-sm mb-4 text-sm py-2">
+                            <i class="fas fa-info-circle"></i>
+                            <span>如不修改密码，请留空以下字段。</span>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">当前密码</span>
+                                </label>
+                                <input type="password" name="current_password" class="input input-bordered w-full" placeholder="验证身份需输入当前密码" />
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text">新密码</span>
+                                    </label>
+                                    <input type="password" name="new_password" class="input input-bordered w-full" placeholder="输入新密码" />
+                                </div>
+                                <div class="form-control">
+                                    <label class="label">
+                                        <span class="label-text">确认新密码</span>
+                                    </label>
+                                    <input type="password" name="confirm_password" class="input input-bordered w-full" placeholder="再次输入新密码" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex justify-end gap-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-ghost">取消</a>
+                    <button type="submit" class="btn btn-primary px-8 shadow-lg shadow-primary/30">保存更改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

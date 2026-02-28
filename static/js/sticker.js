@@ -32,6 +32,8 @@ if (typeof StickerManager === 'undefined') {
     }
 
     updateStickerTransform(el, sticker) {
+        // 如果是只读模式或者不可编辑的贴纸，不显示操作控件
+        // 但是这里只负责样式变换，不负责控件显示逻辑
         const factor = this.getResponsiveScaleFactor();
         el.style.transform = `translate(-50%, -50%) rotate(${sticker.rotation}deg) scale(${sticker.scale * factor})`;
     }
@@ -334,29 +336,30 @@ if (typeof StickerManager === 'undefined') {
         this.updateStickerTransform(el, stickerData);
         
         // Content
-        // Directly check if it looks like an image URL, otherwise treat as text/emoji
-        // User requested NOT to check for empty/invalid specifically, but we still need to decide IMG vs TEXT tag.
-        // The original logic was:
-        // if (match image ext OR starts with /) -> IMG
-        // else -> TEXT
-        // We will revert to that simple logic without the extra "&& badge_icon" check I added, 
-        // or simplify it further if the user implies "just render it".
-        // But we need to know if we should render <img> or <div>.
-        // Assuming the user wants the original permissive logic back or even simpler.
-        // "请你不要检查 badge_icon 是否为空或不符合图片格式" -> means "don't fail/skip if empty", 
-        // just try to render it.
-        
         if (stickerData.badge_icon && (stickerData.badge_icon.match(/\.(jpeg|jpg|gif|png|svg|webp)$/i) || stickerData.badge_icon.startsWith('/'))) {
             el.innerHTML = `<img src="${stickerData.badge_icon}" draggable="false" />`;
         } else {
              el.innerHTML = `<div class="sticker-text flex items-center justify-center text-4xl">${stickerData.badge_icon || ''}</div>`;
         }
 
-        if (!this.readOnly) {
+        // 💡关键修复：前端UI层校验
+        // 只有当 stickerData.is_editable 为 true 时，才渲染删除按钮和绑定交互事件
+        // 这样即使是非法用户，也无法在界面上看到操作手柄
+        
+        // 默认情况下，is_editable 未定义时默认为 true (兼容旧逻辑)，但在 wall 模式下后端会明确返回 false
+        // 如果没有明确传 is_editable，且 readOnly=false，则视为可编辑
+        let isEditable = true;
+        if (typeof stickerData.is_editable !== 'undefined') {
+            isEditable = stickerData.is_editable;
+        } else if (this.readOnly) {
+            isEditable = false;
+        }
+
+        if (isEditable && !this.readOnly) {
             // Controls
             const handle = document.createElement('div');
             handle.className = 'sticker-control-handle sticker-handle-br';
-            handle.innerHTML = `<svg class="sticker-handle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>`; // Resize/Rotate icon
+            handle.innerHTML = `<svg class="sticker-handle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>`; 
             el.appendChild(handle);
 
             const delBtn = document.createElement('div');
@@ -377,7 +380,7 @@ if (typeof StickerManager === 'undefined') {
         this.stickers.push(stickerData);
 
         // Events
-        if (!this.readOnly) {
+        if (isEditable && !this.readOnly) {
             this.makeInteractable(stickerData);
 
             if (isNew) {

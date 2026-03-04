@@ -382,10 +382,12 @@ class UserBadge(db.Model):
     earned_at = db.Column(db.DateTime, default=now_utc8)
     serial_number = db.Column(db.String(50), unique=True, nullable=True) # Unique Serial Number
     is_notified = db.Column(db.Boolean, default=False)
-    badge = db.relationship("Badge")
 
     def __init__(self, **kwargs):
         super(UserBadge, self).__init__(**kwargs)
+
+    
+    badge = db.relationship("Badge")
 
 # Wiki Permissions Associations
 wiki_classes = db.Table('wiki_classes',
@@ -2394,6 +2396,9 @@ def manage_badges():
                            existing_conditions=existing_conditions,
                            condition_map=condition_map)
 
+# ==========================================
+# 2. 编辑徽章路由 (核心：包含历史序列号重洗逻辑)
+# ==========================================
 @app.route("/admin/badges/<int:badge_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_badge(badge_id):
@@ -2406,7 +2411,6 @@ def edit_badge(badge_id):
         b.name = request.form.get("name", "").strip()
         b.description = request.form.get("description", "").strip()
         
-        # Handle file upload
         if "icon_file" in request.files:
             file = request.files["icon_file"]
             if file and file.filename:
@@ -2459,128 +2463,180 @@ def edit_badge(badge_id):
         b.rarity = request.form.get("rarity", "common").strip()
         b.issuer = request.form.get("issuer", "WikiBook").strip() or "WikiBook"
         
+        # 💡 新增：更新前缀
         new_prefix = request.form.get("serial_prefix", "SF").strip().upper() or "SF"
         b.serial_prefix = new_prefix
+        
         b.custom_condition_text = request.form.get("custom_condition_text", "").strip()
         
         if request.form.get("start_time"):
-            try: b.start_time = datetime.strptime(request.form.get("start_time"), "%Y-%m-%d")
-            except ValueError: pass
-        else: b.start_time = None
+            try:
+                b.start_time = datetime.strptime(request.form.get("start_time"), "%Y-%m-%d")
+            except ValueError:
+                pass
+        else:
+            b.start_time = None
             
         if request.form.get("end_time"):
-            try: b.end_time = datetime.strptime(request.form.get("end_time"), "%Y-%m-%d")
-            except ValueError: pass
-        else: b.end_time = None
+            try:
+                b.end_time = datetime.strptime(request.form.get("end_time"), "%Y-%m-%d")
+            except ValueError:
+                pass
+        else:
+            b.end_time = None
         
-        db.session.flush() # 先推送基本信息
+        db.session.commit()
         
-        # 💡 洗号防撞车机制：先全员打上临时随机 UUID，再赋予真实序号
+        # 💡 核心功能：每次编辑后，强行清洗并重排所有拥有该徽章的玩家序号！
         existing_ubs = UserBadge.query.filter_by(badge_id=b.id).order_by(UserBadge.earned_at.asc()).all()
-        
-        for ub in existing_ubs:
-            ub.serial_number = f"TMP-{uuid.uuid4().hex}"
-        db.session.flush() # 彻底释放原来占用的 001, 002
-        
         for idx, ub in enumerate(existing_ubs):
             ub.serial_number = f"{b.serial_prefix}-{str(idx + 1).zfill(3)}"
-            
-        b.issued_count = len(existing_ubs)
-        db.session.flush()
         
+        # 顺便精准校准总发放数
+        b.issued_count = len(existing_ubs)
+        db.session.commit()
+        
+        # 全员自动分发补漏逻辑
         if b.condition_type == 'all_users':
             users = User.query.all()
             for user in users:
-                if b.total_limit is not None and b.issued_count >= b.total_limit: break
+                if b.total_limit is not None and b.issued_count >= b.total_limit:
+                    break
                 if not UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first():
                     ub = UserBadge(user_id=user.id, badge_id=b.id)
                     ub.serial_number = f"{b.serial_prefix}-{str(b.issued_count + 1).zfill(3)}"
                     db.session.add(ub)
                     b.issued_count += 1
             db.session.commit()
-            flash("徽章基本信息更新完毕，已为所有用户发放。")
         
+        # 追溯计算其他条件...
         elif b.condition_type != 'manual':
             users = User.query.all()
             for user in users:
                 meets_condition = False
                 
-                # 各类条件判定逻辑...
                 if b.condition_type == 'login_days_in_range':
                     if b.start_time and b.end_time:
-                        sessions = StudySession.query.filter(StudySession.user_id == user.id, StudySession.start_time >= b.start_time, StudySession.start_time <= b.end_time).all()
-                        meets_condition = len(set([s.start_time.date() for s in sessions])) >= b.condition_value
+                        sessions = StudySession.query.filter(
+                            StudySession.user_id == user.id,
+                            StudySession.start_time >= b.start_time,
+                            StudySession.start_time <= b.end_time
+                        ).all()
+                        login_days = set([s.start_time.date() for s in sessions])
+                        meets_condition = len(login_days) >= b.condition_value
                 elif b.condition_type == 'note_count':
-                    meets_condition = Note.query.filter_by(user_id=user.id).count() >= b.condition_value
+                    count = Note.query.filter_by(user_id=user.id).count()
+                    meets_condition = count >= b.condition_value
                 elif b.condition_type == 'featured_count':
-                    meets_condition = Note.query.filter_by(user_id=user.id, is_featured=True).count() >= b.condition_value
+                    count = Note.query.filter_by(user_id=user.id, is_featured=True).count()
+                    meets_condition = count >= b.condition_value
                 elif b.condition_type == 'wiki_edit_count':
-                    meets_condition = WikiPageHistory.query.filter_by(user_id=user.id).count() >= b.condition_value
+                    count = WikiPageHistory.query.filter_by(user_id=user.id).count()
+                    meets_condition = count >= b.condition_value
                 elif b.condition_type == 'comment_count':
-                    meets_condition = Comment.query.filter_by(user_id=user.id).count() >= b.condition_value
+                    count = Comment.query.filter_by(user_id=user.id).count()
+                    meets_condition = count >= b.condition_value
                 elif b.condition_type == 'night_owl_sessions':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
-                    night_days = set([(s.start_time - timedelta(hours=4)).date() for s in sessions if s.start_time.hour >= 23 or s.start_time.hour < 4])
+                    night_days = set()
+                    for s in sessions:
+                        h = s.start_time.hour
+                        if h >= 23 or h < 4:
+                            logical_date = (s.start_time - timedelta(hours=4)).date()
+                            night_days.add(logical_date)
                     meets_condition = len(night_days) >= b.condition_value
                 elif b.condition_type == 'early_bird':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
-                    early_days = set([s.start_time.date() for s in sessions if 5 <= s.start_time.hour < 8])
+                    early_days = set()
+                    for s in sessions:
+                        h = s.start_time.hour
+                        if 5 <= h < 8:
+                            early_days.add(s.start_time.date())
                     meets_condition = len(early_days) >= b.condition_value
                 elif b.condition_type == 'weekend_warrior':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
-                    total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if s.start_time.weekday() in [5, 6] and (s.end_time - s.start_time).total_seconds() > 0])
-                    meets_condition = (total_seconds / 3600) >= b.condition_value
+                    total_seconds = 0
+                    for s in sessions:
+                        if s.start_time.weekday() in [5, 6]:
+                            duration = (s.end_time - s.start_time).total_seconds()
+                            if duration > 0:
+                                total_seconds += duration
+                    total_hours = total_seconds / 3600
+                    meets_condition = total_hours >= b.condition_value
                 elif b.condition_type == 'long_session_count':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
-                    long_count = sum([1 for s in sessions if (s.end_time - s.start_time).total_seconds() >= 7200])
+                    long_count = 0
+                    for s in sessions:
+                        duration = (s.end_time - s.start_time).total_seconds()
+                        if duration >= 7200:
+                            long_count += 1
                     meets_condition = long_count >= b.condition_value
                 elif b.condition_type == 'share_count':
-                    meets_condition = NoteShare.query.join(Note).filter(Note.user_id == user.id).count() >= b.condition_value
+                    count = NoteShare.query.join(Note).filter(Note.user_id == user.id).count()
+                    meets_condition = count >= b.condition_value
                 elif b.condition_type == 'total_views_received':
-                    meets_condition = NoteViewLog.query.join(Note).filter(Note.user_id == user.id).count() >= b.condition_value
+                    count = NoteViewLog.query.join(Note).filter(Note.user_id == user.id).count()
+                    meets_condition = count >= b.condition_value
                 elif b.condition_type == 'wiki_create_count':
                     from sqlalchemy import func
                     subquery = db.session.query(func.min(WikiPageHistory.id)).group_by(WikiPageHistory.page_id)
-                    meets_condition = WikiPageHistory.query.filter(WikiPageHistory.id.in_(subquery), WikiPageHistory.user_id == user.id).count() >= b.condition_value
+                    count = WikiPageHistory.query.filter(WikiPageHistory.id.in_(subquery), WikiPageHistory.user_id == user.id).count()
+                    meets_condition = count >= b.condition_value
                 elif b.condition_type == 'study_hours':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
                     total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
-                    meets_condition = (total_seconds / 3600) >= b.condition_value
+                    total_hours = total_seconds / 3600
+                    meets_condition = total_hours >= b.condition_value
                 elif b.condition_type == 'pomo_count':
-                    meets_condition = PomodoroRecord.query.filter_by(user_id=user.id).count() >= b.condition_value
+                    from .models import PomodoroRecord # Ensure correct import path in your structure
+                    count = PomodoroRecord.query.filter_by(user_id=user.id).count()
+                    meets_condition = count >= b.condition_value
                 elif b.condition_type == 'streak_days':
                     sessions = StudySession.query.filter_by(user_id=user.id).order_by(StudySession.start_time.desc()).all()
                     dates = sorted(list(set([s.start_time.date() for s in sessions])), reverse=True)
                     streak = 0
                     if dates:
                         today = now_utc8().date()
-                        if dates[0] == today: streak = 1; current = today
-                        elif dates[0] == today - timedelta(days=1): streak = 1; current = today - timedelta(days=1)
+                        if dates[0] == today:
+                            streak = 1
+                            current = today
+                        elif dates[0] == today - timedelta(days=1):
+                            streak = 1
+                            current = today - timedelta(days=1)
+                        else:
+                            streak = 0
                         if streak > 0:
                             for i in range(1, len(dates)):
-                                if dates[i] == current - timedelta(days=1): streak += 1; current = dates[i]
-                                else: break
+                                if dates[i] == current - timedelta(days=1):
+                                    streak += 1
+                                    current = dates[i]
+                                else:
+                                    break
                     meets_condition = streak >= b.condition_value
 
                 existing_ub = UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first()
                 
                 if meets_condition:
                     if not existing_ub:
-                        if b.total_limit is not None and b.issued_count >= b.total_limit: continue 
+                        if b.total_limit is not None and b.issued_count >= b.total_limit:
+                            continue 
+                            
                         ub = UserBadge(user_id=user.id, badge_id=b.id)
+                        # 💡 在这儿为补发的用户打上新的序号
                         ub.serial_number = f"{b.serial_prefix}-{str(b.issued_count + 1).zfill(3)}"
                         db.session.add(ub)
                         b.issued_count += 1
                 else:
                     if existing_ub:
-                        if user.selected_badge_id == b.id: user.selected_badge_id = None
+                        if user.selected_badge_id == b.id:
+                            user.selected_badge_id = None
                         db.session.delete(existing_ub)
-                        if b.issued_count > 0: b.issued_count -= 1
+                        if b.issued_count > 0:
+                            b.issued_count -= 1
             
             db.session.commit()
             flash("徽章已更新，所有序号已重排，并完成了全员进度校准！")
         else:
-            db.session.commit()
             flash("徽章基本信息更新完毕，已重排历史序列号。")
             
         return redirect(url_for("manage_badges"))
@@ -2590,6 +2646,9 @@ def edit_badge(badge_id):
 
     return render_template("admin/edit_badge.html", badge=b, users=users, earned_user_ids=earned_user_ids)
 
+# ==========================================
+# 4. 手动发放徽章路由 (支持批量连号)
+# ==========================================
 @app.route("/admin/badges/<int:badge_id>/award", methods=["POST"])
 @login_required
 def award_badge_manually(badge_id):
@@ -2601,11 +2660,7 @@ def award_badge_manually(badge_id):
         return jsonify({"error": "Only manual badges can be manually awarded"}), 400
         
     data = request.get_json()
-    if not data or "user_ids" not in data:
-        return jsonify({"error": "Missing user_ids in request"}), 400
-
-    # 安全提取整数ID
-    target_user_ids = [int(uid) for uid in data.get("user_ids", []) if str(uid).strip().isdigit()]
+    target_user_ids = [int(uid) for uid in data.get("user_ids", [])]
     
     current_ubs = UserBadge.query.filter_by(badge_id=b.id).all()
     current_user_ids = [ub.user_id for ub in current_ubs]
@@ -2613,23 +2668,11 @@ def award_badge_manually(badge_id):
     to_add_ids = set(target_user_ids) - set(current_user_ids)
     to_remove_ids = set(current_user_ids) - set(target_user_ids)
     
-    prefix = b.serial_prefix or "SF"
-    
     try:
-        # 1. ORM 级安全撤销
         if to_remove_ids:
-            remove_list = list(to_remove_ids)
-            ubs_to_remove = UserBadge.query.filter(UserBadge.badge_id == b.id, UserBadge.user_id.in_(remove_list)).all()
-            for ub in ubs_to_remove:
-                db.session.delete(ub)
-                
-            users_to_update = User.query.filter(User.selected_badge_id == b.id, User.id.in_(remove_list)).all()
-            for u in users_to_update:
-                u.selected_badge_id = None
-                
-            db.session.flush() # 同步到数据库
+            UserBadge.query.filter(UserBadge.badge_id == b.id, UserBadge.user_id.in_(to_remove_ids)).delete(synchronize_session=False)
+            User.query.filter(User.selected_badge_id == b.id, User.id.in_(to_remove_ids)).update({"selected_badge_id": None}, synchronize_session=False)
             
-        # 2. 新增发放
         added_count = 0
         for uid in to_add_ids:
             current_total = b.issued_count - len(to_remove_ids) + added_count
@@ -2637,33 +2680,27 @@ def award_badge_manually(badge_id):
                 break 
                 
             ub = UserBadge(user_id=uid, badge_id=b.id)
-            ub.serial_number = f"TMP-{uuid.uuid4().hex[:8]}" # 防撞车占位符
+            # 💡 在这儿为每一位受奖者赋予递增的新序号
+            ub.serial_number = f"{b.serial_prefix}-{str(b.issued_count - len(to_remove_ids) + added_count + 1).zfill(3)}"
+            
             db.session.add(ub)
             added_count += 1
             
-        db.session.flush()
-
         b.issued_count = b.issued_count - len(to_remove_ids) + added_count
-        
-        # 3. 绝对安全：重新连号重排
-        if to_remove_ids or to_add_ids:
-            all_left = UserBadge.query.filter_by(badge_id=b.id).order_by(UserBadge.earned_at.asc()).all()
-            
-            # 第一阶段：全量变临时占位符
-            for item in all_left:
-                item.serial_number = f"TMP-{uuid.uuid4().hex}"
-            db.session.flush()
-            
-            # 第二阶段：重新发放 001, 002...
-            for idx, item in enumerate(all_left):
-                item.serial_number = f"{prefix}-{str(idx + 1).zfill(3)}"
-                
         db.session.commit()
+        
+        # 💡 这里也做一次安全兜底：如果存在“撤回”，为了保证序号绝对连续，最好重排一次！
+        if to_remove_ids:
+            all_left = UserBadge.query.filter_by(badge_id=b.id).order_by(UserBadge.earned_at.asc()).all()
+            for idx, item in enumerate(all_left):
+                item.serial_number = f"{b.serial_prefix}-{str(idx + 1).zfill(3)}"
+            db.session.commit()
+        
         return jsonify({"success": True, "count": b.issued_count})
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": f"数据库操作失败: {str(e)}"}), 500
 
 @app.route("/admin/badges/<int:badge_id>/delete", methods=["POST"])
 @login_required

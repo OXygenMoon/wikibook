@@ -36,12 +36,11 @@
     .wall-wrapper {
         position: relative;
         width: 100%;
-        height: 75vh; /* 略微增加高度 */
+        height: 75vh; 
         min-height: 600px;
         background-color: #fcfcfc; 
-        border-radius: 2rem; /* 更大的圆角 */
+        border-radius: 2rem; 
         overflow: hidden;
-        /* 精致的内阴影，营造深度感 */
         box-shadow: inset 0 8px 32px rgba(0,0,0,0.04), 0 10px 40px -10px rgba(0,0,0,0.05);
         border: 1px solid rgba(0,0,0,0.06);
         transition: background-image 0.4s ease, background-color 0.4s ease;
@@ -52,43 +51,16 @@
         border: 1px solid rgba(255,255,255,0.05);
     }
     
-    /* 默认/点阵 (dots) */
-    .wall-wrapper.bg-dots {
-        background-image: radial-gradient(#cbd5e1 2px, transparent 2px);
-        background-size: 32px 32px; 
-    }
-    .dark .wall-wrapper.bg-dots {
-        background-image: radial-gradient(#30363d 2px, transparent 2px);
-    }
-    
-    /* 方格 (grid) */
-    .wall-wrapper.bg-grid {
-        background-image: linear-gradient(rgba(203,213,225,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(203,213,225,0.6) 1px, transparent 1px);
-        background-size: 40px 40px;
-    }
-    .dark .wall-wrapper.bg-grid {
-        background-image: linear-gradient(rgba(48,54,61,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(48,54,61,0.6) 1px, transparent 1px);
-    }
-    
-    /* 斜线 (lines) */
-    .wall-wrapper.bg-lines {
-        background-image: repeating-linear-gradient(45deg, rgba(203,213,225,0.4) 0, rgba(203,213,225,0.4) 1px, transparent 0, transparent 50%);
-        background-size: 24px 24px;
-    }
-    .dark .wall-wrapper.bg-lines {
-        background-image: repeating-linear-gradient(45deg, rgba(48,54,61,0.4) 0, rgba(48,54,61,0.4) 1px, transparent 0, transparent 50%);
-    }
-    
-    /* 空白 (empty) */
-    .wall-wrapper.bg-empty {
-        background-image: none;
-    }
+    /* 背景样式 */
+    .wall-wrapper.bg-dots { background-image: radial-gradient(#cbd5e1 2px, transparent 2px); background-size: 32px 32px; }
+    .dark .wall-wrapper.bg-dots { background-image: radial-gradient(#30363d 2px, transparent 2px); }
+    .wall-wrapper.bg-grid { background-image: linear-gradient(rgba(203,213,225,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(203,213,225,0.6) 1px, transparent 1px); background-size: 40px 40px; }
+    .dark .wall-wrapper.bg-grid { background-image: linear-gradient(rgba(48,54,61,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(48,54,61,0.6) 1px, transparent 1px); }
+    .wall-wrapper.bg-lines { background-image: repeating-linear-gradient(45deg, rgba(203,213,225,0.4) 0, rgba(203,213,225,0.4) 1px, transparent 0, transparent 50%); background-size: 24px 24px; }
+    .dark .wall-wrapper.bg-lines { background-image: repeating-linear-gradient(45deg, rgba(48,54,61,0.4) 0, rgba(48,54,61,0.4) 1px, transparent 0, transparent 50%); }
+    .wall-wrapper.bg-empty { background-image: none; }
 
-    #sticker-canvas {
-        position: absolute !important; 
-        top: 0; left: 0; width: 100%; height: 100%;
-        z-index: 20; pointer-events: auto; overflow: hidden;
-    }
+    #sticker-canvas { position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: auto; overflow: hidden; }
 
     /* 强制隐藏缩放点，仅允许拖拽和旋转 */
     .wall-wrapper .sticker-handle-scale-tl,
@@ -98,34 +70,22 @@
     /* 强制开启交互，以便触发悬浮窗 */
     #sticker-canvas .sticker-item { pointer-events: auto !important; }
 
-    /* === 精致悬浮信息提示框 (Glass Tooltip) === */
+    /* === 精致悬浮信息提示框 === */
     .sticker-tooltip {
-        position: fixed;
-        background: rgba(20, 20, 20, 0.85); /* 更通透的深色 */
-        color: white;
-        padding: 10px 14px;
-        border-radius: 16px;
-        font-size: 13px;
-        pointer-events: none;
-        opacity: 0;
-        z-index: 9999;
+        position: fixed; background: rgba(20, 20, 20, 0.85); color: white; padding: 10px 14px; border-radius: 16px; font-size: 13px;
+        pointer-events: none; opacity: 0; z-index: 9999;
         transition: opacity 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         transform: scale(0.9) translateY(10px);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.15);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.1);
     }
-    .sticker-tooltip.show {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
+    .sticker-tooltip.show { opacity: 1; transform: scale(1) translateY(0); }
 
-    /* 抽屉内网格滚动条 */
-    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    /* 抽屉内滚动条 */
+    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.15); border-radius: 10px; }
-    .custom-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--bc) / 0.3); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.1); border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--bc) / 0.2); }
 </style>
 {% endblock %}
 
@@ -166,8 +126,7 @@
     </div>
 
     {% if walls %}
-    <div class="wall-wrapper group">
-        <div id="sticker-canvas"></div>
+    <div class="wall-wrapper group" id="profile-sticker-header"> <div id="sticker-canvas"></div>
         
         <div class="absolute bottom-6 right-8 opacity-[0.03] dark:opacity-[0.02] font-black text-6xl tracking-[0.5em] select-none pointer-events-none z-10 transition-opacity duration-500 group-hover:opacity-[0.05]">
             WIKIBOOK
@@ -202,56 +161,47 @@
 </div>
 
 {% if walls and current_user.is_authenticated %}
-<button id="sticker-fab" class="sticker-fab btn btn-circle h-14 w-14 fixed bottom-10 right-10 z-50 bg-stone-900/90 hover:bg-stone-950 backdrop-blur-md text-white shadow-[0_10px_25px_rgba(0,0,0,0.3)] border border-white/10 hover:-translate-y-1 hover:scale-105 transition-all duration-300 tooltip tooltip-left group" data-tip="打开贴纸包">
-    <i class="fas fa-box-open text-2xl group-hover:animate-bounce"></i>
+<button id="sticker-fab" aria-label="打开贴纸库" class="sticker-fab btn btn-circle w-16 h-16 fixed bottom-8 right-8 z-[100] bg-base-content/90 backdrop-blur-2xl text-base-100 shadow-2xl shadow-base-content/20 border border-white/10 hover:scale-110 hover:-rotate-12 transition-transform duration-300">
+    <i class="fas fa-shapes text-2xl"></i>
 </button>
 
-<div id="sticker-drawer" class="sticker-drawer bg-white/95 dark:bg-base-100/95 backdrop-blur-3xl border-t border-black/10 dark:border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.2)] rounded-t-[2.5rem]">
-    
-    <div class="sticker-drawer-header px-6 md:px-10 py-5 border-b border-base-200/50 flex justify-between items-center relative overflow-hidden">
-        <div class="absolute left-0 top-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
-        
-        <div class="flex items-center gap-3 relative z-10">
-            <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shadow-inner">
-                <i class="fas fa-star text-lg"></i>
-            </div>
-            <h3 class="font-black text-xl text-base-content tracking-tight">我的贴纸库</h3>
-        </div>
-        <div class="flex items-center gap-3 relative z-10">
-            <button id="sticker-save-btn" class="btn btn-primary rounded-xl px-6 font-bold shadow-lg shadow-primary/30 hover:-translate-y-0.5 transition-transform gap-2">
-                <i class="fas fa-lock text-xs"></i> 锁定保存
+<div id="sticker-drawer" class="sticker-drawer bg-base-100/95 backdrop-blur-3xl border-l border-base-content/10 shadow-2xl z-[90]">
+    <div class="sticker-drawer-header border-b border-base-content/5 p-5">
+        <h3 class="font-black text-lg text-base-content flex items-center gap-2"><i class="fas fa-shapes text-primary"></i> 我的贴纸库</h3>
+        <div class="flex gap-2">
+            <button id="sticker-clear-all-btn" class="btn btn-sm bg-orange-50 text-orange-600 hover:bg-orange-100 border-none rounded-xl font-bold px-3">
+                <i class="fas fa-undo mr-1"></i>一键回收
             </button>
-            <div class="w-px h-6 bg-base-content/10 mx-1"></div>
-            <button id="sticker-close-btn" class="btn btn-ghost btn-circle bg-base-200/50 hover:bg-base-200 text-base-content/60 hover:text-base-content transition-colors">✕</button>
+            <button id="sticker-save-btn" class="btn btn-sm btn-primary border-none rounded-xl font-bold shadow-lg shadow-primary/30 px-6">保存</button>
+            <button id="sticker-close-btn" class="btn btn-ghost btn-sm btn-circle bg-base-200 hover:bg-base-300" aria-label="关闭">✕</button>
         </div>
     </div>
-    
-    <div class="sticker-drawer-body p-6 md:p-8 bg-stone-50/30 dark:bg-base-200/20">
-        <div class="sticker-grid grid grid-cols-4 sm:grid-cols-6 md:grid-cols-10 xl:grid-cols-[14] gap-4 overflow-y-auto max-h-[45vh] pb-6 pr-2 custom-scroll">
+    <div class="sticker-drawer-body p-4 custom-scroll">
+        <div class="grid gap-2 sm:gap-3" style="grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));">
             {% for item in my_inventory %}
                 <div onclick="handleDrawerClick(this)"
-                     class="sticker-option w-full aspect-square bg-white dark:bg-base-200 rounded-2xl flex flex-col items-center justify-center border border-black/5 dark:border-white/5 transition-all duration-300 relative group {{ 'opacity-40 grayscale pointer-events-none is-empty' if item.available <= 0 else 'hover:border-primary/50 cursor-pointer hover:shadow-xl hover:shadow-stone-200/50 dark:hover:shadow-black/50 hover:-translate-y-1.5' }}"
+                     class="sticker-option select-none p-2 rounded-2xl transition-all flex flex-col items-center gap-1.5 group relative {{ 'opacity-40 grayscale pointer-events-none is-empty bg-base-200/30 border border-dashed border-base-content/10' if item.available <= 0 else 'bg-base-200/50 hover:bg-base-100 border border-transparent hover:border-primary/30 hover:shadow-md cursor-pointer' }}"
                      data-badge-id="{{ item.badge.id }}"
                      data-badge-icon="{{ item.badge.icon|badge_icon_url if item.badge.icon|is_image_icon else item.badge.icon }}"
                      data-sticker-limit="{{ item.owned }}">
                     
-                    <div class="text-3xl transition-transform group-hover:scale-110 relative flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 pointer-events-none mb-1">
+                    <div class="text-3xl transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6 relative">
                         {% if item.badge.icon|is_image_icon %}
-                            <img src="{{ item.badge.icon|badge_icon_url }}" class="max-w-full max-h-full object-contain filter drop-shadow-md">
+                            <img src="{{ item.badge.icon|badge_icon_url }}" class="w-10 h-10 object-contain drop-shadow-sm">
                         {% else %}
-                            <span class="drop-shadow-md">{{ item.badge.icon }}</span>
+                            <span class="drop-shadow-sm">{{ item.badge.icon }}</span>
                         {% endif %}
                         
-                        <div class="absolute -bottom-1 -right-2 badge badge-xs border-none text-[9px] px-1.5 h-4 min-h-0 font-bold font-mono shadow-sm sticker-count-badge {{ 'bg-stone-200 dark:bg-base-300 text-base-content/50' if item.available <= 0 else 'bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-800' }}">
+                        <div class="absolute -bottom-1 -right-2 bg-base-content text-base-100 font-black text-[9px] px-1.5 py-0 rounded-full border-2 border-base-100 shadow-sm sticker-count-badge leading-tight">
                             <span class="inventory-used">{{ item.used }}</span>/{{ item.owned }}
                         </div>
                     </div>
-                    <span class="text-[10px] text-center w-full truncate px-1 opacity-60 group-hover:opacity-100 font-bold mt-1 pointer-events-none tracking-wide">{{ item.badge.name }}</span>
+                    <span class="text-[9px] font-bold text-center w-full truncate opacity-60 group-hover:opacity-100 transition-opacity mt-0.5 pointer-events-none">{{ item.badge.name }}</span>
                 </div>
             {% else %}
-                <div class="col-span-full text-center py-12 flex flex-col items-center justify-center gap-3 bg-white/50 dark:bg-base-200/50 rounded-3xl border border-dashed border-base-300">
+                <div class="col-span-full py-10 flex flex-col items-center justify-center gap-3 bg-base-200/30 rounded-3xl border border-dashed border-base-content/10">
                     <i class="fas fa-box-open text-4xl text-base-content/20"></i>
-                    <p class="text-base-content/50 font-bold text-sm tracking-widest uppercase">暂无贴纸库存，快去收集吧！</p>
+                    <p class="text-base-content/50 font-bold text-xs tracking-widest">库存空空，快去收集成就吧！</p>
                 </div>
             {% endfor %}
         </div>
@@ -279,7 +229,6 @@
     const MAX_QUOTA = 10;
 
     document.addEventListener("DOMContentLoaded", function() {
-        // 将独立组件移至 body 根部防止定位错误
         const fab = document.getElementById('sticker-fab');
         const drawer = document.getElementById('sticker-drawer');
         if (fab) document.body.appendChild(fab);
@@ -346,62 +295,123 @@
             async saveStickers(silent = false) {
                 try {
                     const myStickers = this.stickers.filter(s => s.is_editable || s.id == null);
-                    
                     const payload = {
                         stickers: myStickers.map(s => ({
-                            id: s.id || null, 
-                            badge_id: s.badge_id,
+                            id: s.id || null, badge_id: s.badge_id,
                             x: s.x, y: s.y, rotation: s.rotation, scale: 0.3, z_index: s.z_index
                         }))
                     };
                     
                     const res = await fetch(`/api/stickers/${this.pageType}?user_id=${this.targetUserId}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
                     
                     const data = await res.json();
                     if(data.success) {
-                        if(!silent && typeof showGlobalToast === 'function') {
-                            showGlobalToast('墙面状态已锁定保存！', 'success');
-                        }
-                        if(!silent) {
+                        if(!silent && typeof window.app !== 'undefined' && window.app.toast) {
+                            window.app.toast.show('状态已锁定！', 'success');
                             setTimeout(() => window.location.reload(), 400);
+                        } else if (!silent) {
+                            alert("保存成功");
+                            window.location.reload();
                         }
                     } else {
                         alert(data.error || "保存失败");
                     }
                 } catch (e) { console.error('Save failed:', e); }
             }
+
+            // 💡 补充一键回收与双击回收的逻辑（同步到 Wall）
+            recallAllStickers() {
+                if (this.isReadOnly) return;
+                const myStickers = this.stickers.filter(s => s.is_editable || s.id == null);
+                if (myStickers.length === 0) return;
+                
+                if (!confirm(`确定要从墙上收回这 ${myStickers.length} 张属于你的贴纸吗？(收回后记得点击保存)`)) return;
+
+                // 从后往前删，避免索引错乱
+                for (let i = this.stickers.length - 1; i >= 0; i--) {
+                    if (this.stickers[i].is_editable || this.stickers[i].id == null) {
+                        const s = this.stickers[i];
+                        const el = s.el || document.getElementById(`sticker-${s.id}`);
+                        if (el) {
+                            el.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                            el.style.transform = 'scale(0) rotate(-180deg) translateY(50px)';
+                            el.style.opacity = '0';
+                            setTimeout(() => el.remove(), 400);
+                        }
+                        this.stickers.splice(i, 1);
+                    }
+                }
+                syncInventoryAndQuota();
+                if(window.app && window.app.toast) window.app.toast.show('已收回贴纸，记得点击保存哦！', 'info');
+            }
+
+            recallStickersByBadgeId(badgeId) {
+                if (this.isReadOnly) return;
+                let recalledCount = 0;
+                for (let i = this.stickers.length - 1; i >= 0; i--) {
+                    if (String(this.stickers[i].badge_id) === String(badgeId) && (this.stickers[i].is_editable || this.stickers[i].id == null)) {
+                        const s = this.stickers[i];
+                        const el = s.el || document.getElementById(`sticker-${s.id}`);
+                        if (el) {
+                            el.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                            el.style.transform = 'scale(0) rotate(-180deg)';
+                            el.style.opacity = '0';
+                            setTimeout(() => el.remove(), 300);
+                        }
+                        this.stickers.splice(i, 1);
+                        recalledCount++;
+                    }
+                }
+                if (recalledCount > 0) {
+                    syncInventoryAndQuota();
+                    if(window.app && window.app.toast) window.app.toast.show(`已收回 ${recalledCount} 张该贴纸`, 'success');
+                }
+            }
         };
 
         window.wallStickerManager = new StickerManager('wall', wallsData[currentWallIndex].id, false);
         updateWallUI();
 
-        // 拦截非编辑模式下的点击和拖拽，防止误触
         const canvas = document.getElementById('sticker-canvas');
-        
         ['mousedown', 'touchstart', 'dblclick'].forEach(evt => {
             canvas.addEventListener(evt, (e) => {
-                if (window.wallStickerManager && !window.wallStickerManager.isEditing) {
-                    e.stopPropagation();
-                }
+                if (window.wallStickerManager && !window.wallStickerManager.isEditing) e.stopPropagation();
             }, true); 
         });
 
+        // 双击选项回收该类型贴纸
+        document.querySelectorAll('.sticker-option').forEach(option => {
+            option.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                if (window.getSelection) window.getSelection().removeAllRanges(); 
+                const badgeId = option.dataset.badgeId;
+                if (window.wallStickerManager) {
+                    option.style.transform = 'scale(0.9)';
+                    setTimeout(() => option.style.transform = '', 150);
+                    window.wallStickerManager.recallStickersByBadgeId(badgeId);
+                }
+            });
+        });
+
+        // 绑定一键回收
+        const clearBtn = document.getElementById('sticker-clear-all-btn');
+        if (clearBtn) clearBtn.addEventListener('click', () => window.wallStickerManager?.recallAllStickers());
+        
+        // 保存按钮
+        const saveBtn = document.getElementById('sticker-save-btn');
+        if(saveBtn) saveBtn.addEventListener('click', () => window.wallStickerManager?.saveStickers(false));
+
         // ================= 悬浮窗逻辑 =================
         const tooltip = document.getElementById('sticker-tooltip');
-        if (tooltip && tooltip.parentElement !== document.body) {
-            document.body.appendChild(tooltip);
-        }
+        if (tooltip && tooltip.parentElement !== document.body) document.body.appendChild(tooltip);
 
         canvas.addEventListener('mousemove', (e) => {
             const stickerItem = e.target.closest('.sticker-item');
-            
             if (stickerItem && !stickerItem.classList.contains('is-dragging')) {
                 const sData = window.wallStickerManager.stickers.find(s => s.element === stickerItem);
-                
                 if (sData && sData.user_name) { 
                     document.getElementById('tt-avatar').innerText = sData.user_name.charAt(0).toUpperCase();
                     document.getElementById('tt-user').innerText = sData.user_name;
@@ -409,7 +419,6 @@
                     document.getElementById('tt-badge').innerText = sData.badge_name || '荣誉徽章';
                     
                     tooltip.classList.add('show');
-                    
                     let x = e.clientX + 20; 
                     let y = e.clientY + 20;
                     if (x + 200 > window.innerWidth) x = e.clientX - 220;
@@ -422,28 +431,16 @@
             tooltip.classList.remove('show');
         });
 
-        canvas.addEventListener('mouseleave', () => {
-            tooltip.classList.remove('show');
-        });
+        canvas.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
 
-        // 监听空墙面提示
         const observer = new MutationObserver(() => {
             const hint = document.getElementById('empty-wall-hint');
             if(canvas.children.length === 0) hint.style.display = 'flex';
             else hint.style.display = 'none';
         });
         observer.observe(canvas, { childList: true });
-        
-        // 绑定独立保存按钮
-        const saveBtn = document.getElementById('sticker-save-btn');
-        if(saveBtn){
-            saveBtn.addEventListener('click', () => {
-                if(window.wallStickerManager) window.wallStickerManager.saveStickers(false);
-            });
-        }
     });
 
-    // ================= 点击抽屉贴出徽章 =================
     window.handleDrawerClick = function(opt) {
         if (!window.wallStickerManager || opt.classList.contains('is-empty')) return;
         
@@ -452,8 +449,8 @@
         
         let newCount = window.wallStickerManager.stickers.filter(s => !s.id).length;
         if (baseGlobalUsed + newCount >= MAX_QUOTA) {
-            if(typeof showGlobalToast === 'function') {
-                showGlobalToast('额度已达 10张 上限！请在墙上双击收回贴纸。', 'error');
+            if(window.app && window.app.toast) {
+                window.app.toast.show('额度已达 10张 上限！请在墙上双击收回贴纸。', 'error');
             } else {
                 alert('您的全局贴纸总额度已达 10张 上限！请在墙上双击收回一些贴纸。');
             }
@@ -461,27 +458,19 @@
         }
 
         const newSticker = {
-            id: null, 
-            badge_id: badgeId,
-            badge_icon: badgeIcon,
+            id: null, badge_id: badgeId, badge_icon: badgeIcon,
             x: 50, y: 50, rotation: 0, scale: 0.3, 
-            z_index: window.wallStickerManager.getNextZIndex(),
-            is_editable: true
+            z_index: window.wallStickerManager.getNextZIndex(), is_editable: true
         };
-        
         window.wallStickerManager.addStickerToCanvas(newSticker, true);
     }
 
-    // ================= 实时计算 UI 与库存联动 =================
     function syncInventoryAndQuota() {
         if (!window.wallStickerManager) return;
         
         const myStickers = window.wallStickerManager.stickers.filter(s => s.is_editable || !s.id);
-        
         const canvasUsage = {};
-        myStickers.forEach(s => {
-            canvasUsage[s.badge_id] = (canvasUsage[s.badge_id] || 0) + 1;
-        });
+        myStickers.forEach(s => { canvasUsage[s.badge_id] = (canvasUsage[s.badge_id] || 0) + 1; });
         
         const totalUsedNow = baseGlobalUsed + myStickers.length;
         
@@ -489,7 +478,6 @@
         const badge = document.getElementById('quota-badge');
         
         if(display) display.innerText = totalUsedNow;
-
         if(badge) {
             if(totalUsedNow >= MAX_QUOTA) {
                 badge.classList.add('bg-error', 'animate-pulse', 'text-white');
@@ -505,42 +493,28 @@
             const limit = parseInt(opt.dataset.stickerLimit); 
             
             let totalBadgeUsed = 0;
-            
             if (window.wallStickerManager && window.wallStickerManager.globalInventoryUsage) {
                 const globalDbCount = window.wallStickerManager.globalInventoryUsage[badgeId] || 0;
                 const initialDbCount = (window.wallStickerManager.initialWallCounts && window.wallStickerManager.initialWallCounts[badgeId]) || 0;
                 const currentCanvasCount = canvasUsage[badgeId] || 0;
-                
                 totalBadgeUsed = globalDbCount + (currentCanvasCount - initialDbCount);
             } else {
-                let usedOnThisWall = canvasUsage[badgeId] || 0;
-                totalBadgeUsed = usedOnThisWall; 
+                totalBadgeUsed = canvasUsage[badgeId] || 0; 
             }
             
             let uiBadge = opt.querySelector('.inventory-used');
             if(uiBadge) uiBadge.innerText = Math.max(0, totalBadgeUsed); 
             
-            const countBadge = opt.querySelector('.sticker-count-badge');
-            
             if (totalUsedNow >= MAX_QUOTA || totalBadgeUsed >= limit) {
-                opt.classList.add('opacity-40', 'grayscale', 'is-empty', 'pointer-events-none');
-                opt.classList.remove('hover:border-primary/50', 'cursor-pointer', 'hover:shadow-xl', 'hover:shadow-stone-200/50', 'dark:hover:shadow-black/50', 'hover:-translate-y-1.5');
-                if(countBadge) {
-                    countBadge.classList.add('bg-stone-200', 'dark:bg-base-300', 'text-base-content/50');
-                    countBadge.classList.remove('bg-stone-800', 'dark:bg-stone-100', 'text-white', 'dark:text-stone-800');
-                }
+                opt.classList.add('opacity-40', 'grayscale', 'is-empty', 'pointer-events-none', 'bg-base-200/30', 'border', 'border-dashed', 'border-base-content/10');
+                opt.classList.remove('bg-base-200/50', 'hover:bg-base-100', 'hover:border-primary/30', 'cursor-pointer', 'hover:shadow-md');
             } else {
-                opt.classList.remove('opacity-40', 'grayscale', 'is-empty', 'pointer-events-none');
-                opt.classList.add('hover:border-primary/50', 'cursor-pointer', 'hover:shadow-xl', 'hover:shadow-stone-200/50', 'dark:hover:shadow-black/50', 'hover:-translate-y-1.5');
-                if(countBadge) {
-                    countBadge.classList.add('bg-stone-800', 'dark:bg-stone-100', 'text-white', 'dark:text-stone-800');
-                    countBadge.classList.remove('bg-stone-200', 'dark:bg-base-300', 'text-base-content/50');
-                }
+                opt.classList.remove('opacity-40', 'grayscale', 'is-empty', 'pointer-events-none', 'bg-base-200/30', 'border', 'border-dashed', 'border-base-content/10');
+                opt.classList.add('bg-base-200/50', 'hover:bg-base-100', 'hover:border-primary/30', 'cursor-pointer', 'hover:shadow-md');
             }
         });
     }
 
-    // ================= 翻页切换 =================
     window.switchWall = function(delta) {
         if(window.wallStickerManager) window.wallStickerManager.saveStickers(true);
         currentWallIndex = (currentWallIndex + delta + wallsData.length) % wallsData.length;
@@ -554,44 +528,26 @@
     
     function updateWallUI() {
         const wall = wallsData[currentWallIndex];
-        
         const titleEl = document.getElementById('wall-name-display');
         const descEl = document.getElementById('wall-desc-display');
         const containerEl = document.getElementById('wall-name-container');
         
-        // 文字切换动画
-        if(containerEl) {
-            containerEl.style.opacity = '0';
-            containerEl.style.transform = 'translateY(-5px)';
-        }
-        if(descEl) {
-            descEl.style.opacity = '0';
-            descEl.style.transform = 'translateY(5px)';
-        }
+        if(containerEl) { containerEl.style.opacity = '0'; containerEl.style.transform = 'translateY(-5px)'; }
+        if(descEl) { descEl.style.opacity = '0'; descEl.style.transform = 'translateY(5px)'; }
         
         setTimeout(() => {
             if(titleEl) titleEl.innerText = wall.name;
             if(descEl) descEl.innerText = wall.desc || '公共墙面';
             
-            if(containerEl) {
-                containerEl.style.opacity = '1';
-                containerEl.style.transform = 'translateY(0)';
-            }
-            if(descEl) {
-                descEl.style.opacity = '1';
-                descEl.style.transform = 'translateY(0)';
-            }
+            if(containerEl) { containerEl.style.opacity = '1'; containerEl.style.transform = 'translateY(0)'; }
+            if(descEl) { descEl.style.opacity = '1'; descEl.style.transform = 'translateY(0)'; }
         }, 150);
         
-        // 更新背景样式
         const wrapper = document.querySelector('.wall-wrapper');
         if(wrapper) {
             wrapper.classList.remove('bg-dots', 'bg-grid', 'bg-lines', 'bg-empty');
-            if (wall.bg_style) {
-                wrapper.classList.add(`bg-${wall.bg_style}`);
-            } else {
-                wrapper.classList.add('bg-dots'); // 默认
-            }
+            if (wall.bg_style) wrapper.classList.add(`bg-${wall.bg_style}`);
+            else wrapper.classList.add('bg-dots'); 
         }
     }
     {% endif %}

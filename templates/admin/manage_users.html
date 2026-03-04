@@ -4,12 +4,12 @@
 
 {% block extra_css %}
 <style>
-    /* 页面淡入动画 */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(15px); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    /* 极简淡入，抛弃所有延迟，只要 DOM 够小，瞬间就能平滑加载 */
+    @keyframes quickFadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-    .animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    .quick-fade { animation: quickFadeIn 0.4s ease-out forwards; }
     
     /* 隐藏滚动条 */
     .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
@@ -20,7 +20,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6 animate-fade-in pb-12 mt-2">
+<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6 quick-fade pb-12 mt-2">
     
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/80 dark:bg-base-100/80 backdrop-blur-xl p-6 md:px-8 rounded-3xl border border-black/5 dark:border-white/5 shadow-sm relative overflow-hidden">
         <div class="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -33,7 +33,7 @@
         </div>
         
         <div class="flex items-center gap-3 relative z-10 w-full md:w-auto">
-            <button onclick="import_modal.showModal()" class="btn btn-primary rounded-xl shadow-lg shadow-primary/30 hover:-translate-y-0.5 transition-all w-full md:w-auto font-bold gap-2">
+            <button onclick="document.getElementById('import_modal').showModal()" class="btn btn-primary rounded-xl shadow-lg shadow-primary/30 hover:-translate-y-0.5 transition-all w-full md:w-auto font-bold gap-2">
                 <i class="fas fa-file-import"></i> 批量导入用户
             </button>
         </div>
@@ -51,8 +51,8 @@
         </a>
     </div>
 
-    <div class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl shadow-sm hover:shadow-md border border-black/5 dark:border-white/5 rounded-[2rem] transition-all">
-        <div class="overflow-x-auto custom-scroll p-1 rounded-[2rem]">
+    <div class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl shadow-sm border border-black/5 dark:border-white/5 rounded-[2rem] transition-all overflow-hidden">
+        <div class="overflow-x-auto custom-scroll p-1">
             <table class="table w-full">
                 <thead>
                     <tr class="bg-stone-50/80 dark:bg-base-200/50 text-[11px] font-black uppercase tracking-wider text-base-content/50 border-b-0">
@@ -74,7 +74,7 @@
                             <div class="flex items-center gap-4">
                                 <div class="avatar placeholder">
                                     <div class="bg-gradient-to-br from-stone-100 to-stone-200 dark:from-base-300 dark:to-base-200 text-stone-600 dark:text-stone-300 rounded-xl w-10 h-10 shadow-inner grid place-items-center font-black text-lg group-hover:scale-105 transition-transform">
-                                        <span>{{ user.username[0]|upper }}</span>
+                                        <span>{{ user.real_name[0]|upper }}</span>
                                     </div>
                                 </div>
                                 <div class="flex flex-col">
@@ -90,8 +90,8 @@
                         
                         <td>
                             {% if user.student_class %}
-                            <div class="badge border-none bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 font-bold px-3 py-2.5 rounded-lg text-xs">
-                                <i class="fas fa-tag mr-1.5 opacity-50"></i> {{ user.student_class.name }}
+                            <div class="badge border-none bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 font-bold px-3 py-2.5 rounded-lg text-xs gap-1.5">
+                                <i class="fas fa-tag opacity-50"></i> {{ user.student_class.name }}
                             </div>
                             {% else %}
                             <span class="text-base-content/30 text-xs font-bold bg-base-200/50 px-2 py-1 rounded-md">未分配班级</span>
@@ -115,7 +115,7 @@
                         <td>
                             {% if user.is_admin %}
                             <div class="badge border-none bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-black gap-1.5 px-3 py-2.5 rounded-lg text-xs shadow-sm">
-                                <i class="fas fa-crown"></i> 超级管理
+                                <i class="fas fa-crown text-amber-500"></i> 超级管理
                             </div>
                             {% else %}
                             <div class="badge border-none bg-stone-100 text-stone-600 dark:bg-base-300 dark:text-base-content/70 font-bold gap-1.5 px-3 py-2.5 rounded-lg text-xs">
@@ -124,13 +124,26 @@
                             {% endif %}
                         </td>
                         
-                        <td class="text-center">
+                        <td class="text-center relative">
                             {% if user.id != current_user.id %}
                             <div class="dropdown dropdown-left dropdown-end">
-                                <label tabindex="0" class="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:bg-base-200 transition-colors">
+                                <label tabindex="0" class="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-primary hover:bg-primary/10 transition-colors">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </label>
-                                <ul tabindex="0" class="dropdown-content z-[10] menu p-2 shadow-xl shadow-stone-200/50 dark:shadow-none bg-base-100 rounded-2xl w-40 border border-base-200 mt-1">
+                                <ul tabindex="0" class="dropdown-content z-[10] menu p-2 shadow-xl shadow-stone-200/50 dark:shadow-none bg-base-100 rounded-2xl w-44 border border-base-200 mt-1">
+                                    
+                                    <li class="mb-1">
+                                        <button type="button" onclick="openEditModal('{{ user.id }}', '{{ user.username }}', '{{ user.email }}', '{{ user.real_name or '' }}', '{{ user.student_id or '' }}', '{{ user.department or '' }}')" class="w-full justify-start text-xs font-bold text-base-content/80 hover:bg-base-200 py-2 rounded-xl">
+                                            <i class="fas fa-user-edit w-4 text-center"></i> 编辑信息
+                                        </button>
+                                    </li>
+
+                                    <li class="mb-1">
+                                        <button type="button" onclick="openClassModal('{{ user.id }}', '{{ user.username }}', '{{ user.class_id or '' }}')" class="w-full justify-start text-xs font-bold text-base-content/80 hover:bg-base-200 py-2 rounded-xl">
+                                            <i class="fas fa-exchange-alt w-4 text-center"></i> 调整班级
+                                        </button>
+                                    </li>
+
                                     <li class="mb-1">
                                         <form action="{{ url_for('update_user_role', user_id=user.id) }}" method="post" class="p-0">
                                             {% if user.is_admin %}
@@ -146,48 +159,28 @@
                                             {% endif %}
                                         </form>
                                     </li>
+
+                                    <div class="divider my-0.5 opacity-30"></div>
+
                                     <li class="mb-1">
-                                        <button type="button" onclick="document.getElementById('class_modal_{{ user.id }}').showModal()" class="w-full justify-start text-xs font-bold text-base-content/80 hover:bg-base-200 py-2 rounded-xl">
-                                            <i class="fas fa-exchange-alt w-4 text-center"></i> 调整班级
-                                        </button>
-                                    </li>
-                                    <li>
                                         <form action="{{ url_for('reset_user_password', user_id=user.id) }}" method="post" onsubmit="return confirm('确定要将该用户 [{{ user.username }}] 的密码重置为 123456 吗？\n此操作不可撤销！');" class="p-0">
-                                            <button type="submit" class="w-full justify-start text-xs font-bold text-error hover:bg-error/10 hover:text-error py-2 rounded-xl">
+                                            <button type="submit" class="w-full justify-start text-xs font-bold text-error/80 hover:bg-error/10 hover:text-error py-2 rounded-xl">
                                                 <i class="fas fa-key w-4 text-center"></i> 重置密码
+                                            </button>
+                                        </form>
+                                    </li>
+
+                                    <li>
+                                        <form action="{{ url_for('delete_user', user_id=user.id) }}" method="post" onsubmit="return confirm('🚨 极度危险操作！\n确定要彻底删除用户 [{{ user.username }}] 吗？\n所有关联数据将被永久清除！');" class="p-0">
+                                            <button type="submit" class="w-full justify-start text-xs font-bold bg-error/5 text-error hover:bg-error hover:text-white py-2 rounded-xl transition-colors">
+                                                <i class="fas fa-trash-alt w-4 text-center"></i> 彻底删除
                                             </button>
                                         </form>
                                     </li>
                                 </ul>
                             </div>
-                            
-                            <dialog id="class_modal_{{ user.id }}" class="modal bg-black/40 backdrop-blur-sm">
-                                <div class="modal-box rounded-[2rem] p-8 border border-base-200 text-left">
-                                    <h3 class="font-black text-xl mb-2 text-base-content">
-                                        <i class="fas fa-school text-primary mr-2"></i>调整归属班级
-                                    </h3>
-                                    <p class="text-sm text-base-content/50 mb-6 font-medium">正在为用户 <span class="text-primary font-bold">@{{ user.username }}</span> 分配班级架构</p>
-                                    
-                                    <form action="{{ url_for('update_user_class', user_id=user.id) }}" method="post">
-                                        <div class="form-control w-full mb-8">
-                                            <label class="label pb-2"><span class="label-text font-bold text-base-content/80">选择目标班级</span></label>
-                                            <select name="class_id" class="select select-bordered w-full rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20">
-                                                <option value="" {% if not user.class_id %}selected{% endif %}>🌟 暂不分配 (无班级)</option>
-                                                {% for c in classes %}
-                                                <option value="{{ c.id }}" {% if user.class_id == c.id %}selected{% endif %}>{{ c.name }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div class="modal-action border-t border-base-200 pt-6 mt-0">
-                                            <button type="button" class="btn btn-ghost rounded-xl font-medium" onclick="document.getElementById('class_modal_{{ user.id }}').close()">取消</button>
-                                            <button type="submit" class="btn btn-primary rounded-xl px-8 shadow-lg shadow-primary/30 font-bold">保存更改</button>
-                                        </div>
-                                    </form>
-                                </div>
-                                <form method="dialog" class="modal-backdrop"><button>close</button></form>
-                            </dialog>
                             {% else %}
-                            <div class="badge badge-sm badge-ghost opacity-50">你自己</div>
+                            <div class="badge badge-sm badge-ghost opacity-50 font-bold tracking-widest px-3 py-2">你的账号</div>
                             {% endif %}
                         </td>
                     </tr>
@@ -207,19 +200,83 @@
     </div>
 </div>
 
+<dialog id="global_class_modal" class="modal bg-black/40 backdrop-blur-sm">
+    <div class="modal-box rounded-[2rem] p-8 border border-base-200 text-left">
+        <h3 class="font-black text-xl mb-2 text-base-content">
+            <i class="fas fa-school text-primary mr-2"></i>调整归属班级
+        </h3>
+        <p class="text-sm text-base-content/50 mb-6 font-medium">正在为 <span id="class_modal_username" class="text-primary font-bold"></span> 分配班级</p>
+        
+        <form id="class_modal_form" action="" method="post">
+            <div class="form-control w-full mb-8">
+                <label class="label pb-2"><span class="label-text font-bold text-base-content/80">选择目标班级</span></label>
+                <select name="class_id" id="class_modal_select" class="select select-bordered w-full rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20">
+                    <option value="">🌟 暂不分配 (无班级)</option>
+                    {% for c in classes %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="modal-action border-t border-base-200 pt-6 mt-0">
+                <button type="button" class="btn btn-ghost rounded-xl font-medium" onclick="document.getElementById('global_class_modal').close()">取消</button>
+                <button type="submit" class="btn btn-primary rounded-xl px-8 shadow-lg shadow-primary/30 font-bold">保存更改</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<dialog id="global_edit_user_modal" class="modal bg-black/40 backdrop-blur-sm">
+    <div class="modal-box rounded-[2rem] p-8 border border-base-200 text-left w-11/12 max-w-md">
+        <h3 class="font-black text-xl mb-2 text-base-content">
+            <i class="fas fa-user-edit text-primary mr-2"></i>编辑用户资料
+        </h3>
+        <p class="text-sm text-base-content/50 mb-6 font-medium">正在修改账号 <span id="edit_modal_username_display" class="text-primary font-bold"></span></p>
+        
+        <form id="edit_modal_form" action="" method="post" class="space-y-4">
+            <div class="form-control">
+                <label class="label pb-1"><span class="label-text font-bold text-base-content/80">系统账号 (用户名)</span></label>
+                <input type="text" name="username" id="edit_inp_username" class="input input-bordered w-full rounded-xl focus:border-primary" required />
+            </div>
+            <div class="form-control">
+                <label class="label pb-1"><span class="label-text font-bold text-base-content/80">绑定邮箱</span></label>
+                <input type="email" name="email" id="edit_inp_email" class="input input-bordered w-full rounded-xl focus:border-primary" required />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text font-bold text-base-content/80">真实姓名</span></label>
+                    <input type="text" name="real_name" id="edit_inp_realname" class="input input-bordered w-full rounded-xl focus:border-primary" />
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text font-bold text-base-content/80">学号/工号</span></label>
+                    <input type="text" name="student_id" id="edit_inp_studentid" class="input input-bordered w-full rounded-xl focus:border-primary" />
+                </div>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label pb-1"><span class="label-text font-bold text-base-content/80">所在专业/系部</span></label>
+                <input type="text" name="department" id="edit_inp_department" class="input input-bordered w-full rounded-xl focus:border-primary" />
+            </div>
+            
+            <div class="modal-action border-t border-base-200 pt-6 mt-4">
+                <button type="button" class="btn btn-ghost rounded-xl font-medium" onclick="document.getElementById('global_edit_user_modal').close()">取消</button>
+                <button type="submit" class="btn btn-primary rounded-xl px-8 shadow-lg shadow-primary/30 font-bold">保存信息</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
 <dialog id="import_modal" class="modal bg-black/40 backdrop-blur-sm">
     <div class="modal-box rounded-[2rem] p-0 border border-base-200 shadow-2xl overflow-hidden">
-        
         <div class="px-8 py-6 bg-stone-50 dark:bg-base-200/50 border-b border-base-200 flex justify-between items-center relative overflow-hidden">
             <div class="absolute -right-10 -top-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl"></div>
             <h3 class="font-black text-2xl text-stone-800 dark:text-stone-100 relative z-10 flex items-center gap-3">
                 <i class="fas fa-file-import text-primary"></i> 批量导入用户
             </h3>
-            <button onclick="import_modal.close()" class="btn btn-sm btn-circle btn-ghost text-base-content/50 relative z-10">✕</button>
+            <button type="button" onclick="document.getElementById('import_modal').close()" class="btn btn-sm btn-circle btn-ghost text-base-content/50 relative z-10">✕</button>
         </div>
         
         <form action="{{ url_for('import_users') }}" method="post" enctype="multipart/form-data" class="p-8 flex flex-col gap-6">
-            
             <div class="bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/30 rounded-2xl p-5 flex gap-4">
                 <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-500 flex shrink-0 items-center justify-center text-lg">
                     <i class="fas fa-info-circle"></i>
@@ -245,7 +302,7 @@
             </div>
             
             <div class="modal-action border-t border-base-200 pt-6 mt-2 flex gap-3">
-                <button type="button" class="btn btn-ghost rounded-xl font-medium" onclick="import_modal.close()">取消</button>
+                <button type="button" class="btn btn-ghost rounded-xl font-medium" onclick="document.getElementById('import_modal').close()">取消</button>
                 <button type="submit" class="btn btn-primary rounded-xl px-10 shadow-lg shadow-primary/30 font-bold flex-1 md:flex-none">
                     <i class="fas fa-cloud-upload-alt mr-1"></i> 开始导入数据
                 </button>
@@ -254,4 +311,32 @@
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
+
+<script>
+    function openClassModal(userId, username, classId) {
+        document.getElementById('class_modal_username').innerText = '@' + username;
+        // 动态修改表单提交的 URL
+        document.getElementById('class_modal_form').action = '/admin/users/' + userId + '/class';
+        // 选中下拉框对应班级
+        document.getElementById('class_modal_select').value = classId;
+        // 弹出全局弹窗
+        document.getElementById('global_class_modal').showModal();
+    }
+
+    function openEditModal(userId, username, email, realName, studentId, department) {
+        document.getElementById('edit_modal_username_display').innerText = '@' + username;
+        // 动态修改表单提交的 URL
+        document.getElementById('edit_modal_form').action = '/admin/users/' + userId + '/edit_info';
+        
+        // 填充用户数据
+        document.getElementById('edit_inp_username').value = username;
+        document.getElementById('edit_inp_email').value = email;
+        document.getElementById('edit_inp_realname').value = realName;
+        document.getElementById('edit_inp_studentid').value = studentId;
+        document.getElementById('edit_inp_department').value = department;
+        
+        // 弹出全局弹窗
+        document.getElementById('global_edit_user_modal').showModal();
+    }
+</script>
 {% endblock %}

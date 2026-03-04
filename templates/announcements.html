@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}系统公告 - WikiBook{% endblock %}
+
+{% block content %}
+<div class="max-w-[1400px] mx-auto w-full flex flex-col h-[calc(100vh-7.5rem)]">
+    
+    <div class="flex items-center gap-4 mb-6 pl-2 shrink-0">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary flex items-center justify-center text-xl shadow-inner border border-primary/10">
+            <i class="fas fa-bullhorn"></i>
+        </div>
+        <div>
+            <h1 class="text-2xl font-black text-stone-800 dark:text-stone-100 tracking-tight">公告中心</h1>
+            <p class="text-sm text-base-content/60 font-medium">了解 WikiBook 的最新动态与更新</p>
+        </div>
+    </div>
+
+    {% if announcements %}
+    <div class="flex flex-col lg:flex-row gap-6 flex-1 overflow-hidden pb-4">
+        
+        <div class="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col gap-2.5 overflow-y-auto custom-scroll pr-2 pb-2">
+            {% for ann in announcements %}
+            <a href="{{ url_for('announcements_view', id=ann.id) }}" 
+               class="block p-4 rounded-2xl border transition-all duration-300 cursor-pointer text-left group
+                      {% if selected_ann and ann.id == selected_ann.id %}
+                          bg-primary text-white shadow-lg shadow-primary/30 border-primary
+                      {% else %}
+                          bg-white/60 dark:bg-base-100/60 hover:bg-white dark:hover:bg-base-200 border-black/5 dark:border-white/5 hover:border-primary/40 hover:shadow-md text-base-content
+                      {% endif %}">
+                <div class="flex items-start justify-between gap-2 mb-1.5">
+                    <h3 class="font-bold text-[15px] line-clamp-2 leading-snug tracking-wide group-hover:translate-x-0.5 transition-transform">
+                        {{ ann.title }}
+                    </h3>
+                </div>
+                <div class="text-[11px] flex items-center gap-1.5 {% if selected_ann and ann.id == selected_ann.id %}text-white/80{% else %}text-base-content/40{% endif %} font-mono">
+                    <i class="far fa-clock"></i> {{ ann.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        <div class="flex-1 bg-white/80 dark:bg-base-100/80 backdrop-blur-xl border border-black/5 dark:border-white/5 rounded-[2rem] shadow-sm overflow-y-auto custom-scroll p-6 lg:p-12 relative flex flex-col">
+            {% if selected_ann %}
+                <div class="border-b border-base-200/60 pb-6 mb-8 shrink-0 relative">
+                    <h2 class="text-2xl md:text-3xl font-black text-stone-800 dark:text-stone-100 leading-tight tracking-tight">{{ selected_ann.title }}</h2>
+                    <div class="mt-4 flex items-center gap-4">
+                        <div class="badge badge-primary badge-outline font-mono text-xs font-bold px-3 py-2">
+                            {{ selected_ann.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </div>
+                        <span class="text-xs text-base-content/40 font-medium flex items-center gap-1">
+                            <i class="fas fa-check-circle text-emerald-500"></i> 官方发布
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="prose prose-sm md:prose-base max-w-none text-base-content/80 prose-headings:text-stone-800 dark:prose-headings:text-stone-100 prose-a:text-primary prose-img:rounded-xl prose-img:shadow-sm leading-loose pb-10">
+                    {{ selected_ann.html | safe }}
+                </div>
+            {% endif %}
+        </div>
+        
+    </div>
+    {% else %}
+        <div class="flex flex-col items-center justify-center flex-1 bg-white/40 dark:bg-base-100/40 rounded-[2rem] border-2 border-dashed border-base-200 mb-4">
+            <div class="w-20 h-20 bg-base-200 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                <i class="fas fa-inbox text-3xl text-base-content/20"></i>
+            </div>
+            <h3 class="text-lg font-bold text-base-content/60">目前风平浪静</h3>
+            <p class="text-sm text-base-content/40 mt-1">暂无任何系统公告</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

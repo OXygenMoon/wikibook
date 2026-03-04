@@ -1,90 +1,136 @@
 {% extends "base.html" %}
 
-{% block title %}班级管理{% endblock %}
+{% block title %}班级管理 - WikiBook{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 页面淡入动画 */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(15px); filter: blur(4px); }
+        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+    .animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    
+    /* 隐藏滚动条 */
+    .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.1); border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--bc) / 0.2); }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-8">
-        <div>
-            <h1 class="text-2xl font-bold text-base-content">班级管理</h1>
-            <p class="text-base-content/80 mt-1">创建和管理学生班级</p>
+<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6 animate-fade-in pb-12 mt-2">
+    
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/80 dark:bg-base-100/80 backdrop-blur-xl p-6 md:px-8 rounded-3xl border border-black/5 dark:border-white/5 shadow-sm relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="relative z-10">
+            <h1 class="text-2xl md:text-3xl font-black text-stone-800 dark:text-stone-100 flex items-center gap-3 tracking-tight">
+                <i class="fas fa-school text-indigo-500 drop-shadow-sm"></i> 班级控制台
+            </h1>
+            <p class="text-sm text-base-content/60 mt-1.5 font-medium ml-1">创建和管理系统的学生班级架构</p>
         </div>
     </div>
 
-    <div class="flex gap-4 mb-6 border-b border-base-200">
-        <a href="{{ url_for('manage_users') }}" class="px-4 py-2 text-base-content/80 hover:text-base-content">用户管理</a>
-        <a href="{{ url_for('manage_classes') }}" class="px-4 py-2 border-b-2 border-primary font-bold text-primary">班级管理</a>
-        <a href="{{ url_for('manage_groups') }}" class="px-4 py-2 text-base-content/80 hover:text-base-content">组管理</a>
+    <div class="flex items-center p-1.5 bg-stone-200/50 dark:bg-base-200/50 rounded-2xl w-full md:w-fit border border-black/5 dark:border-white/5 shadow-inner overflow-x-auto custom-scroll">
+        <a href="{{ url_for('manage_users') }}" class="flex-1 md:flex-none px-6 py-2.5 rounded-xl text-base-content/60 hover:text-base-content hover:bg-stone-200/50 dark:hover:bg-base-300 font-medium text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+            <i class="fas fa-user-shield"></i> 用户管理
+        </a>
+        <a href="{{ url_for('manage_classes') }}" class="flex-1 md:flex-none px-6 py-2.5 rounded-xl bg-white dark:bg-base-100 shadow-sm text-indigo-500 font-bold text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+            <i class="fas fa-school"></i> 班级管理
+        </a>
+        <a href="{{ url_for('manage_groups') }}" class="flex-1 md:flex-none px-6 py-2.5 rounded-xl text-base-content/60 hover:text-base-content hover:bg-stone-200/50 dark:hover:bg-base-300 font-medium text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+            <i class="fas fa-layer-group"></i> 小组管理
+        </a>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Create Class Form -->
-        <div class="card bg-base-100 shadow-sm border border-base-200 h-fit">
-            <div class="card-body">
-                <h3 class="card-title text-lg mb-4">新建班级</h3>
-                <form action="{{ url_for('manage_classes') }}" method="post" class="space-y-4">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        
+        <div class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl shadow-sm hover:shadow-md border border-black/5 dark:border-white/5 rounded-[2rem] transition-all h-fit">
+            <div class="card-body p-6 md:p-8">
+                <h3 class="font-black text-xl mb-6 text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                    <i class="fas fa-plus-circle text-indigo-500"></i> 新建班级
+                </h3>
+                <form action="{{ url_for('manage_classes') }}" method="post" class="space-y-5">
                     <div class="form-control">
-                        <label class="label"><span class="label-text">班级名称</span></label>
-                        <input type="text" name="name" class="input input-bordered w-full" placeholder="例如: 2023级计算机1班" required />
+                        <label class="label pb-2"><span class="label-text font-bold text-base-content/80">班级名称</span></label>
+                        <input type="text" name="name" class="input input-bordered w-full rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20" placeholder="例如: 2023级计算机1班" required />
                     </div>
-                    <button type="submit" class="btn btn-primary w-full">创建</button>
+                    <button type="submit" class="btn btn-primary bg-indigo-500 hover:bg-indigo-600 border-none w-full rounded-xl shadow-lg shadow-indigo-500/30 font-bold tracking-widest gap-2 mt-2">
+                        <i class="fas fa-check"></i> 立即创建
+                    </button>
                 </form>
             </div>
         </div>
 
-        <!-- Class List -->
         <div class="lg:col-span-2">
-            <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="overflow-x-auto">
-                    <table class="table">
+            <div class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl shadow-sm border border-black/5 dark:border-white/5 rounded-[2rem] transition-all overflow-hidden">
+                <div class="overflow-x-auto custom-scroll p-1">
+                    <table class="table w-full">
                         <thead>
-                            <tr class="bg-stone-50 text-base-content/80">
-                                <th>ID</th>
+                            <tr class="bg-stone-50/80 dark:bg-base-200/50 text-[11px] font-black uppercase tracking-wider text-base-content/50 border-b-0">
+                                <th class="rounded-tl-[1.5rem] pl-6 w-20">ID</th>
                                 <th>班级名称</th>
                                 <th>学生人数</th>
-                                <th>操作</th>
+                                <th class="rounded-tr-[1.5rem] w-32 text-center">操作</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="text-sm">
                             {% for c in classes %}
-                            <tr class="hover:bg-stone-50/50 group">
-                                <td class="font-mono text-sm text-base-content/50">#{{ c.id }}</td>
-                                <td class="font-bold text-base-content">{{ c.name }}</td>
+                            <tr class="hover:bg-stone-50/50 dark:hover:bg-base-200/30 border-b border-base-200/60 transition-colors group">
+                                <td class="pl-6 font-mono font-medium text-base-content/40">#{{ c.id }}</td>
+                                <td class="font-bold text-base-content text-base">{{ c.name }}</td>
                                 <td>
-                                    <div class="badge badge-ghost">{{ c.users.count() }} 人</div>
+                                    <div class="badge border-none bg-stone-100 text-stone-600 dark:bg-base-300 dark:text-base-content/80 font-bold px-3 py-2.5 rounded-lg text-xs gap-1.5">
+                                        <i class="fas fa-user-graduate opacity-50"></i> {{ c.users.count() }} 人
+                                    </div>
                                 </td>
                                 <td>
-                                    <div class="flex gap-2">
-                                        <!-- Edit Button (Popover) -->
-                                        <button class="btn btn-xs btn-ghost" onclick="document.getElementById('edit_modal_{{ c.id }}').showModal()">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                        </button>
-                                        
-                                        <!-- Delete Button -->
-                                        <form action="{{ url_for('delete_class', class_id=c.id) }}" method="post" onsubmit="return confirm('确定要删除这个班级吗？');">
-                                            <button type="submit" class="btn btn-xs btn-ghost text-error">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    <div class="flex justify-center gap-1">
+                                    <a href="{{ url_for('edit_class_members', class_id=c.id) }}" class="btn btn-sm bg-white dark:bg-base-200 border-base-300 hover:border-indigo-400 hover:text-indigo-600 text-base-content/70 rounded-lg shadow-sm gap-1.5 px-3 mr-1">
+                                        <i class="fas fa-user-edit text-[10px]"></i> 调配
+                                    </a>
+
+                                    <button class="btn btn-sm btn-ghost btn-circle text-base-content/50 hover:text-primary hover:bg-primary/10 transition-colors" onclick="document.getElementById('edit_modal_{{ c.id }}').showModal()" title="编辑名称">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                        <form action="{{ url_for('delete_class', class_id=c.id) }}" method="post" onsubmit="return confirm('确定要彻底删除该班级吗？\n删除后该班级的学生将变为“无班级”状态。');" class="m-0">
+                                            <button type="submit" class="btn btn-sm btn-ghost btn-circle text-error/70 hover:text-error hover:bg-error/10 transition-colors" title="删除">
+                                                <i class="fas fa-trash-alt"></i>
                                             </button>
                                         </form>
                                     </div>
 
-                                    <!-- Edit Modal -->
-                                    <dialog id="edit_modal_{{ c.id }}" class="modal">
-                                        <div class="modal-box">
-                                            <h3 class="font-bold text-lg mb-4">编辑班级</h3>
+                                    <dialog id="edit_modal_{{ c.id }}" class="modal bg-black/40 backdrop-blur-sm">
+                                        <div class="modal-box rounded-[2rem] p-8 border border-base-200 text-left">
+                                            <h3 class="font-black text-xl mb-2 text-base-content">
+                                                <i class="fas fa-edit text-primary mr-2"></i>编辑班级信息
+                                            </h3>
+                                            <p class="text-sm text-base-content/50 mb-6 font-medium">正在修改班级编号为 #{{ c.id }} 的信息</p>
+                                            
                                             <form action="{{ url_for('edit_class', class_id=c.id) }}" method="post">
-                                                <div class="form-control mb-6">
-                                                    <label class="label"><span class="label-text">班级名称</span></label>
-                                                    <input type="text" name="name" value="{{ c.name }}" class="input input-bordered w-full" required />
+                                                <div class="form-control mb-8">
+                                                    <label class="label pb-2"><span class="label-text font-bold text-base-content/80">班级名称</span></label>
+                                                    <input type="text" name="name" value="{{ c.name }}" class="input input-bordered w-full rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20" required />
                                                 </div>
-                                                <div class="modal-action">
-                                                    <button type="submit" class="btn btn-primary">保存</button>
-                                                    <button type="button" class="btn" onclick="document.getElementById('edit_modal_{{ c.id }}').close()">取消</button>
+                                                <div class="modal-action border-t border-base-200 pt-6 mt-0">
+                                                    <button type="button" class="btn btn-ghost rounded-xl font-medium" onclick="document.getElementById('edit_modal_{{ c.id }}').close()">取消</button>
+                                                    <button type="submit" class="btn btn-primary rounded-xl px-8 shadow-lg shadow-primary/30 font-bold">保存更改</button>
                                                 </div>
                                             </form>
                                         </div>
                                         <form method="dialog" class="modal-backdrop"><button>close</button></form>
                                     </dialog>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-16">
+                                    <div class="flex flex-col items-center justify-center text-base-content/30">
+                                        <i class="fas fa-school text-5xl mb-4 opacity-50"></i>
+                                        <p class="font-bold">暂无班级数据，请在左侧创建</p>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}

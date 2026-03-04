@@ -52,6 +52,7 @@
         from { opacity: 0; transform: translateY(5px); }
         to { opacity: 1; transform: translateY(0); }
     }
+    
     .animate-fade-in {
         animation: fadeIn 0.5s ease-out forwards;
     }
@@ -61,14 +62,13 @@
 {% block content %}
 
 <div id="profile-sticker-header" class="relative w-full h-[220px] sm:h-[300px] lg:h-[380px] -mt-6 mb-8 group z-0 overflow-hidden bg-base-100 border-b border-base-200">
-    
     <div class="drop-hint absolute inset-6 border-2 border-dashed border-indigo-400 rounded-3xl flex flex-col items-center justify-center bg-base-100/90 backdrop-blur-sm z-30 opacity-0 transform scale-95 transition-all duration-300 pointer-events-none text-indigo-500">
         <i class="fas fa-magic text-5xl mb-3 animate-bounce"></i>
         <span class="font-bold tracking-widest uppercase text-lg">松开鼠标放置贴纸</span>
     </div>
     
     <div class="absolute inset-0 flex items-center justify-center opacity-30 group-hover:opacity-0 transition-opacity duration-500 pointer-events-none z-10">
-        <span class="text-xs font-bold tracking-[0.3em] text-base-content/50 uppercase">STICKER DECORATION ZONE</span>
+        <span class="text-xs font-bold tracking-[0.3em] text-base-content/50 uppercase"></span>
     </div>
     
     <div id="sticker-canvas"></div>
@@ -77,7 +77,6 @@
 </div>
 
 <div class="max-w-[1400px] mx-auto px-6 pb-12 relative z-40 animate-fade-in -mt-12 lg:-mt-20">
-    
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         <aside class="lg:col-span-3 space-y-6">
@@ -91,7 +90,6 @@
                         <div class="w-5 h-5 bg-emerald-500 rounded-full border-[3px] border-white animate-pulse"></div>
                     </div>
                 </div>
-                
                 <h1 class="text-2xl font-black text-base-content tracking-tight">{{ user.username }}</h1>
                 <p class="text-base-content/50 font-bold text-sm mt-1 bg-stone-50 px-3 py-1 rounded-full">@{{ user.username }}</p>
             </div>
@@ -116,19 +114,19 @@
                     </div>
 
                     <div class="pt-4 border-t border-base-300">
-                    {% if user.id != current_user.id %}
-                        {% if is_following %}
-                            <form action="{{ url_for('unfollow_user', user_id=user.id) }}" method="POST">
-                                <button type="submit" class="btn btn-block btn-outline border-base-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200 text-base-content/80 h-11 min-h-0 rounded-xl font-bold">取消关注</button>
-                            </form>
+                        {% if user.id != current_user.id %}
+                            {% if is_following %}
+                                <form action="{{ url_for('unfollow_user', user_id=user.id) }}" method="POST">
+                                    <button type="submit" class="btn btn-block btn-outline border-base-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200 text-base-content/80 h-11 min-h-0 rounded-xl font-bold">取消关注</button>
+                                </form>
+                            {% else %}
+                                <form action="{{ url_for('follow_user', user_id=user.id) }}" method="POST">
+                                    <button type="submit" class="btn btn-block btn-primary text-white shadow-lg shadow-primary/20 h-11 min-h-0 rounded-xl font-bold">关注</button>
+                                </form>
+                            {% endif %}
                         {% else %}
-                            <form action="{{ url_for('follow_user', user_id=user.id) }}" method="POST">
-                                <button type="submit" class="btn btn-block btn-primary text-white shadow-lg shadow-primary/20 h-11 min-h-0 rounded-xl font-bold">关注</button>
-                            </form>
+                            <a href="{{ url_for('my_following') }}" class="btn btn-block btn-neutral bg-stone-800 hover:bg-stone-700 text-white border-none h-11 min-h-0 rounded-xl font-bold">管理关注</a>
                         {% endif %}
-                    {% else %}
-                        <a href="{{ url_for('my_following') }}" class="btn btn-block btn-neutral bg-stone-800 hover:bg-stone-700 text-white border-none h-11 min-h-0 rounded-xl font-bold">管理关注</a>
-                    {% endif %}
                     </div>
                 </div>
             </div>
@@ -181,6 +179,7 @@
                                 <p class="text-3xl font-bold text-base-content mb-2">Hello! 👋</p>
                                 <p class="text-sm text-base-content/80">这里是 <strong>{{ user.username }}</strong> 的知识库。</p>
                             </div>
+                            
                             <div class="space-y-3 pt-4">
                                 <div class="space-y-1">
                                     <div class="flex items-center justify-between text-sm">
@@ -188,7 +187,7 @@
                                         <span class="font-bold text-base-content">{{ stats.note_count }} 篇</span>
                                     </div>
                                     <div class="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
-                                        <div class="bg-indigo-500 h-2 rounded-full" style="width: {{ [stats.note_count, 100]|min }}%"></div>
+                                        <div class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: {{ [stats.note_count, 100]|min }}%"></div>
                                     </div>
                                 </div>
                                 <div class="space-y-1">
@@ -197,7 +196,7 @@
                                         <span class="font-bold text-base-content">{{ stats.wiki_count }} 个</span>
                                     </div>
                                     <div class="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
-                                        <div class="bg-emerald-500 h-2 rounded-full" style="width: {{ [stats.wiki_count * 5, 100]|min }}%"></div>
+                                        <div class="bg-emerald-500 h-2 rounded-full transition-all duration-500" style="width: {{ [stats.wiki_count * 5, 100]|min }}%"></div>
                                     </div>
                                 </div>
                             </div>
@@ -214,10 +213,10 @@
                         <div class="flex items-center gap-3">
                             <span class="badge badge-sm badge-ghost font-mono text-base-content/50">{{ user_badges|length }} 获得</span>
                             <div class="flex gap-1" id="badge-controls">
-                                <button onclick="changeBadgePage(-1)" class="w-7 h-7 rounded-full bg-stone-100 text-base-content/80 hover:bg-stone-800 hover:text-white transition-all flex items-center justify-center disabled:opacity-20">
+                                <button onclick="changeBadgePage(-1)" aria-label="上一页" class="w-7 h-7 rounded-full bg-stone-100 text-base-content/80 hover:bg-stone-800 hover:text-white transition-all flex items-center justify-center disabled:opacity-20">
                                     <i class="fas fa-chevron-left text-[10px]"></i>
                                 </button>
-                                <button onclick="changeBadgePage(1)" class="w-7 h-7 rounded-full bg-stone-100 text-base-content/80 hover:bg-stone-800 hover:text-white transition-all flex items-center justify-center disabled:opacity-20">
+                                <button onclick="changeBadgePage(1)" aria-label="下一页" class="w-7 h-7 rounded-full bg-stone-100 text-base-content/80 hover:bg-stone-800 hover:text-white transition-all flex items-center justify-center disabled:opacity-20">
                                     <i class="fas fa-chevron-right text-[10px]"></i>
                                 </button>
                             </div>
@@ -239,6 +238,7 @@
                                      data-is-equipped="{{ 1 if user.selected_badge_id == ub.badge.id else 0 }}">
                                 </div>
                             {% endfor %}
+                            
                             {% if not user_badges %}
                                 <div class="flex h-full items-center justify-center text-base-content/50 text-sm bg-stone-50/50 rounded-2xl border border-dashed border-base-200 flex-col gap-3">
                                     <i class="fas fa-medal text-4xl opacity-20"></i>
@@ -315,18 +315,21 @@
 </div>
 
 {% if current_user.is_authenticated %}
-<button id="sticker-fab" class="sticker-fab btn btn-circle btn-lg fixed bottom-8 right-8 z-50 bg-stone-900/90 backdrop-blur-md text-white shadow-2xl border border-white/10 hover:scale-110 transition-all duration-300">
+<button id="sticker-fab" aria-label="打开贴纸库" class="sticker-fab btn btn-circle btn-lg fixed bottom-8 right-8 z-50 bg-stone-900/90 backdrop-blur-md text-white shadow-2xl border border-white/10 hover:scale-110 transition-all duration-300">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 </button>
+
 <div id="sticker-drawer" class="sticker-drawer">
     <div class="sticker-drawer-header">
         <h3 class="font-bold text-lg">我的贴纸库</h3>
         <div class="flex gap-2">
-            <button id="sticker-publish-btn" class="btn btn-secondary btn-sm">发布快照</button>
+            <button id="sticker-clear-all-btn" class="btn btn-sm bg-orange-50 text-orange-600 hover:bg-orange-100 border-none rounded-xl font-bold px-3">
+                <i class="fas fa-undo mr-1"></i>一键回收
+            </button>
             <button id="sticker-save-btn" class="btn btn-primary btn-sm">保存</button>
-            <button id="sticker-close-btn" class="btn btn-ghost btn-sm btn-circle">✕</button>
+            <button id="sticker-close-btn" class="btn btn-ghost btn-sm btn-circle" aria-label="关闭">✕</button>
         </div>
     </div>
     <div class="sticker-drawer-body">
@@ -339,20 +342,20 @@
                      data-badge-icon="{{ ub.badge.icon|badge_icon_url if ub.badge.icon|is_image_icon else ub.badge.icon }}"
                      data-sticker-limit="{{ limit }}"
                      data-used-count="{{ usage }}">
-                    <div class="text-3xl transition-transform group-hover:scale-110 relative">
-                    {% if ub.badge.icon|is_image_icon %}
-                    <img src="{{ ub.badge.icon|badge_icon_url }}" class="w-10 h-10 object-contain drop-shadow-sm" alt="{{ ub.badge.name }}">
-                    {% else %}
-                    {{ ub.badge.icon }}
-                    {% endif %}
                     
-                    <!-- Usage Badge -->
-                    <div class="absolute -bottom-2 -right-2 badge badge-xs badge-neutral bg-opacity-90 border-none text-[10px] px-1 scale-90 sticker-count-badge">
-                        {{ usage }}/{{ limit }}
+                    <div class="text-3xl transition-transform group-hover:scale-110 relative">
+                        {% if ub.badge.icon|is_image_icon %}
+                            <img src="{{ ub.badge.icon|badge_icon_url }}" class="w-10 h-10 object-contain drop-shadow-sm" alt="{{ ub.badge.name }}">
+                        {% else %}
+                            {{ ub.badge.icon }}
+                        {% endif %}
+                        
+                        <div class="absolute -bottom-2 -right-2 badge badge-xs badge-neutral bg-opacity-90 border-none text-[10px] px-1 scale-90 sticker-count-badge">
+                            {{ usage }}/{{ limit }}
+                        </div>
                     </div>
+                    <span class="text-xs text-center w-full truncate px-1 opacity-70 group-hover:opacity-100">{{ ub.badge.name }}</span>
                 </div>
-                <span class="text-xs text-center w-full truncate px-1 opacity-70 group-hover:opacity-100">{{ ub.badge.name }}</span>
-            </div>
             {% endfor %}
         </div>
     </div>
@@ -364,82 +367,162 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/sticker.js') }}"></script>
 <script>
-    // === 1. 贴纸区域交互逻辑 ===
-    const stickerHeader = document.getElementById('profile-sticker-header');
-    if(stickerHeader) {
-        stickerHeader.addEventListener('dragenter', () => stickerHeader.classList.add('drag-active'));
-        stickerHeader.addEventListener('dragleave', (e) => {
-            if (!stickerHeader.contains(e.relatedTarget)) stickerHeader.classList.remove('drag-active');
-        });
-        stickerHeader.addEventListener('drop', () => stickerHeader.classList.remove('drag-active'));
-    }
-    
-    // 初始化贴纸管理器 (Profile 模式)
     document.addEventListener('DOMContentLoaded', () => {
-        {% if user.id != current_user.id %}
-             // Visitor Mode: View target user's stickers (Read-Only)
-             new StickerManager('profile', {{ user.id }}, true);
-        {% else %}
-             // Owner Mode: View/Edit my own stickers
-             new StickerManager('profile');
-        {% endif %}
+        initStickerZone();
+        initBadgePagination();
+        fixStickerElementsPosition();
     });
 
-    // === 2. 徽章翻页逻辑 (6列 x 3行 = 18个) ===
-    const ITEMS_PER_PAGE = 18; 
-    let currentBadgePage = 1;
-    let totalBadgePages = 1;
-    let badgeData = [];
-
-    function initBadges() {
-        const items = document.querySelectorAll('.badge-item');
-        items.forEach(item => {
-            badgeData.push({
-                id: item.dataset.id,
-                name: item.dataset.name,
-                icon: item.dataset.icon,
-                isImage: item.dataset.iconIsImage === 'True',
-                url: item.dataset.iconUrl,
-                isEquipped: item.dataset.isEquipped === '1'
+    // === 1. 贴纸区域交互逻辑封装 ===
+    // === 1. 贴纸区域交互逻辑与一键回收封装 ===
+    function initStickerZone() {
+        const stickerHeader = document.getElementById('profile-sticker-header');
+        if (stickerHeader) {
+            stickerHeader.addEventListener('dragenter', () => stickerHeader.classList.add('drag-active'));
+            stickerHeader.addEventListener('dragleave', (e) => {
+                if (!stickerHeader.contains(e.relatedTarget)) stickerHeader.classList.remove('drag-active');
             });
-        });
+            stickerHeader.addEventListener('drop', () => stickerHeader.classList.remove('drag-active'));
+        }
+        
+        // A. 初始化贴纸管理器
+        const isTargetUser = {{ 'false' if user.id == current_user.id else 'true' }};
+        if (isTargetUser) {
+            window.myStickerManager = new StickerManager('profile', {{ user.id }}, true); 
+        } else {
+            window.myStickerManager = new StickerManager('profile'); 
+        }
 
-        totalBadgePages = Math.ceil(badgeData.length / ITEMS_PER_PAGE) || 1;
-        if (badgeData.length > 0) renderBadgePage(1);
+        // B. 💡 重点：给管理器注入“一键回收”的本领
+        if (typeof StickerManager !== 'undefined') {
+        
+        // 💡 深度重构：支持“当前墙面回收”和“全域核弹重置”
+        StickerManager.prototype.recallAllStickers = async function(isNuclear = false) {
+            if (this.isReadOnly) return;
+
+            const msg = isNuclear 
+                ? "🚨 警告：这将清空你在全站（Wiki、笔记、主页）的所有贴纸！确定吗？" 
+                : "确定要回收当前墙面上的所有贴纸吗？";
+            
+            if (!confirm(msg)) return;
+
+            // 根据参数决定调用哪个接口
+            const endpoint = isNuclear ? '/api/stickers/all/reset' : '/api/stickers/profile/clear';
+            
+            try {
+                const response = await fetch(isNuclear ? '/api/stickers/all/nuclear_reset' : '/api/stickers/profile/clear', { 
+                    method: 'POST' 
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    // 只有在非全域重置时才播放动画，全域重置直接刷新页面最稳
+                    if (!isNuclear) {
+                        this.stickers.forEach(s => {
+                            const el = s.el || document.getElementById(`sticker-${s.id}`);
+                            if (el) {
+                                el.style.transition = 'all 0.4s ease-in';
+                                el.style.transform = 'scale(0) translateY(100px)';
+                                setTimeout(() => el.remove(), 400);
+                            }
+                        });
+                        this.stickers = [];
+                        this.updateInventoryUI();
+                        if (window.app?.toast) window.app.toast.show('已清空当前墙面', 'success');
+                    } else {
+                        // 全域重置后强制刷新，同步所有计数
+                        window.location.reload();
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+    }
+
+    // 绑定事件：单击正常回收，长按3秒触发核弹重置
+    setTimeout(() => {
+        const clearBtn = document.getElementById('sticker-clear-all-btn');
+        if (clearBtn) {
+            let pressTimer;
+            clearBtn.onmousedown = () => {
+                pressTimer = setTimeout(() => {
+                    window.myStickerManager?.recallAllStickers(true); // 触发全域重置
+                }, 3000); // 长按3秒
+            };
+            clearBtn.onmouseup = () => clearTimeout(pressTimer);
+            clearBtn.onclick = () => {
+                // 如果不是长按，就执行普通的当前页面回收
+                if (pressTimer) {
+                    clearTimeout(pressTimer);
+                    window.myStickerManager?.recallAllStickers(false);
+                }
+            };
+        }
+    }, 500);
+}
+
+    // === 2. 徽章翻页逻辑封装 ===
+    const BADGES_CONFIG = {
+        itemsPerPage: 18, // 6列 x 3行
+        currentPage: 1,
+        totalPages: 1,
+        data: []
+    };
+
+    function initBadgePagination() {
+        const items = document.querySelectorAll('.badge-item');
+        BADGES_CONFIG.data = Array.from(items).map(item => ({
+            id: item.dataset.id,
+            name: item.dataset.name,
+            icon: item.dataset.icon,
+            isImage: item.dataset.iconIsImage === 'True',
+            url: item.dataset.iconUrl,
+            isEquipped: item.dataset.isEquipped === '1'
+        }));
+
+        BADGES_CONFIG.totalPages = Math.ceil(BADGES_CONFIG.data.length / BADGES_CONFIG.itemsPerPage) || 1;
+        
+        if (BADGES_CONFIG.data.length > 0) {
+            renderBadgePage(1);
+        }
         updateBadgeControls();
     }
 
     function renderBadgePage(page) {
-        currentBadgePage = page;
+        BADGES_CONFIG.currentPage = page;
         const container = document.getElementById('badge-pages-container');
         const dotsContainer = document.getElementById('badge-page-dots');
+        
+        if (!container) return;
         
         container.innerHTML = '';
         const pageDiv = document.createElement('div');
         pageDiv.className = 'badge-grid-page';
 
-        const start = (page - 1) * ITEMS_PER_PAGE;
-        const end = start + ITEMS_PER_PAGE;
-        const pageItems = badgeData.slice(start, end);
+        const start = (page - 1) * BADGES_CONFIG.itemsPerPage;
+        const pageItems = BADGES_CONFIG.data.slice(start, start + BADGES_CONFIG.itemsPerPage);
+        const isOwner = {{ 'true' if user.id == current_user.id else 'false' }};
 
+        // 渲染有效徽章
         pageItems.forEach(badge => {
             const wrapper = document.createElement('div');
             wrapper.className = 'tooltip w-full h-full';
             wrapper.setAttribute('data-tip', badge.name);
             
-            let content = badge.isImage 
+            const content = badge.isImage 
                 ? `<img src="${badge.url}" class="w-2/3 h-2/3 object-contain drop-shadow-sm transition-transform group-hover:scale-110">`
                 : `<span class="text-xl transition-transform group-hover:scale-110">${badge.icon}</span>`;
 
-            let equippedIndicator = badge.isEquipped ? 
-                `<div class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-600 rounded-full border-2 border-white check-indicator shadow-sm"></div>` : '';
+            const equippedIndicator = badge.isEquipped 
+                ? `<div class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-indigo-600 rounded-full border-2 border-white check-indicator shadow-sm"></div>` 
+                : '';
 
-            const isOwner = {{ 'true' if user.id == current_user.id else 'false' }};
             const clickAttr = isOwner ? `onclick="quickEquipBadge(${badge.id}, this)"` : '';
+            const cursorClass = isOwner ? 'cursor-pointer' : 'cursor-default';
             
             wrapper.innerHTML = `
-                <button ${clickAttr} 
-                    class="w-full h-full rounded-xl bg-stone-50 border border-base-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all relative group flex items-center justify-center cursor-${isOwner ? 'pointer' : 'default'}">
+                <button ${clickAttr} class="w-full h-full rounded-xl bg-stone-50 border border-base-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all relative group flex items-center justify-center ${cursorClass}">
                     ${content}
                     ${equippedIndicator}
                 </button>
@@ -447,8 +530,8 @@
             pageDiv.appendChild(wrapper);
         });
 
-        // 补全空白网格保持布局稳定
-        const remaining = ITEMS_PER_PAGE - pageItems.length;
+        // 补全空白网格以保持固定布局
+        const remaining = BADGES_CONFIG.itemsPerPage - pageItems.length;
         for (let i = 0; i < remaining; i++) {
             const empty = document.createElement('div');
             empty.className = 'w-full h-full rounded-xl bg-stone-50/20 border border-dashed border-base-300';
@@ -457,57 +540,73 @@
 
         container.appendChild(pageDiv);
         
+        // 渲染底部分页圆点
         if (dotsContainer) {
-            dotsContainer.innerHTML = '';
-            for(let i=1; i<=totalBadgePages; i++) {
-                const dot = document.createElement('div');
-                dot.className = `w-1.5 h-1.5 rounded-full transition-colors ${i === currentBadgePage ? 'bg-stone-800' : 'bg-stone-300'}`;
-                dotsContainer.appendChild(dot);
-            }
+            dotsContainer.innerHTML = Array.from({ length: BADGES_CONFIG.totalPages }, (_, i) => {
+                const isActive = (i + 1) === BADGES_CONFIG.currentPage;
+                return `<div class="w-1.5 h-1.5 rounded-full transition-colors ${isActive ? 'bg-stone-800' : 'bg-stone-300'}"></div>`;
+            }).join('');
         }
+        
         updateBadgeControls();
     }
 
     function changeBadgePage(delta) {
-        const newPage = currentBadgePage + delta;
-        if (newPage >= 1 && newPage <= totalBadgePages) renderBadgePage(newPage);
+        const newPage = BADGES_CONFIG.currentPage + delta;
+        if (newPage >= 1 && newPage <= BADGES_CONFIG.totalPages) {
+            renderBadgePage(newPage);
+        }
     }
+
+    // 暴露到全局供按钮 onClick 调用
+    window.changeBadgePage = changeBadgePage;
 
     function updateBadgeControls() {
         const prevBtn = document.querySelector('#badge-controls button:first-child');
         const nextBtn = document.querySelector('#badge-controls button:last-child');
-        if (prevBtn) prevBtn.disabled = currentBadgePage === 1;
-        if (nextBtn) nextBtn.disabled = currentBadgePage === totalBadgePages;
+        
+        if (prevBtn) prevBtn.disabled = BADGES_CONFIG.currentPage === 1;
+        if (nextBtn) nextBtn.disabled = BADGES_CONFIG.currentPage === BADGES_CONFIG.totalPages;
     }
 
-    function quickEquipBadge(badgeId, btnElement) {
+    // === 3. 快捷佩戴逻辑 (使用 async/await 优化) ===
+    window.quickEquipBadge = async function(badgeId, btnElement) {
         const btn = btnElement.querySelector('button') || btnElement;
+        
+        // 点击动效反馈
         btn.style.transform = 'scale(0.9)';
         setTimeout(() => btn.style.transform = '', 150);
 
-        fetch('/user/badges/equip', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ badge_id: badgeId })
-        }).then(res => res.json()).then(data => {
+        try {
+            const response = await fetch('/user/badges/equip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ badge_id: badgeId })
+            });
+            const data = await response.json();
+            
             if (data.success) {
-                if(typeof showGlobalToast === 'function') showGlobalToast('徽章佩戴成功！', 'success');
+                if (typeof showGlobalToast === 'function') {
+                    showGlobalToast('徽章佩戴成功！', 'success');
+                }
                 setTimeout(() => window.location.reload(), 300);
             }
-        });
-    }
+        } catch (error) {
+            console.error('佩戴徽章失败:', error);
+            if (typeof showGlobalToast === 'function') {
+                showGlobalToast('网络请求失败，请稍后重试', 'error');
+            }
+        }
+    };
 
-    document.addEventListener('DOMContentLoaded', initBadges);
-
-    // === 修复贴纸按钮定位问题 ===
-    document.addEventListener("DOMContentLoaded", function() {
-        // 获取按钮和抽屉元素
+    // === 4. 修复贴纸 UI 层级与定位问题 ===
+    function fixStickerElementsPosition() {
         const fab = document.getElementById('sticker-fab');
         const drawer = document.getElementById('sticker-drawer');
         
-        // 将它们移动到 document.body 的最末尾，脱离任何可能有 transform 的父容器
+        // 将它们移动到 body 末尾，脱离复杂的父级容器，避免 transform 导致的 fixed 定位失效
         if (fab) document.body.appendChild(fab);
         if (drawer) document.body.appendChild(drawer);
-    });
+    }
 </script>
 {% endblock %}

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}编辑小组成员 - {{ group.name }}{% endblock %}
+{% block title %}编辑班级成员 - {{ current_class.name }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -23,56 +23,55 @@
 <div class="w-full max-w-[98%] 2xl:max-w-5xl mx-auto flex flex-col gap-6 animate-fade-in pb-12 mt-2">
     
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/80 dark:bg-base-100/80 backdrop-blur-xl p-6 md:px-8 rounded-3xl border border-black/5 dark:border-white/5 shadow-sm relative overflow-hidden">
-        <div class="absolute -right-10 -top-10 w-40 h-40 bg-teal-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
         <div class="relative z-10 flex items-center gap-5">
-            <a href="{{ url_for('manage_groups') }}" class="btn btn-circle bg-base-200/50 hover:bg-teal-50 dark:hover:bg-teal-900/30 hover:text-teal-600 border-none shadow-sm transition-colors" title="返回小组列表">
+            <a href="{{ url_for('manage_classes') }}" class="btn btn-circle bg-base-200/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 border-none shadow-sm transition-colors" title="返回班级列表">
                 <i class="fas fa-arrow-left"></i>
             </a>
             <div>
                 <h1 class="text-2xl md:text-3xl font-black text-stone-800 dark:text-stone-100 flex items-center gap-3 tracking-tight">
-                    <i class="fas fa-users-cog text-teal-500 drop-shadow-sm"></i> 成员配置
+                    <i class="fas fa-user-graduate text-indigo-500 drop-shadow-sm"></i> 学生调配
                 </h1>
                 <p class="text-sm text-base-content/60 mt-1 font-medium ml-1">
-                    正在管理 <span class="text-teal-600 dark:text-teal-400 font-bold px-1">#{{ group.name }}</span> 的成员架构
+                    正在调配 <span class="text-indigo-600 dark:text-indigo-400 font-bold px-1">#{{ current_class.name }}</span> 的学生名单
                 </p>
             </div>
         </div>
     </div>
 
-    <form action="{{ url_for('edit_group', group_id=group.id) }}" method="post" class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl shadow-sm hover:shadow-md border border-black/5 dark:border-white/5 rounded-[2.5rem] transition-all relative z-10">
+    <form action="{{ url_for('edit_class_members', class_id=current_class.id) }}" method="post" class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl shadow-sm hover:shadow-md border border-black/5 dark:border-white/5 rounded-[2.5rem] transition-all relative z-10">
         <div class="card-body p-6 md:p-10">
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2 bg-stone-50/50 dark:bg-base-200/30 p-6 rounded-[1.5rem] border border-base-200/60">
-                <div class="form-control">
-                    <label class="label pb-1.5"><span class="label-text font-bold text-base-content/80">小组名称</span></label>
-                    <input type="text" name="name" value="{{ group.name }}" class="input input-bordered w-full rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 font-bold" required />
-                </div>
-                <div class="form-control">
-                    <label class="label pb-1.5"><span class="label-text font-bold text-base-content/80">描述 (选填)</span></label>
-                    <input type="text" name="description" value="{{ group.description or '' }}" class="input input-bordered w-full rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" placeholder="一句话描述这个小组..." />
+            <div class="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 p-4 rounded-2xl mb-2 flex items-start gap-3 border border-indigo-100 dark:border-indigo-800/30">
+                <i class="fas fa-info-circle mt-0.5 opacity-80"></i>
+                <div class="text-sm font-medium leading-relaxed">
+                    在此处勾选的学生将被强制划分到 <strong>{{ current_class.name }}</strong>。<br>
+                    <span class="opacity-70">注意：一个学生只能属于一个班级，如果在别处已经有班级，这里勾选后会将其从原班级调出。取消勾选则该学生变为“无班级”状态。</span>
                 </div>
             </div>
 
-            <div class="divider my-6 text-base-content/30 text-xs font-bold tracking-widest uppercase"><i class="fas fa-user-plus mr-1 text-teal-500/50"></i> 选择小组成员</div>
+            <div class="divider my-6 text-base-content/30 text-xs font-bold tracking-widest uppercase"><i class="fas fa-search mr-1 text-indigo-500/50"></i> 检索与分配</div>
 
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                 <div class="relative w-full md:w-96">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-base-content/30"></i>
-                    <input type="text" id="userSearch" placeholder="搜索姓名、学号或班级..." class="input input-bordered w-full pl-11 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all bg-base-100" onkeyup="filterUsers()">
+                    <input type="text" id="userSearch" placeholder="搜索姓名、学号或当前班级..." class="input input-bordered w-full pl-11 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all bg-base-100" onkeyup="filterUsers()">
                 </div>
                 
-                <div class="bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm border border-teal-100 dark:border-teal-800/30 flex items-center gap-2">
+                <div class="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm border border-indigo-100 dark:border-indigo-800/30 flex items-center gap-2">
                     <i class="fas fa-users opacity-70"></i> 
-                    已选成员 <span id="selectedCount" class="text-xl mx-1 font-black">{{ group.users|length }}</span> 人
+                    本班人数 <span id="selectedCount" class="text-xl mx-1 font-black">{{ class_user_ids|length }}</span> 人
                 </div>
             </div>
             
             <div class="h-[480px] overflow-y-auto custom-scroll border border-black/5 dark:border-white/5 rounded-2xl bg-stone-50/50 dark:bg-base-200/30 p-2 relative shadow-inner">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2" id="userList">
                     {% for user in all_users %}
-                    <label class="cursor-pointer flex items-start gap-3 hover:bg-white dark:hover:bg-base-100 p-3 rounded-xl border border-transparent hover:border-base-200 hover:shadow-sm transition-all user-item">
-                        <input type="checkbox" name="members" value="{{ user.id }}" class="checkbox checkbox-sm checkbox-primary rounded mt-1" {% if user in group.users %}checked{% endif %}>
+                    {% set is_other_class = user.class_id and user.class_id != current_class.id %}
+                    
+                    <label class="cursor-pointer flex items-start gap-3 hover:bg-white dark:hover:bg-base-100 p-3 rounded-xl border border-transparent hover:border-base-200 hover:shadow-sm transition-all user-item {% if is_other_class %}opacity-70 hover:opacity-100{% endif %}">
+                        <input type="checkbox" name="members" value="{{ user.id }}" class="checkbox checkbox-sm checkbox-primary rounded mt-1" {% if user.id in class_user_ids %}checked{% endif %}>
                         
                         <div class="flex flex-col overflow-hidden w-full">
                             <div class="flex items-center gap-2.5">
@@ -85,7 +84,11 @@
                                 <i class="fas fa-id-card opacity-40 mr-1.5"></i>{{ user.student_id or '无学号' }} 
                                 {% if user.student_class %}
                                     <span class="mx-1.5 opacity-30">|</span> 
-                                    <i class="fas fa-tag opacity-40 mr-1 text-[9px]"></i>{{ user.student_class.name }}
+                                    <i class="fas fa-tag opacity-40 mr-1 text-[9px] {% if is_other_class %}text-warning{% endif %}"></i>
+                                    <span class="{% if is_other_class %}text-warning font-bold{% endif %}">{{ user.student_class.name }}</span>
+                                {% else %}
+                                    <span class="mx-1.5 opacity-30">|</span> 
+                                    <span class="text-error/60 font-bold text-[9px] border border-error/20 px-1 rounded">无班级</span>
                                 {% endif %}
                             </span>
                         </div>
@@ -95,15 +98,15 @@
                 
                 <div id="noResult" class="hidden absolute inset-0 flex flex-col items-center justify-center text-base-content/40 bg-stone-50/80 dark:bg-base-200/80 backdrop-blur-md z-10 rounded-2xl transition-all">
                     <i class="fas fa-search text-5xl mb-4 opacity-20"></i>
-                    <span class="font-bold text-lg tracking-widest">未找到匹配的用户</span>
+                    <span class="font-bold text-lg tracking-widest">未找到匹配的学生</span>
                     <span class="text-xs mt-2 opacity-70">请尝试更换搜索关键词</span>
                 </div>
             </div>
 
             <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-base-200/60">
-                <a href="{{ url_for('manage_groups') }}" class="btn btn-ghost rounded-xl font-medium px-6 hover:bg-base-200">取消并返回</a>
-                <button type="submit" class="btn btn-primary bg-teal-500 hover:bg-teal-600 border-none rounded-xl px-10 shadow-lg shadow-teal-500/30 font-bold tracking-widest text-white gap-2 transition-transform hover:scale-105">
-                    <i class="fas fa-save"></i> 保存成员配置
+                <a href="{{ url_for('manage_classes') }}" class="btn btn-ghost rounded-xl font-medium px-6 hover:bg-base-200">取消并返回</a>
+                <button type="submit" class="btn btn-primary bg-indigo-500 hover:bg-indigo-600 border-none rounded-xl px-10 shadow-lg shadow-indigo-500/30 font-bold tracking-widest text-white gap-2 transition-transform hover:scale-105">
+                    <i class="fas fa-save"></i> 确定调配名单
                 </button>
             </div>
             

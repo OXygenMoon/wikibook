@@ -1,77 +1,117 @@
 {% extends "base.html" %}
 
-{% block title %}组管理{% endblock %}
+{% block title %}小组管理 - WikiBook{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 页面淡入动画 */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(15px); filter: blur(4px); }
+        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+    .animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    
+    /* 隐藏滚动条 */
+    .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.1); border-radius: 10px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--bc) / 0.2); }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-8">
-        <div>
-            <h1 class="text-2xl font-bold text-base-content">组管理</h1>
-            <p class="text-base-content/80 mt-1">创建和管理学习小组</p>
+<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6 animate-fade-in pb-12 mt-2">
+    
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/80 dark:bg-base-100/80 backdrop-blur-xl p-6 md:px-8 rounded-3xl border border-black/5 dark:border-white/5 shadow-sm relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-teal-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="relative z-10">
+            <h1 class="text-2xl md:text-3xl font-black text-stone-800 dark:text-stone-100 flex items-center gap-3 tracking-tight">
+                <i class="fas fa-layer-group text-teal-500 drop-shadow-sm"></i> 小组控制台
+            </h1>
+            <p class="text-sm text-base-content/60 mt-1.5 font-medium ml-1">创建和管理灵活的学习小组与兴趣圈</p>
         </div>
     </div>
 
-    <div class="flex gap-4 mb-6 border-b border-base-200">
-        <a href="{{ url_for('manage_users') }}" class="px-4 py-2 text-base-content/80 hover:text-base-content">用户管理</a>
-        <a href="{{ url_for('manage_classes') }}" class="px-4 py-2 text-base-content/80 hover:text-base-content">班级管理</a>
-        <a href="{{ url_for('manage_groups') }}" class="px-4 py-2 border-b-2 border-primary font-bold text-primary">组管理</a>
+    <div class="flex items-center p-1.5 bg-stone-200/50 dark:bg-base-200/50 rounded-2xl w-full md:w-fit border border-black/5 dark:border-white/5 shadow-inner overflow-x-auto custom-scroll">
+        <a href="{{ url_for('manage_users') }}" class="flex-1 md:flex-none px-6 py-2.5 rounded-xl text-base-content/60 hover:text-base-content hover:bg-stone-200/50 dark:hover:bg-base-300 font-medium text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+            <i class="fas fa-user-shield"></i> 用户管理
+        </a>
+        <a href="{{ url_for('manage_classes') }}" class="flex-1 md:flex-none px-6 py-2.5 rounded-xl text-base-content/60 hover:text-base-content hover:bg-stone-200/50 dark:hover:bg-base-300 font-medium text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+            <i class="fas fa-school"></i> 班级管理
+        </a>
+        <a href="{{ url_for('manage_groups') }}" class="flex-1 md:flex-none px-6 py-2.5 rounded-xl bg-white dark:bg-base-100 shadow-sm text-teal-600 dark:text-teal-400 font-bold text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+            <i class="fas fa-layer-group"></i> 小组管理
+        </a>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Create Group Form -->
-        <div class="card bg-base-100 shadow-sm border border-base-200 h-fit">
-            <div class="card-body">
-                <h3 class="card-title text-lg mb-4">新建小组</h3>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        
+        <div class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl shadow-sm hover:shadow-md border border-black/5 dark:border-white/5 rounded-[2rem] transition-all h-fit">
+            <div class="card-body p-6 md:p-8">
+                <h3 class="font-black text-xl mb-6 text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                    <i class="fas fa-plus-circle text-teal-500"></i> 新建小组
+                </h3>
                 <form action="{{ url_for('manage_groups') }}" method="post" class="space-y-4">
                     <div class="form-control">
-                        <label class="label"><span class="label-text">小组名称</span></label>
-                        <input type="text" name="name" class="input input-bordered w-full" placeholder="例如: 算法竞赛小组" required />
+                        <label class="label pb-1.5"><span class="label-text font-bold text-base-content/80">小组名称</span></label>
+                        <input type="text" name="name" class="input input-bordered w-full rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" placeholder="例如: 算法竞赛小组" required />
                     </div>
                     <div class="form-control">
-                        <label class="label"><span class="label-text">描述</span></label>
-                        <textarea name="description" class="textarea textarea-bordered w-full" placeholder="简要描述小组用途..."></textarea>
+                        <label class="label pb-1.5"><span class="label-text font-bold text-base-content/80">小组描述 (选填)</span></label>
+                        <textarea name="description" class="textarea textarea-bordered w-full rounded-xl h-24 resize-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" placeholder="简要描述该小组的用途或目标..."></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary w-full">创建</button>
+                    <button type="submit" class="btn btn-primary bg-teal-500 hover:bg-teal-600 border-none w-full rounded-xl shadow-lg shadow-teal-500/30 font-bold tracking-widest gap-2 mt-2">
+                        <i class="fas fa-check"></i> 立即创建
+                    </button>
                 </form>
             </div>
         </div>
 
-        <!-- Group List -->
         <div class="lg:col-span-2">
-            <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="overflow-x-auto">
-                    <table class="table">
+            <div class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl shadow-sm border border-black/5 dark:border-white/5 rounded-[2rem] transition-all overflow-hidden">
+                <div class="overflow-x-auto custom-scroll p-1">
+                    <table class="table w-full">
                         <thead>
-                            <tr class="bg-stone-50 text-base-content/80">
-                                <th>ID</th>
-                                <th>小组名称</th>
-                                <th>描述</th>
+                            <tr class="bg-stone-50/80 dark:bg-base-200/50 text-[11px] font-black uppercase tracking-wider text-base-content/50 border-b-0">
+                                <th class="rounded-tl-[1.5rem] pl-6 w-16">ID</th>
+                                <th class="w-1/4">小组名称</th>
+                                <th class="w-1/3">描述</th>
                                 <th>成员数</th>
-                                <th>操作</th>
+                                <th class="rounded-tr-[1.5rem] text-center w-32">操作</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="text-sm">
                             {% for g in groups %}
-                            <tr class="hover:bg-stone-50/50 group">
-                                <td class="font-mono text-sm text-base-content/50">#{{ g.id }}</td>
-                                <td class="font-bold text-base-content">{{ g.name }}</td>
-                                <td class="text-base-content/80 text-sm max-w-xs truncate">{{ g.description or '-' }}</td>
+                            <tr class="hover:bg-stone-50/50 dark:hover:bg-base-200/30 border-b border-base-200/60 transition-colors group">
+                                <td class="pl-6 font-mono font-medium text-base-content/40">#{{ g.id }}</td>
+                                <td class="font-bold text-base-content text-base">{{ g.name }}</td>
+                                <td class="text-base-content/60 text-xs font-medium max-w-[12rem] truncate" title="{{ g.description }}">{{ g.description or '-' }}</td>
                                 <td>
-                                    <div class="badge badge-ghost">{{ g.users|length }} 人</div>
+                                    <div class="badge border-none bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 font-bold px-3 py-2.5 rounded-lg text-xs gap-1.5">
+                                        <i class="fas fa-users opacity-50"></i> {{ g.users|length }} 人
+                                    </div>
                                 </td>
                                 <td>
-                                    <div class="flex gap-2">
-                                        <!-- Edit Members Button -->
-                                        <a href="{{ url_for('edit_group', group_id=g.id) }}" class="btn btn-xs btn-outline btn-primary">
-                                            管理成员
+                                    <div class="flex justify-center gap-2 items-center">
+                                        <a href="{{ url_for('edit_group', group_id=g.id) }}" class="btn btn-xs bg-white dark:bg-base-200 border-base-300 hover:border-teal-400 hover:text-teal-600 text-base-content/70 rounded-lg shadow-sm gap-1.5 px-3">
+                                            <i class="fas fa-user-plus text-[10px]"></i> 成员
                                         </a>
                                         
-                                        <!-- Delete Button -->
-                                        <form action="{{ url_for('delete_group', group_id=g.id) }}" method="post" onsubmit="return confirm('确定要删除这个小组吗？');">
-                                            <button type="submit" class="btn btn-xs btn-ghost text-error">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        <form action="{{ url_for('delete_group', group_id=g.id) }}" method="post" onsubmit="return confirm('确定要解散并删除这个小组吗？\n此操作不可撤销，但不会删除其中的学生账号。');" class="m-0">
+                                            <button type="submit" class="btn btn-xs btn-ghost btn-circle text-error/70 hover:text-error hover:bg-error/10 transition-colors" title="解散小组">
+                                                <i class="fas fa-trash-alt"></i>
                                             </button>
                                         </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-16">
+                                    <div class="flex flex-col items-center justify-center text-base-content/30">
+                                        <i class="fas fa-layer-group text-5xl mb-4 opacity-50"></i>
+                                        <p class="font-bold">暂无小组数据，请在左侧创建</p>
                                     </div>
                                 </td>
                             </tr>

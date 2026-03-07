@@ -18,6 +18,7 @@ import shutil
 import time
 from flask_migrate import Migrate
 from sqlalchemy import MetaData
+import re
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
@@ -382,7 +383,7 @@ class UserBadge(db.Model):
     earned_at = db.Column(db.DateTime, default=now_utc8)
     serial_number = db.Column(db.String(50), unique=True, nullable=True) # Unique Serial Number
     is_notified = db.Column(db.Boolean, default=False)
-    badge = db.relationship("Badge")
+    badge = db.relationship("Badge", overlaps="badge_info,users")
 
     def __init__(self, **kwargs):
         super(UserBadge, self).__init__(**kwargs)
@@ -410,6 +411,11 @@ class Wiki(db.Model):
     created_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=now_utc8)
     
+    # 用于首页3D显示
+    is_featured = db.Column(db.Boolean, default=False)
+    featured_order = db.Column(db.Integer, default=0)
+
+
     # Appearance Settings
     bg_color = db.Column(db.String(20), default="#ffffff")
     fg_color = db.Column(db.String(20), default="#1f2937")
@@ -491,6 +497,9 @@ class UserActiveStatus(db.Model):
     last_active_at = db.Column(db.DateTime, default=now_utc8)
     current_path = db.Column(db.String(500), default="/")
     current_action = db.Column(db.String(200), default="")
+    # 💡 必须在这里定义字段，业务逻辑才能读写它们
+    pomo_state = db.Column(db.String(20), default="IDLE") # IDLE, WORK, REST
+    pomo_end_time = db.Column(db.Float, default=0.0)      # 存储毫秒级时间戳
     
     user = db.relationship("User", backref=db.backref("active_status", uselist=False))
 
@@ -868,11 +877,15 @@ def index():
                 pass
                 
     if q:
+        # 💡 搜索模式：展示普通网格列表
         wikis = Wiki.query.filter(Wiki.title.contains(q)).order_by(Wiki.created_at.desc()).all()
         pages = WikiPage.query.filter((WikiPage.title.contains(q)) | (WikiPage.content_md.contains(q))).all()
     else:
+        # 💡 默认模式/筛选模式：展示 3D 滚动精选卡片
         visibility_filter = request.args.get("visibility", "all")
-        query = Wiki.query
+        
+        # 核心修复 1：将 is_featured=True 作为基础查询起点，而不是直接查询 .all()
+        query = Wiki.query.filter_by(is_featured=True)
         
         if visibility_filter == "my_class":
             if current_user.is_authenticated and current_user.student_class:
@@ -908,12 +921,13 @@ def index():
                 )
             except:
                 query = query.filter(Wiki.visibility == 'public')
-        else:
-            pass
-
-        wikis = query.order_by(Wiki.created_at.desc()).all()
+        
+        # 核心修复 2：在查询末尾统一加上精选排序规则，再执行 .all()
+        fetched_wikis = query.order_by(Wiki.featured_order.asc()).all()
+        
         visible_wikis = []
-        for w in wikis:
+        for w in fetched_wikis:
+            # 这里的权限检验作为最后的兜底
             if w.is_visible_to(current_user if current_user.is_authenticated else User(is_admin=False, id=-1)): 
                 visible_wikis.append(w)
         
@@ -927,7 +941,6 @@ def index():
         all_classes = Class.query.order_by(Class.name).all()
         all_groups = Group.query.order_by(Group.name).all()
 
-    # --- 💡 核心修复：独立出来，并修复了 Emoji 的丢失逻辑 ---
     my_home_stickers = []
     if current_user.is_authenticated:
         stickers = UserSticker.query.filter_by(user_id=current_user.id, page_type='profile').all()
@@ -935,7 +948,6 @@ def index():
             if not s.badge:
                 continue
                 
-            # 判断是不是图片，如果是图片调用转化函数，如果是 Emoji 则保留原样！
             icon_val = s.badge.icon
             final_icon = badge_icon_url(icon_val) if is_image_icon(icon_val) else icon_val
             
@@ -1149,6 +1161,7 @@ def wiki_detail(wiki_id):
         db.session.add(log)
         first_page.view_count += 1
         db.session.commit()
+        html = parse_assignment_tags(html, first_page.id)
     
     # Fetch contributors
     contributors = []
@@ -1438,35 +1451,71 @@ def edit_page(wiki_id, slug):
     if not can_edit_wiki(wiki_id):
         abort(403)
     p = WikiPage.query.filter_by(wiki_id=wiki_id, slug=slug).first_or_404()
+    
     if request.method == "POST":
-        # 保存历史版本
+        # 1. 保存历史版本
         history = WikiPageHistory(
-            page_id=p.id,
-            user_id=current_user.id,
-            title=p.title,
-            slug=p.slug,
-            content_md=p.content_md
+            page_id=p.id, user_id=current_user.id,
+            title=p.title, slug=p.slug, content_md=p.content_md
         )
         db.session.add(history)
         
-        # 更新页面
+        # 2. 接收基础数据
         p.title = request.form.get("title", "").strip()
         p.slug = request.form.get("slug", "").strip()
-        p.content_md = request.form.get("content_md", "")
+        new_content = request.form.get("content_md", "")
+        
+        # ==========================================
+        # 💡 3. 核心升级：作业标签“自动打钢印”系统
+        # ==========================================
+        import re
+        
+        # A. 扫描带有 ID 钢印的现有作业 (例如 [作业#15:新名字])，更新名称
+        existing_tags = re.findall(r'\[作业#(\d+)[:：]\s*(.*?)\]', new_content)
+        for assign_id_str, new_title in existing_tags:
+            assign = Assignment.query.get(int(assign_id_str))
+            if assign and assign.wiki_page_id == p.id:
+                assign.title = new_title.strip()
+                
+        # B. 扫描没有 ID 的新作业 (例如 [作业:第一次提交])
+        # 注意正则：紧跟在“作业”后面的必须是冒号，排除了带有 # 的情况
+        new_tags = re.findall(r'\[作业[:：]\s*([^\]]+)\]', new_content)
+        for t_title in new_tags:
+            t_title = t_title.strip()
+            if t_title:
+                # 检查是否已经存在同名的老作业 (完美兼容你之前创建但还没打钢印的数据)
+                exists = Assignment.query.filter_by(wiki_page_id=p.id, title=t_title).first()
+                if not exists:
+                    new_assign = Assignment(wiki_page_id=p.id, title=t_title)
+                    db.session.add(new_assign)
+                    db.session.flush() # 立即获取生成的 ID
+                    target_id = new_assign.id
+                else:
+                    target_id = exists.id
+                
+                # C. 自动修改 Markdown 内容：注入 ID 钢印
+                escaped_title = re.escape(t_title)
+                # 精确匹配旧文本，将其替换为带 #ID 的新文本
+                replace_pattern = r'\[作业[:：]\s*' + escaped_title + r'\]'
+                new_content = re.sub(replace_pattern, f'[作业#{target_id}:{t_title}]', new_content)
+
+        # 4. 保存最终的文本和设置
+        p.content_md = new_content
         tags_str = request.form.get("tags", "")
-        
-        # Update tags
         p.tags = process_tags(tags_str)
-        
-        # Update settings
         p.comment_enabled = request.form.get("comment_enabled") == "on"
         
-        db.session.commit()
-        
-        # Check badges
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash(f"保存失败，数据库错误: {str(e)}", "error")
+            return redirect(url_for("edit_page", wiki_id=wiki_id, slug=slug))
+            
         check_and_award_badges(current_user)
-        
+        flash("页面已更新", "success")
         return redirect(url_for("view_page", wiki_id=wiki_id, slug=p.slug))
+        
     return render_template("wiki/edit_page.html", wiki=w, page=p)
 
 @app.route("/wikis/<int:wiki_id>/pages/<slug>/comment", methods=["POST"])
@@ -3238,6 +3287,14 @@ def view_note(note_id):
 @login_required
 def edit_note(note_id):
     n = Note.query.get_or_404(note_id)
+
+    # 💡 核心锁定逻辑：
+    # 检查该笔记是否有关联的 Submission 且状态为 'graded'
+    lock_submission = Submission.query.filter_by(source_note_id=n.id, status='graded').first()
+    if lock_submission:
+        flash("该文档关联的作业已批改完成，目前已锁定不可编辑", "warning")
+        return redirect(url_for("view_note", note_id=n.id))
+
     if n.user_id != current_user.id and not current_user.is_admin:
         abort(403)
         
@@ -3493,91 +3550,118 @@ def link_preview():
 @app.route("/api/heartbeat", methods=["POST"])
 @login_required
 def heartbeat():
-    path = request.json.get("path", "/")
-    # Infer action
-    action = "浏览页面"
-    if "/edit" in path:
-        action = "编辑内容"
-    elif "/new" in path:
-        action = "新建内容"
-    elif "/notes/" in path:
-        action = "查看笔记"
-    elif "/pages/" in path:
-        action = "查看 Wiki"
-    elif "/book" in path:
-        action = "浏览笔记库"
-    elif "/wikis/" in path:
-        action = "浏览 Wiki"
+    try:
+        data = request.get_json() or {}
+        path = data.get("path", "/")
         
-    now = now_utc8()
-    
-    # 1. Update UserActiveStatus
-    status = UserActiveStatus.query.get(current_user.id)
-    if not status:
-        status = UserActiveStatus(user_id=current_user.id)
-        db.session.add(status)
-    
-    # Check if user was offline (active > 5 mins ago)
-    was_offline = False
-    online_threshold = now - timedelta(minutes=5)
-    if status.last_active_at and status.last_active_at < online_threshold:
-        was_offline = True
-    elif status.last_active_at is None:
-        was_offline = True
-    
-    status.last_active_at = now
-    status.current_path = path
-    status.current_action = action
-    
-    # Notify study partners if came online
-    if was_offline:
-        partners = current_user.study_partners.all()
-        for p in partners:
-            # Avoid duplicate notifications if multiple heartbeats fire quickly?
-            # Or just rely on 5 min threshold.
-            n = Notification(
-                user_id=p.id,
-                message=f"你的学友 {current_user.username} 上线了",
-                type='friend_login',
-                link=url_for('public_profile', user_id=current_user.id)
-            )
-            db.session.add(n)
-    
-    # 2. Update StudySession
-    # Find latest session
-    session = StudySession.query.filter_by(user_id=current_user.id).order_by(StudySession.end_time.desc()).first()
-    
-    # If session exists and gap is small (e.g. < 5 mins), extend it
-    # Else create new session
-    gap_limit = timedelta(minutes=5)
-    
-    if session and (now - session.end_time) < gap_limit:
-        session.end_time = now
-    else:
-        # Create new session
-        session = StudySession(user_id=current_user.id, start_time=now, end_time=now)
-        db.session.add(session)
+        # 容错：即使前端传来非法数据也能安全转换
+        pomo_state = data.get("pomo_state", "IDLE")
+        try:
+            pomo_end_time = float(data.get("pomo_end_time", 0))
+        except (ValueError, TypeError):
+            pomo_end_time = 0.0
         
-    db.session.commit()
-    
-    # Check badges
-    check_and_award_badges(current_user)
-    
-    # Get unread notifications
-    notifications = []
-    unread_notifs = current_user.notifications.filter_by(is_read=False).order_by(Notification.created_at.desc()).all()
-    for n in unread_notifs:
-        notifications.append({
-            "id": n.id,
-            "message": n.message,
-            "type": n.type,
-            "link": n.link,
-            "created_at": n.created_at.strftime("%H:%M")
-        })
+        # 💡 状态推断引擎：按优先级从高到低匹配
+        action = "正在潜水"
+        if "/admin" in path: action = "后台管理中"
+        elif "/settings" in path: action = "修改偏好设置"
+        elif "/leaderboard" in path: action = "查看巅峰排行榜"
+        elif "/sticker_walls" in path: action = "欣赏贴纸墙"
+        elif "/announcements" in path: action = "阅读系统公告"
+        elif "achievement_book" in path: action = "翻阅成就图鉴"
+        elif "/user/following" in path: action = "查看学友列表"
+        elif "/user/" in path: action = "访问个人主页"
+        elif "/online_users" in path: action = "查看在线用户"
+        elif "/book/calendar" in path: action = "回顾学习日历"
+        elif "/book/received" in path: action = "查看收到的笔记"
+        elif "/edit" in path: action = "编辑创作中..."
+        elif "/new" in path: action = "新建内容中..."
+        elif "/notes/" in path: action = "阅读精选笔记"
+        elif "/pages/" in path: action = "阅读 Wiki 百科"
+        elif "/book" in path: action = "浏览个人笔记库"
+        elif "/wikis/" in path: action = "浏览 Wiki 知识库"
+        elif path == "/" or path == "": action = "在广场闲逛"
+        
+        # 番茄钟状态拥有最高显示优先级
+        if pomo_state == "WORK": action = "🍅 专注中..."
+        elif pomo_state == "REST": action = "☕ 休息中..."
 
-    has_new_badges = UserBadge.query.filter_by(user_id=current_user.id, is_notified=False).count() > 0
+        now = now_utc8()
+        
+        status = UserActiveStatus.query.get(current_user.id)
+        if not status:
+            status = UserActiveStatus(user_id=current_user.id)
+            db.session.add(status)
+        
+        was_offline = False
+        online_threshold = now - timedelta(minutes=5)
+        if status.last_active_at and status.last_active_at < online_threshold:
+            was_offline = True
+        elif status.last_active_at is None:
+            was_offline = True
+            
+        status.last_active_at = now
+        status.current_path = path
+        status.current_action = action
+        status.pomo_state = pomo_state
+        status.pomo_end_time = pomo_end_time
+        
+        # 💡 只在自己刚才处于离线，并且学友目前【在线】时，才互相发送问候
+        if was_offline:
+            partners = current_user.study_partners.all()
+            for p in partners:
+                if p.is_online:
+                    n = Notification(
+                        user_id=p.id,
+                        message=f"你的学友 {current_user.username} 上线了",
+                        type='friend_login',
+                        link=url_for('public_profile', user_id=current_user.id)
+                    )
+                    db.session.add(n)
+        
+        session_record = StudySession.query.filter_by(user_id=current_user.id).order_by(StudySession.end_time.desc()).first()
+        gap_limit = timedelta(minutes=5)
+        
+        if session_record and (now - session_record.end_time) < gap_limit:
+            session_record.end_time = now
+        else:
+            session_record = StudySession(user_id=current_user.id, start_time=now, end_time=now)
+            db.session.add(session_record)
+            
+        # 暴力销毁自己没看到的历史垃圾通知 (2分钟前的统统丢弃)
+        Notification.query.filter(
+            Notification.user_id == current_user.id, 
+            Notification.type == 'friend_login',
+            Notification.created_at < now - timedelta(minutes=2)
+        ).delete()
+        
+        db.session.commit()
+        
+        # 容错：防止发奖出错引发全局崩溃
+        try:
+            check_and_award_badges(current_user)
+        except Exception:
+            db.session.rollback()
+        
+        notifications = []
+        unread_notifs = current_user.notifications.filter_by(is_read=False).order_by(Notification.created_at.desc()).all()
+        for n in unread_notifs:
+            notifications.append({
+                "id": n.id,
+                "message": n.message,
+                "type": n.type,
+                "link": n.link,
+                "created_at": n.created_at.strftime("%H:%M")
+            })
 
-    return {"status": "ok", "notifications": notifications, "has_new_badges": has_new_badges}
+        has_new_badges = UserBadge.query.filter_by(user_id=current_user.id, is_notified=False).count() > 0
+
+        return jsonify({"status": "ok", "notifications": notifications, "has_new_badges": has_new_badges})
+        
+    except Exception as e:
+        db.session.rollback()
+        # 出错时返回 JSON 而不是抛出 500 HTML 页面，保护前端不崩溃
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/api/badges/unnotified", methods=["GET"])
@@ -3719,7 +3803,7 @@ def check_and_award_badges(user):
             total_hours = total_seconds / 3600
             if total_hours >= badge.condition_value: earned = True
         elif badge.condition_type == 'pomo_count':
-            from .models import PomodoroRecord # Adjust import path as needed
+            # from .models import PomodoroRecord # Adjust import path as needed
             count = PomodoroRecord.query.filter_by(user_id=user.id).count()
             if count >= badge.condition_value: earned = True
         elif badge.condition_type == 'streak_days':
@@ -4153,59 +4237,71 @@ def announcements_view():
 def upgrade_db():
     """Upgrade database schema manually"""
     with app.app_context():
+        # 💡 1. 确保所有新表 (比如 PomodoroRecord) 都存在
+        db.create_all()
+        
         inspector = db.inspect(db.engine)
         
-        # 1. Check Badge table
-        if 'badge' in inspector.get_table_names():
-            columns = [c['name'] for c in inspector.get_columns('badge')]
-            if 'start_time' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN start_time DATETIME"))
-                    conn.commit()
-            if 'end_time' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN end_time DATETIME"))
-                    conn.commit()
-            if 'sticker_count' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN sticker_count INTEGER DEFAULT 1"))
-                    conn.commit()
-            if 'total_limit' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN total_limit INTEGER"))
-                    conn.commit()
-            if 'issued_count' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN issued_count INTEGER DEFAULT 0"))
-                    conn.commit()
-            if 'category' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN category VARCHAR(50) DEFAULT '一般'"))
-                    conn.commit()
-            if 'custom_condition_text' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN custom_condition_text VARCHAR(255)"))
-                    conn.commit()
-            if 'rarity' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN rarity VARCHAR(20) DEFAULT 'common'"))
-                    conn.commit()
-            if 'is_secret' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN is_secret BOOLEAN DEFAULT 0"))
+        # 💡 2. 修复 UserActiveStatus 表，补全新字段
+        if 'user_active_status' in inspector.get_table_names():
+            uas_columns = [c['name'] for c in inspector.get_columns('user_active_status')]
+            with db.engine.connect() as conn:
+                needs_commit = False
+                if 'pomo_state' not in uas_columns:
+                    conn.execute(db.text("ALTER TABLE user_active_status ADD COLUMN pomo_state VARCHAR(20) DEFAULT 'IDLE'"))
+                    needs_commit = True
+                if 'pomo_end_time' not in uas_columns:
+                    conn.execute(db.text("ALTER TABLE user_active_status ADD COLUMN pomo_end_time FLOAT DEFAULT 0.0"))
+                    needs_commit = True
+                if needs_commit:
                     conn.commit()
 
-        # 2. Check Wiki table
+        # 3. 修复 Badge 表
+        if 'badge' in inspector.get_table_names():
+            columns = [c['name'] for c in inspector.get_columns('badge')]
+            with db.engine.connect() as conn:
+                if 'start_time' not in columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN start_time DATETIME"))
+                    conn.commit()
+                if 'end_time' not in columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN end_time DATETIME"))
+                    conn.commit()
+                if 'sticker_count' not in columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN sticker_count INTEGER DEFAULT 1"))
+                    conn.commit()
+                if 'total_limit' not in columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN total_limit INTEGER"))
+                    conn.commit()
+                if 'issued_count' not in columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN issued_count INTEGER DEFAULT 0"))
+                    conn.commit()
+                if 'category' not in columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN category VARCHAR(50) DEFAULT '一般'"))
+                    conn.commit()
+                if 'custom_condition_text' not in columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN custom_condition_text VARCHAR(255)"))
+                    conn.commit()
+                if 'rarity' not in columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN rarity VARCHAR(20) DEFAULT 'common'"))
+                    conn.commit()
+                if 'is_secret' not in columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN is_secret BOOLEAN DEFAULT 0"))
+                    conn.commit()
+                if 'serial_prefix' not in columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN serial_prefix VARCHAR(20) DEFAULT 'SF'"))
+                    conn.commit()
+
+        # 4. 修复 Wiki 表
         if 'wiki' in inspector.get_table_names():
             wiki_columns = [c['name'] for c in inspector.get_columns('wiki')]
-            if 'bg_color' not in wiki_columns:
-                with db.engine.connect() as conn:
+            with db.engine.connect() as conn:
+                if 'bg_color' not in wiki_columns:
                     conn.execute(db.text("ALTER TABLE wiki ADD COLUMN bg_color VARCHAR(20) DEFAULT '#ffffff'"))
                     conn.execute(db.text("ALTER TABLE wiki ADD COLUMN fg_color VARCHAR(20) DEFAULT '#1f2937'"))
                     conn.execute(db.text("ALTER TABLE wiki ADD COLUMN pattern VARCHAR(50) DEFAULT 'pattern-none'"))
                     conn.commit()
 
-        # 3. Check Note table
+        # 5. 修复 Note 表
         if 'note' in inspector.get_table_names():
             note_columns = [c['name'] for c in inspector.get_columns('note')]
             if 'icon' not in note_columns:
@@ -4213,24 +4309,16 @@ def upgrade_db():
                     conn.execute(db.text("ALTER TABLE note ADD COLUMN icon VARCHAR(255)"))
                     conn.commit()
 
-        # 4. Check UserBadge table (核心修复)
+        # 6. 修复 UserBadge 表
         if 'user_badge' in inspector.get_table_names():
             user_badge_columns = [c['name'] for c in inspector.get_columns('user_badge')]
-            if 'is_notified' not in user_badge_columns:
-                print("Upgrading UserBadge table: Adding is_notified column...")
-                with db.engine.connect() as conn:
-                    # DEFAULT 1 防止老贴纸弹窗
+            with db.engine.connect() as conn:
+                if 'is_notified' not in user_badge_columns:
                     conn.execute(db.text("ALTER TABLE user_badge ADD COLUMN is_notified BOOLEAN DEFAULT 1"))
                     conn.commit()
-            if 'serial_number' not in user_badge_columns:
-                with db.engine.connect() as conn:
+                if 'serial_number' not in user_badge_columns:
                     conn.execute(db.text("ALTER TABLE user_badge ADD COLUMN serial_number VARCHAR(50)"))
                     conn.commit()
-            if 'serial_prefix' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN serial_prefix VARCHAR(20) DEFAULT 'SF'"))
-                    conn.commit()
-
 
 @app.route('/service/wiki/pages')
 @login_required
@@ -4349,6 +4437,7 @@ def view_page(wiki_id, slug):
     root_items = sorted(root_items, key=lambda x: x.order_weight)
     
     html = markdown(p.content_md or "")
+    html = parse_assignment_tags(html, p.id) # 💡 调用解析器
     is_subscribed = Subscription.query.filter_by(wiki_id=wiki_id, user_id=current_user.id).first() is not None
     
     contributors = []
@@ -4476,6 +4565,7 @@ class PomodoroRecord(db.Model):
 
     # 关联 User
     user = db.relationship('User', backref=db.backref('pomodoros', cascade='all, delete-orphan', lazy='dynamic'))
+
 
 # --- 后台管理员路由：管理贴纸墙 ---
 @app.route("/admin/sticker_walls", methods=["GET", "POST"])
@@ -4960,37 +5050,309 @@ def delete_sticky_note(note_id):
 @app.route('/api/pomodoro/today', methods=['GET'])
 @login_required
 def get_today_pomodoro():
-    """获取今日已完成的番茄钟次数"""
-    # 获取今天凌晨 0 点的时间
-    today_start = now_utc8().replace(hour=0, minute=0, second=0, microsecond=0)
-    count = PomodoroRecord.query.filter(
-        PomodoroRecord.user_id == current_user.id,
-        PomodoroRecord.completed_at >= today_start
-    ).count()
-    return jsonify({'success': True, 'count': count})
+    try:
+        today_start = now_utc8().replace(hour=0, minute=0, second=0, microsecond=0)
+        count = PomodoroRecord.query.filter(
+            PomodoroRecord.user_id == current_user.id,
+            PomodoroRecord.completed_at >= today_start
+        ).count()
+        return jsonify({'success': True, 'count': count})
+    except Exception as e:
+        return jsonify({'success': False, 'count': 0, 'error': str(e)})
 
 @app.route('/api/pomodoro/complete', methods=['POST'])
 @login_required
 def complete_pomodoro():
-    """完成一次番茄钟，写入数据库"""
-    # 动态获取前端传入的时间，如果没有传则默认 45
-    data = request.get_json() or {}
-    duration = data.get('duration', 45)
+    try:
+        data = request.get_json() or {}
+        duration = data.get('duration', 45)
+        
+        record = PomodoroRecord(user_id=current_user.id, duration_minutes=duration)
+        db.session.add(record)
+        db.session.commit()
+        
+        today_start = now_utc8().replace(hour=0, minute=0, second=0, microsecond=0)
+        count = PomodoroRecord.query.filter(
+            PomodoroRecord.user_id == current_user.id,
+            PomodoroRecord.completed_at >= today_start
+        ).count()
+        
+        return jsonify({'success': True, 'count': count})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'count': 0, 'error': str(e)})
 
-    record = PomodoroRecord(user_id=current_user.id, duration_minutes=duration)
-    db.session.add(record)
+# 作业类定义
+
+class Assignment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    wiki_page_id = db.Column(db.Integer, db.ForeignKey('wiki_page.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # 建立与提交记录的反向关联
+    submissions = db.relationship('Submission', backref='assignment', cascade='all, delete-orphan', lazy='dynamic')
+
+class Submission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('assignment.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # 快照核心：保存提交时的笔记 ID 和内容
+    source_note_id = db.Column(db.Integer, db.ForeignKey('note.id'), nullable=True)
+    content_snapshot_md = db.Column(db.Text, nullable=False)
+    
+    # 批阅字段
+    grade = db.Column(db.String(20)) # 优/良/中/差
+    feedback = db.Column(db.Text)    # 评语
+    status = db.Column(db.String(20), default='pending') # pending, graded, redo
+    
+    submitted_at = db.Column(db.DateTime, default=now_utc8)
+    graded_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship('User', backref=db.backref('submissions', lazy='dynamic'))
+
+
+def parse_assignment_tags(html_content, wiki_page_id):
+    """
+    支持“ID钢印”机制的终极解析器
+    """
+    # 💡 匹配 [作业#15:标题] 或是以前的 [作业:标题]
+    # match.group(1) 捕获 "#15" (如果不存在则是 None)
+    # match.group(2) 捕获标题内容
+    pattern = r'\[作业(#\d+)?[:：]\s*(.*?)\]'
+    
+    def replace_func(match):
+        id_part = match.group(1)
+        title = match.group(2).strip()
+        
+        assign = None
+        if id_part:
+            # 如果有钢印，绝对精准地通过 ID 查找
+            assign_id = int(id_part.replace('#', ''))
+            assign = Assignment.query.get(assign_id)
+            # 以防万一数据库没更新，我们强制将标题显示为 Markdown 里的新标题
+            if assign: title = assign.title 
+        else:
+            # 兼容老数据：按标题查找
+            assign = Assignment.query.filter_by(wiki_page_id=wiki_page_id, title=title).first()
+        
+        if not assign:
+            if current_user.is_authenticated and current_user.is_admin:
+                return f'<div class="badge badge-error gap-2 my-2 py-3 px-4 rounded-xl font-bold">⚠️ 请点击“保存”以激活作业：{title}</div>'
+            return f'<span class="text-stone-400 italic text-sm">[作业 "{title}" 准备中...]</span>'
+
+        # ============ 管理员视角 ============
+        if current_user.is_authenticated and current_user.is_admin:
+            return f'''
+            <div class="my-6 p-6 border-2 border-dashed border-primary/30 rounded-[2rem] bg-primary/5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-inner">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary text-xl">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div>
+                        <p class="text-[10px] uppercase font-black opacity-40 tracking-widest leading-none mb-1">Assignment ID:{assign.id}</p>
+                        <h4 class="font-black text-stone-800 dark:text-white text-lg">{title}</h4>
+                    </div>
+                </div>
+                <button onclick="app.assignments.openConsole({assign.id}, '{title}')" class="btn btn-primary rounded-2xl px-8 shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+                    进入批阅矩阵
+                </button>
+            </div>
+            '''
+        
+        # ============ 学生视角 ============
+        elif current_user.is_authenticated:
+            sub = Submission.query.filter_by(assignment_id=assign.id, user_id=current_user.id).first()
+            
+            status_dot = '<div class="w-2.5 h-2.5 rounded-full bg-stone-300"></div>'
+            status_text = "未提交"
+            btn_text = "📤 提交我的笔记"
+            btn_class = "btn-accent shadow-accent/20"
+            
+            if sub:
+                if sub.status == 'graded':
+                    status_dot = '<div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>'
+                    status_text = f"已批改 ({sub.grade})"
+                    btn_text = "查看反馈"
+                    btn_class = "btn-ghost bg-stone-100 dark:bg-base-200"
+                else:
+                    status_dot = '<div class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.5)]"></div>'
+                    status_text = "待批阅"
+                    btn_text = "更新快照"
+                    btn_class = "btn-primary shadow-primary/20"
+
+            return f'''
+            <div class="my-6 p-6 border border-stone-200 dark:border-white/5 rounded-[2rem] bg-white dark:bg-base-300/50 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-stone-50 dark:bg-base-200 flex items-center justify-center text-2xl">📝</div>
+                    <div>
+                        <h4 class="font-black text-stone-800 dark:text-stone-100 text-lg leading-tight">{title}</h4>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            {status_dot}
+                            <span class="text-[10px] font-black uppercase tracking-tighter opacity-50">{status_text}</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="app.assignments.openSubmitModal({assign.id}, '{title}')" class="btn {btn_class} rounded-2xl px-8 transition-all active:scale-95">
+                    {btn_text}
+                </button>
+            </div>
+            '''
+        return ""
+            
+    return re.sub(pattern, replace_func, html_content)
+
+@app.route("/api/assignments/submit", methods=["POST"])
+@login_required
+def submit_assignment():
+    data = request.json
+    assign_id = data.get("assignment_id")
+    note_id = data.get("note_id")
+    
+    note = Note.query.get_or_404(note_id)
+    if note.user_id != current_user.id:
+        return jsonify({"success": False, "error": "只能提交自己的笔记"}), 403
+        
+    # 核心：创建提交记录或覆盖现有记录
+    sub = Submission.query.filter_by(assignment_id=assign_id, user_id=current_user.id).first()
+    
+    if sub and sub.status == 'graded':
+        return jsonify({"success": False, "error": "作业已批改，无法修改"}), 403
+        
+    if not sub:
+        sub = Submission(assignment_id=assign_id, user_id=current_user.id)
+        db.session.add(sub)
+        
+    # 💡 关键：执行快照
+    sub.source_note_id = note.id
+    sub.content_snapshot_md = note.content_md # 复制当前内容
+    sub.submitted_at = now_utc8()
+    sub.status = 'pending'
+    
     db.session.commit()
+    return jsonify({"success": True})
+
+@app.route("/api/assignments/get_submission", methods=["POST"])
+@login_required
+def get_submission_content():
+    if not current_user.is_admin: abort(403)
+    data = request.json
+    assign_id = data.get("assignment_id")
+    user_id = data.get("user_id")
     
-    # 返回更新后的今日总数，用于更新右上角角标
-    today_start = now_utc8().replace(hour=0, minute=0, second=0, microsecond=0)
-    count = PomodoroRecord.query.filter(
-        PomodoroRecord.user_id == current_user.id,
-        PomodoroRecord.completed_at >= today_start
-    ).count()
+    sub = Submission.query.filter_by(assignment_id=assign_id, user_id=user_id).first()
+    if not sub:
+        return jsonify({"success": False, "error": "该学生尚未提交"})
     
-    # [未来预留] 这里可以加上检测徽章的逻辑，比如 check_and_award_badges(current_user)
+    # 💡 使用 markdown 转换快照内容给前端看
+    content_html = markdown(sub.content_snapshot_md or "*内容为空*")
+    return jsonify({
+        "success": True, 
+        "html": content_html, 
+        "feedback": sub.feedback or "", 
+        "grade": sub.grade or "A"
+    })
+
+@app.route("/api/assignments/grade", methods=["POST"])
+@login_required
+def grade_assignment():
+    if not current_user.is_admin: abort(403)
+    data = request.json
+    assign_id = data.get("assignment_id")
+    user_id = data.get("user_id")
     
-    return jsonify({'success': True, 'count': count})
+    sub = Submission.query.filter_by(assignment_id=assign_id, user_id=user_id).first_or_404()
+    sub.grade = data.get("grade")
+    sub.feedback = data.get("feedback")
+    sub.status = 'graded'
+    sub.graded_at = now_utc8()
+    
+    db.session.commit()
+    return jsonify({"success": True})
+
+@app.route("/api/assignments/<int:assign_id>/submissions")
+@login_required
+def get_assignment_submissions(assign_id):
+    """
+    教师端核心：获取所有学生（包含已交和未交）的作业提交矩阵
+    """
+    if not current_user.is_admin: 
+        abort(403)
+    
+    # 1. 查找作业配置
+    assign = Assignment.query.get_or_404(assign_id)
+    
+    # 2. 获取所有学生（非管理员用户），按班级和学号排序
+    all_students = User.query.filter_by(is_admin=False).order_by(User.class_id, User.student_id).all()
+    
+    # 3. 获取该作业目前已有的提交记录
+    subs = Submission.query.filter_by(assignment_id=assign_id).all()
+    # 转换为字典提高查询效率：{user_id: submission_object}
+    sub_map = {s.user_id: s for s in subs}
+    
+    students_data = []
+    for stu in all_students:
+        s = sub_map.get(stu.id)
+        students_data.append({
+            "user_id": stu.id,
+            "username": stu.username,
+            "real_name": stu.real_name or stu.username,
+            "class_name": stu.class_name or "未分配",
+            "status": s.status if s else "unsubmitted", # 状态：unsubmitted(灰), pending(黄), graded(绿)
+            "grade": s.grade if s else "",
+            "submitted_at": s.submitted_at.strftime("%m-%d %H:%M") if s else ""
+        })
+        
+    return jsonify({
+        "title": assign.title, 
+        "students": students_data
+    })
+
+
+# 1. 渲染精选 Wiki 管理页面
+@app.route("/admin/manage_featured_wikis")
+@login_required
+def manage_featured_wikis():
+    if not current_user.is_admin:
+        abort(403)
+        
+    # 查询已精选的 Wiki (按设置的顺序排序)
+    featured_wikis = Wiki.query.filter_by(is_featured=True).order_by(Wiki.featured_order.asc()).all()
+    # 查询未精选的 Wiki (按创建时间倒序)
+    unfeatured_wikis = Wiki.query.filter_by(is_featured=False).order_by(Wiki.created_at.desc()).all()
+    
+    return render_template("admin/manage_featured_wikis.html", 
+                           featured=featured_wikis, 
+                           unfeatured=unfeatured_wikis)
+
+# 2. 接收 AJAX 请求，保存新的顺序
+@app.route("/api/admin/update_featured_wikis", methods=["POST"])
+@login_required
+def update_featured_wikis():
+    if not current_user.is_admin:
+        return jsonify({"success": False, "error": "权限不足"}), 403
+        
+    data = request.json
+    featured_ids = data.get("featured_ids", []) # 这是一个有序的 Wiki ID 列表
+    
+    try:
+        # 先将所有 Wiki 的精选状态重置
+        Wiki.query.update({Wiki.is_featured: False, Wiki.featured_order: 0})
+        
+        # 根据前端传来的 ID 列表，重新设置精选状态和顺序
+        for index, w_id in enumerate(featured_ids):
+            wiki = Wiki.query.get(w_id)
+            if wiki:
+                wiki.is_featured = True
+                wiki.featured_order = index
+                
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)})
 
 
 if __name__ == "__main__":

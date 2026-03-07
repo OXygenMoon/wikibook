@@ -101,6 +101,10 @@
             <h1 class="text-2xl md:text-3xl font-black text-stone-800 dark:text-stone-100 flex items-center gap-3 tracking-tight fade-text-transition" id="wall-name-container">
                 <i class="fas fa-border-all text-primary drop-shadow-sm"></i> 
                 <span id="wall-name-display" class="truncate">{{ walls[0].name if walls else '全员贴纸墙' }}</span>
+                <div class="badge badge-lg bg-base-200/80 border-none font-mono text-sm shadow-sm gap-1 text-base-content/70" title="当前墙面贴纸总数">
+                    <i class="fas fa-shapes text-xs opacity-50"></i>
+                    <span id="wall-count-display">0</span>
+                </div>
             </h1>
             <p class="text-sm text-base-content/50 mt-1.5 font-medium hidden md:block fade-text-transition truncate" id="wall-desc-display">
                 {{ walls[0].description if walls else '暂无可用墙面' }}
@@ -228,6 +232,14 @@
     let baseGlobalUsed = {{ my_total_stickers }};
     const MAX_QUOTA = 10;
 
+    // 💡 新增：独立更新墙面计数器的函数
+    function updateWallCountDisplay(count) {
+        const countDisplay = document.getElementById('wall-count-display');
+        if (countDisplay) {
+            countDisplay.innerText = count;
+        }
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
         const fab = document.getElementById('sticker-fab');
         const drawer = document.getElementById('sticker-drawer');
@@ -258,6 +270,9 @@
                                 this.initialWallCounts[s.badge_id] = (this.initialWallCounts[s.badge_id] || 0) + 1;
                             }
                         });
+                        
+                        // 💡 初始加载完毕后，更新墙面贴纸总数
+                        updateWallCountDisplay(this.stickers.length);
                     }
                     
                     if (data.inventory_usage) {
@@ -274,7 +289,11 @@
             addStickerToCanvas(stickerData, isNew = false) {
                 stickerData.scale = 0.3; 
                 super.addStickerToCanvas(stickerData, isNew);
-                if(isNew) syncInventoryAndQuota();
+                if(isNew) {
+                    syncInventoryAndQuota();
+                    // 💡 添加贴纸后，更新墙面贴纸总数
+                    updateWallCountDisplay(this.stickers.length);
+                }
             }
 
             bindScaleEvents(handle, sticker, el) {
@@ -288,6 +307,8 @@
             removeSticker(sticker) {
                 super.removeSticker(sticker);
                 syncInventoryAndQuota(); 
+                // 💡 删除单个贴纸后，更新墙面贴纸总数
+                updateWallCountDisplay(this.stickers.length);
             }
 
             renderDrawer() {}
@@ -322,7 +343,7 @@
                 } catch (e) { console.error('Save failed:', e); }
             }
 
-            // 💡 补充一键回收与双击回收的逻辑（同步到 Wall）
+            // 一键回收与双击回收的逻辑
             recallAllStickers() {
                 if (this.isReadOnly) return;
                 const myStickers = this.stickers.filter(s => s.is_editable || s.id == null);
@@ -345,6 +366,8 @@
                     }
                 }
                 syncInventoryAndQuota();
+                // 💡 一键回收后，更新墙面贴纸总数
+                updateWallCountDisplay(this.stickers.length);
                 if(window.app && window.app.toast) window.app.toast.show('已收回贴纸，记得点击保存哦！', 'info');
             }
 
@@ -367,6 +390,8 @@
                 }
                 if (recalledCount > 0) {
                     syncInventoryAndQuota();
+                    // 💡 双击回收后，更新墙面贴纸总数
+                    updateWallCountDisplay(this.stickers.length);
                     if(window.app && window.app.toast) window.app.toast.show(`已收回 ${recalledCount} 张该贴纸`, 'success');
                 }
             }
@@ -523,6 +548,8 @@
         updateWallUI();
         const canvasDiv = document.getElementById('sticker-canvas');
         canvasDiv.innerHTML = ''; 
+        // 💡 切换墙面时，先将数量重置为 0，等待 loadStickers 加载最新数据
+        updateWallCountDisplay(0); 
         window.wallStickerManager = new StickerManager('wall', wallsData[currentWallIndex].id, false);
     }
     

@@ -8,6 +8,16 @@
     .drag-handle { cursor: grab; }
     .drag-handle:active { cursor: grabbing; }
     #auto-save-indicator { transition: all 0.3s ease; }
+    
+    /* 💡 修复：移除了全局的 width: 100% 和 height，改由 Tailwind 控制 */
+    input[type="color"] {
+        -webkit-appearance: none;
+        border: none;
+        padding: 0;
+        background: transparent;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type="color"]::-webkit-color-swatch { border: none; border-radius: 0.5rem; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); }
 </style>
 {% endblock %}
 
@@ -111,6 +121,11 @@
         debounceSave();
     };
 
+    // 监听模糊度和噪点滑块的变化，更新数字显示
+    function updateSliderValue(id, value) {
+        document.getElementById(id + '-val').innerText = value;
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         initSortables();
         const checked = document.querySelector('input[name="visibility"]:checked');
@@ -131,6 +146,7 @@
 
     <form method="post" class="space-y-6">
         <div class="card bg-white dark:bg-base-100 shadow-xl rounded-[2rem] p-6 lg:p-10 space-y-10">
+            
             <div class="bg-base-200/30 rounded-3xl p-6 border border-base-300">
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-xl font-bold flex items-center gap-2"><i class="fas fa-sitemap text-indigo-500"></i> 目录排版管理</h2>
@@ -179,31 +195,103 @@
                 </div>
             </div>
 
-            <div class="bg-base-200/30 rounded-3xl p-6">
-                 <h2 class="text-xl font-bold mb-4">访问权限</h2>
+            <div class="bg-base-200/30 rounded-3xl p-6 border border-base-300">
+                 <h2 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fas fa-palette text-pink-500"></i> 外观与质感设置</h2>
+                 
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div class="space-y-4">
+                         <div class="form-control">
+                             <label class="label pt-0 pb-1"><span class="label-text font-bold text-base-content/80">主背景色</span></label>
+                             <div class="flex items-center gap-3">
+                                 <input type="color" name="bg_color" value="{{ wiki.bg_color or '#4f46e5' }}" class="w-16 h-10 rounded-lg cursor-pointer flex-shrink-0 border border-black/10" />
+                                 <span class="text-xs opacity-50 whitespace-nowrap">影响卡片的主色调</span>
+                             </div>
+                         </div>
+                         <div class="form-control">
+                             <label class="label pt-0 pb-1"><span class="label-text font-bold text-base-content/80">文字前景色</span></label>
+                             <div class="flex items-center gap-3">
+                                 <input type="color" name="fg_color" value="{{ wiki.fg_color or '#ffffff' }}" class="w-16 h-10 rounded-lg cursor-pointer flex-shrink-0 border border-black/10" />
+                                 <span class="text-xs opacity-50 whitespace-nowrap">建议与背景色保持高对比度</span>
+                             </div>
+                         </div>
+                     </div>
+
+                     <div class="space-y-4 bg-white dark:bg-base-200 p-4 rounded-2xl shadow-sm border border-base-300">
+                         <div class="form-control">
+                             <label class="label pt-0 pb-1 flex justify-between">
+                                 <span class="label-text font-bold text-base-content/80">渐变辅助色 (可选)</span>
+                                 <span class="label-text-alt opacity-50">配合主色形成渐变</span>
+                             </label>
+                             <input type="color" name="gradient_color" value="{{ wiki.gradient_color or '#000000' }}" class="w-full h-10 rounded-lg cursor-pointer border border-black/10 block" />
+                         </div>
+                         <div class="form-control">
+                             <label class="label pt-0 pb-1"><span class="label-text font-bold text-base-content/80">渐变方向</span></label>
+                             <select name="gradient_direction" class="select select-bordered select-sm w-full font-medium">
+                                 <option value="to bottom right" {% if wiki.gradient_direction == 'to bottom right' %}selected{% endif %}>↘️ 左上 到 右下 (默认)</option>
+                                 <option value="to right" {% if wiki.gradient_direction == 'to right' %}selected{% endif %}>➡️ 左 到 右</option>
+                                 <option value="to bottom" {% if wiki.gradient_direction == 'to bottom' %}selected{% endif %}>⬇️ 上 到 下</option>
+                                 <option value="to top right" {% if wiki.gradient_direction == 'to top right' %}selected{% endif %}>↗️ 左下 到 右上</option>
+                                 <option value="circle" {% if wiki.gradient_direction == 'circle' %}selected{% endif %}>⭕ 径向渐变 (中心向外)</option>
+                             </select>
+                         </div>
+                     </div>
+
+                     <div class="form-control md:col-span-2 border-t border-base-300 pt-6">
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                             <div>
+                                 <label class="label pt-0 pb-2 flex justify-between">
+                                     <span class="label-text font-bold text-base-content/80">玻璃模糊度 (Blur)</span>
+                                     <span class="label-text-alt font-mono bg-base-200 px-2 py-0.5 rounded"><span id="blur-val">{{ wiki.blur_level or '60' }}</span>px</span>
+                                 </label>
+                                 <input type="range" name="blur_level" min="0" max="150" value="{{ wiki.blur_level or '60' }}" class="range range-xs range-primary" oninput="updateSliderValue('blur', this.value)" />
+                                 <div class="w-full flex justify-between text-[10px] opacity-40 px-2 mt-1">
+                                     <span>清晰</span>
+                                     <span>中等模糊</span>
+                                     <span>重度模糊</span>
+                                 </div>
+                             </div>
+                             <div>
+                                 <label class="label pt-0 pb-2 flex justify-between">
+                                     <span class="label-text font-bold text-base-content/80">噪点质感强度 (Noise)</span>
+                                     <span class="label-text-alt font-mono bg-base-200 px-2 py-0.5 rounded"><span id="noise-val">{{ wiki.pattern or '0.05' }}</span></span>
+                                 </label>
+                                 <input type="range" name="pattern" min="0" max="0.3" step="0.01" value="{{ wiki.pattern or '0.05' }}" class="range range-xs range-secondary" oninput="updateSliderValue('noise', this.value)" />
+                                 <div class="w-full flex justify-between text-[10px] opacity-40 px-2 mt-1">
+                                     <span>纯净无噪</span>
+                                     <span>微弱胶片感</span>
+                                     <span>强质感</span>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+            </div>
+
+            <div class="bg-base-200/30 rounded-3xl p-6 border border-base-300">
+                 <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-lock text-emerald-500"></i> 访问权限</h2>
                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <label class="visibility-card p-4 border rounded-2xl bg-white cursor-pointer transition-all">
+                     <label class="visibility-card p-4 border rounded-2xl bg-white dark:bg-base-200 cursor-pointer transition-all">
                          <input type="radio" name="visibility" value="public" class="radio radio-primary radio-xs float-right" {% if wiki.visibility == 'public' %}checked{% endif %} onclick="togglePermissions('public')">
                          <span class="font-bold block mb-1">公开</span>
                          <span class="text-xs opacity-50">所有人都可看</span>
                      </label>
-                     <label class="visibility-card p-4 border rounded-2xl bg-white cursor-pointer transition-all">
+                     <label class="visibility-card p-4 border rounded-2xl bg-white dark:bg-base-200 cursor-pointer transition-all">
                          <input type="radio" name="visibility" value="restricted" class="radio radio-primary radio-xs float-right" {% if wiki.visibility == 'restricted' %}checked{% endif %} onclick="togglePermissions('restricted')">
                          <span class="font-bold block mb-1">受限</span>
                          <span class="text-xs opacity-50">指定班级或人</span>
                      </label>
-                     <label class="visibility-card p-4 border rounded-2xl bg-white cursor-pointer transition-all">
+                     <label class="visibility-card p-4 border rounded-2xl bg-white dark:bg-base-200 cursor-pointer transition-all">
                          <input type="radio" name="visibility" value="private" class="radio radio-primary radio-xs float-right" {% if wiki.visibility == 'private' %}checked{% endif %} onclick="togglePermissions('private')">
                          <span class="font-bold block mb-1">私有</span>
                          <span class="text-xs opacity-50">仅管理员</span>
                      </label>
                  </div>
                  <div id="permission-details" class="mt-4" style="display:none">
-                    </div>
+                     </div>
             </div>
 
-            <div class="flex justify-end">
-                <button type="submit" class="btn btn-primary btn-lg rounded-2xl px-12">保存设置</button>
+            <div class="flex justify-end pt-4 border-t border-base-200">
+                <button type="submit" class="btn btn-primary btn-lg rounded-2xl px-12 shadow-xl shadow-primary/20 hover:-translate-y-1 transition-transform">保存所有设置</button>
             </div>
         </div>
     </form>

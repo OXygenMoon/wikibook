@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}首页精选 Wiki 管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 拖拽时的幽灵占位符样式 */
+    .sortable-ghost { 
+        opacity: 0.4; 
+        background-color: hsl(var(--p) / 0.1) !important; 
+        border: 2px dashed hsl(var(--p)) !important; 
+        transform: scale(0.98);
+    }
+    .sortable-drag { 
+        cursor: grabbing !important; 
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); 
+    }
+    .drag-handle { cursor: grab; }
+    .drag-handle:active { cursor: grabbing; }
+    
+    .wiki-drag-item {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-6xl mx-auto pb-12 pt-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 bg-white/50 dark:bg-base-100/50 backdrop-blur-xl p-6 rounded-[2rem] border border-black/5 dark:border-white/5 shadow-sm">
+        <div>
+            <h1 class="text-3xl font-black flex items-center gap-3 text-stone-800 dark:text-white">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-orange-500 text-white flex items-center justify-center shadow-lg shadow-primary/30">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                首页精选排版
+            </h1>
+            <p class="text-stone-500 font-medium mt-2 ml-1">拖拽卡片调整首页 3D 滚动区域的展示内容和顺序。左侧为生效展示区。</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('index') }}" class="btn btn-ghost rounded-2xl">预览首页</a>
+            <button id="save-btn" onclick="saveFeaturedOrder()" class="btn btn-primary rounded-2xl px-8 shadow-lg shadow-primary/20">
+                <i class="fas fa-save mr-1"></i> 发布更改
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <div class="flex flex-col h-full">
+            <div class="flex items-center justify-between mb-4 px-2">
+                <h3 class="font-black text-lg text-primary flex items-center gap-2">
+                    <i class="fas fa-star text-warning"></i> 首页展示区
+                </h3>
+                <span class="badge badge-primary badge-sm" id="featured-count">{{ featured|length }}</span>
+            </div>
+            
+            <div class="bg-primary/5 border-2 border-primary/20 border-dashed rounded-[2rem] p-4 flex-1 flex flex-col min-h-[400px]">
+                <div id="featured-list" class="space-y-3 flex-1">
+                    {% for w in featured %}
+                    <div class="wiki-drag-item bg-white dark:bg-base-200 border border-black/5 dark:border-white/5 p-4 rounded-2xl flex items-center justify-between shadow-sm group hover:shadow-md" data-id="{{ w.id }}">
+                        <div class="flex items-center gap-4 flex-1 min-w-0">
+                            <i class="fas fa-grip-vertical text-stone-300 drag-handle text-lg px-2 py-1 hover:text-primary"></i>
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shadow-inner flex-shrink-0" style="background: {{ w.bg_color or '#4f46e5' }}">
+                                {{ w.title[0]|upper }}
+                            </div>
+                            <div class="min-w-0">
+                                <h4 class="font-bold text-stone-800 dark:text-stone-100 truncate text-base">{{ w.title }}</h4>
+                                <p class="text-[10px] text-stone-400 font-mono mt-0.5">ID: {{ w.id }} | 关注: {{ w.subscriptions|length }}</p>
+                            </div>
+                        </div>
+                        <button onclick="moveToAvailable(this)" class="btn btn-circle btn-ghost btn-sm text-stone-400 hover:text-error hover:bg-error/10" title="移出精选">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                    {% else %}
+                    <div id="featured-empty" class="h-full flex flex-col items-center justify-center text-primary/30 pointer-events-none">
+                        <i class="fas fa-inbox text-4xl mb-2"></i>
+                        <p class="font-bold text-sm">将右侧知识库拖拽至此</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col h-full">
+            <div class="flex items-center justify-between mb-4 px-2">
+                <h3 class="font-black text-lg text-stone-600 dark:text-stone-300 flex items-center gap-2">
+                    <i class="fas fa-archive opacity-50"></i> 备选知识库
+                </h3>
+                <span class="badge badge-ghost badge-sm" id="available-count">{{ unfeatured|length }}</span>
+            </div>
+            
+            <div class="bg-white/50 dark:bg-base-200/30 border border-stone-200 dark:border-base-300 rounded-[2rem] p-4 flex-1 flex flex-col min-h-[400px] shadow-inner">
+                <input type="text" id="filter-input" placeholder="筛选备选知识库..." class="input input-sm input-bordered rounded-xl w-full mb-4 bg-white dark:bg-base-100" oninput="filterAvailable()">
+                
+                <div id="available-list" class="space-y-3 flex-1 overflow-y-auto max-h-[600px] custom-scroll pr-2">
+                    {% for w in unfeatured %}
+                    <div class="wiki-drag-item available-item bg-white dark:bg-base-100 border border-stone-100 dark:border-white/5 p-4 rounded-2xl flex items-center justify-between shadow-sm group hover:shadow-md" data-id="{{ w.id }}" data-title="{{ w.title|lower }}">
+                        <div class="flex items-center gap-4 flex-1 min-w-0">
+                            <i class="fas fa-grip-vertical text-stone-300 drag-handle text-lg px-2 py-1 hover:text-primary"></i>
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-white shadow-inner flex-shrink-0 opacity-60" style="background: {{ w.bg_color or '#4f46e5' }}">
+                                {{ w.title[0]|upper }}
+                            </div>
+                            <div class="min-w-0 opacity-80">
+                                <h4 class="font-bold text-stone-700 dark:text-stone-300 truncate text-sm">{{ w.title }}</h4>
+                                <p class="text-[10px] text-stone-400 font-mono mt-0.5">{{ w.created_by.username }}</p>
+                            </div>
+                        </div>
+                        <button onclick="moveToFeatured(this)" class="btn btn-circle btn-ghost btn-sm text-stone-400 hover:text-success hover:bg-success/10" title="加入精选">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    let featuredSortable, availableSortable;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        // 初始化精选列表 Sortable
+        featuredSortable = new Sortable(document.getElementById('featured-list'), {
+            group: 'shared', // 允许在两个列表间拖拽
+            animation: 250,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onAdd: function (evt) {
+                // 拖入时：把加号按钮变成减号按钮，去除半透明样式
+                const item = evt.item;
+                const btn = item.querySelector('button');
+                btn.innerHTML = '<i class="fas fa-minus"></i>';
+                btn.className = "btn btn-circle btn-ghost btn-sm text-stone-400 hover:text-error hover:bg-error/10";
+                btn.setAttribute("onclick", "moveToAvailable(this)");
+                item.querySelector('.w-10').classList.remove('opacity-60');
+                item.querySelector('.min-w-0').classList.remove('opacity-80');
+                item.classList.remove('available-item');
+                checkEmptyState();
+            },
+            onRemove: checkEmptyState,
+            onSort: markAsUnsaved
+        });
+
+        // 初始化备选列表 Sortable
+        availableSortable = new Sortable(document.getElementById('available-list'), {
+            group: 'shared',
+            animation: 250,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onAdd: function (evt) {
+                // 拖入时：把减号按钮变成加号按钮，加上半透明样式
+                const item = evt.item;
+                const btn = item.querySelector('button');
+                btn.innerHTML = '<i class="fas fa-plus"></i>';
+                btn.className = "btn btn-circle btn-ghost btn-sm text-stone-400 hover:text-success hover:bg-success/10";
+                btn.setAttribute("onclick", "moveToFeatured(this)");
+                item.querySelector('.w-10').classList.add('opacity-60');
+                item.querySelector('.min-w-0').classList.add('opacity-80');
+                item.classList.add('available-item');
+                checkEmptyState();
+            },
+            onSort: markAsUnsaved
+        });
+    });
+
+    // 辅助函数：通过按钮直接移动
+    function moveToFeatured(btn) {
+        const item = btn.closest('.wiki-drag-item');
+        document.getElementById('featured-list').appendChild(item);
+        // 手动触发样式改变
+        btn.innerHTML = '<i class="fas fa-minus"></i>';
+        btn.className = "btn btn-circle btn-ghost btn-sm text-stone-400 hover:text-error hover:bg-error/10";
+        btn.setAttribute("onclick", "moveToAvailable(this)");
+        item.querySelector('.w-10').classList.remove('opacity-60');
+        item.querySelector('.min-w-0').classList.remove('opacity-80');
+        item.classList.remove('available-item');
+        checkEmptyState();
+        markAsUnsaved();
+    }
+
+    function moveToAvailable(btn) {
+        const item = btn.closest('.wiki-drag-item');
+        document.getElementById('available-list').appendChild(item);
+        // 手动触发样式改变
+        btn.innerHTML = '<i class="fas fa-plus"></i>';
+        btn.className = "btn btn-circle btn-ghost btn-sm text-stone-400 hover:text-success hover:bg-success/10";
+        btn.setAttribute("onclick", "moveToFeatured(this)");
+        item.querySelector('.w-10').classList.add('opacity-60');
+        item.querySelector('.min-w-0').classList.add('opacity-80');
+        item.classList.add('available-item');
+        checkEmptyState();
+        markAsUnsaved();
+    }
+
+    // 处理空状态提示与统计数字
+    function checkEmptyState() {
+        const featuredList = document.getElementById('featured-list');
+        const emptyState = document.getElementById('featured-empty');
+        const items = featuredList.querySelectorAll('.wiki-drag-item');
+        
+        document.getElementById('featured-count').innerText = items.length;
+        document.getElementById('available-count').innerText = document.querySelectorAll('#available-list .wiki-drag-item').length;
+
+        if (emptyState) {
+            if (items.length > 0) {
+                emptyState.style.display = 'none';
+            } else {
+                emptyState.style.display = 'flex';
+            }
+        }
+    }
+
+    // 备选库本地搜索过滤
+    function filterAvailable() {
+        const keyword = document.getElementById('filter-input').value.toLowerCase();
+        const items = document.querySelectorAll('.available-item');
+        items.forEach(item => {
+            const title = item.getAttribute('data-title');
+            if (title.includes(keyword)) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function markAsUnsaved() {
+        const btn = document.getElementById('save-btn');
+        btn.classList.add('btn-warning');
+        btn.classList.remove('btn-primary');
+        btn.innerHTML = '<i class="fas fa-exclamation-circle mr-1"></i> 未保存';
+    }
+
+    // 核心提交逻辑
+    async function saveFeaturedOrder() {
+        const btn = document.getElementById('save-btn');
+        const originalHtml = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span> 保存中...';
+
+        // 💡 按照 DOM 顺序收集精选区的所有 Wiki ID
+        const featuredItems = document.querySelectorAll('#featured-list .wiki-drag-item');
+        const featuredIds = Array.from(featuredItems).map(item => item.getAttribute('data-id'));
+
+        try {
+            const response = await fetch("{{ url_for('update_featured_wikis') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ featured_ids: featuredIds })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                if(app && app.toast) app.toast.show('精选列表与顺序保存成功！', 'success');
+                btn.classList.remove('btn-warning');
+                btn.classList.add('btn-primary');
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i> 已发布';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-save mr-1"></i> 发布更改';
+                    btn.disabled = false;
+                }, 2000);
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error(error);
+            if(app && app.toast) app.toast.show('保存失败: ' + error.message, 'error');
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

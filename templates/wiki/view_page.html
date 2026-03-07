@@ -124,6 +124,35 @@
 }
 </script>
 
+<div class="fixed inset-y-0 left-4 md:left-8 z-[100] flex items-center group/left-nav hidden lg:flex">
+    <div class="relative pointer-events-auto">
+        <div class="absolute inset-y-0 left-0 w-8 bg-white/20 dark:bg-black/20 backdrop-blur-md rounded-full border border-white/30 shadow-lg transition-all duration-500 group-hover/left-nav:bg-white/40 dark:group-hover/left-nav:bg-black/40 -z-10"></div>
+        
+        <div class="flex flex-col gap-3 py-4 pl-3">
+            {% for p in pages %}
+            <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="flex items-center gap-3 group/item relative z-10 w-max cursor-pointer">
+                <div class="w-2 h-2 rounded-full transition-all duration-300 group-hover/item:scale-150 flex-shrink-0"
+                     style="background-color: {{ 'var(--theme-primary)' if page and p.id == page.id else 'hsl(var(--bc) / 0.3)' }}; 
+                            box-shadow: {{ '0 0 10px var(--theme-primary)' if page and p.id == page.id else 'none' }};">
+                </div>
+                <span class="opacity-0 group-hover/left-nav:opacity-50 text-[10px] font-bold whitespace-nowrap transition-all duration-300 -translate-x-2 group-hover/left-nav:translate-x-0 text-base-content drop-shadow-sm">
+                    {{ p.title }}
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div id="right-toc-dots" class="fixed inset-y-0 right-4 md:right-8 z-[100] flex items-center group/right-nav hidden xl:flex opacity-0 transition-opacity duration-500">
+    <div class="relative pointer-events-auto">
+        <div class="absolute inset-y-0 right-0 w-8 bg-white/20 dark:bg-black/20 backdrop-blur-md rounded-full border border-white/30 shadow-lg transition-all duration-500 group-hover/right-nav:bg-white/40 dark:group-hover/right-nav:bg-black/40 -z-10"></div>
+        
+        <div id="toc-dots-container" class="flex flex-col gap-3 py-4 pr-3 items-end">
+        </div>
+    </div>
+</div>
+
 <div id="split-container" class="flex transition-all duration-500 ease-in-out relative w-full mx-auto max-w-5xl">
     
     <div id="wiki-main-content" class="flex-1 min-w-0 transition-all duration-500">
@@ -421,6 +450,95 @@
         </div>
     </div>
 </div>
+
+<dialog id="grading_modal" class="modal bg-black/60 backdrop-blur-md">
+    <div class="modal-box w-11/12 max-w-7xl h-[90vh] p-0 overflow-hidden rounded-[2.5rem] flex flex-col border border-white/20 shadow-2xl">
+        
+        <div class="px-8 py-6 border-b border-stone-100 flex flex-col md:flex-row justify-between items-center bg-white dark:bg-base-200 gap-4">
+            <div>
+                <h3 class="text-2xl font-black text-stone-800 dark:text-white" id="grading_task_title">批阅矩阵</h3>
+                <div class="flex items-center gap-3 mt-1">
+                    <span class="text-[10px] opacity-40 font-bold uppercase tracking-widest">Assignment Matrix</span>
+                    <div id="stats_summary" class="flex gap-2"></div> </div>
+            </div>
+            
+            <div class="flex items-center gap-2 bg-stone-100 dark:bg-base-300 p-1.5 rounded-2xl">
+                <select id="filter_class" class="select select-sm select-ghost font-bold text-xs" onchange="app.assignments.applyFilter()">
+                    <option value="all">所有班级</option>
+                </select>
+                <div class="w-px h-4 bg-stone-300 mx-1"></div>
+                <button onclick="app.assignments.showMatrix()" class="btn btn-sm btn-ghost rounded-xl">
+                    <i class="fas fa-th-large mr-1"></i> 矩阵概览
+                </button>
+                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-hidden relative">
+            
+            <div id="matrix_view" class="h-full overflow-y-auto p-8 custom-scroll bg-stone-50/50 dark:bg-base-300/20">
+                <div id="matrix_grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                    </div>
+            </div>
+
+<div id="split_view" class="hidden h-full flex overflow-hidden">
+    <div class="w-64 border-r border-stone-100 dark:border-white/5 overflow-y-auto bg-stone-50 dark:bg-base-300/30 p-4 custom-scroll">
+        <div class="space-y-1.5" id="side_student_list"></div>
+    </div>
+
+    <div class="flex-1 flex flex-col bg-white dark:bg-base-100 overflow-hidden relative">
+        
+        <div id="grading_empty_state" class="flex-1 flex flex-col items-center justify-center text-stone-300">
+            <i class="fas fa-mouse-pointer text-5xl mb-4"></i>
+            <p class="font-bold">请在左侧选择学生</p>
+        </div>
+        
+        <div id="grading_content_area" class="hidden flex-1 flex flex-col overflow-hidden">
+            <div class="flex-1 overflow-y-auto p-10 custom-scroll prose dark:prose-invert max-w-none" id="submission_html">
+                </div>
+            
+            <div class="p-6 bg-stone-50 dark:bg-base-200 border-t border-stone-100 dark:border-white/5 flex flex-row items-end gap-4 shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
+                <div class="flex-1">
+                    <label class="label py-1"><span class="label-text font-black text-[10px] opacity-40 uppercase">Feedback</span></label>
+                    <textarea id="grade_feedback" class="textarea textarea-bordered w-full h-12 min-h-[3rem] rounded-xl bg-white dark:bg-base-300 leading-tight py-2" placeholder="写点评价..."></textarea>
+                </div>
+                
+                <div class="w-32">
+                    <label class="label py-1"><span class="label-text font-black text-[10px] opacity-40 uppercase">Grade</span></label>
+                    <select id="grade_value" class="select select-bordered w-full rounded-xl font-black">
+                        <option value="A+">优秀 A+</option>
+                        <option value="A">良好 A</option>
+                        <option value="B">合格 B</option>
+                        <option value="C">重做 C</option>
+                    </select>
+                </div>
+                
+                <div class="pb-0.5">
+                    <button onclick="app.assignments.submitGrade()" class="btn btn-primary rounded-xl px-8 h-12 shadow-lg shadow-primary/20 transition-all active:scale-95">
+                        确认批改
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="submit_assignment_modal" class="modal bg-black/40 backdrop-blur-sm">
+    <div class="modal-box rounded-[2.5rem] p-8 border border-white/20">
+        <h3 class="font-black text-2xl mb-2 text-stone-800 dark:text-white" id="submit_modal_title">提交作业</h3>
+        <p class="text-xs opacity-50 mb-6 font-bold uppercase tracking-wider">选择一篇 Book 文档作为快照上传</p>
+        <div id="my_notes_selector" class="space-y-2 max-h-80 overflow-y-auto custom-scroll pr-2">
+            </div>
+        <div class="modal-action mt-8">
+            <form method="dialog"><button class="btn btn-ghost rounded-2xl">取消</button></form>
+        </div>
+    </div>
+</dialog>
+
+
 {% endblock %}
 
 {% block scripts %}
@@ -440,6 +558,7 @@ window.isSplitMode = false;
 window.quickEditor = null;
 window.applyLayout = null;
 window.currentEditNoteId = null;
+window.app = window.app || {};
 
 // 💡 极速且绝对安全的数据解析：从 HTML script 标签中读取纯 JSON 字符串
 window.myNotesData = {};
@@ -710,6 +829,56 @@ builtins.input = custom_input
 });
 
 // ==========================================
+    // 💡 动态生成右侧标题小圆点 (含悬浮全显标签，瘦身版)
+    // ==========================================
+    const rightDotsContainer = document.getElementById('toc-dots-container');
+    const rightDotsWrapper = document.getElementById('right-toc-dots');
+    const articleHeaders = document.querySelectorAll('.markdown-body h1, .markdown-body h2, .markdown-body h3');
+
+    if (articleHeaders.length > 0 && rightDotsContainer) {
+        rightDotsWrapper.classList.remove('opacity-0');
+        let dotsHtml = '';
+        articleHeaders.forEach((h, index) => {
+            if (!h.id) h.id = 'dot-heading-' + index;
+            // 💡 构造带标签的右侧结构：文字在外侧，圆点在内侧对齐胶囊
+            dotsHtml += `
+                <a href="#${h.id}" class="flex items-center justify-end gap-3 group/item w-max relative z-10 cursor-pointer" 
+                   onclick="event.preventDefault(); window.scrollTo({top: document.getElementById('${h.id}').offsetTop - 80, behavior: 'smooth'});">
+                    <span class="opacity-0 group-hover/right-nav:opacity-50 text-[10px] font-bold whitespace-nowrap transition-all duration-300 translate-x-2 group-hover/right-nav:translate-x-0 text-base-content drop-shadow-sm">
+                        ${h.innerText}
+                    </span>
+                    <div class="toc-dot w-2 h-2 rounded-full transition-all duration-300 group-hover/item:scale-150 flex-shrink-0 bg-base-content/30"></div>
+                </a>`;
+        });
+        rightDotsContainer.innerHTML = dotsHtml;
+
+        const dotElements = rightDotsContainer.querySelectorAll('.toc-dot');
+        const observerOptions = { rootMargin: '-100px 0px -66%', threshold: 0 };
+        
+        const dotObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const activeId = entry.target.id;
+                    const activeIndex = Array.from(articleHeaders).findIndex(h => h.id === activeId);
+                    dotElements.forEach((dot, i) => {
+                        if (i === activeIndex) {
+                            dot.classList.add('bg-primary', 'scale-125');
+                            dot.style.boxShadow = '0 0 10px var(--theme-primary)';
+                            dot.classList.remove('bg-base-content/30');
+                        } else {
+                            dot.classList.remove('bg-primary', 'scale-125');
+                            dot.style.boxShadow = 'none';
+                            dot.classList.add('bg-base-content/30');
+                        }
+                    });
+                }
+            });
+        }, observerOptions);
+
+        articleHeaders.forEach(header => dotObserver.observe(header));
+    }
+
+// ==========================================
 // 📖 核心功能：分屏阅读与写作 (Wiki + Book)
 // ==========================================
 
@@ -911,6 +1080,210 @@ window.convert_wiki_page = function() {
             }
         })
         .catch(error => { console.error('Error:', error); alert('请求发生错误'); });
+    }
+};
+
+// ==========================================
+// 🎯 作业系统全功能引擎 (包含学生提交 + 教师批阅)
+// ==========================================
+app.assignments = {
+    allData: [],       
+    filteredData: [],  
+    currentAssignId: null,
+    currentStudentId: null,
+
+    // ------------------------------------------
+    // 📤 学生端功能 (Student Actions)
+    // ------------------------------------------
+    
+    // 打开提交弹窗
+    openSubmitModal(assignId, title) {
+        this.currentAssignId = assignId;
+        const selector = document.getElementById('my_notes_selector');
+        if(!selector) return app.toast.show("找不到提交组件，请检查HTML", "error");
+        
+        document.getElementById('submit_modal_title').innerText = `提交：${title}`;
+        
+        // 从 window.myNotesData 获取笔记列表
+        const noteIds = Object.keys(window.myNotesData || {});
+        if (noteIds.length === 0) {
+            selector.innerHTML = '<div class="text-center py-10 opacity-50 italic">你的 Book 库里还没有笔记，先写一篇吧</div>';
+        } else {
+            selector.innerHTML = noteIds.map(id => `
+                <div class="flex items-center justify-between p-4 mb-2 bg-stone-50 dark:bg-base-200 hover:bg-primary/10 border border-stone-100 dark:border-white/5 rounded-2xl cursor-pointer transition-all group" 
+                     onclick="app.assignments.doSubmit(${id})">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">📄</span>
+                        <span class="font-bold text-stone-700 dark:text-stone-200">${window.myNotesData[id].title}</span>
+                    </div>
+                    <i class="fas fa-arrow-right text-stone-300 group-hover:text-primary transition-all"></i>
+                </div>
+            `).join('');
+        }
+        document.getElementById('submit_assignment_modal').showModal();
+    },
+
+    // 执行快照提交
+    doSubmit(noteId) {
+        if(!confirm("确定要提交这份笔记的当前版本作为快照吗？")) return;
+        fetch('/api/assignments/submit', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ assignment_id: this.currentAssignId, note_id: noteId })
+        }).then(r => r.json()).then(res => {
+            if(res.success) {
+                app.toast.show("作业快照已上传成功！", "success");
+                setTimeout(() => location.reload(), 800);
+            } else {
+                app.toast.show(res.error || "提交失败", "error");
+            }
+        });
+    },
+
+    // ------------------------------------------
+    // 📊 教师端功能 (Teacher Matrix Actions)
+    // ------------------------------------------
+
+    openConsole(assignId, title) {
+        this.currentAssignId = assignId;
+        document.getElementById('grading_task_title').innerText = title;
+        this.showMatrix(); 
+        fetch(`/api/assignments/${assignId}/submissions`)
+            .then(r => r.json())
+            .then(data => {
+                this.allData = data.students;
+                this.buildFilters();
+                this.applyFilter();
+                document.getElementById('grading_modal').showModal();
+            });
+    },
+
+    buildFilters() {
+        const classSelect = document.getElementById('filter_class');
+        const classes = [...new Set(this.allData.map(s => s.class_name))].sort();
+        classSelect.innerHTML = '<option value="all">所有班级</option>' + 
+            classes.map(c => `<option value="${c}">${c}</option>`).join('');
+    },
+
+    applyFilter() {
+        const classVal = document.getElementById('filter_class').value;
+        this.filteredData = classVal === 'all' ? this.allData : this.allData.filter(s => s.class_name === classVal);
+        this.renderMatrix();
+        this.updateStats();
+        if(!document.getElementById('split_view').classList.contains('hidden')) this.renderSideList();
+    },
+
+    updateStats() {
+        const total = this.filteredData.length;
+        const submitted = this.filteredData.filter(s => s.status !== 'unsubmitted').length;
+        const graded = this.filteredData.filter(s => s.status === 'graded').length;
+        document.getElementById('stats_summary').innerHTML = `
+            <span class="badge badge-ghost border-none bg-stone-100 text-[10px] font-bold uppercase">Total: ${total}</span>
+            <span class="badge badge-ghost border-none bg-amber-100 text-amber-600 text-[10px] font-bold">Pending: ${submitted - graded}</span>
+        `;
+    },
+
+    renderMatrix() {
+        const grid = document.getElementById('matrix_grid');
+        const statusMap = {
+            unsubmitted: { color: 'bg-stone-300', text: '未交' },
+            pending: { color: 'bg-amber-400 animate-pulse', text: '待批' },
+            graded: { color: 'bg-emerald-500', text: '已批' }
+        };
+        grid.innerHTML = this.filteredData.map(s => `
+            <div onclick="app.assignments.switchToDetail(${s.user_id})" 
+                 class="p-4 bg-white dark:bg-base-200 rounded-[1.5rem] border border-black/5 hover:border-primary/30 hover:shadow-xl transition-all cursor-pointer group">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="w-2 h-2 rounded-full ${statusMap[s.status].color}"></div>
+                    <span class="text-[9px] font-black uppercase opacity-30">${statusMap[s.status].text}</span>
+                </div>
+                <p class="font-black text-stone-800 dark:text-stone-100 truncate text-sm">${s.real_name}</p>
+                <p class="text-[9px] opacity-40 font-mono mt-0.5">${s.class_name}</p>
+            </div>
+        `).join('');
+    },
+
+    showMatrix() {
+        document.getElementById('matrix_view').classList.remove('hidden');
+        document.getElementById('split_view').classList.add('hidden');
+    },
+
+    switchToDetail(userId) {
+        document.getElementById('matrix_view').classList.add('hidden');
+        document.getElementById('split_view').classList.remove('hidden');
+        this.renderSideList();
+        this.loadSubmission(userId);
+    },
+
+    renderSideList() {
+        const container = document.getElementById('side_student_list');
+        const dotMap = { unsubmitted: 'bg-stone-200', pending: 'bg-amber-400 animate-pulse', graded: 'bg-emerald-500' };
+        container.innerHTML = this.filteredData.map(s => `
+            <div id="side-stu-${s.user_id}" onclick="app.assignments.loadSubmission(${s.user_id})" 
+                 class="p-2.5 rounded-xl hover:bg-white dark:hover:bg-base-200 cursor-pointer flex items-center gap-3 transition-all ${s.user_id === this.currentStudentId ? 'bg-white shadow-sm' : ''}">
+                <div class="w-2 h-2 rounded-full ${dotMap[s.status]}"></div>
+                <p class="text-xs font-bold text-stone-700 dark:text-stone-200 truncate">${s.real_name}</p>
+            </div>
+        `).join('');
+    },
+
+    loadSubmission(studentId) {
+    this.currentStudentId = studentId;
+    // 视觉反馈：处理侧边栏选中状态
+    document.querySelectorAll('#side_student_list > div').forEach(d => d.classList.remove('bg-white', 'shadow-sm', 'dark:bg-base-200'));
+    document.getElementById(`side-stu-${studentId}`)?.classList.add('bg-white', 'shadow-sm', 'dark:bg-base-200');
+
+    // 💡 确保显示内容区，隐藏空状态
+    const contentArea = document.getElementById('grading_content_area');
+    const emptyState = document.getElementById('grading_empty_state');
+    const preview = document.getElementById('submission_html');
+
+    fetch('/api/assignments/get_submission', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ assignment_id: this.currentAssignId, user_id: studentId })
+    }).then(r => r.json()).then(data => {
+        if(data.success) {
+            emptyState.classList.add('hidden');
+            contentArea.classList.remove('hidden');
+            
+            // 💡 注入 HTML
+            preview.innerHTML = data.html; 
+            
+            document.getElementById('grade_feedback').value = data.feedback || "";
+            document.getElementById('grade_value').value = data.grade || 'A';
+            
+            // 💡 重新执行代码高亮（防止快照里的代码变黑白）
+            if (window.hljs) {
+                preview.querySelectorAll('pre code').forEach((el) => {
+                    hljs.highlightElement(el);
+                });
+            }
+        } else {
+            // 处理未提交的情况
+            contentArea.classList.add('hidden');
+            emptyState.classList.remove('hidden');
+            emptyState.innerHTML = `<div class="text-center opacity-30"><i class="fas fa-ghost text-5xl mb-4"></i><p class="font-black">该生尚未提交快照</p></div>`;
+        }
+    });
+},
+
+    submitGrade() {
+        const feedback = document.getElementById('grade_feedback').value;
+        const grade = document.getElementById('grade_value').value;
+        fetch('/api/assignments/grade', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ assignment_id: this.currentAssignId, user_id: this.currentStudentId, grade, feedback })
+        }).then(r => r.json()).then(res => {
+            if(res.success) {
+                app.toast.show("批改成功", "success");
+                fetch(`/api/assignments/${this.currentAssignId}/submissions`).then(r => r.json()).then(data => {
+                    this.allData = data.students;
+                    this.applyFilter();
+                });
+            }
+        });
     }
 };
 </script>

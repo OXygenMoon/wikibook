@@ -1,333 +1,663 @@
 <!DOCTYPE html>
+
 {% set is_book_mode = request.path.startswith('/book') %}
+
 {% set current_app = 'book' if is_book_mode else ('sticker' if request.endpoint == 'sticker_walls_view' else ('leaderboard' if request.endpoint == 'leaderboard' else ('announcements' if request.endpoint == 'announcements_view' else 'square'))) %}
 
+
+
 <html lang="zh-CN">
+
 <head>
+
     <meta charset="UTF-8" />
+
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>{% block title %}{% endblock %}WikiBook</title>
+
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📘</text></svg>">
 
+
+
     <link href="{{ url_for('static', filename='css/daisyui.full.css') }}" rel="stylesheet" type="text/css" />
+
     <script src="{{ url_for('static', filename='js/tailwindcss.js') }}"></script>
+
     
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/easymde.min.css') }}">
+
     <script src="{{ url_for('static', filename='js/easymde.min.js') }}"></script>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/link-card.css') }}">
+
     <script src="{{ url_for('static', filename='js/link-card.js') }}"></script>
+
     
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/atom-one-dark.min.css') }}">
+
     <script src="{{ url_for('static', filename='js/highlight.min.js') }}"></script>
+
     <script>hljs.highlightAll();</script>
 
+
+
     <script>
+
         (function() {
+
             const savedTheme = localStorage.getItem('theme');
+
             const isBookMode = window.location.pathname.startsWith('/book');
+
             const lightTheme = isBookMode ? 'winter' : 'cupcake';
+
             const darkTheme = 'business'; 
+
             if (savedTheme === 'dark') {
+
                 document.documentElement.setAttribute('data-theme', darkTheme);
+
                 document.documentElement.classList.add('dark');
+
             } else {
+
                 document.documentElement.setAttribute('data-theme', lightTheme);
+
                 document.documentElement.classList.remove('dark');
+
             }
+
         })();
+
     </script>
+
+
 
     <style>
+
         :root {
+
             --theme-primary: #ea580c;
+
             --theme-primary-hover: #d97706;
+
             --toggle-bg: #ea580c;
+
         }
+
+
 
         :root.dark {
+
             --theme-primary: #f97316;
+
             --theme-primary-hover: #fb923c;
+
             --toggle-bg: #f97316;
+
         }
+
         
+
         ::selection { background-color: var(--theme-primary); color: #ffffff; }
 
+
+
         {% if is_book_mode %}
+
         :root {
+
             --theme-primary: #4f46e5;
+
             --theme-primary-hover: #4338ca;
+
             --toggle-bg: #4f46e5;
+
         }
+
         {% endif %}
 
+
+
         ::-webkit-scrollbar { width: 4px; height: 4px; }
+
         ::-webkit-scrollbar-track { background: transparent; }
+
         ::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.2); border-radius: 10px; }
+
         ::-webkit-scrollbar-thumb:hover { background: hsl(var(--bc) / 0.4); }
 
+
+
         .EasyMDEContainer { background-color: hsl(var(--b1)); border-radius: 1rem; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+
         .editor-toolbar { border-color: transparent; border-bottom: 1px solid hsl(var(--b2)); background: hsl(var(--b2) / 0.2); padding: 10px; }
+
         .CodeMirror { border-color: transparent; min-height: 400px; font-family: 'Inter', sans-serif; }
+
         .editor-statusbar { display: none; }
 
+
+
         .text-primary { color: var(--theme-primary) !important; }
+
         .bg-primary { background-color: var(--theme-primary) !important; }
+
         .border-primary { border-color: var(--theme-primary) !important; }
+
         
+
         .btn-primary { background-color: var(--theme-primary) !important; border-color: var(--theme-primary) !important; color: white !important; }
+
         .btn-primary:hover { background-color: var(--theme-primary-hover) !important; border-color: var(--theme-primary-hover) !important; }
+
         .text-primary svg { opacity: 1 !important; }
 
+
+
         /* ---------------------------------------------------- */
+
         /* --- 全开放式悬浮导航岛 (Floating Islands) --- */
+
         /* ---------------------------------------------------- */
+
         
+
         .top-logo-area { position: absolute; top: 1.5rem; left: 2.5rem; z-index: 50; }
 
+
+
         .top-left-island { position: fixed; top: 1.25rem; left: 1.5rem; z-index: 100; display: flex; gap: 0.5rem; align-items: center; pointer-events: none; }
+
         .top-right-island { position: fixed; top: 1.25rem; right: 1.5rem; z-index: 100; display: flex; gap: 0.5rem; align-items: center; pointer-events: none; }
+
         .top-left-island > *, .top-right-island > * { pointer-events: auto; }
 
+
+
         /* 极致 iOS/macOS 玻璃拟态导航按钮 */
+
         .nav-btn {
+
             background: rgba(255, 255, 255, 0.35) !important; 
+
             backdrop-filter: blur(40px) saturate(250%) !important; 
+
             -webkit-backdrop-filter: blur(40px) saturate(250%) !important;
+
             border: 1px solid rgba(255, 255, 255, 0.6) !important; 
+
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.9) !important; 
+
             border-radius: 9999px; padding: 0.4rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;
+
             font-size: 0.85rem; font-weight: 700; color: hsl(var(--bc) / 0.85);
+
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; height: 2.25rem;
+
         }
+
         .dark .nav-btn {
+
             background: rgba(40, 40, 40, 0.4) !important; border-color: rgba(255, 255, 255, 0.15) !important;
+
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important; color: hsl(var(--bc) / 0.95);
+
         }
+
         .nav-btn:hover, .dropdown.dropdown-open > .nav-btn {
+
             transform: translateY(-2px) scale(1.02); color: var(--theme-primary); 
+
             background: rgba(255, 255, 255, 0.5) !important; 
+
             box-shadow: 0 12px 40px -4px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(255, 255, 255, 1) !important;
+
         }
+
         .dark .nav-btn:hover, .dark .dropdown.dropdown-open > .nav-btn { background: rgba(60, 60, 60, 0.5) !important; }
 
+
+
         /* 并排多按钮的胶囊组 (APP Switcher) */
+
         .nav-pill-group {
+
             background: rgba(255, 255, 255, 0.35); backdrop-filter: blur(40px) saturate(250%); -webkit-backdrop-filter: blur(40px) saturate(250%);
+
             border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+
             border-radius: 9999px; padding: 0.2rem; display: flex; align-items: center; gap: 0.15rem; height: 2.25rem;
+
         }
+
         .dark .nav-pill-group { background: rgba(40, 40, 40, 0.4); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15); }
+
         .nav-pill-item { padding: 0.3rem 0.8rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; color: hsl(var(--bc) / 0.7); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; display: flex; align-items: center; gap: 0.35rem; height: 100%; position: relative; z-index: 1; }
+
         .nav-pill-item:hover { color: hsl(var(--bc)); background: rgba(0, 0, 0, 0.04); }
+
         .dark .nav-pill-item:hover { background: rgba(255, 255, 255, 0.08); }
+
         .nav-pill-item.active { background: var(--theme-primary); color: white; box-shadow: 0 4px 12px -2px var(--theme-primary); text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
 
+
+
         /* 模式切换小胶囊 (PC端) */
+
         .nav-mode-toggle {
+
             padding: 0.2rem; display: flex; align-items: center; background: rgba(255, 255, 255, 0.35); 
+
             backdrop-filter: blur(40px) saturate(250%); -webkit-backdrop-filter: blur(40px) saturate(250%);
+
             border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+
             border-radius: 9999px; cursor: pointer; height: 2.25rem; position: relative;
+
         }
+
         .dark .nav-mode-toggle { background: rgba(40, 40, 40, 0.4); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15); }
+
         .nav-mode-option { padding: 0 0.75rem; height: 100%; display: flex; align-items: center; font-size: 0.75rem; font-weight: 800; z-index: 10; transition: color 0.3s; color: hsl(var(--bc) / 0.65); border-radius: 9999px; }
+
         .nav-mode-option.active { color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+
         .nav-mode-slider { position: absolute; top: 0.2rem; bottom: 0.2rem; left: 0.2rem; width: calc(50% - 0.2rem); background-color: var(--toggle-bg); border-radius: 9999px; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 5; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
         {% if is_book_mode %} .nav-mode-slider { transform: translateX(100%); } {% else %} .nav-mode-slider { transform: translateX(0); } {% endif %}
+
         
+
         /* 右侧用户头像胶囊特化 */
+
         .user-nav-dropdown {
+
             background: rgba(255, 255, 255, 0.35); backdrop-filter: blur(40px) saturate(250%); -webkit-backdrop-filter: blur(40px) saturate(250%);
+
             border-radius: 9999px; padding: 0.2rem 0.6rem 0.2rem 0.2rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer; 
+
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.9); border: 1px solid rgba(255, 255, 255, 0.6); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); height: 2.25rem;
+
         }
+
         .dark .user-nav-dropdown { background: rgba(40, 40, 40, 0.4); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15); }
+
         .user-nav-dropdown:hover { transform: translateY(-2px) scale(1.02); background: rgba(255, 255, 255, 0.5); box-shadow: 0 12px 40px -4px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(255, 255, 255, 1); }
+
         .dark .user-nav-dropdown:hover { background: rgba(60, 60, 60, 0.5); }
+
         .nav-avatar-circle { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.75rem; color: white; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 5px rgba(0,0,0,0.15); }
 
+
+
         /* 下拉菜单通用样式 */
+
         .glass-dropdown-content {
+
             background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(50px) saturate(200%); -webkit-backdrop-filter: blur(50px) saturate(200%);
+
             border: 1px solid rgba(255, 255, 255, 0.7); border-radius: 1.5rem; 
+
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), inset 0 1px 2px rgba(255,255,255,0.9);
+
         }
+
         .dark .glass-dropdown-content { background: rgba(40, 40, 40, 0.65); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.12); }
+
         
+
         .nav-menu-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.8rem; border-radius: 0.5rem; color: hsl(var(--bc) / 0.8); transition: all 0.2s; font-weight: 600; font-size: 0.85rem; }
+
         .nav-menu-item:hover { background: hsl(var(--bc) / 0.05); color: var(--theme-primary); }
 
+
+
         .text-fade-edge { display: block; width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%); mask-image: linear-gradient(to right, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%); }
+
         details.collapse > summary { list-style: none; } details.collapse > summary::-webkit-details-marker { display: none; }
+
         .mobile-subnav::-webkit-scrollbar { display: none; }
 
+
+
         /* ---------------------------------------------------- */
+
         /* --- 全局便签 (Sticky Notes) 专属样式 --- */
+
         /* ---------------------------------------------------- */
+
         .sticky-note {
+
             position: fixed; width: 260px; min-height: 260px; display: flex; flex-direction: column;
+
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.6);
+
             border-radius: 1rem; overflow: hidden; 
+
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+
             border: 1px solid rgba(255,255,255,0.4);
+
         }
+
         .dark .sticky-note { border-color: rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+
         
+
         .sticky-note.dragging { 
+
             transform: scale(1.03) rotate(-1deg); 
+
             box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.3); 
+
             opacity: 0.95; transition: transform 0.1s;
+
         }
+
         
+
         .note-header { 
+
             height: 2.5rem; cursor: grab; display: flex; justify-content: space-between; 
+
             align-items: center; padding: 0 0.8rem; background: rgba(0,0,0,0.04); 
+
             border-bottom: 1px solid rgba(0,0,0,0.05);
+
         }
+
         .dark .note-header { background: rgba(255,255,255,0.05); border-bottom-color: rgba(255,255,255,0.05); }
+
         .note-header:active { cursor: grabbing; }
+
         
+
         .note-color-dot { width: 14px; height: 14px; border-radius: 50%; cursor: pointer; transition: transform 0.2s; border: 1px solid rgba(0,0,0,0.1); box-shadow: inset 0 2px 4px rgba(255,255,255,0.5); }
+
         .note-color-dot:hover { transform: scale(1.2); }
+
         
+
         .note-body { 
+
             flex: 1; width: 100%; padding: 1rem; background: transparent; 
+
             resize: vertical; border: none; outline: none; font-size: 0.95rem; 
+
             line-height: 1.6; color: rgba(0,0,0,0.8); font-weight: 600; min-height: 200px; 
+
         }
+
         .dark .note-body { color: rgba(255,255,255,0.9); }
+
         .note-body::placeholder { color: rgba(0,0,0,0.3); font-weight: 500; }
+
         .dark .note-body::placeholder { color: rgba(255,255,255,0.3); }
+
         
+
         .note-theme-yellow { background: rgba(253, 230, 138, 0.85); }
+
         .note-theme-pink { background: rgba(251, 207, 232, 0.85); }
+
         .note-theme-blue { background: rgba(191, 219, 254, 0.85); }
+
         .note-theme-green { background: rgba(187, 247, 208, 0.85); }
+
         .dark .note-theme-yellow { background: rgba(161, 98, 7, 0.85); }
+
         .dark .note-theme-pink { background: rgba(157, 23, 77, 0.85); }
+
         .dark .note-theme-blue { background: rgba(30, 58, 138, 0.85); }
+
         .dark .note-theme-green { background: rgba(22, 101, 52, 0.85); }
+
         #sticky-notes-container { display: none; }
+
         html.show-stickies #sticky-notes-container { display: block; }
 
+
+
         .note-actions button { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: rgba(0,0,0,0.4); transition: all 0.2s; }
+
         .dark .note-actions button { color: rgba(255,255,255,0.4); }
+
         .note-actions button:hover { background: rgba(0,0,0,0.1); color: var(--theme-primary); }
+
         .dark .note-actions button:hover { background: rgba(255,255,255,0.1); }
+
         .note-actions button.btn-close:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+
     </style>
 
+
+
     <script>
+
         if(localStorage.getItem('show_stickies') === 'true') {
+
             document.documentElement.classList.add('show-stickies');
+
         }
+
     </script>
+
     {% block extra_css %}{% endblock %}
+
 </head>
+
 <body class="bg-base-200/40 text-base-content font-sans antialiased min-h-screen relative flex flex-col overflow-x-hidden pt-12 md:pt-16">
+
     <div class="top-left-island hidden md:flex {% if not is_book_mode %}{% endif %} transition-all duration-300">
+
         <div class="nav-mode-toggle mr-1" onclick="window.location.href='{{ url_for('index') if is_book_mode else url_for('book_index') }}'">
+
             <div class="nav-mode-slider"></div>
+
             <div class="nav-mode-option {{ 'active' if not is_book_mode else '' }}"><i class="fas fa-globe mr-1 opacity-70"></i>Wiki</div>
+
             <div class="nav-mode-option {{ 'active' if is_book_mode else '' }}"><i class="fas fa-book mr-1 opacity-70"></i>Book</div>
+
             <div id="announcement-dot" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full hidden z-50 ring-2 ring-white shadow-md animate-pulse"></div>
+
         </div>
+
+
 
         <div class="nav-pill-group">
+
             {% if not is_book_mode %}
+
                 <a href="{{ url_for('index') }}" class="nav-pill-item {{ 'active' if current_app == 'square' else '' }}"><i class="fas fa-compass"></i> 广场</a>
+
                 <a href="{{ url_for('sticker_walls_view') }}" class="nav-pill-item {{ 'active' if current_app == 'sticker' else '' }}"><i class="fas fa-border-all"></i> 贴纸墙</a>
+
                 <a href="{{ url_for('leaderboard') }}" class="nav-pill-item {{ 'active' if current_app == 'leaderboard' else '' }}"><i class="fas fa-trophy"></i> 排行榜</a>
+
                 <a href="{{ url_for('announcements_view') }}" class="nav-pill-item {{ 'active' if current_app == 'announcements' else '' }}"><i class="fas fa-bullhorn"></i> 公告栏</a>
+
             {% else %}
+
                 <a href="{{ url_for('book_index') }}" class="nav-pill-item {{ 'active' if request.endpoint == 'book_index' else '' }}"><i class="fas fa-layer-group"></i> 我的笔记</a>
+
                 <a href="{{ url_for('book_calendar') }}" class="nav-pill-item {{ 'active' if request.endpoint == 'book_calendar' else '' }}"><i class="fas fa-calendar-alt"></i> 日历</a>
+
                 <a href="{{ url_for('book_received') }}" class="nav-pill-item {{ 'active' if request.endpoint == 'book_received' else '' }}"><i class="fas fa-inbox"></i> 收到</a>
+
             {% endif %}
+
         </div>
+
     </div>
 
+
+
     <div class="top-right-island hidden md:flex">
+
         
+
         {% if current_app == 'square' %}
+
             {% if current_user.is_authenticated and current_user.subscriptions %}
+
             <div class="dropdown dropdown-end">
+
                 <div tabindex="0" role="button" class="nav-btn">
+
                     <i class="fas fa-bookmark text-primary opacity-80"></i> 订阅 <i class="fas fa-chevron-down text-[10px] opacity-50"></i>
+
                 </div>
+
                 <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-64 glass-dropdown-content max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+
                     <li class="menu-title text-xs opacity-50 px-3 py-1">我订阅的Wiki</li>
+
                     {% for sub in current_user.subscriptions %}
+
                     <li>
+
                         <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" class="nav-menu-item flex items-center w-full max-w-full overflow-hidden">
+
                             <div class="w-1.5 h-1.5 rounded-full bg-primary opacity-50 shrink-0"></div>
+
                             <div class="flex-1 min-w-0 ml-1.5"><span class="text-fade-edge w-full text-sm" title="{{ sub.wiki.title }}">{{ sub.wiki.title }}</span></div>
+
                         </a>
+
                     </li>
+
                     {% endfor %}
+
                 </ul>
+
             </div>
+
             {% endif %}
 
+
+
             {% if wiki %}
+
                 <div class="dropdown dropdown-end">
+
                     <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-sitemap text-primary opacity-80"></i> 页面 <i class="fas fa-chevron-down text-[10px] opacity-50"></i></div>
+
                     <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-64 glass-dropdown-content max-h-[70vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+
                         {% if root_items %}
+
                             {% for item in root_items %}
+
                                 {% if item.item_type == 'folder' or item.type == 'folder' %}
+
                                     <li>
+
                                         <details {% if page and page.folder_id == item.id %}open{% endif %}>
+
                                             <summary class="text-base-content/80 font-bold py-2.5">
+
                                                 <i class="fas fa-folder text-warning/90 text-lg"></i> {{ item.name }}
+
                                             </summary>
+
                                             <ul class="ml-2 border-l border-base-content/10 before:hidden">
+
                                                 {% for p in item.children %}
+
                                                 <li>
+
                                                     <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" 
+
                                                        class="{{ '!text-primary !bg-primary/10 font-bold' if page and page.id == p.id else 'text-base-content/70 hover:!text-primary hover:bg-base-200/50' }}">
+
                                                        <span class="text-fade-edge text-[13px]">{{ p.title }}</span>
+
                                                     </a>
+
                                                 </li>
+
                                                 {% endfor %}
+
                                                 {% if not item.children %}
+
                                                     <li><span class="text-[10px] opacity-30 italic">空文件夹</span></li>
+
                                                 {% endif %}
+
                                             </ul>
+
                                         </details>
+
                                     </li>
+
                                 {% elif item.item_type == 'page' or item.type == 'page' %}
+
                                     <li>
+
                                         <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=item.slug) }}" 
+
                                            class="py-2.5 {{ '!text-primary !bg-primary/10 font-bold' if page and page.id == item.id else 'text-base-content/80 font-medium hover:!text-primary hover:bg-base-200/50' }}">
+
                                             <i class="far fa-file-alt opacity-40"></i>
+
                                             <span class="text-fade-edge w-full text-sm" title="{{ item.title }}">{{ item.title }}</span>
+
                                         </a>
+
                                     </li>
+
                                 {% endif %}
+
                             {% endfor %}
+
                         {% else %}
+
                             <li class="text-xs text-base-content/40 p-4 text-center">暂无页面</li>
+
                         {% endif %}
+
                     </ul>
+
                 </div>
+
+
 
                 {% if page %}
+
                 <div class="dropdown dropdown-end">
+
                     <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-list-ul text-primary opacity-80"></i> 大纲 <i class="fas fa-chevron-down text-[10px] opacity-50"></i></div>
+
                     <ul tabindex="0" id="desktop-toc-list" class="dropdown-content z-[120] menu p-2 mt-2 w-56 glass-dropdown-content max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+
                         <li class="px-4 py-2 text-xs text-base-content/40 text-center">加载中...</li>
+
                     </ul>
+
                 </div>
+
                 {% endif %}
 
+
+
                 {% if can_edit_wiki(wiki.id) %}
+
                 <div class="dropdown dropdown-end">
+
                     <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-cog text-primary opacity-80"></i> 管理 <i class="fas fa-chevron-down text-[10px] opacity-50"></i></div>
+
                     <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-48 glass-dropdown-content flex-nowrap overflow-x-hidden">
                         <li><a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="nav-menu-item"><i class="fas fa-plus w-4 text-center"></i> 新建页面</a></li>
                         {% if page %}
@@ -336,355 +666,716 @@
                         {% endif %}
                         <div class="divider my-1 opacity-20"></div>
                         <li><a href="{{ url_for('edit_wiki', wiki_id=wiki.id) }}" class="nav-menu-item"><i class="fas fa-sliders-h w-4 text-center"></i> Wiki 设置</a></li>
+                        <li><a href="{{ url_for('manage_editors', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-users w-5"></i> 成员管理</a></li>
+                        <li><a href="{{ url_for('manage_files', wiki_id=wiki.id) }}" class="nav-menu-item"><i class="fas fa-folder-open w-4 text-center"></i> 文件管理</a></li>
+                        <li><a href="{{ url_for('wiki_stats', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-chart-bar w-5"></i> 数据统计</a></li>
                     </ul>
+
                 </div>
+
                 {% endif %}
+
             {% endif %}
+
+
 
         {% elif current_app == 'sticker' %}
+
             {% if walls is defined and walls|length > 0 %}
+
             <div class="dropdown dropdown-end">
+
                 <div tabindex="0" role="button" class="nav-btn border border-black/5 bg-white shadow-sm"><i class="fas fa-map text-primary opacity-80"></i> <span id="topbar-wall-name">{{ walls[0].name }}</span> <i class="fas fa-chevron-down text-[10px] ml-1 opacity-50"></i></div>
+
                 <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-52 glass-dropdown-content flex-nowrap">
+
                     {% for w in walls %}
+
                     <li><a onclick="if(typeof switchWall === 'function') switchWallTo({{ loop.index0 }})" class="nav-menu-item"><i class="fas fa-layer-group w-4 opacity-40"></i> {{ w.name }}</a></li>
+
                     {% endfor %}
+
                 </ul>
+
             </div>
+
             {% endif %}
+
             
+
             <div class="nav-btn cursor-default hover:translate-y-0 hover:shadow-none bg-base-200/50">
+
                 额度: <span class="badge badge-sm border-none ml-1 font-bold font-mono {% if my_total_stickers is defined and my_total_stickers >= 10 %}bg-error text-white animate-pulse{% else %}bg-primary text-white{% endif %}" id="topbar-quota">{{ my_total_stickers if my_total_stickers is defined else 0 }}/10</span>
+
             </div>
+
+
 
         {% elif current_app == 'leaderboard' %}
+
             <div class="dropdown dropdown-end">
+
                 <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-calendar-alt text-primary opacity-80"></i> {{ '本周风云' if period == 'weekly' else '全服总榜' }} <i class="fas fa-chevron-down text-[10px] opacity-50 ml-1"></i></div>
+
                 <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-36 glass-dropdown-content">
+
                     <li><a href="{{ url_for('leaderboard', metric=metric|default('duration'), period='weekly') }}" class="nav-menu-item {{ 'text-primary' if period == 'weekly' else '' }}">本周风云</a></li>
+
                     <li><a href="{{ url_for('leaderboard', metric=metric|default('duration'), period='all') }}" class="nav-menu-item {{ 'text-primary' if period == 'all' else '' }}">全服总榜</a></li>
+
                 </ul>
+
             </div>
+
             
+
             <div class="dropdown dropdown-end">
+
                 <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-filter text-primary opacity-80"></i> 
+
                     {% if metric == 'duration' %}肝帝榜{% elif metric == 'pomo' %}番茄榜{% elif metric == 'contribution' %}贡献榜{% elif metric == 'streak' %}毅力榜{% else %}选择榜单{% endif %} 
+
                 <i class="fas fa-chevron-down text-[10px] opacity-50 ml-1"></i></div>
+
                 <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-40 glass-dropdown-content">
+
                     <li><a href="{{ url_for('leaderboard', metric='duration', period=period|default('all')) }}" class="nav-menu-item {{ 'text-primary' if metric == 'duration' else '' }}">⏱️ 肝帝榜</a></li>
+
                     <li><a href="{{ url_for('leaderboard', metric='pomo', period=period|default('all')) }}" class="nav-menu-item {{ 'text-primary' if metric == 'pomo' else '' }}">🍅 番茄榜</a></li>
+
                     <li><a href="{{ url_for('leaderboard', metric='contribution', period=period|default('all')) }}" class="nav-menu-item {{ 'text-primary' if metric == 'contribution' else '' }}">📝 贡献榜</a></li>
+
                     <li><a href="{{ url_for('leaderboard', metric='streak', period=period|default('all')) }}" class="nav-menu-item {{ 'text-primary' if metric == 'streak' else '' }}">🔥 毅力榜</a></li>
+
                 </ul>
+
             </div>
+
+
 
             {% if my_rank_info is defined and my_rank_info %}
+
             <div class="nav-btn cursor-default hover:translate-y-0 hover:shadow-none bg-primary/5 text-primary">
+
                 <span class="font-black text-xs mr-1">No.{{ my_rank_info.rank }}</span> 
+
                 <span class="font-mono font-bold text-[10px] opacity-80">{{ my_rank_info.score }}{{ my_rank_info.unit }}</span>
+
             </div>
+
             {% endif %}
+
+
 
         {% elif current_app == 'announcements' %}
+
             <div class="nav-btn cursor-default hover:translate-y-0 hover:shadow-none bg-primary/5 border border-primary/20 text-primary">
+
                 <i class="fas fa-broadcast-tower opacity-80 text-xs"></i> 
+
                 <span class="font-bold text-xs ml-1">有效公告</span>
+
                 <span class="badge badge-sm border-none ml-1.5 font-bold font-mono bg-primary text-white">{{ announcements|length if announcements else 0 }}</span>
+
             </div>
 
-        {% elif current_app == 'book' %}
-            <a href="{{ url_for('new_note') }}" class="nav-btn bg-primary text-white border-transparent shadow-md shadow-primary/20 hover:bg-primary-focus"><i class="fas fa-pen"></i> 新写一篇</a>
+
+
+{% elif current_app == 'book' %}
+
+            <a href="{{ url_for('new_note') }}" 
+
+               class="flex items-center gap-1.5 h-9 px-4 rounded-full bg-primary text-white text-[13px] font-bold hover:brightness-110 shadow-lg shadow-primary/30 transition-all duration-300 hover:-translate-y-0.5 active:scale-95 border border-white/20">
+
+                <i class="fas fa-pen"></i> 新写一篇
+
+            </a>
+
         {% endif %}
+
+
 
         {% if current_user.is_authenticated %}
+
             <div class="w-[1px] h-5 bg-black/10 dark:bg-white/10 mx-1"></div>
+
             
+
             {% if current_user.is_admin %}
+
             <div class="dropdown dropdown-end">
+
                 <div tabindex="0" role="button" class="nav-btn text-error hover:text-error hover:bg-error/10 border-transparent shadow-none"><i class="fas fa-shield-alt"></i></div>
-                <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-48 glass-dropdown-content flex-nowrap overflow-x-hidden">
-                    <li class="menu-title text-xs opacity-50 px-3 py-1">控制台</li>
-                    <li><a href="{{ url_for('manage_sticker_walls') }}" class="nav-menu-item"><i class="fas fa-border-all w-4 text-center"></i> 贴纸墙</a></li>
-                    <li><a href="{{ url_for('manage_announcements') }}" class="nav-menu-item"><i class="fas fa-bullhorn w-4 text-center"></i> 通知</a></li>
-                    <li><a href="{{ url_for('manage_users') }}" class="nav-menu-item"><i class="fas fa-users-cog w-4 text-center"></i> 用户</a></li>
-                    <li><a href="{{ url_for('manage_badges') }}" class="nav-menu-item"><i class="fas fa-medal w-4 text-center"></i> 徽章</a></li>
-                    <li><a href="{{ url_for('create_wiki') }}" class="nav-menu-item"><i class="fas fa-plus-square w-4 text-center"></i> 新建 Wiki</a></li>
-                </ul>
+
+<ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-48 glass-dropdown-content flex-nowrap overflow-x-hidden">
+    <li class="menu-title text-xs opacity-50 px-3 py-1">控制台</li>
+    
+    <li><a href="{{ url_for('manage_featured_wikis') }}" class="nav-menu-item"><i class="fas fa-star w-4 text-center text-warning"></i> 首页排版</a></li>
+    
+    <li><a href="{{ url_for('manage_sticker_walls') }}" class="nav-menu-item"><i class="fas fa-border-all w-4 text-center"></i> 贴纸墙</a></li>
+    <li><a href="{{ url_for('manage_announcements') }}" class="nav-menu-item"><i class="fas fa-bullhorn w-4 text-center"></i> 通知</a></li>
+    <li><a href="{{ url_for('manage_users') }}" class="nav-menu-item"><i class="fas fa-users-cog w-4 text-center"></i> 用户</a></li>
+    <li><a href="{{ url_for('manage_badges') }}" class="nav-menu-item"><i class="fas fa-medal w-4 text-center"></i> 徽章</a></li>
+    <li><a href="{{ url_for('create_wiki') }}" class="nav-menu-item"><i class="fas fa-plus-square w-4 text-center"></i> 新建 Wiki</a></li>
+</ul>
+
             </div>
+
             {% endif %}
+
+
 
             <button 
+
                 onmousedown="app.stickyNotes.startPress(event)" 
+
                 onmouseup="app.stickyNotes.endPress(event)" 
+
                 onmouseleave="app.stickyNotes.cancelPress(event)"
+
                 ontouchstart="app.stickyNotes.startPress(event)"
+
                 ontouchend="app.stickyNotes.endPress(event)"
+
                 ontouchcancel="app.stickyNotes.cancelPress(event)"
+
                 oncontextmenu="event.preventDefault();"
+
                 class="nav-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom hover:bg-warning hover:text-white transition-colors hidden md:flex select-none" 
+
                 data-tip="短按: 显示/隐藏 | 长按: 清空并新建"
+
                 style="-webkit-user-select: none; user-select: none; touch-action: manipulation;">
+
                 <i class="fas fa-sticky-note text-warning pointer-events-none"></i>
+
             </button>
+
+
 
             <button id="pomo-btn" 
+
                 onmousedown="app.pomodoro.startPress(event)" 
+
                 onmouseup="app.pomodoro.endPress(event)" 
+
                 onmouseleave="app.pomodoro.cancelPress(event)"
+
                 ontouchstart="app.pomodoro.startPress(event)"
+
                 ontouchend="app.pomodoro.endPress(event)"
+
                 ontouchcancel="app.pomodoro.cancelPress(event)"
+
                 oncontextmenu="event.preventDefault();"
+
                 class="nav-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom transition-colors relative ml-1 select-none" 
+
                 data-tip="短按: 番茄专注 | 长按: 设置"
+
                 style="-webkit-user-select: none; user-select: none; touch-action: manipulation;">
+
                 <div id="pomo-content" class="flex items-center justify-center gap-1.5 pointer-events-none">
+
                     <i class="fas fa-hourglass-half text-rose-500/80"></i>
+
                 </div>
+
             </button>
 
+
+
             <a href="{{ url_for('online_users') }}" class="nav-btn px-2 tooltip tooltip-bottom border-transparent shadow-none" data-tip="在线用户">
+
                 <div class="w-2 h-2 rounded-full bg-success animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+
                 <span class="font-mono font-bold">{{ online_user_count }}</span>
+
             </a>
+
+
 
             <div class="relative inline-block text-left ml-1" id="user-menu-container">
+
                 <button type="button" id="user-menu-btn" class="user-nav-dropdown group flex items-center gap-2 pr-4 bg-white/50 dark:bg-base-100/50 hover:bg-white dark:hover:bg-base-200 transition-all border border-black/5 dark:border-white/5 rounded-full h-9 focus:outline-none">
+
                     {% set style_class = ['bg-rose-500', 'bg-orange-500', 'bg-emerald-500', 'bg-cyan-500', 'bg-blue-500', 'bg-violet-500', 'bg-fuchsia-500'][(current_user.id) % 7] %}
+
                     <div class="w-7 h-7 rounded-full {{ style_class }} flex items-center justify-center text-white font-black text-xs shadow-inner relative group-hover:scale-105 transition-transform pointer-events-none">
+
                         {{ current_user.username[0] | upper }}
+
                         {% if current_user.selected_badge %}
+
                             <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-white dark:bg-base-200 rounded-full flex items-center justify-center shadow-sm border border-black/5">
+
                                 {% if current_user.selected_badge.icon|is_image_icon %}
+
                                     <img src="{{ current_user.selected_badge.icon|badge_icon_url }}" class="w-2.5 h-2.5 object-contain">
+
                                 {% else %}
+
                                     <span class="text-[8px] leading-none">{{ current_user.selected_badge.icon }}</span>
+
                                 {% endif %}
+
                             </div>
+
                         {% endif %}
+
                     </div>
+
                     <span class="text-sm font-extrabold text-stone-800 dark:text-stone-200 max-w-[80px] truncate pointer-events-none">{{ current_user.username }}</span>
+
                 </button>
 
+
+
                 <div id="user-panel-wrapper" class="absolute right-0 mt-3 w-64 origin-top-right transition-all duration-300 opacity-0 invisible scale-95 z-[120]">
+
                     
+
                     {% if current_user.selected_badge %}
+
                     <div id="user-badge-card" class="bg-white dark:bg-base-200 rounded-[1.5rem] shadow-2xl border border-black/5 dark:border-white/5 overflow-hidden relative transition-all duration-300">
+
                         {% set rarity_colors = {'common': 'from-stone-400 to-stone-200', 'rare': 'from-[#18293d] to-[#3b82f6]', 'epic': 'from-purple-600 to-fuchsia-400', 'legendary': 'from-amber-500 to-yellow-300'} %}
+
                         {% set current_rarity = current_user.selected_badge.rarity | default('common') %}
+
                         {% set gradient_class = rarity_colors.get(current_rarity, rarity_colors['common']) %}
+
                         
+
                         <div class="absolute top-0 right-0 w-24 h-24 opacity-90 transform translate-x-6 -translate-y-6 rotate-12 -z-10 shadow-inner bg-gradient-to-bl {{ gradient_class }}"></div>
+
                         
+
                         <div class="p-5 pb-5 text-left relative z-10">
+
                             <div class="flex justify-between items-start mb-1">
+
                                 <p class="text-[#00a8ff] font-extrabold text-[10px] tracking-widest uppercase flex items-center gap-1 mt-1">✨ 佩戴的徽章</p>
+
                                 <div class="w-10 h-10 drop-shadow-md -mt-1 -mr-1">
+
                                     {% if current_user.selected_badge.icon|is_image_icon %}
+
                                         <img src="{{ current_user.selected_badge.icon|badge_icon_url }}" class="w-full h-full object-contain">
+
                                     {% else %}
+
                                         <span class="text-3xl leading-none block text-center">{{ current_user.selected_badge.icon }}</span>
+
                                     {% endif %}
+
                                 </div>
+
                             </div>
+
                             <h4 class="text-base font-black text-stone-800 dark:text-white leading-tight mb-1">{{ current_user.selected_badge.name }}</h4>
+
                             <p class="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 font-medium">{{ current_user.selected_badge.description }}</p>
+
                         </div>
+
                     </div>
+
                     {% endif %}
+
+
 
                     <div id="user-action-menu" class="hidden bg-white/95 dark:bg-base-200/95 backdrop-blur-xl border border-black/5 dark:border-white/5 shadow-2xl p-2 relative z-0 pt-4 rounded-b-[1.5rem] rounded-t-xl transition-all duration-300 transform -translate-y-2 opacity-0 {% if current_user.selected_badge %}mt-[-10px]{% else %}mt-2 rounded-t-[1.5rem]{% endif %}">
+
                         <div class="px-3 py-2 text-xs font-bold border-b border-black/5 dark:border-white/5 mb-1.5 flex justify-between items-center text-stone-500">
+
                             <span>今日学习</span>
+
                             <span class="text-primary">{{ current_user.study_time_today_human }}</span>
+
                         </div>
+
                         
+
                         <div class="flex flex-col gap-1">
+
                             <a href="{{ url_for('user_profile') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stone-50 dark:hover:bg-base-300 text-stone-700 dark:text-stone-200 font-bold text-sm transition-colors group">
+
                                 <i class="fas fa-user-circle text-stone-400 group-hover:text-primary transition-colors w-5 text-center"></i> 个人主页
+
                             </a>
+
                             <a href="{{ url_for('settings') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stone-50 dark:hover:bg-base-300 text-stone-700 dark:text-stone-200 font-bold text-sm transition-colors group">
+
                                 <i class="fas fa-cog text-stone-400 group-hover:text-primary transition-colors w-5 text-center"></i> 偏好设置
+
                             </a>
+
                             <div class="h-px w-full bg-black/5 dark:bg-white/5 my-0.5"></div>
+
                             <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-500 font-bold text-sm transition-colors">
+
                                 <i class="fas fa-sign-out-alt w-5 text-center opacity-80"></i> 退出登录
+
                             </a>
+
                         </div>
+
                     </div>
+
                 </div>
+
             </div>
-        {% else %}
-            <a href="{{ url_for('login') }}" class="nav-btn bg-primary text-white border-transparent hover:bg-primary-focus"><i class="fas fa-sign-in-alt"></i> 登录</a>
+
+{% else %}
+
+            <a href="{{ url_for('login') }}" 
+
+               class="flex items-center gap-1.5 h-9 px-4 rounded-full bg-primary text-white text-[13px] font-bold hover:brightness-110 shadow-lg shadow-primary/30 transition-all duration-300 hover:-translate-y-0.5 active:scale-95 border border-white/20">
+
+                <i class="fas fa-sign-in-alt mr-1"></i> 登录
+
+            </a>        
+
         {% endif %}
+
     </div>
+
+
 
     <div class="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 dark:bg-base-100/80 backdrop-blur-xl border-b border-black/5 z-[100] flex items-center justify-between px-3">
+
         
+
         <div class="relative flex items-center bg-base-200/60 dark:bg-base-300/60 rounded-full p-1 cursor-pointer w-[120px]" onclick="window.location.href='{{ url_for('index') if is_book_mode else url_for('book_index') }}'">
+
             <div class="absolute left-1 top-1 bottom-1 w-[calc(50%-4px)] bg-white dark:bg-base-100 rounded-full shadow-sm transition-transform duration-300 {% if is_book_mode %}translate-x-full{% else %}translate-x-0{% endif %}"></div>
+
             <div class="flex-1 text-center relative z-10 text-[11px] font-bold py-1 {% if not is_book_mode %}text-primary{% else %}text-base-content/60{% endif %}">Wiki</div>
+
             <div class="flex-1 text-center relative z-10 text-[11px] font-bold py-1 {% if is_book_mode %}text-primary{% else %}text-base-content/60{% endif %}">Book</div>
+
             <div id="announcement-dot-mobile" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full hidden animate-pulse shadow-md border-2 border-white"></div>
+
         </div>
+
+
 
         <div class="flex items-center gap-2">
+
             {% if current_user.is_authenticated %}
+
             <a href="{{ url_for('online_users') }}" class="nav-btn px-2 shadow-none border-transparent h-8">
+
                 <div class="w-2 h-2 rounded-full bg-success animate-pulse"></div>
+
                 <span class="font-mono font-bold text-xs">{{ online_user_count }}</span>
+
             </a>
+
             {% endif %}
+
             
+
             <div class="dropdown dropdown-end">
+
                 <div tabindex="0" role="button" class="btn btn-sm btn-circle btn-ghost"><i class="fas fa-bars text-lg text-primary"></i></div>
+
                 <ul tabindex="0" class="dropdown-content z-[110] menu flex-nowrap overflow-x-hidden box-border p-2 mt-4 w-[260px] max-h-[85vh] overflow-y-auto custom-scroll glass-dropdown-content">
+
                     
+
                     <li class="menu-title text-[10px] opacity-50 px-2 py-1">全部应用</li>
+
                     {% if not is_book_mode %}
+
                         <li><a href="{{ url_for('index') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'square' else '' }}"><i class="fas fa-globe w-4 text-center"></i> Wiki 广场</a></li>
+
                         <li><a href="{{ url_for('sticker_walls_view') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'sticker' else '' }}"><i class="fas fa-border-all w-4 text-center"></i> 贴纸墙</a></li>
+
                         <li><a href="{{ url_for('leaderboard') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'leaderboard' else '' }}"><i class="fas fa-trophy w-4 text-center"></i> 巅峰风云榜</a></li>
+
                         <li><a href="{{ url_for('announcements_view') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'announcements' else '' }}"><i class="fas fa-bullhorn w-4 text-center"></i> 公告栏</a></li>
+
                     {% else %}
+
                         <li><a href="{{ url_for('book_index') }}" class="py-2.5 rounded-xl font-bold text-primary bg-primary/5"><i class="fas fa-book w-4 text-center"></i> 我的笔记</a></li>
+
                         <li><a href="{{ url_for('book_calendar') }}" class="py-2.5 rounded-xl"><i class="fas fa-calendar-alt w-4 text-center"></i> 日历视图</a></li>
+
                         <li><a href="{{ url_for('book_received') }}" class="py-2.5 rounded-xl"><i class="fas fa-inbox w-4 text-center"></i> 收到笔记</a></li>
+
                         <li><a href="{{ url_for('new_note') }}" class="py-2.5 rounded-xl"><i class="fas fa-plus w-4 text-center"></i> 新建笔记</a></li>
+
                     {% endif %}
+
+
 
                     {% if current_user.is_authenticated %}
+
                         {% if current_app == 'square' and current_user.subscriptions %}
+
                             <div class="divider my-1 opacity-20"></div>
+
                             <li class="menu-title text-[10px] opacity-50 px-2 py-1">我的订阅</li>
+
                             {% for sub in current_user.subscriptions %}
+
                                 <li>
+
                                     <a href="{{ url_for('wiki_detail', wiki_id=sub.wiki.id) }}" class="py-2.5 rounded-xl overflow-hidden flex items-center w-full">
+
                                         <div class="w-1.5 h-1.5 rounded-full bg-primary opacity-50 shrink-0"></div>
+
                                         <div class="flex-1 min-w-0 ml-1"><span class="text-fade-edge w-full text-xs" title="{{ sub.wiki.title }}">{{ sub.wiki.title }}</span></div>
+
                                     </a>
+
                                 </li>
+
                             {% endfor %}
+
                         {% endif %}
+
+
 
                         {% if current_user.is_admin %}
+
                             <div class="divider my-1 opacity-20"></div>
+
                             <details class="collapse collapse-arrow bg-base-200/30 rounded-xl mb-1">
+
                                 <summary class="collapse-title text-xs font-bold px-4 min-h-0 py-3 text-base-content/80"><i class="fas fa-sliders-h text-primary mr-2 opacity-80"></i>管理控制台</summary>
+
                                 <div class="collapse-content px-1 pb-1">
+
                                     <ul class="menu flex-nowrap overflow-x-hidden p-0">
+
+                                        <li><a href="{{ url_for('manage_featured_wikis') }}" class="py-2.5 rounded-lg"><i class="fas fa-star w-4 text-center text-warning"></i> 首页排版</a></li>
                                         <li><a href="{{ url_for('manage_sticker_walls') }}" class="py-2.5 rounded-lg"><i class="fas fa-border-all w-4 text-center"></i> 贴纸墙</a></li>
+
                                         <li><a href="{{ url_for('manage_announcements') }}" class="py-2.5 rounded-lg"><i class="fas fa-bullhorn w-4 text-center"></i> 系统通知</a></li>
+
                                         <li><a href="{{ url_for('manage_users') }}" class="py-2.5 rounded-lg"><i class="fas fa-users-cog w-4 text-center"></i> 用户管理</a></li>
+
                                         <li><a href="{{ url_for('manage_badges') }}" class="py-2.5 rounded-lg"><i class="fas fa-medal w-4 text-center"></i> 徽章</a></li>
+
                                         <li><a href="{{ url_for('create_wiki') }}" class="py-2.5 rounded-lg"><i class="fas fa-plus-square w-4 text-center"></i> 新建 Wiki</a></li>
+
                                     </ul>
+
                                 </div>
+
                             </details>
+
                         {% endif %}
 
+
+
                         <div class="divider my-1 opacity-20"></div>
+
                         <div class="menu-title text-[10px] opacity-50 px-2 py-1 flex justify-between items-center text-primary"><span>{{ current_user.username }}</span></div>
+
                         
+
                         <div class="grid grid-cols-3 gap-1 px-1 pb-1 mt-1 overflow-hidden box-border">
+
                             <a href="{{ url_for('user_profile') }}" class="btn btn-ghost bg-base-200/50 hover:bg-primary/10 hover:text-primary flex flex-col gap-1 h-auto py-2.5 rounded-xl border-none"><i class="fas fa-user-circle text-lg opacity-80"></i><span class="text-[10px] font-normal tracking-wider leading-none">主页</span></a>
+
                             <a href="{{ url_for('settings') }}" class="btn btn-ghost bg-base-200/50 hover:bg-primary/10 hover:text-primary flex flex-col gap-1 h-auto py-2.5 rounded-xl border-none"><i class="fas fa-cog text-lg opacity-80"></i><span class="text-[10px] font-normal tracking-wider leading-none">设置</span></a>
+
                             <a href="{{ url_for('logout') }}" class="btn btn-ghost bg-error/10 text-error hover:bg-error hover:text-white flex flex-col gap-1 h-auto py-2.5 rounded-xl border-none transition-all"><i class="fas fa-sign-out-alt text-lg"></i><span class="text-[10px] font-bold tracking-wider leading-none">退出</span></a>
+
                         </div>
+
                     {% else %}
+
                         <div class="divider my-1 opacity-20"></div>
+
                         <li><a href="{{ url_for('login') }}" class="py-2.5 bg-primary text-white font-bold rounded-xl justify-center"><i class="fas fa-sign-in-alt text-center"></i> 立刻登录</a></li>
+
                     {% endif %}
+
                 </ul>
+
             </div>
+
         </div>
+
     </div>
+
+
 
     {% if wiki %}
+
     <div class="md:hidden fixed top-14 left-0 right-0 z-[90] flex items-center gap-2 overflow-x-auto mobile-subnav px-3 py-2 bg-white/70 dark:bg-base-100/70 backdrop-blur-md border-b border-black/5">
+
         <a href="{{ url_for('index') }}" class="nav-btn py-1.5 px-3 text-xs shadow-sm bg-white/90 dark:bg-base-100/90 shrink-0"><i class="fas fa-arrow-left"></i> 广场</a>
+
         
+
         <button onclick="mobile_pages_modal.showModal()" class="nav-btn py-1.5 px-3 text-xs shadow-sm bg-white/90 dark:bg-base-100/90 shrink-0"><i class="fas fa-sitemap text-primary"></i> 页面 <i class="fas fa-chevron-down text-[10px] ml-0.5 opacity-50"></i></button>
+
         
+
         {% if page %}
+
         <button onclick="mobile_toc_modal.showModal()" class="nav-btn py-1.5 px-3 text-xs shadow-sm bg-white/90 dark:bg-base-100/90 shrink-0"><i class="fas fa-list-ul text-primary"></i> 大纲 <i class="fas fa-chevron-down text-[10px] ml-0.5 opacity-50"></i></button>
+
         {% endif %}
+
         
+
         {% if can_edit_wiki(wiki.id) %}
+
         <button onclick="mobile_admin_modal.showModal()" class="nav-btn py-1.5 px-3 text-xs shadow-sm bg-white/90 dark:bg-base-100/90 shrink-0"><i class="fas fa-cog text-primary"></i> 管理 <i class="fas fa-chevron-down text-[10px] ml-0.5 opacity-50"></i></button>
+
         {% endif %}
+
     </div>
 
+
+
     <dialog id="mobile_pages_modal" class="modal modal-bottom sm:modal-middle z-[200]">
+
         <div class="modal-box p-0 overflow-hidden rounded-t-3xl bg-white/95 dark:bg-base-100/95 backdrop-blur-2xl">
+
             <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-200/50">
+
                 <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-sitemap text-primary"></i> 页面导航</h3>
+
                 <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+
             </div>
+
             <ul class="menu p-4 max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+
                 {% if root_items %}
+
                     {% for item in root_items %}
+
                         {% if item.item_type == 'folder' or item.type == 'folder' %}
+
                             <li>
+
                                 <details {% if page and page.folder_id == item.id %}open{% endif %}>
+
                                     <summary class="text-base-content/80 font-bold py-3 text-sm">
+
                                         <i class="fas fa-folder text-warning text-lg"></i> {{ item.name }}
+
                                     </summary>
+
                                     <ul class="ml-2 border-l border-base-200 before:hidden">
+
                                         {% for p in item.children %}
+
                                         <li>
+
                                             <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" 
+
                                                class="py-3 {{ '!text-primary !bg-primary/10 font-bold' if page and page.id == p.id else 'text-base-content/70' }}">
+
                                                 <span class="text-fade-edge w-full">{{ p.title }}</span>
+
                                             </a>
+
                                         </li>
+
                                         {% endfor %}
+
                                         {% if not item.children %}
+
                                             <li><span class="text-[10px] opacity-30 italic py-2">空文件夹</span></li>
+
                                         {% endif %}
+
                                     </ul>
+
                                 </details>
+
                             </li>
+
                         {% elif item.item_type == 'page' or item.type == 'page' %}
+
                             <li>
+
                                 <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=item.slug) }}" 
+
                                    class="py-3 {{ '!text-primary !bg-primary/10 font-bold' if page and page.id == item.id else 'text-base-content/80 font-bold' }}">
+
                                     <i class="far fa-file-alt opacity-40"></i>
+
                                     <span class="text-fade-edge w-full">{{ item.title }}</span>
+
                                 </a>
+
                             </li>
+
                         {% endif %}
+
                     {% endfor %}
+
                 {% else %}
+
                     <li class="text-sm text-base-content/40 p-4 text-center">暂无页面</li>
+
                 {% endif %}
+
             </ul>
+
         </div>
+
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
+
     </dialog>
+
+
 
     {% if page %}
+
     <dialog id="mobile_toc_modal" class="modal modal-bottom sm:modal-middle z-[200]">
+
         <div class="modal-box p-0 overflow-hidden rounded-t-3xl bg-white/95 dark:bg-base-100/95 backdrop-blur-2xl">
+
             <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-200/50">
+
                 <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-list-ul text-primary"></i> 本页大纲</h3>
+
                 <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+
             </div>
+
             <ul id="mobile-toc-list-modal" class="menu p-4 max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+
                 <li class="text-sm text-base-content/40 p-4 text-center">加载中...</li>
+
             </ul>
+
         </div>
+
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
+
     </dialog>
+
     {% endif %}
 
+
+
     {% if can_edit_wiki(wiki.id) %}
+
     <dialog id="mobile_admin_modal" class="modal modal-bottom sm:modal-middle z-[200]">
+
         <div class="modal-box p-0 overflow-hidden rounded-t-3xl bg-white/95 dark:bg-base-100/95 backdrop-blur-2xl">
+
             <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-200/50">
+
                 <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-cog text-primary"></i> Wiki 管理</h3>
+
                 <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+
             </div>
+
             <ul class="menu p-4 max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
                 <li><a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-plus w-5"></i> 新建页面</a></li>
                 {% if page %}
@@ -696,876 +1387,1844 @@
                 <li><a href="{{ url_for('manage_editors', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-users w-5"></i> 成员管理</a></li>
                 <li><a href="{{ url_for('manage_files', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-folder-open w-5"></i> 文件管理</a></li>
                 <li><a href="{{ url_for('wiki_stats', wiki_id=wiki.id) }}" class="nav-menu-item text-sm py-3"><i class="fas fa-chart-bar w-5"></i> 数据统计</a></li>
+                
+
             </ul>
+
         </div>
+
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
+
     </dialog>
-    {% endif %}
+
     {% endif %}
 
+    {% endif %}
+
+
+
     <main class="flex-1 w-full max-w-[1600px] mx-auto pt-6 px-4 sm:px-6 lg:px-10 pb-12 transition-all duration-300 relative z-10 {% if wiki %}mt-10 md:mt-12{% else %}mt-12{% endif %}">
+
             
+
             {% if self.raw_content() %}
+
                 {% block raw_content %}{% endblock %}
+
             {% else %}
+
                 <div class="min-h-[calc(100vh-6rem)] bg-white/60 dark:bg-base-100/60 border border-white/60 dark:border-white/5 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] rounded-[2rem] lg:rounded-[2.5rem] relative backdrop-blur-3xl overflow-hidden">
+
                     <div class="p-4 sm:p-6 lg:p-10 relative z-10 h-full">
+
                         {% block content %}{% endblock %}
+
                     </div>
+
                 </div>
+
             {% endif %}
+
     </main>
 
 
+
+
+
     <div id="sticky-notes-container" class="fixed inset-0 pointer-events-none z-[150]">
+
         {% if current_user.is_authenticated and current_user.sticky_notes %}
+
             {% for note in current_user.sticky_notes %}
+
             <div class="sticky-note note-theme-{{ note.color }} pointer-events-auto" 
+
                  data-id="{{ note.id }}" 
+
                  style="left: {{ note.pos_x }}px; top: {{ note.pos_y }}px; z-index: {{ note.z_index }};"
+
                  onmousedown="app.stickyNotes.bringToFront(this, {{ note.id }})"
+
                  ontouchstart="app.stickyNotes.bringToFront(this, {{ note.id }})">
+
                 
+
                 <div class="note-header" onmousedown="app.stickyNotes.startDrag(event, this.parentElement)" ontouchstart="app.stickyNotes.startDrag(event.touches[0], this.parentElement)">
+
                     <div class="flex gap-1.5">
+
                         <div class="note-color-dot bg-[#fde047]" onclick="app.stickyNotes.changeColor({{ note.id }}, 'yellow', this.closest('.sticky-note'))"></div>
+
                         <div class="note-color-dot bg-[#f9a8d4]" onclick="app.stickyNotes.changeColor({{ note.id }}, 'pink', this.closest('.sticky-note'))"></div>
+
                         <div class="note-color-dot bg-[#93c5fd]" onclick="app.stickyNotes.changeColor({{ note.id }}, 'blue', this.closest('.sticky-note'))"></div>
+
                         <div class="note-color-dot bg-[#86efac]" onclick="app.stickyNotes.changeColor({{ note.id }}, 'green', this.closest('.sticky-note'))"></div>
+
                     </div>
+
                     <div class="note-actions flex items-center gap-1">
+
                         <button onclick="app.stickyNotes.create()" title="再贴一张"><i class="fas fa-plus text-xs"></i></button>
+
                         <button onclick="app.stickyNotes.toBook(this.closest('.sticky-note'))" title="沉淀为 Book 笔记"><i class="fas fa-book text-xs"></i></button>
+
                         <button class="btn-close" onclick="app.stickyNotes.delete({{ note.id }}, this.closest('.sticky-note'))" title="撕掉便签"><i class="fas fa-times"></i></button>
+
                     </div>
+
                 </div>
+
                 <textarea class="note-body custom-scroll" placeholder="记录突发奇想或待办事项..." oninput="app.stickyNotes.debounceUpdate({{ note.id }}, {content: this.value})">{{ note.content }}</textarea>
+
             </div>
+
             {% endfor %}
+
         {% endif %}
+
     </div>
+
+
 
     <div id="toast-container" class="fixed bottom-8 right-8 flex flex-col gap-3 pointer-events-none z-[160]">
+
         {% with messages = get_flashed_messages(with_categories=true) %}
+
             {% if messages %}
+
                 {% for category, message in messages %}
+
                 <div data-category="{{ category }}" class="server-toast hidden">{{ message }}</div>
+
                 {% endfor %}
+
             {% endif %}
+
         {% endwith %}
+
     </div>
 
+
+
     <button id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" 
+
             class="fixed bottom-10 right-10 btn btn-circle btn-primary shadow-xl shadow-primary/30 z-[150] opacity-0 pointer-events-none translate-y-10 transition-all duration-500 hover:-translate-y-1 hover:scale-110">
+
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+
     </button>
 
+
+
     <dialog id="announcement_modal" class="modal bg-black/40 backdrop-blur-sm z-[200]">
+
         <div class="modal-box w-11/12 max-w-2xl border border-base-200 shadow-2xl rounded-[1.5rem]">
+
             <h3 id="ann_modal_title" class="font-bold text-2xl mb-4 text-base-content border-l-4 border-primary pl-3"></h3>
+
             <div id="ann_modal_content" class="prose prose-sm md:prose-base max-w-none text-base-content/80 bg-base-200/30 p-4 md:p-6 rounded-xl"></div>
+
             <div class="modal-action mt-8"><button class="btn btn-primary px-8 rounded-full shadow-lg shadow-primary/30" onclick="app.announcements.confirm()">我已收到</button></div>
+
         </div>
+
     </dialog>
+
+
 
     <dialog id="pomo_rest_modal" class="modal bg-black/60 backdrop-blur-xl z-[300]">
+
         <div class="modal-box text-center p-10 rounded-[2.5rem] border border-white/10 shadow-2xl">
+
             <div class="w-28 h-28 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center text-6xl mx-auto mb-6 shadow-inner animate-bounce">🎉</div>
+
             <h3 class="font-black text-3xl mb-4 tracking-tight text-base-content">太棒了！完成一次专注</h3>
+
             <p class="text-base-content/60 font-medium mb-8 leading-relaxed">
+
                 大脑和眼睛都需要呼吸。<br>现在请站起来活动一下，喝口水，眺望远方。<br>
+
                 <strong id="pomo-rest-text" class="text-emerald-500 font-black">15 分钟的强制休息倒计时已经自动开始！</strong>
+
             </p>
+
             <form method="dialog">
+
                 <button class="btn btn-success bg-emerald-500 border-none text-white px-12 py-3 h-auto rounded-2xl shadow-xl shadow-emerald-500/30 font-black tracking-widest text-lg hover:scale-105 transition-transform" onclick="app.pomodoro.closeModal()">开始休息</button>
+
             </form>
+
         </div>
+
     </dialog>
+
     
+
 <dialog id="new_badge_modal" class="modal bg-black/50 backdrop-blur-md z-[200]">
+
         <div class="modal-box w-11/12 max-w-[400px] bg-white dark:bg-base-200 rounded-[2rem] p-6 md:p-8 relative overflow-hidden shadow-2xl text-left transform transition-all scale-95 opacity-0 duration-500 ease-out border border-white/50 dark:border-base-content/10" id="new_badge_modal_box">
+
             
+
             <div id="new-badge-gradient" class="absolute top-0 right-0 w-56 h-56 opacity-80 transform translate-x-12 -translate-y-12 rotate-12 -z-10 shadow-inner transition-colors duration-500"></div>
+
             <div class="absolute top-0 right-0 w-full h-full bg-white dark:bg-base-100 opacity-40 transform -rotate-[30deg] translate-x-24 -translate-y-10 z-0 pointer-events-none"></div>
 
+
+
             <div class="relative z-10 w-[45%] pr-2">
+
                 <p class="text-[#00a8ff] font-extrabold text-xs tracking-widest mb-2 flex items-center gap-1.5 drop-shadow-sm">✨ 收集到一枚贴纸！</p>
+
                 <h3 id="new-badge-name" class="text-2xl md:text-3xl font-black text-stone-800 dark:text-white mb-2 leading-tight tracking-tight drop-shadow-sm break-all line-clamp-1"></h3>
+
                 <p id="new-badge-desc" class="text-stone-500 dark:text-stone-400 font-medium mb-6 leading-relaxed text-xs break-all line-clamp-3"></p>
+
             </div>
+
             
+
             <div class="absolute right-5 top-12 w-24 h-24 md:w-28 md:h-28 drop-shadow-xl hover:scale-110 transition-transform duration-500 flex items-center justify-center pointer-events-none z-20 origin-center -rotate-6 hover:rotate-0">
+
                 <img id="new-badge-icon-img" src="" alt="贴纸" class="max-w-full max-h-full object-contain hidden filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.2)]" />
+
                 <span id="new-badge-icon-text" class="text-[4rem] md:text-[5rem] hidden drop-shadow-lg leading-none"></span>
+
             </div>
+
+
 
             <div class="mt-4 flex flex-col gap-4 pt-5 border-t border-stone-100 dark:border-stone-700/50 relative z-10">
+
                 <div class="flex items-end gap-6 text-stone-400 dark:text-stone-500 text-[10px] font-mono">
+
                     <div>
+
                         <p class="mb-0.5 tracking-widest uppercase opacity-70">收集日期</p>
+
                         <p id="new-badge-date" class="font-bold text-stone-600 dark:text-stone-300 text-xs tracking-wider"></p>
+
                     </div>
+
                     <div class="pl-4 border-l border-stone-200 dark:border-stone-700">
+
                         <p class="mb-0.5 tracking-widest uppercase opacity-70">贴纸编号</p>
+
                         <p id="new-badge-serial" class="font-bold text-stone-600 dark:text-stone-300 text-xs tracking-wider"></p>
+
                     </div>
+
                 </div>
+
                 <div class="flex items-center justify-between w-full mt-1 pt-4 border-t border-stone-50 dark:border-stone-800/50">
+
                     <div class="flex items-center gap-2 bg-stone-50 dark:bg-base-300 py-1.5 px-2.5 rounded-full border border-stone-200/50 dark:border-stone-600 shadow-sm">
+
                         <div class="w-6 h-6 rounded-full bg-gradient-to-br from-[#f8d8d8] to-[#e0e8f5] grid place-items-center text-stone-700 dark:text-stone-300 font-extrabold text-[10px] overflow-hidden shadow-inner"><span id="new-badge-avatar"></span></div>
+
                         <span id="new-badge-username" class="text-stone-600 dark:text-stone-300 font-bold text-[10px] tracking-wide pr-1"></span>
+
                     </div>
+
                     <div class="flex items-center gap-1.5 font-bold text-stone-400 dark:text-stone-500 italic text-[11px] tracking-tighter cursor-default">
+
                         <div class="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-[#00a8ff] to-[#18293d] shadow-sm"></div>
+
                         WikiBook
+
                     </div>
+
                 </div>
+
             </div>
+
             
+
             <button onclick="app.badges.closeModal()" class="absolute top-4 right-4 btn btn-circle btn-sm btn-ghost bg-black/5 dark:bg-white/10 text-stone-500 dark:text-white hover:text-stone-900 dark:hover:bg-white/20 z-30 transition-all shadow-sm backdrop-blur-md">✕</button>
+
         </div>
+
         <form method="dialog" class="modal-backdrop"><button onclick="app.badges.closeModal()">close</button></form>
+
     </dialog>
 
+
+
     <dialog id="pomo_settings_modal" class="modal bg-black/40 backdrop-blur-sm z-[300]">
+
         <div class="modal-box p-6 rounded-[2rem] border border-base-200 shadow-2xl max-w-sm">
+
             <h3 class="font-bold text-lg mb-6 text-base-content flex items-center gap-2">
+
                 <i class="fas fa-cog text-primary"></i> 专注设置
+
             </h3>
+
             
+
             <div class="form-control w-full mb-4">
+
                 <label class="label pb-1"><span class="label-text font-bold">专注时长 (分钟)</span><span class="label-text-alt text-error font-medium">最少 30</span></label>
+
                 <input type="number" id="pomo-setting-work" min="30" class="input input-bordered w-full bg-base-200 focus:bg-base-100 font-mono font-bold" />
+
             </div>
+
             
+
             <div class="form-control w-full mb-8">
+
                 <label class="label pb-1"><span class="label-text font-bold">休息时长 (分钟)</span><span class="label-text-alt text-error font-medium">最多 15</span></label>
+
                 <input type="number" id="pomo-setting-rest" max="15" min="1" class="input input-bordered w-full bg-base-200 focus:bg-base-100 font-mono font-bold" />
+
             </div>
+
             
+
             <div class="modal-action mt-0 flex gap-3">
+
                 <form method="dialog" class="m-0"><button class="btn btn-ghost rounded-xl px-6">取消</button></form>
+
                 <button class="btn btn-primary rounded-xl px-8 flex-1 shadow-lg shadow-primary/30" onclick="app.pomodoro.saveSettings()">保存配置</button>
+
             </div>
+
         </div>
+
     </dialog>
+
+
+
 
 
     {% block scripts %}{% endblock %}
+
     
+
     <script>
+
         document.addEventListener('DOMContentLoaded', () => {
+
             // 💡 用户右上角融合菜单交互逻辑
+
             const userContainer = document.getElementById('user-menu-container');
+
             const userBtn = document.getElementById('user-menu-btn');
+
             const panelWrapper = document.getElementById('user-panel-wrapper');
+
             const badgeCard = document.getElementById('user-badge-card');
+
             const actionMenu = document.getElementById('user-action-menu');
+
             
+
             let hoverTimeout;
+
             let isMenuOpen = false;
 
+
+
             if (userContainer && panelWrapper) {
+
                 // 1. Hover 显现逻辑
+
                 userContainer.addEventListener('mouseenter', () => {
+
                     clearTimeout(hoverTimeout);
+
                     panelWrapper.classList.remove('opacity-0', 'invisible', 'scale-95');
+
                     panelWrapper.classList.add('opacity-100', 'visible', 'scale-100');
+
                 });
+
+
 
                 userContainer.addEventListener('mouseleave', () => {
+
                     // 如果菜单没有被点击锁定，延迟隐藏
+
                     if (!isMenuOpen) {
+
                         hoverTimeout = setTimeout(() => {
+
                             panelWrapper.classList.add('opacity-0', 'invisible', 'scale-95');
+
                             panelWrapper.classList.remove('opacity-100', 'visible', 'scale-100');
+
                         }, 200); 
+
                     }
+
                 });
+
+
 
                 // 2. Click 展开下半部菜单逻辑
+
                 if (userBtn && actionMenu) {
+
                     userBtn.addEventListener('click', (e) => {
+
                         e.stopPropagation();
+
                         isMenuOpen = !isMenuOpen;
+
                         
+
                         if (isMenuOpen) {
+
                             // 展开菜单
+
                             actionMenu.classList.remove('hidden');
+
                             requestAnimationFrame(() => {
+
                                 actionMenu.classList.remove('-translate-y-2', 'opacity-0');
+
                                 actionMenu.classList.add('translate-y-0', 'opacity-100');
+
                                 if(badgeCard) {
+
                                     badgeCard.classList.remove('rounded-[1.5rem]', 'shadow-2xl');
+
                                     badgeCard.classList.add('rounded-t-[1.5rem]', 'rounded-b-none', 'border-b-0');
+
                                 }
+
                             });
+
                         } else {
+
                             closeMenu();
+
                         }
+
                     });
+
                 }
+
+
 
                 // 3. 点击外部区域，彻底收起（Hover状态也一并隐藏）
+
                 document.addEventListener('click', (e) => {
+
                     if (isMenuOpen && !userContainer.contains(e.target)) {
+
                         closeMenu();
+
                         
+
                         // 强制让整个 Wrapper 消失（连同Hover徽章一起隐藏）
+
                         setTimeout(() => {
+
                             panelWrapper.classList.add('opacity-0', 'invisible', 'scale-95');
+
                             panelWrapper.classList.remove('opacity-100', 'visible', 'scale-100');
+
                         }, 50);
+
                     }
+
                 });
 
+
+
                 function closeMenu() {
+
                     isMenuOpen = false;
+
                     actionMenu.classList.remove('translate-y-0', 'opacity-100');
+
                     actionMenu.classList.add('-translate-y-2', 'opacity-0');
+
                     
+
                     if(badgeCard) {
+
                         badgeCard.classList.add('rounded-[1.5rem]', 'shadow-2xl');
+
                         badgeCard.classList.remove('rounded-t-[1.5rem]', 'rounded-b-none', 'border-b-0');
+
                     }
+
                     
+
                     setTimeout(() => {
+
                         if(!isMenuOpen) actionMenu.classList.add('hidden');
+
                     }, 300);
+
                 }
+
             }
+
         });
 
+
+
         function switchWallTo(index) {
+
             if(typeof window.switchWall === 'function') {
+
                 window.switchWall(index);
+
                 document.getElementById('topbar-wall-name').innerText = wallsData[index].name;
+
             }
+
         }
 
-        const app = {
+
+
+        window.app = window.app || {};
+
+        Object.assign(app,{
+
             init() {
+
                 this.toast.init();
+
                 this.backToTop.init();
+
                 {% if current_user.is_authenticated %}
-                this.heartbeat.init();
-                this.announcements.init();
-                this.badges.init();
-                this.stickyNotes.init();
+
                 this.pomodoro.init();
+
+                this.heartbeat.init();
+
+                this.announcements.init();
+
+                this.badges.init();
+
+                this.stickyNotes.init();
+
+                
+
                 {% endif %}
+
                 this.generateTOC();
+
             },
+
+
 
             generateTOC() {
+
                 const contentDiv = document.querySelector('.prose'); 
+
                 if (!contentDiv) return;
+
                 
+
                 const headings = contentDiv.querySelectorAll('h1, h2, h3, h4');
+
                 const tocLists = document.querySelectorAll('#desktop-toc-list, #mobile-toc-list-modal');
+
                 
+
                 if (headings.length > 0 && tocLists.length > 0) {
+
                     let html = '';
+
                     headings.forEach((h, index) => {
+
                         if (!h.id) h.id = 'heading-' + index;
+
                         const level = parseInt(h.tagName.substring(1));
+
                         const padding = (level - 1) * 1.2; 
+
                         const dotColor = level === 1 ? 'bg-primary' : 'bg-base-content/20';
+
                         const fontWeight = level === 1 ? 'font-bold text-base-content' : 'font-normal text-base-content/70';
+
                         
+
                         html += `
+
                             <li>
+
                                 <a href="#${h.id}" onclick="document.getElementById('mobile_toc_modal')?.close()" class="nav-menu-item flex items-center w-full max-w-full overflow-hidden" style="padding-left: ${padding}rem">
+
                                     <div class="w-1.5 h-1.5 rounded-full ${dotColor} shrink-0"></div>
+
                                     <div class="flex-1 min-w-0 ml-1.5">
+
                                         <span class="text-fade-edge w-full text-xs ${fontWeight}" title="${h.innerText}">${h.innerText}</span>
+
                                     </div>
+
                                 </a>
+
                             </li>`;
+
                     });
+
                     tocLists.forEach(list => list.innerHTML = html);
+
                 } else if (tocLists.length > 0) {
+
                     tocLists.forEach(list => list.innerHTML = '<li class="px-4 py-6 text-xs text-base-content/40 text-center">本页暂无层级标题</li>');
+
                 }
+
             },
+
+
 
             backToTop: {
+
                 el: document.getElementById('back-to-top'),
+
                 init() {
+
                     if (!this.el) return;
+
                     window.addEventListener('scroll', () => {
+
                         const show = window.scrollY > 300;
+
                         this.el.classList.toggle('opacity-0', !show);
+
                         this.el.classList.toggle('pointer-events-none', !show);
+
                         this.el.classList.toggle('translate-y-10', !show);
+
                     }, { passive: true });
+
                 }
+
             },
 
-            toast: {
+
+
+toast: {
+
                 container: document.getElementById('toast-container'),
+
+                msgCache: new Set(), // 💡 新增：消息防刷缓存池
+
+                
+
                 init() {
+
                     document.querySelectorAll('.server-toast').forEach((el, idx) => {
+
                         setTimeout(() => this.show(el.textContent, el.dataset.category), idx * 250);
+
                     });
+
                 },
+
+                
+
                 show(message, type = 'info', link = null) {
+
+                    // 💡 防轰炸拦截：同一句话如果 10 秒内已经弹过，直接忽略丢弃
+
+                    if (this.msgCache.has(message)) return;
+
+                    this.msgCache.add(message);
+
+                    setTimeout(() => this.msgCache.delete(message), 10000); // 10秒后释放
+
+
+
                     const el = document.createElement('div');
+
                     const iconMap = { success: '<i class="fas fa-check-circle text-emerald-400"></i>', error: '<i class="fas fa-times-circle text-rose-400"></i>', warning: '<i class="fas fa-exclamation-triangle text-amber-400"></i>', info: '<i class="fas fa-info-circle text-blue-400"></i>' };
+
                     el.className = `pointer-events-auto bg-stone-900/85 backdrop-blur-xl text-white border border-white/10 shadow-2xl rounded-2xl p-4 min-w-[320px] max-w-[400px] flex items-start gap-3 transition-all duration-500 translate-y-10 opacity-0`;
-                    if (link) { el.classList.add('cursor-pointer', 'hover:bg-stone-800'); el.onclick = (e) => !e.target.closest('button') && (window.location.href = link); }
+
+                    
+
+                    if (link) { 
+
+                        el.classList.add('cursor-pointer', 'hover:bg-stone-800'); 
+
+                        el.onclick = (e) => !e.target.closest('button') && (window.location.href = link); 
+
+                    }
+
+                    
+
                     el.innerHTML = `<div class="mt-0.5 text-lg">${iconMap[type] || iconMap.info}</div><div class="flex-1 text-sm font-medium leading-relaxed tracking-wide">${message}</div><button onclick="this.parentElement.remove()" class="btn btn-xs btn-ghost btn-circle text-white/40 hover:text-white">✕</button>`;
+
                     this.container.appendChild(el);
+
+                    
+
                     requestAnimationFrame(() => el.classList.remove('translate-y-10', 'opacity-0'));
-                    setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(10px) scale(0.95)'; setTimeout(() => el.remove(), 400); }, 4000);
+
+                    setTimeout(() => { 
+
+                        el.style.opacity = '0'; 
+
+                        el.style.transform = 'translateY(10px) scale(0.95)'; 
+
+                        setTimeout(() => el.remove(), 400); 
+
+                    }, 4000);
+
                 }
+
             },
+
             
 
+
+
             {% if current_user.is_authenticated %}
+
             heartbeat: {
+
                 lastTime: 0, interval: 30000,
-                init() { this.send(); ['mousedown', 'keydown', 'touchstart'].forEach(evt => window.addEventListener(evt, () => this.schedule(), { passive: true })); document.addEventListener('visibilitychange', () => !document.hidden && this.send()); },
-                schedule() { if (Date.now() - this.lastTime > this.interval) this.send(); },
-                send() {
-                    if (document.hidden) return; this.lastTime = Date.now();
-                    fetch('/api/heartbeat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ path: window.location.pathname }) }).then(r => r.json()).then(data => {
-                        if (data.notifications?.length) { data.notifications.forEach(n => app.toast.show(n.message, 'info', n.link)); fetch('/api/notifications/read/all', { method: 'POST' }); }
-                        if (data.has_new_badges) app.badges.checkNew();
-                    }).catch(() => {});
-                }
-            },
-            announcements: {
-                currentId: null,
-                init() { this.check(); },
-                check() { 
-                    fetch('/api/announcements/check').then(r => r.json()).then(data => { 
-                        const dot = document.getElementById('announcement-dot'); 
-                        const dotM = document.getElementById('announcement-dot-mobile'); 
-                        
-                        if (dot) dot.classList.toggle('hidden', !data.has_unconfirmed); 
-                        if (dotM) dotM.classList.toggle('hidden', !data.has_unconfirmed); 
-                        
-                        if (data.has_unconfirmed) { 
-                            this.currentId = data.announcement.id; 
-                            document.getElementById('ann_modal_title').textContent = data.announcement.title; 
-                            document.getElementById('ann_modal_content').innerHTML = data.announcement.html; 
-                            setTimeout(() => document.getElementById('announcement_modal').showModal(), 1000); 
-                        } 
-                    }).catch(console.error); 
+
+                init() { 
+
+                    this.send(); 
+
+                    ['mousedown', 'keydown', 'touchstart'].forEach(evt => window.addEventListener(evt, () => this.schedule(), { passive: true })); 
+
+                    document.addEventListener('visibilitychange', () => !document.hidden && this.send()); 
+
                 },
-                confirm() { 
-                    if (!this.currentId) return; 
-                    const btn = document.querySelector('#announcement_modal .btn-primary'); 
-                    btn.disabled = true; 
-                    fetch(`/api/announcements/${this.currentId}/confirm`, { method: 'POST' }).then(r => r.json()).then(data => { 
-                        if (data.success) { 
-                            document.getElementById('announcement_modal').close(); 
-                            
-                            const dot = document.getElementById('announcement-dot');
-                            const dotM = document.getElementById('announcement-dot-mobile');
-                            if (dot) dot.classList.add('hidden'); 
-                            if (dotM) dotM.classList.add('hidden'); 
-                            
-                            if(app.toast) app.toast.show('已确认收到通知', 'success'); 
-                        } 
-                    }).finally(() => btn.disabled = false); 
+
+                schedule() { if (Date.now() - this.lastTime > this.interval) this.send(); },
+
+                send() {
+
+                    if (document.hidden) return; 
+
+                    this.lastTime = Date.now();
+
+                    
+
+                    // 💡 修复 2：直接从 localStorage 提取最高优先级的真实状态，彻底解决多标签页冲突！
+
+                    let pState = localStorage.getItem('pomo_state') || 'IDLE';
+
+                    let pEnd = parseInt(localStorage.getItem('pomo_end_time')) || 0;
+
+                    
+
+                    // 校验：如果时间已经走完，强制重置为 IDLE
+
+                    if (pState !== 'IDLE' && Date.now() >= pEnd) {
+
+                        pState = 'IDLE';
+
+                        pEnd = 0;
+
+                    }
+
+
+
+                    fetch('/api/heartbeat', { 
+
+                        method: 'POST', 
+
+                        headers: {'Content-Type': 'application/json'}, 
+
+                        body: JSON.stringify({ 
+
+                            path: window.location.pathname,
+
+                            pomo_state: pState,
+
+                            pomo_end_time: pEnd
+
+                        }) 
+
+                    }).then(r => r.json()).then(data => {
+
+                        if (data.notifications?.length) { 
+
+                            data.notifications.forEach(n => app.toast.show(n.message, 'info', n.link)); 
+
+                            fetch('/api/notifications/read/all', { method: 'POST' }); 
+
+                        }
+
+                        if (data.has_new_badges) app.badges.checkNew();
+
+                    }).catch(() => {});
+
                 }
+
             },
+
+            announcements: {
+
+                currentId: null,
+
+                init() { this.check(); },
+
+                check() { 
+
+                    fetch('/api/announcements/check').then(r => r.json()).then(data => { 
+
+                        const dot = document.getElementById('announcement-dot'); 
+
+                        const dotM = document.getElementById('announcement-dot-mobile'); 
+
+                        
+
+                        if (dot) dot.classList.toggle('hidden', !data.has_unconfirmed); 
+
+                        if (dotM) dotM.classList.toggle('hidden', !data.has_unconfirmed); 
+
+                        
+
+                        if (data.has_unconfirmed) { 
+
+                            this.currentId = data.announcement.id; 
+
+                            document.getElementById('ann_modal_title').textContent = data.announcement.title; 
+
+                            document.getElementById('ann_modal_content').innerHTML = data.announcement.html; 
+
+                            setTimeout(() => document.getElementById('announcement_modal').showModal(), 1000); 
+
+                        } 
+
+                    }).catch(console.error); 
+
+                },
+
+                confirm() { 
+
+                    if (!this.currentId) return; 
+
+                    const btn = document.querySelector('#announcement_modal .btn-primary'); 
+
+                    btn.disabled = true; 
+
+                    fetch(`/api/announcements/${this.currentId}/confirm`, { method: 'POST' }).then(r => r.json()).then(data => { 
+
+                        if (data.success) { 
+
+                            document.getElementById('announcement_modal').close(); 
+
+                            
+
+                            const dot = document.getElementById('announcement-dot');
+
+                            const dotM = document.getElementById('announcement-dot-mobile');
+
+                            if (dot) dot.classList.add('hidden'); 
+
+                            if (dotM) dotM.classList.add('hidden'); 
+
+                            
+
+                            if(app.toast) app.toast.show('已确认收到通知', 'success'); 
+
+                        } 
+
+                    }).finally(() => btn.disabled = false); 
+
+                }
+
+            },
+
             badges: {
+
                 queue: [], isShowing: false,
+
                 init() { setTimeout(() => this.checkNew(), 1500); },
+
                 checkNew() { fetch('/api/badges/unnotified').then(r => r.json()).then(data => { if (data && data.length > 0) { this.queue.push(...data); this.showNext(); } }).catch(console.error); },
+
                 showNext() { if (this.isShowing || this.queue.length === 0) return; this.isShowing = true; const badge = this.queue.shift(); this.renderModal(badge); },
+
                 renderModal(badge) { document.getElementById('new-badge-name').textContent = badge.name; document.getElementById('new-badge-desc').textContent = badge.description; const imgEl = document.getElementById('new-badge-icon-img'); const textEl = document.getElementById('new-badge-icon-text'); if (badge.is_image) { imgEl.src = badge.icon; imgEl.classList.remove('hidden'); textEl.classList.add('hidden'); } else { textEl.textContent = badge.icon; textEl.classList.remove('hidden'); imgEl.classList.add('hidden'); } document.getElementById('new-badge-date').textContent = badge.earned_at; document.getElementById('new-badge-serial').textContent = badge.serial_number; document.getElementById('new-badge-username').textContent = badge.user_name; document.getElementById('new-badge-avatar').textContent = badge.avatar_char; const gradientEl = document.getElementById('new-badge-gradient'); let colorClasses = "bg-gradient-to-bl from-stone-400 to-stone-200"; if (badge.rarity === 'rare') colorClasses = "bg-gradient-to-bl from-[#18293d] to-[#3b82f6]"; else if (badge.rarity === 'epic') colorClasses = "bg-gradient-to-bl from-purple-600 to-fuchsia-400"; else if (badge.rarity === 'legendary') colorClasses = "bg-gradient-to-bl from-amber-500 to-yellow-300"; gradientEl.className = `absolute top-0 right-0 w-64 h-64 opacity-90 transform translate-x-20 -translate-y-20 rotate-12 -z-10 shadow-inner transition-colors duration-700 ${colorClasses}`; const modal = document.getElementById('new_badge_modal'); const box = document.getElementById('new_badge_modal_box'); modal.showModal(); requestAnimationFrame(() => { box.classList.remove('scale-95', 'opacity-0'); box.classList.add('scale-100', 'opacity-100'); }); },
+
                 closeModal() { const modal = document.getElementById('new_badge_modal'); const box = document.getElementById('new_badge_modal_box'); box.classList.remove('scale-100', 'opacity-100'); box.classList.add('scale-95', 'opacity-0'); setTimeout(() => { modal.close(); this.isShowing = false; setTimeout(() => this.showNext(), 500); }, 400); }
+
             }
+
             {% endif %}
+
             {% if current_user.is_authenticated %}
+
             , pomodoro: {
+
                 state: 'IDLE', 
+
                 endTime: 0,
+
                 timer: null,
+
                 currentCount: 0,
+
                 
+
                 workDurationMinutes: 45, 
+
                 restDurationMinutes: 15, 
+
                 
+
                 pressTimer: null,
+
                 isLongPress: false,
+
                 touchHandled: false,
+
+
 
                 get workDuration() { return this.workDurationMinutes * 60 * 1000; },
+
                 get restDuration() { return this.restDurationMinutes * 60 * 1000; },
+
                 
+
                 init() {
+
                     this.loadSettings(); 
+
                     this.fetchTodayCount();
+
                     this.loadState();
+
                     this.updateUI();
+
                     if (this.state !== 'IDLE') this.startInterval();
+
                 },
+
+
 
                 loadSettings() {
+
                     const w = localStorage.getItem('pomo_work_min');
+
                     const r = localStorage.getItem('pomo_rest_min');
+
                     if(w && !isNaN(w) && parseInt(w) >= 30) this.workDurationMinutes = parseInt(w);
+
                     if(r && !isNaN(r) && parseInt(r) <= 15) this.restDurationMinutes = parseInt(r);
+
                 },
+
+
 
                 openSettings() {
+
                     if (this.state !== 'IDLE') {
+
                         if(app.toast) app.toast.show('请在番茄钟空闲时修改设置哦！', 'warning');
+
                         return;
+
                     }
+
                     document.getElementById('pomo-setting-work').value = this.workDurationMinutes;
+
                     document.getElementById('pomo-setting-rest').value = this.restDurationMinutes;
+
                     document.getElementById('pomo_settings_modal').showModal();
+
                 },
+
+
 
                 saveSettings() {
+
                     let w = parseInt(document.getElementById('pomo-setting-work').value);
+
                     let r = parseInt(document.getElementById('pomo-setting-rest').value);
+
                     
+
                     if(isNaN(w) || w < 30) w = 30;
+
                     if(isNaN(r) || r > 15) r = 15;
+
                     if(r < 1) r = 1;
+
                     
+
                     this.workDurationMinutes = w;
+
                     this.restDurationMinutes = r;
+
                     
+
                     localStorage.setItem('pomo_work_min', w);
+
                     localStorage.setItem('pomo_rest_min', r);
+
                     
+
                     document.getElementById('pomo_settings_modal').close();
+
                     if(app.toast) app.toast.show(`已保存您的习惯：专注 ${w}分钟 / 休息 ${r}分钟`, 'success');
+
                     this.updateUI();
+
                 },
 
+
+
                 startPress(e) {
+
                     if (e && e.type === 'mousedown' && e.button !== 0) return;
+
                     if (e && e.type === 'touchstart') this.touchHandled = true;
+
                     if (e && e.type === 'mousedown' && this.touchHandled) return;
+
                     
+
                     this.isLongPress = false;
+
                     this.pressTimer = setTimeout(() => {
+
                         this.isLongPress = true;
+
                         this.openSettings(); 
+
                     }, 700); 
+
                 },
+
                 endPress(e) {
+
                     if (this.pressTimer) { clearTimeout(this.pressTimer); this.pressTimer = null; }
+
                     if (!this.isLongPress) { this.handleClick(); } 
+
                     if (e && e.cancelable) e.preventDefault();
+
                 },
+
                 cancelPress(e) {
+
                     if (this.pressTimer) { clearTimeout(this.pressTimer); this.pressTimer = null; }
+
                 },
+
                 
+
                 loadState() {
+
                     const s = localStorage.getItem('pomo_state');
+
                     const e = localStorage.getItem('pomo_end_time');
+
                     if (s && e) {
+
                         this.state = s;
+
                         this.endTime = parseInt(e);
+
                         if (Date.now() >= this.endTime) {
+
                             this.handlePhaseEnd(true);
+
                         }
+
                     }
+
                 },
+
                 
+
                 saveState() {
+
                     localStorage.setItem('pomo_state', this.state);
+
                     localStorage.setItem('pomo_end_time', this.endTime.toString());
+
                 },
+
                 
+
                 fetchTodayCount() {
+
                     fetch('/api/pomodoro/today').then(r=>r.json()).then(d => {
+
                         if(d.success) this.updateBadge(d.count);
+
                     });
+
                 },
+
                 
+
                 handleClick() {
+
                     if (this.state === 'IDLE') {
+
                         this.startWork();
+
                     } else if (this.state === 'WORK') {
+
                         if(confirm("还在专注中哦，现在放弃将不会记录到今日成绩，确定放弃吗？")) {
+
                             this.reset();
+
                         }
+
                     } else if (this.state === 'REST') {
+
                         if(confirm("大脑还需要休息，确定要跳过剩下的休息时间吗？")) {
+
                             this.reset();
+
                         }
+
                     }
+
                 },
+
                 
+
                 startWork() {
+
                     this.state = 'WORK';
+
                     this.endTime = Date.now() + this.workDuration;
+
                     this.saveState();
+
                     this.startInterval();
+
                     this.updateUI();
+
                     if(app.toast) app.toast.show(`🔥 专注开始！放下杂念，冲刺 ${this.workDurationMinutes} 分钟！`, 'success');
+
                 },
+
                 
+
                 startRest() {
+
                     this.state = 'REST';
+
                     this.endTime = Date.now() + this.restDuration;
+
                     this.saveState();
+
                     this.startInterval();
+
                     this.updateUI();
+
                     
+
                     const restText = document.getElementById('pomo-rest-text');
+
                     if (restText) restText.innerHTML = `${this.restDurationMinutes} 分钟的强制休息倒计时已经自动开始！`;
+
                 },
+
                 
+
                 reset() {
+
                     this.state = 'IDLE';
+
                     this.endTime = 0;
+
                     this.saveState();
+
                     this.stopInterval();
+
                     this.updateUI();
+
                 },
+
                 
+
                 startInterval() {
+
                     if (this.timer) clearInterval(this.timer);
+
                     this.timer = setInterval(() => this.tick(), 1000);
+
                 },
+
                 
+
                 stopInterval() {
+
                     if (this.timer) clearInterval(this.timer);
+
                 },
+
                 
+
                 tick() {
+
                     if (Date.now() >= this.endTime) {
+
                         this.handlePhaseEnd(false);
+
                     } else {
+
                         this.updateUI();
+
                     }
+
                 },
+
                 
+
                 handlePhaseEnd(isPageLoad) {
+
                     this.stopInterval();
+
                     if (this.state === 'WORK') {
+
                         fetch('/api/pomodoro/complete', { 
+
                             method:'POST',
+
                             headers: {'Content-Type': 'application/json'},
+
                             body: JSON.stringify({ duration: this.workDurationMinutes }) 
+
                         })
+
                         .then(r=>r.json())
+
                         .then(d=>{ if(d.success) this.updateBadge(d.count); });
+
                         
+
                         const modal = document.getElementById('pomo_rest_modal');
+
                         if (modal) modal.showModal();
+
                         
+
                         this.startRest();
+
                         
+
                     } else if (this.state === 'REST') {
+
                         if (!isPageLoad && app.toast) {
+
                             app.toast.show('✨ 休息结束啦！精神焕发，随时可以开启下一个番茄钟！', 'info');
+
                         }
+
                         this.state = 'IDLE';
+
                         this.endTime = 0;
+
                         this.saveState();
+
                         this.updateUI();
+
                     }
+
                 },
+
                 
+
                 updateBadge(count) {
+
                     this.currentCount = count;
+
                     if (this.state === 'IDLE') this.updateUI();
+
                 },
+
                 
+
                 closeModal() {
+
                     const modal = document.getElementById('pomo_rest_modal');
+
                     if (modal) modal.close();
+
                 },
+
                 
+
                 updateUI() {
+
                     const btn = document.getElementById('pomo-btn');
+
                     const content = document.getElementById('pomo-content');
+
                     if (!btn || !content) return;
 
+
+
                     let remain = Math.max(0, this.endTime - Date.now());
+
                     
+
                     if (this.state === 'IDLE') {
+
                         btn.className = "nav-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom hover:bg-rose-50 hover:text-rose-500 transition-colors relative ml-1 select-none";
+
                         btn.setAttribute('data-tip', `开启 ${this.workDurationMinutes} 分钟专注 (长按设置)`);
+
                         
+
                         let badgeHtml = this.currentCount > 0 
+
                             ? `<span class="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm ml-0.5">${this.currentCount}</span>` 
+
                             : '';
+
                             
+
                         content.innerHTML = `<i class="fas fa-hourglass-half text-rose-500/80"></i>${badgeHtml}`;
+
                         
+
                     } else if (this.state === 'WORK') {
+
                         btn.className = "nav-btn px-3 shadow-sm border-rose-200 bg-rose-50 text-rose-600 tooltip tooltip-bottom transition-colors relative ml-1 select-none";
+
                         btn.setAttribute('data-tip', '点击放弃本次专注');
+
                         
+
                         let timeStr = remain > 60000 ? Math.ceil(remain / 60000) + 'm' : Math.ceil(remain / 1000) + 's';
+
                         content.innerHTML = `<i class="fas fa-fire animate-pulse text-rose-500"></i><span class="font-mono font-black text-[13px] w-[28px] text-center">${timeStr}</span>`;
+
                         
+
                     } else if (this.state === 'REST') {
+
                         btn.className = "nav-btn px-3 shadow-sm border-emerald-200 bg-emerald-50 text-emerald-600 tooltip tooltip-bottom transition-colors relative ml-1 select-none";
+
                         btn.setAttribute('data-tip', '点击跳过休息');
+
                         
+
                         let timeStr = remain > 60000 ? Math.ceil(remain / 60000) + 'm' : Math.ceil(remain / 1000) + 's';
+
                         content.innerHTML = `<i class="fas fa-coffee text-emerald-500"></i><span class="font-mono font-black text-[13px] w-[28px] text-center">${timeStr}</span>`;
+
                     }
+
                 }
+
             }
+
             {% endif %}
+
             {% if current_user.is_authenticated %}
+
             , stickyNotes: {
+
                 container: null,
+
                 zIndexCounter: 1500,
+
                 dragState: null,
+
                 saveTimeout: null,
+
                 
+
                 pressTimer: null,
+
                 isLongPress: false,
+
                 touchHandled: false,
+
                 
+
                 init() {
+
                     this.container = document.getElementById('sticky-notes-container');
+
                     if(!this.container) return; 
+
                     
+
                     const notes = this.container.querySelectorAll('.sticky-note');
+
                     notes.forEach(n => {
+
                         const z = parseInt(n.style.zIndex) || 1000;
+
                         if(z > this.zIndexCounter) this.zIndexCounter = z;
+
                     });
+
                     if(notes.length > 0) this.zIndexCounter++;
+
                     
+
                     document.addEventListener('mousemove', (e) => this.onDrag(e));
+
                     document.addEventListener('mouseup', () => this.stopDrag());
+
                     document.addEventListener('touchmove', (e) => this.onDrag(e.touches[0]), {passive: false});
+
                     document.addEventListener('touchend', () => this.stopDrag());
+
                 },
+
                 
+
                 startPress(e) {
+
                     if (e && e.type === 'mousedown' && e.button !== 0) return; 
+
                     if (e && e.type === 'touchstart') this.touchHandled = true;
+
                     if (e && e.type === 'mousedown' && this.touchHandled) return;
+
                     
+
                     this.isLongPress = false;
+
                     this.pressTimer = setTimeout(() => {
+
                         this.isLongPress = true;
+
                         this.clearAllAndCreateNew(); 
+
                     }, 700); 
+
                 },
+
                 
+
                 endPress(e) {
+
                     if (this.pressTimer) {
+
                         clearTimeout(this.pressTimer);
+
                         this.pressTimer = null;
+
                     }
+
                     if (!this.isLongPress) {
+
                         this.toggle(); 
+
                     }
+
                     if (e && e.cancelable) e.preventDefault();
+
                 },
+
                 
+
                 cancelPress(e) {
+
                     if (this.pressTimer) {
+
                         clearTimeout(this.pressTimer);
+
                         this.pressTimer = null;
+
                     }
+
                 },
+
                 
+
                 clearAllAndCreateNew() {
+
                     if(!confirm('⚠️ 警告：这将永久删除当前所有的便签（不可恢复）！\n\n确定要全部清空，并重新生成一张空白便签吗？')) return;
+
                     
+
                     const notes = this.container.querySelectorAll('.sticky-note');
+
                     notes.forEach(el => {
+
                         const id = el.dataset.id;
+
                         fetch(`/api/sticky_notes/${id}`, { method: 'DELETE' }).catch(console.error);
+
                         
+
                         el.style.transition = 'all 0.2s';
+
                         el.style.transform = 'scale(0.8) translateY(20px)'; 
+
                         el.style.opacity = '0';
+
                         setTimeout(() => el.remove(), 200);
+
                     });
+
                     
+
                     document.documentElement.classList.add('show-stickies');
+
                     try { localStorage.setItem('show_stickies', 'true'); } catch(e){}
+
                     
+
                     setTimeout(() => {
+
                         this.create();
+
                         if(app.toast) app.toast.show('🧹 旧便签已全部清空，并为您生成了新便签！', 'success');
+
                     }, 300);
+
                 },
+
+
 
                 toggle() {
+
                     if(!this.container) return;
+
                     const isVisible = document.documentElement.classList.toggle('show-stickies');
+
                     try { localStorage.setItem('show_stickies', isVisible); } catch(e){}
+
                     
+
                     if(isVisible && this.container.querySelectorAll('.sticky-note').length === 0) {
+
                         this.create();
+
                     }
+
                 },
 
+
+
                 toBook(el) {
+
                     const textarea = el.querySelector('textarea');
+
                     const content = textarea ? textarea.value : '';
+
                     if(!content || !content.trim()) {
+
                         if(app.toast) app.toast.show('便签是空的，写点东西再生成文章吧！', 'warning');
+
                         return;
+
                     }
+
                     
+
                     fetch('/book/notes/quick_create', {
+
                         method: 'POST',
+
                         headers: {'Content-Type': 'application/json'},
+
                         body: JSON.stringify({
+
                             title: '便签灵感归档 - ' + new Date().toLocaleString(),
+
                             content: content
+
                         })
+
                     }).then(r => r.json()).then(data => {
+
                         if(data.success) {
+
                             if(app.toast) app.toast.show('✨ 已成功生成 Book 笔记！', 'success');
+
                             this.delete(el.dataset.id, el, true); 
+
                             setTimeout(() => { window.location.href = '/book/notes/' + data.note_id; }, 1000);
+
                         } else {
+
                             if(app.toast) app.toast.show('生成失败: ' + (data.error || '未知错误'), 'error');
+
                         }
+
                     }).catch(err => {
+
                         console.error(err);
+
                         if(app.toast) app.toast.show('网络错误，生成失败', 'error');
+
                     });
+
                 },
+
                 
+
                 create() {
+
                     if(this.container.querySelectorAll('.sticky-note').length >= 5) {
+
                         if(app.toast) app.toast.show('屏幕快贴满了，最多保留 5 个便签哦！', 'warning');
+
                         return;
+
                     }
+
                     fetch('/api/sticky_notes', { 
+
                         method: 'POST', 
+
                         headers: {'Content-Type': 'application/json'}, 
+
                         body: JSON.stringify({color: 'yellow'}) 
+
                     }).then(r => r.json()).then(data => {
+
                         if(data.success) {
+
                             this.renderNote(data.note);
+
                         }
+
                     }).catch(console.error);
+
                 },
+
                 
+
                 renderNote(note) {
+
                     const el = document.createElement('div');
+
                     el.className = `sticky-note note-theme-${note.color} pointer-events-auto`;
+
                     
+
                     const maxX = window.innerWidth - 260;
+
                     const maxY = window.innerHeight - 260;
+
                     const safeX = Math.max(0, Math.min(note.pos_x, maxX));
+
                     const safeY = Math.max(0, Math.min(note.pos_y, maxY));
+
                     
+
                     el.style.left = safeX + 'px';
+
                     el.style.top = safeY + 'px';
+
                     el.style.zIndex = note.z_index;
+
                     el.dataset.id = note.id;
+
                     
+
                     el.innerHTML = `
+
                         <div class="note-header" onmousedown="app.stickyNotes.startDrag(event, this.parentElement)" ontouchstart="app.stickyNotes.startDrag(event.touches[0], this.parentElement)">
+
                             <div class="flex gap-1.5">
+
                                 <div class="note-color-dot bg-[#fde047]" onclick="app.stickyNotes.changeColor(${note.id}, 'yellow', this.closest('.sticky-note'))"></div>
+
                                 <div class="note-color-dot bg-[#f9a8d4]" onclick="app.stickyNotes.changeColor(${note.id}, 'pink', this.closest('.sticky-note'))"></div>
+
                                 <div class="note-color-dot bg-[#93c5fd]" onclick="app.stickyNotes.changeColor(${note.id}, 'blue', this.closest('.sticky-note'))"></div>
+
                                 <div class="note-color-dot bg-[#86efac]" onclick="app.stickyNotes.changeColor(${note.id}, 'green', this.closest('.sticky-note'))"></div>
+
                             </div>
+
                             <div class="note-actions flex items-center gap-1">
+
                                 <button onclick="app.stickyNotes.create()" title="再贴一张"><i class="fas fa-plus text-xs"></i></button>
+
                                 <button onclick="app.stickyNotes.toBook(this.closest('.sticky-note'))" title="一键成文"><i class="fas fa-book text-xs"></i></button>
+
                                 <button class="btn-close" onclick="app.stickyNotes.delete(${note.id}, this.closest('.sticky-note'))" title="关闭"><i class="fas fa-times"></i></button>
+
                             </div>
+
                         </div>
+
                         <textarea class="note-body custom-scroll" placeholder="记录突发奇想或待办事项..." oninput="app.stickyNotes.debounceUpdate(${note.id}, {content: this.value})">${note.content || ''}</textarea>
+
                     `;
+
                     
+
                     el.addEventListener('mousedown', () => this.bringToFront(el, note.id));
+
                     el.addEventListener('touchstart', () => this.bringToFront(el, note.id), {passive: true});
+
                     
+
                     this.container.appendChild(el);
+
                     
+
                     el.style.transform = 'scale(0.8) translateY(20px)';
+
                     el.style.opacity = '0';
+
                     requestAnimationFrame(() => {
+
                         el.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+
                         el.style.transform = 'scale(1) translateY(0)';
+
                         el.style.opacity = '1';
+
                         setTimeout(() => el.style.transition = '', 300); 
+
                     });
+
                 },
+
                 
+
                 delete(id, el, skipConfirm = false) {
+
                     if(!skipConfirm) {
+
                         if(!confirm('⚠️ 便签内容会消失！\n确定要关闭并清空这张便签吗？\n（如果只是想隐藏，请点击顶部导航栏的便签图标）')) return;
+
                     }
+
                     el.style.transition = 'all 0.2s';
+
                     el.style.transform = 'scale(0.8) translateY(20px)'; 
+
                     el.style.opacity = '0';
+
                     setTimeout(() => el.remove(), 200);
+
                     fetch(`/api/sticky_notes/${id}`, { method: 'DELETE' }).catch(console.error);
+
                 },
+
                 
+
                 update(id, data) {
+
                     fetch(`/api/sticky_notes/${id}`, { 
+
                         method: 'PUT', headers: {'Content-Type': 'application/json'}, 
+
                         body: JSON.stringify(data) 
+
                     }).catch(console.error);
+
                 },
+
                 
+
                 debounceUpdate(id, data) {
+
                     clearTimeout(this.saveTimeout);
+
                     this.saveTimeout = setTimeout(() => this.update(id, data), 500);
+
                 },
+
                 
+
                 changeColor(id, color, el) {
+
                     el.className = `sticky-note note-theme-${color} pointer-events-auto`;
+
                     this.update(id, {color: color});
+
                 },
+
                 
+
                 bringToFront(el, id) {
+
                     this.zIndexCounter++;
+
                     el.style.zIndex = this.zIndexCounter;
+
                     this.update(id, {z_index: this.zIndexCounter});
+
                 },
+
                 
+
                 startDrag(e, el) {
+
                     if(e.target.closest('button') || e.target.classList.contains('note-color-dot')) return;
+
                     this.dragState = {
+
                         el: el, id: el.dataset.id,
+
                         offsetX: e.clientX - el.getBoundingClientRect().left,
+
                         offsetY: e.clientY - el.getBoundingClientRect().top
+
                     };
+
                     el.classList.add('dragging');
+
                     this.bringToFront(el, this.dragState.id);
+
                 },
+
                 
+
                 onDrag(e) {
+
                     if(!this.dragState) return;
+
                     let x = e.clientX - this.dragState.offsetX;
+
                     let y = e.clientY - this.dragState.offsetY;
+
                     x = Math.max(0, Math.min(x, window.innerWidth - 260));
+
                     y = Math.max(0, Math.min(y, window.innerHeight - 60)); 
+
                     this.dragState.el.style.left = x + 'px';
+
                     this.dragState.el.style.top = y + 'px';
+
                 },
+
                 
+
                 stopDrag() {
+
                     if(!this.dragState) return;
+
                     const el = this.dragState.el;
+
                     el.classList.remove('dragging');
+
                     this.update(this.dragState.id, {
+
                         pos_x: parseInt(el.style.left),
+
                         pos_y: parseInt(el.style.top)
+
                     });
+
                     this.dragState = null;
+
                 }
+
             }
+
             {% endif %}
-        };
+
+        });
+
         document.addEventListener('DOMContentLoaded', () => { app.init(); });
+
     </script>
+
 </body>
+
 </html>

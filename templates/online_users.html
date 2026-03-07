@@ -31,7 +31,7 @@
     
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
         {% for status in users %}
-        <div class="group relative rounded-[2rem] transition-all duration-500 hover:-translate-y-2 h-full flex flex-col">
+        <div class="group relative rounded-[2rem] transition-all duration-500 hover:-translate-y-2 hover:z-50 z-0 h-full flex flex-col">
             <div class="absolute -inset-0.5 bg-gradient-to-br from-primary/30 to-secondary/30 rounded-[2.2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl -z-10"></div>
             
             <div class="relative flex-1 flex flex-col bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl border border-black/5 dark:border-white/5 rounded-[2rem] p-6 shadow-xl shadow-stone-200/20 dark:shadow-none transition-all overflow-visible z-10">
@@ -95,12 +95,36 @@
                         <h2 class="text-xl font-bold tracking-tight text-stone-800 dark:text-stone-100 truncate">{{ status.user.username }}</h2>
                     </a>
                     
-                    <div class="mt-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-stone-100/80 dark:bg-base-200/80 border border-stone-200/50 dark:border-white/5 shadow-inner max-w-full">
-                        <div class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse"></div>
-                        <span class="text-xs font-semibold text-stone-500 dark:text-stone-400 truncate tracking-wide" title="{{ status.current_action }}">
-                            {{ status.current_action or '发呆中...' }}
-                        </span>
-                    </div>
+<div class="mt-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-inner max-w-full transition-colors duration-300
+    {% if status.pomo_state == 'WORK' %}
+        bg-rose-50/80 border-rose-200/50 text-rose-600
+    {% elif status.pomo_state == 'REST' %}
+        bg-emerald-50/80 border-emerald-200/50 text-emerald-600
+    {% else %}
+        bg-stone-100/80 dark:bg-base-200/80 border-stone-200/50 dark:border-white/5 text-stone-500 dark:text-stone-400
+    {% endif %}">
+    
+    {% if status.pomo_state == 'WORK' %}
+        <i class="fas fa-fire animate-pulse text-xs"></i>
+    <span class="pomo-live-timer text-xs font-bold tracking-wide" 
+        data-endtime="{{ status.pomo_end_time | int }}" 
+        data-type="work">
+        专注中...
+    </span>
+    {% elif status.pomo_state == 'REST' %}
+        <i class="fas fa-coffee animate-pulse text-xs"></i>
+        <span class="pomo-live-timer text-xs font-bold tracking-wide" 
+              data-endtime="{{ status.pomo_end_time }}" 
+              data-type="rest">
+            ☕ 休息中...
+        </span>
+    {% else %}
+        <div class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse"></div>
+        <span class="text-xs font-semibold truncate tracking-wide" title="{{ status.current_action }}">
+            {{ status.current_action or '发呆中...' }}
+        </span>
+    {% endif %}
+</div>
                 </div>
 
                 <div class="flex-grow"></div>
@@ -169,4 +193,56 @@
         animation-delay: 4s;
     }
 </style>
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+(function() {
+    /**
+     * 核心：番茄钟实时刷新引擎
+     */
+    function refreshPomoDisplay() {
+        const now = Date.now();
+        const timers = document.querySelectorAll('.pomo-live-timer');
+        
+        if (timers.length === 0) return;
+
+        timers.forEach(timer => {
+            let endTime = parseFloat(timer.dataset.endtime);
+            
+            // 💡 关键修复：自动识别并对齐毫秒单位
+            // 如果时间戳小于 10^12，说明是秒级单位(Python风格)，乘以 1000 转为毫秒
+            if (endTime > 0 && endTime < 1000000000000) {
+                endTime = endTime * 1000;
+            }
+
+            if (!endTime || endTime < now) { 
+                timer.innerText = timer.dataset.type === 'work' ? '专注已完成' : '休息结束';
+                return; 
+            }
+            
+            const remainMs = endTime - now;
+            
+            // 💡 核心逻辑：计算剩余分钟数
+            // 使用 Math.ceil 确保即使剩下 10 秒也会显示为 "1 分钟"，符合直觉
+            const minutes = Math.ceil(remainMs / (1000 * 60));
+            const typeText = timer.dataset.type === 'work' ? '专注' : '休息';
+            
+            // 更新 UI
+            timer.innerText = `${typeText}还剩 ${minutes} 分钟`;
+        });
+    }
+
+    // --- 执行机制 ---
+    // 1. 页面加载立即跑一次
+    refreshPomoDisplay();
+    
+    // 2. 建立每 5 秒一次的轮询（分钟级显示不需要太频繁）
+    const pomoInterval = setInterval(refreshPomoDisplay, 5000);
+
+    // 3. 容错：如果页面存在局部刷新，重新绑定
+    document.addEventListener('htmx:afterSwap', refreshPomoDisplay); 
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}批阅中心 - {{ assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 px-4 h-[calc(100vh-4rem)] flex flex-col">
+    
+    <div class="flex items-center justify-between mb-4 shrink-0">
+        <div>
+            <a href="{{ url_for('view_assignment', assign_id=assignment.id) }}" class="text-sm text-stone-500 font-bold hover:text-amber-600 transition-colors mb-1 inline-block"><i class="fas fa-arrow-left mr-1"></i> 返回任务详情</a>
+            <h2 class="text-2xl font-black text-stone-800 tracking-tight flex items-center gap-3">
+                <i class="fas fa-stamp text-amber-600"></i> 批阅中心：{{ assignment.title }}
+            </h2>
+        </div>
+        <div class="bg-amber-100 text-amber-800 font-black px-4 py-2 rounded-xl shadow-sm border border-amber-200">
+            已收回执：{{ submissions|length }}
+        </div>
+    </div>
+
+    <div class="flex-1 bg-white rounded-[2rem] border border-stone-200 shadow-xl overflow-hidden flex flex-col md:flex-row min-h-0">
+        
+        <div class="w-full md:w-72 lg:w-80 bg-stone-50 border-r border-stone-200 flex flex-col shrink-0">
+            <div class="p-4 border-b border-stone-200 bg-white shadow-sm z-10">
+                <h3 class="font-black text-stone-700 text-sm"><i class="fas fa-users text-stone-400 mr-1"></i> 提交名单</h3>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto custom-scroll p-2 space-y-1">
+                {% if submissions %}
+                    {% for sub in submissions %}
+                    <div id="nav-sub-{{ sub.id }}" onclick="switchSubmission({{ sub.id }})" 
+                         class="sub-nav-item flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all hover:bg-white hover:shadow-sm border border-transparent">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center font-black text-stone-600 text-xs shrink-0 shadow-inner">
+                                {{ sub.user.username[0]|upper }}
+                            </div>
+                            <span class="font-bold text-sm text-stone-700 truncate">{{ sub.user.username }}</span>
+                        </div>
+                        {% if sub.status == 'graded' %}
+                            <i class="fas fa-check-circle text-emerald-500 text-sm"></i>
+                        {% else %}
+                            <div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="p-6 text-center opacity-40 text-xs font-bold mt-10">
+                        <i class="fas fa-inbox text-3xl mb-2 block"></i>
+                        暂无提交记录
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="flex-1 bg-white relative overflow-hidden flex flex-col">
+            
+            <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-center bg-stone-50/50 z-20">
+                <div class="w-24 h-24 bg-stone-100 rounded-full flex items-center justify-center text-stone-300 text-4xl mb-4 shadow-inner"><i class="fas fa-mouse-pointer"></i></div>
+                <h3 class="text-lg font-black text-stone-600">请在左侧选择一份作业</h3>
+                <p class="text-sm font-medium text-stone-400 mt-1">点击学生名单开始批阅流程</p>
+            </div>
+
+            {% for sub in submissions %}
+            <div id="panel-sub-{{ sub.id }}" class="submission-panel hidden flex-col h-full absolute inset-0 z-10 bg-white">
+                
+                <div class="flex-1 p-6 lg:p-10 overflow-y-auto custom-scroll relative">
+                    <div class="flex items-center gap-2 mb-6 pb-4 border-b border-stone-100">
+                        <span class="badge badge-primary badge-sm">正在批阅</span>
+                        <h2 class="text-xl font-black text-stone-800">{{ sub.user.username }} 的作业</h2>
+                        <span class="text-xs font-bold text-stone-400 ml-auto">{{ sub.submitted_at.strftime('%Y-%m-%d %H:%M') if sub.submitted_at else '' }}</span>
+                    </div>
+                    <div class="prose prose-stone max-w-none prose-sm whitespace-pre-wrap text-stone-700 leading-relaxed bg-stone-50 p-6 rounded-2xl border border-stone-100 min-h-[50%]">
+{{ sub.content or '（该村民没有写任何内容）' }}
+                    </div>
+                </div>
+
+                <div class="shrink-0 border-t border-stone-200 bg-stone-50 p-4 lg:px-10 lg:py-6 shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+                    <form method="post" action="{{ url_for('grade_assignment', assign_id=assignment.id) }}" class="flex flex-col lg:flex-row gap-4 items-end">
+                        <input type="hidden" name="submission_id" value="{{ sub.id }}">
+                        
+                        <div class="form-control w-full lg:w-48 shrink-0">
+                            <label class="label font-bold py-1 text-stone-600 text-xs uppercase tracking-widest"><i class="fas fa-medal text-amber-500 mr-1"></i> 给予等第</label>
+                            <select name="grade" class="select select-bordered border-2 focus:border-amber-500 font-black text-lg bg-white" required>
+                                <option value="" disabled {% if not sub.grade %}selected{% endif %}>选择...</option>
+                                <option value="S+" {% if sub.grade == 'S+' %}selected{% endif %}>S+ (完美)</option>
+                                <option value="S" {% if sub.grade == 'S' %}selected{% endif %}>S (极好)</option>
+                                <option value="A" {% if sub.grade == 'A' %}selected{% endif %}>A (优秀)</option>
+                                <option value="B" {% if sub.grade == 'B' %}selected{% endif %}>B (良好)</option>
+                                <option value="C" {% if sub.grade == 'C' %}selected{% endif %}>C (及格)</option>
+                                <option value="D" {% if sub.grade == 'D' %}selected{% endif %}>D (待改进)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-control mb-4">
+    <label class="label font-bold py-1 text-stone-600 text-xs uppercase tracking-widest">
+        <i class="fas fa-star text-amber-500 mr-1"></i> 授予星级 (最高 {{ assignment.star_level }} 星)
+    </label>
+    <div class="rating rating-sm gap-1">
+        {% for i in range(1, assignment.star_level + 1) %}
+        <input type="radio" name="stars_earned" value="{{ i }}" class="mask mask-star-2 bg-amber-400" {% if sub.stars_earned == i %}checked{% endif %} />
+        {% endfor %}
+    </div>
+</div>
+                        
+                        <div class="form-control flex-1 w-full">
+                            <label class="label font-bold py-1 text-stone-600 text-xs uppercase tracking-widest"><i class="fas fa-pen text-amber-500 mr-1"></i> 评语反馈</label>
+                            <input type="text" name="feedback" class="input input-bordered border-2 focus:border-amber-500 font-medium bg-white w-full" placeholder="写一句鼓励的话（回车也可提交）..." value="{{ sub.feedback if sub.feedback else '' }}">
+                        </div>
+
+                        <button type="submit" class="btn bg-amber-600 hover:bg-amber-700 text-white border-none shadow-lg shadow-amber-600/30 shrink-0 w-full lg:w-auto h-12 px-8 text-base">
+                            <i class="fas fa-gavel mr-1"></i> 盖章发送
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 💡 左右分栏切换逻辑
+    function switchSubmission(subId) {
+        // 1. 隐藏欢迎占位图
+        document.getElementById('empty-state').style.display = 'none';
+
+        // 2. 隐藏所有右侧面板
+        document.querySelectorAll('.submission-panel').forEach(panel => {
+            panel.classList.remove('flex');
+            panel.classList.add('hidden');
+        });
+
+        // 3. 取消所有左侧导航的激活状态
+        document.querySelectorAll('.sub-nav-item').forEach(nav => {
+            nav.classList.remove('bg-white', 'border-amber-200', 'shadow-md');
+            nav.classList.add('border-transparent');
+        });
+
+        // 4. 显示目标面板并高亮左侧导航
+        const targetPanel = document.getElementById('panel-sub-' + subId);
+        const targetNav = document.getElementById('nav-sub-' + subId);
+        
+        if (targetPanel) {
+            targetPanel.classList.remove('hidden');
+            targetPanel.classList.add('flex');
+        }
+        if (targetNav) {
+            targetNav.classList.remove('border-transparent');
+            targetNav.classList.add('bg-white', 'border-amber-200', 'shadow-md');
+        }
+    }
+
+    // 页面加载后自动展开第一个学生的作业（如果有的话）
+    document.addEventListener('DOMContentLoaded', () => {
+        const firstNav = document.querySelector('.sub-nav-item');
+        if (firstNav) {
+            firstNav.click();
+        }
+    });
+</script>
+{% endblock %}

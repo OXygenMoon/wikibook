@@ -1,29 +1,18 @@
-from app import app, db
-from sqlalchemy import text
+# 引入你的 Flask 实例和数据库实例
+# 💡 注意：如果你的主文件不叫 app.py，请把这里的 app 换成你的文件名
+from app import app, db 
 
-def refresh_schema():
+
+def fix_database():
     with app.app_context():
-        print("正在强制刷新 UserActiveStatus 表...")
-        # 为了不影响核心数据（笔记、用户），我们只删除并重建状态表和新功能表
-        temp_tables = [
-            'user_active_status', 
-            'wiki_folder', 
-            'wall_sticker', 
-            'sticker_wall', 
-            'pomodoro_record',
-            'wall_classes',
-            'wall_groups',
-            'wall_users'
-        ]
+        print("开始扫描数据库...")
         
-        with db.engine.connect() as conn:
-            for table in temp_tables:
-                conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
-            conn.commit()
-        
-        print("正在根据最新代码重建所有缺失的表...")
+        # db.create_all() 是无损操作：
+        # 它只会创建目前数据库中【不存在】的表，绝对不会覆盖或修改【已存在】的表和数据！
         db.create_all()
-        print("✅ 数据库结构同步完成！")
+        
+        print("✅ 修复完成！缺失的新表（bookmark_types, user_bookmarks）已被安全创建。")
+        print("老数据完好无损，现在可以重新启动 Flask 服务器了。")
 
 if __name__ == '__main__':
-    refresh_schema()
+    fix_database()

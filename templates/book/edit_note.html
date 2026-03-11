@@ -77,6 +77,34 @@
         display: block !important;
     }
     .editor-preview-side p { margin: 0.5em 0; }
+
+    /* ========================================== */
+    /* 💡 强行拍平左侧源码区的富文本效果，还原纯代码视觉 */
+    /* ========================================== */
+    
+    /* 1. 取消各级标题的字体放大和加粗 */
+    .EasyMDEContainer .CodeMirror .cm-header-1,
+    .EasyMDEContainer .CodeMirror .cm-header-2,
+    .EasyMDEContainer .CodeMirror .cm-header-3,
+    .EasyMDEContainer .CodeMirror .cm-header-4,
+    .EasyMDEContainer .CodeMirror .cm-header-5,
+    .EasyMDEContainer .CodeMirror .cm-header-6 {
+        font-size: 1em !important; 
+        font-weight: normal !important;
+        line-height: inherit !important;
+    }
+
+    /* 2. 取消粗体的物理加粗效果（只保留高亮颜色即可） */
+    .EasyMDEContainer .CodeMirror .cm-formatting-strong,
+    .EasyMDEContainer .CodeMirror .cm-strong {
+        font-weight: normal !important;
+    }
+
+    /* 3. 取消斜体的物理倾斜效果 */
+    .EasyMDEContainer .CodeMirror .cm-formatting-em,
+    .EasyMDEContainer .CodeMirror .cm-em {
+        font-style: normal !important;
+    }
 </style>
 {% endblock %}
 
@@ -158,14 +186,37 @@
             sizeUnits: "b,kb,mb"
         },
         errorCallback: (msg) => alert("上传失败: " + msg),
-        previewRender: function(plainText) {
-            const preview = document.getElementsByClassName("editor-preview-side")[0];
-            preview.innerHTML = this.parent.markdown(plainText);
-            if (window.hljs) preview.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
-            if (typeof MathJax !== 'undefined') MathJax.typesetPromise([preview]);
-            return preview.innerHTML;
+        
+        // 💡 修复 1: 正确使用内置解析器并处理代码高亮与公式
+        previewRender: function(plainText, preview) {
+            // 使用 EasyMDE 绑定的解析方法（通常是 marked）
+            setTimeout(() => {
+                // 如果需要，这里可以替换为你后端的 mistune API
+                // 暂时先让代码高亮和数学公式跑起来
+                if (window.hljs) preview.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
+                if (typeof MathJax !== 'undefined') MathJax.typesetPromise([preview]);
+            }, 0);
+            
+            // 必须返回 HTML 字符串，EasyMDE 会把它塞进 preview 容器
+            // (注意：this.parent.markdown() 内部实际上调用了 marked.parse)
+            return this.parent.markdown(plainText); 
         },
     });
+
+    // 💡 修复 2: 在延迟打开分屏时，给预览面板加上排版样式！
+    setTimeout(function() {
+        if (!easyMDE.isSideBySideActive()) {
+            easyMDE.toggleSideBySide();
+        }
+        if (easyMDE.codemirror) easyMDE.codemirror.refresh();
+        
+        // 为侧边预览框注入全局的 Markdown 排版样式（与正式页面一致）
+        const previewElement = document.querySelector('.editor-preview-side');
+        if (previewElement) {
+            // 添加你在正式阅读页使用的类，例如 markdown-body 或 prose
+            previewElement.classList.add('markdown-body', 'prose', 'prose-stone', 'max-w-none', 'p-6');
+        }
+    }, 200);
 
     setTimeout(function() {
         if (!easyMDE.isSideBySideActive()) {

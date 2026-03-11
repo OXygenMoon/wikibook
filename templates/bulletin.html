@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}小镇告示板 - 任务中心{% endblock %}
+
+{% block content %}
+<div class="min-h-[calc(100vh-6rem)] bg-stone-100 dark:bg-[#111318] pt-12 pb-24 px-4 relative z-10">
+    
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between mb-12 gap-6">
+        <div class="flex items-center gap-5 text-center md:text-left">
+            <div class="w-16 h-16 bg-[#8b5a2b] rounded-2xl flex items-center justify-center text-white shadow-xl rotate-[-6deg] border-4 border-[#5c3a18]">
+                <i class="fas fa-thumbtack text-3xl"></i>
+            </div>
+            <div>
+                <h1 class="text-4xl md:text-5xl font-black text-stone-800 tracking-tight drop-shadow-sm">每日告示栏</h1>
+                <p class="text-sm font-bold text-stone-500 uppercase tracking-[0.2em] mt-2">Village Bulletin Board</p>
+            </div>
+        </div>
+        
+        <button onclick="app.quests.openLog()" class="btn btn-lg bg-white/80 backdrop-blur-md border-2 border-[#8b5a2b]/20 hover:border-[#8b5a2b] hover:bg-white rounded-2xl gap-3 font-black text-stone-700 transition-all shadow-md">
+            <i class="fas fa-scroll text-[#8b5a2b] text-xl"></i>
+            打开任务手册
+        </button>
+    </div>
+
+    <div class="max-w-6xl mx-auto relative bg-[#d4a373] p-8 md:p-16 rounded-[3rem] shadow-[0_20px_0_0_#bc8a5f,0_30px_60px_-12px_rgba(0,0,0,0.4)] border-[12px] border-[#bc8a5f] min-h-[500px]">
+        <div class="absolute inset-4 border-4 border-[#bc8a5f]/40 rounded-[2rem] pointer-events-none" style="background-image: radial-gradient(#bc8a5f 1.5px, transparent 1.5px); background-size: 24px 24px;"></div>
+        
+        <div id="bulletin-stickers" class="relative z-10 flex flex-wrap gap-8 justify-center items-start pt-4">
+            <div class="py-32 text-center opacity-50 w-full flex flex-col items-center">
+                <span class="loading loading-spinner loading-lg mb-4 text-[#8b5a2b]"></span>
+                <p class="font-bold tracking-widest text-[#5c3a18] text-lg">正在从镇长办公室拉取委托...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // 页面加载完成后，直接叫任务系统去拉取告示板贴纸
+        if(window.app && app.quests) {
+            app.quests.refreshBoard();
+        }
+    });
+</script>
+{% endblock %}

@@ -1,4 +1,70 @@
 {% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/github.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/easymde.min.css') }}">
+
+<style>
+    /* 💡 强制编辑器内部滚动，并美化滚动条 */
+    .EasyMDEContainer .CodeMirror {
+        height: auto;
+        max-height: 60vh; 
+    }
+    .EasyMDEContainer .CodeMirror-scroll {
+        max-height: 60vh;
+        overflow-y: auto !important;
+        overflow-x: hidden;
+    }
+
+    /* =========================================
+       💡 强行拍平左侧源码区的富文本效果，还原纯代码视觉
+       ========================================= */
+    .EasyMDEContainer .CodeMirror .cm-header-1,
+    .EasyMDEContainer .CodeMirror .cm-header-2,
+    .EasyMDEContainer .CodeMirror .cm-header-3,
+    .EasyMDEContainer .CodeMirror .cm-header-4,
+    .EasyMDEContainer .CodeMirror .cm-header-5,
+    .EasyMDEContainer .CodeMirror .cm-header-6 {
+        font-size: 1em !important; 
+        font-weight: normal !important;
+        line-height: inherit !important;
+    }
+
+    .EasyMDEContainer .CodeMirror .cm-formatting-strong,
+    .EasyMDEContainer .CodeMirror .cm-strong {
+        font-weight: normal !important;
+    }
+
+    .EasyMDEContainer .CodeMirror .cm-formatting-em,
+    .EasyMDEContainer .CodeMirror .cm-em {
+        font-style: normal !important;
+    }
+
+    /* =========================================
+       分屏预览区 (Side by Side) 基础样式调整
+       ========================================= */
+    .editor-preview-side {
+        border: none !important;
+        border-left: 1px solid hsl(var(--bc) / 0.1) !important;
+        background-color: hsl(var(--b1));
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        top: 50px; 
+        height: auto !important; 
+        z-index: 50;
+        padding: 2rem !important; 
+    }
+
+    .EasyMDEContainer.sided--no-fullscreen .CodeMirror { width: 50% !important; }
+    .EasyMDEContainer.sided--no-fullscreen .editor-preview-side {
+        width: 50% !important;
+        top: 52px !important;
+        display: block !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto card bg-base-100 shadow">
   <div class="card-body">
@@ -49,10 +115,32 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/vendor/polyfill.min.js') }}"></script>
+<script id="MathJax-script" async src="{{ url_for('static', filename='js/vendor/tex-mml-chtml.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/highlight.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vendor/easymde.min.js') }}"></script>
+
 <script>
+  document.addEventListener('DOMContentLoaded', () => {
+      if (window.hljs) hljs.highlightAll();
+  });
+
   const easyMDE = new EasyMDE({
     element: document.getElementById('md-editor'),
     minHeight: "400px",
+    maxHeight: "60vh",
+    
+    // 💡 允许分屏与同步滚动
+    sideBySideFullscreen: false, 
+    syncSideBySidePreviewScroll: true,
+    toolbar: [
+        "bold", "italic", "strikethrough", "heading", "|", 
+        "quote", "unordered-list", "ordered-list", "|", 
+        "link", "image", "upload-image", "code", "|",  
+        "preview", "side-by-side", "fullscreen", "|", 
+        "guide"
+    ],
+
     uploadImage: true,
     imageUploadEndpoint: "{{ url_for('upload_file') }}",
     imagePathAbsolute: true,
@@ -68,8 +156,36 @@
         sizeUnits: "b,kb,mb"
     },
     errorCallback: function(errorMessage) {
-        alert("上传失败: " + errorMessage);
+        if(window.app && window.app.toast) {
+            app.toast.show("上传失败: " + errorMessage, "error");
+        } else {
+            alert("上传失败: " + errorMessage);
+        }
+    },
+
+    // 💡 核心：正确使用内置解析器并处理代码高亮与公式
+    previewRender: function(plainText, preview) {
+        setTimeout(() => {
+            if (window.hljs) preview.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
+            if (typeof MathJax !== 'undefined') MathJax.typesetPromise([preview]);
+        }, 0);
+        return this.parent.markdown(plainText); 
     }
   });
+
+  // 💡 核心：加载后自动开启分屏，并给预览区注入 Markdown 排版样式
+  setTimeout(function() {
+      // 仅在大屏幕下自动开启分屏，避免手机端排版挤压
+      if (!easyMDE.isSideBySideActive() && window.innerWidth > 1024) {
+          easyMDE.toggleSideBySide();
+      }
+      if(easyMDE.codemirror) easyMDE.codemirror.refresh();
+
+      // 为侧边预览框注入全局的 Markdown 排版样式
+      const previewElement = document.querySelector('.editor-preview-side');
+      if (previewElement) {
+          previewElement.classList.add('markdown-body', 'prose', 'prose-stone', 'max-w-none', 'p-6');
+      }
+  }, 300);
 </script>
 {% endblock %}

@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}书签系统管理 - 控制台{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-base-content flex items-center gap-3">
+                <i class="fas fa-bookmark text-primary"></i> 书签图鉴管理
+            </h1>
+            <p class="text-base-content/60 mt-2 font-medium">设计并管理平台上所有的实体书签以及对应的获取条件。</p>
+        </div>
+        <button onclick="openBookmarkModal()" class="btn btn-primary rounded-full shadow-lg shadow-primary/30 px-8">
+            <i class="fas fa-plus mr-1"></i> 新建书签
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for b in bookmarks %}
+            {% set rarity_colors = {
+                'common': 'from-stone-200 to-stone-300 text-stone-700',
+                'rare': 'from-blue-400 to-blue-600 text-white',
+                'epic': 'from-fuchsia-500 to-purple-600 text-white',
+                'legendary': 'from-amber-400 to-orange-500 text-white'
+            } %}
+            {% set gradient = rarity_colors.get(b.rarity, rarity_colors['common']) %}
+
+        <div class="bg-base-100 rounded-[2rem] border border-base-200 shadow-sm overflow-hidden flex flex-col group hover:shadow-xl transition-all duration-300">
+            <div class="h-32 bg-gradient-to-br {{ gradient }} relative flex items-center justify-center overflow-hidden">
+                <div class="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSIvPgo8L3N2Zz4=')]"></div>
+                <div class="transform group-hover:scale-125 transition-transform duration-500 drop-shadow-xl text-5xl">
+                    {% if b.icon.startswith('http') or b.icon.startswith('/') %}
+                        <img src="{{ b.icon }}" class="w-16 h-16 object-contain" alt="icon">
+                    {% else %}
+                        {{ b.icon }}
+                    {% endif %}
+                </div>
+                <div class="absolute top-3 right-3 badge badge-sm border-none bg-white/20 text-white font-bold shadow-sm backdrop-blur-md">
+                    {{ b.rarity | upper }}
+                </div>
+            </div>
+            
+            <div class="p-5 flex-1 flex flex-col">
+                <h3 class="font-black text-lg text-base-content mb-1 truncate">{{ b.name }}</h3>
+                <p class="text-xs text-base-content/60 line-clamp-2 mb-4 h-8 leading-relaxed">{{ b.description or '暂无寓意描述' }}</p>
+                
+                <div class="mt-auto pt-4 border-t border-base-200 flex flex-col gap-3">
+                    <div class="text-[10px] font-mono bg-base-200/50 rounded-lg px-2.5 py-1.5 text-base-content/70">
+                        <span class="opacity-50">触发条件:</span> <span class="font-bold text-primary">{{ b.condition_type }}</span> = {{ b.condition_value }}
+                    </div>
+                    <div class="flex gap-2">
+                        <form action="{{ url_for('test_grant_bookmark', b_id=b.id) }}" method="POST">
+                            <button type="submit" class="btn btn-sm btn-ghost bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl tooltip tooltip-top" data-tip="发给自己看效果">
+                                <i class="fas fa-gift"></i>
+                            </button>
+                        </form>
+                        <button onclick='openBookmarkModal({{ b.id }}, {{ b.name|tojson }}, {{ b.description|tojson }}, {{ b.icon|tojson }}, "{{ b.rarity }}", "{{ b.condition_type }}", {{ b.condition_value }})' class="btn btn-sm btn-ghost bg-base-200 flex-1 rounded-xl text-xs hover:text-primary">
+                            <i class="fas fa-edit"></i> 编辑
+                        </button>
+                        <form action="{{ url_for('delete_bookmark_type', b_id=b.id) }}" method="POST" onsubmit="return confirm('确定要删除这枚书签吗？已获得的玩家将失去它！');">
+                            <button type="submit" class="btn btn-sm btn-ghost bg-error/10 text-error hover:bg-error hover:text-white rounded-xl tooltip tooltip-top" data-tip="危险操作">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not bookmarks %}
+        <div class="col-span-full py-20 text-center border-2 border-dashed border-base-300 rounded-[2rem] text-base-content/40">
+            <i class="fas fa-bookmark text-5xl mb-4 opacity-20"></i>
+            <p class="font-bold">暂无任何书签种类，点击右上角新建吧！</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<dialog id="bookmark_modal" class="modal bg-black/50 backdrop-blur-sm">
+    <div class="modal-box w-11/12 max-w-2xl rounded-[2rem] border border-base-200 shadow-2xl p-0">
+        <div class="p-6 bg-base-200/50 border-b border-base-200">
+            <h3 class="font-bold text-xl flex items-center gap-2" id="modal_title"><i class="fas fa-magic text-primary"></i> 锻造新书签</h3>
+        </div>
+        
+        <form action="{{ url_for('save_bookmark_type') }}" method="POST" enctype="multipart/form-data" class="p-6 space-y-5">
+            <input type="hidden" name="id" id="b_id">
+            
+            <div class="flex gap-4">
+                <div class="form-control flex-1">
+                    <label class="label"><span class="label-text font-bold">书签名称 (必填)</span></label>
+                    <input type="text" name="name" id="b_name" class="input input-bordered rounded-xl bg-base-100" placeholder="例如：金色火漆印章" required />
+                </div>
+                <div class="form-control w-56">
+                    <label class="label"><span class="label-text font-bold">图片文件 (PNG/JPG)</span></label>
+                    <div class="flex items-center gap-2">
+                        <div id="icon_preview_wrapper" class="hidden w-12 h-12 rounded-xl bg-base-200 border border-base-300 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-inner">
+                            <img id="icon_preview_img" src="" class="w-8 h-8 object-contain">
+                        </div>
+                        <input type="file" name="icon_file" id="b_icon_file" accept="image/png, image/jpeg, image/gif, image/webp" class="file-input file-input-bordered file-input-sm rounded-xl bg-base-100 w-full" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-bold">寓意与描述</span></label>
+                <textarea name="description" id="b_desc" class="textarea textarea-bordered rounded-xl h-20 bg-base-100" placeholder="描述这枚书签背后的含义..."></textarea>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-bold">稀有度级别</span></label>
+                    <select name="rarity" id="b_rarity" class="select select-bordered rounded-xl bg-base-100 font-bold">
+                        <option value="common">普通 (Common)</option>
+                        <option value="rare" class="text-blue-600">稀有 (Rare)</option>
+                        <option value="epic" class="text-purple-600">史诗 (Epic)</option>
+                        <option value="legendary" class="text-orange-500">传说 (Legendary)</option>
+                    </select>
+                </div>
+                
+                <div class="form-control">
+                    <label class="label tooltip tooltip-top" data-tip="决定用户如何获取这枚书签"><span class="label-text font-bold border-b border-dashed border-base-content/30 cursor-help">解锁条件逻辑</span></label>
+                    <select name="condition_type" id="b_cond_type" class="select select-bordered rounded-xl bg-base-100">
+                        <option value="manual">💎 管理员手动发放</option>
+                        <optgroup label="专注与习惯">
+                            <option value="pomo_count">🍅 累计番茄专注 (次)</option>
+                            <option value="pomo_duration">⏳ 累计专注时长 (分钟)</option>
+                            <option value="login_streak">🔥 连续打卡登录 (天)</option>
+                        </optgroup>
+                        <optgroup label="阅读与学习">
+                            <option value="wiki_read_time">📖 单篇Wiki阅读达 (分钟)</option>
+                            <option value="book_note_count">📝 沉淀私人笔记达 (篇)</option>
+                        </optgroup>
+                        <optgroup label="贡献与社交">
+                            <option value="wiki_created">🌍 创建公开Wiki (个)</option>
+                            <option value="wiki_likes_received">❤️ Wiki获得订阅数 (次)</option>
+                            <option value="sticky_converted">📌 便签转化为笔记 (次)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-bold">触发阈值</span></label>
+                    <input type="number" name="condition_value" id="b_cond_val" class="input input-bordered rounded-xl bg-base-100 font-mono" value="0" min="0" />
+                </div>
+            </div>
+            
+            <div class="modal-action mt-8 pt-4 border-t border-base-200">
+                <button type="button" class="btn btn-ghost rounded-xl px-6" onclick="document.getElementById('bookmark_modal').close()">取消</button>
+                <button type="submit" class="btn btn-primary rounded-xl shadow-lg shadow-primary/30 px-10">保存书签图鉴</button>
+            </div>
+        </form>
+    </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openBookmarkModal(id='', name='', desc='', icon='', rarity='common', condType='manual', condVal=0) {
+        document.getElementById('b_id').value = id;
+        document.getElementById('b_name').value = name;
+        document.getElementById('b_desc').value = desc;
+        document.getElementById('b_rarity').value = rarity;
+        document.getElementById('b_cond_type').value = condType;
+        document.getElementById('b_cond_val').value = condVal;
+        
+        // 文件处理与预览逻辑
+        const fileInput = document.getElementById('b_icon_file');
+        const previewWrapper = document.getElementById('icon_preview_wrapper');
+        const previewImg = document.getElementById('icon_preview_img');
+        
+        fileInput.value = ''; // 每次打开清空文件选择器
+        
+        if (id && icon) {
+            // 编辑模式：有历史图片，显示小图，且文件上传设为非必填
+            previewWrapper.classList.remove('hidden');
+            previewImg.src = icon;
+            fileInput.required = false;
+        } else {
+            // 新建模式：必须上传图片
+            previewWrapper.classList.add('hidden');
+            previewImg.src = '';
+            fileInput.required = true;
+        }
+        
+        document.getElementById('modal_title').innerHTML = id 
+            ? '<i class="fas fa-edit text-primary"></i> 编辑书签属性' 
+            : '<i class="fas fa-magic text-primary"></i> 锻造新书签';
+            
+        document.getElementById('bookmark_modal').showModal();
+    }
+</script>
+{% endblock %}

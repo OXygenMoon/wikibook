@@ -20,6 +20,9 @@ from flask_migrate import Migrate
 from sqlalchemy import MetaData
 import re
 
+import logging
+import traceback
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///wikibook.db")
@@ -27,6 +30,21 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static/uploads")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB limit
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # Keep session for 30 days
+
+
+# 💡 配置日志，将所有报错信息写入 flask_error.log 文件中
+logging.basicConfig(filename='flask_error.log', level=logging.DEBUG, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# 💡 捕获全局 500 错误，并强行把堆栈信息(Traceback)打印到终端和日志里
+@app.errorhandler(500)
+def internal_server_error(e):
+    error_tb = traceback.format_exc()
+    app.logger.error(f"发生 500 错误:\n{error_tb}")
+    print(f"\n{'='*50}\n🚨 崩溃日志来啦:\n{error_tb}\n{'='*50}\n")
+    return f"<h1>服务器崩溃了</h1><p>请查看控制台或 flask_error.log 文件提取日志发给 AI 助手。</p><pre>{error_tb}</pre>", 500
+
+
 
 # ==========================================
 # 💡 核心修复：定义一套命名约定，拯救 SQLite 迁移
@@ -124,6 +142,10 @@ class User(db.Model, UserMixin):
     notes = db.relationship("Note", backref="user", cascade="all, delete-orphan")
     shared_notes = db.relationship("NoteShare", backref="user", cascade="all, delete-orphan")
     earned_badges = db.relationship("UserBadge", backref="user", cascade="all, delete-orphan")
+
+    # bookmarks 书签
+    bookmarks = db.relationship('UserBookmark', backref='user', lazy='dynamic', cascade="all, delete-orphan")
+
 
     followed = db.relationship(
         'User', secondary=followers,
@@ -500,6 +522,11 @@ class UserActiveStatus(db.Model):
     # 💡 必须在这里定义字段，业务逻辑才能读写它们
     pomo_state = db.Column(db.String(20), default="IDLE") # IDLE, WORK, REST
     pomo_end_time = db.Column(db.Float, default=0.0)      # 存储毫秒级时间戳
+
+    # 💡 新增：用于记录学习报告的最后查阅日期
+    last_daily_report = db.Column(db.Date, nullable=True)
+    last_weekly_report = db.Column(db.Date, nullable=True)
+    last_monthly_report = db.Column(db.Date, nullable=True)
     
     user = db.relationship("User", backref=db.backref("active_status", uselist=False))
 
@@ -643,6 +670,56 @@ class StickerBoardSnapshot(db.Model):
     likes_count = db.Column(db.Integer, default=0)
     
     user = db.relationship("User", backref="sticker_snapshots")
+
+
+# ==========================================
+# 书签系统 Models
+# ==========================================
+
+class BookmarkType(db.Model):
+    __tablename__ = 'bookmark_types'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)       # 书签名称，如 "银杏落叶"、"纯金火漆"
+    description = db.Column(db.Text, nullable=True)        # 书签背后的寓意描述
+    icon = db.Column(db.String(255), nullable=False)       # 可以是 Emoji，也可以是图片的 URL
+    rarity = db.Column(db.String(20), default='common')    # 稀有度: common, rare, epic, legendary
+    
+    # 💡 核心机制：定义如何获得这枚书签
+    condition_type = db.Column(db.String(50), nullable=False) # 条件类型：例如 'wiki_read_time', 'pomo_count', 'note_created' 等
+    condition_value = db.Column(db.Integer, default=0)        # 触发阈值：例如 60 (表示60分钟)，或 10 (表示10次)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 关系绑定
+    user_bookmarks = db.relationship('UserBookmark', backref='bookmark_type', lazy='dynamic', cascade="all, delete-orphan")
+
+
+class UserBookmark(db.Model):
+    __tablename__ = 'user_bookmarks'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    bookmark_type_id = db.Column(db.Integer, db.ForeignKey('bookmark_types.id'), nullable=False)
+    
+    # 获取记录
+    earned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_notified = db.Column(db.Boolean, default=False)     # 用于全局弹窗：False 表示这是刚获得的，还需要弹窗提示
+    
+    # 💡 使用状态与三维坐标 (物理夹页映射)
+    is_placed = db.Column(db.Boolean, default=False)       # False = 闲置(显示+号)，True = 已使用(显示i号)
+    
+    # 当 is_placed 为 True 时，以下字段才有值：
+    target_type = db.Column(db.String(20), nullable=True)  # 夹在哪里：'wiki' 还是 'book'
+    target_id = db.Column(db.Integer, nullable=True)       # 具体的 WikiPage.id 或 BookNote.id
+    target_url = db.Column(db.String(255), nullable=True)  # 完整的访问路径，方便直接生成跳转链接
+    target_block_id = db.Column(db.String(100), nullable=True) # 💡 精确定位：HTML中的段落锚点 ID (如 heading-2, block-15)
+    
+    # 冗余存储，用于在右上角抽屉里直接展示，不用跨表联查，极大提高渲染速度
+    target_title = db.Column(db.String(255), nullable=True) # 书签所在页面的标题
+    target_snippet = db.Column(db.Text, nullable=True)      # 书签所夹段落的大致内容（前30个字）摘要
+    placed_at = db.Column(db.DateTime, nullable=True)      # 夹入书签的时间
+
+
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -2764,6 +2841,9 @@ def public_profile(user_id):
     all_badges = Badge.query.all()
     unearned_badges = [b for b in all_badges if b.id not in earned_badge_ids]
     
+    # 💡 新增：获取用户已收集的书签
+    user_bookmarks = UserBookmark.query.filter_by(user_id=user.id).order_by(UserBookmark.earned_at.desc()).all()
+    
     # Recent Activity (Notes)
     recent_notes = Note.query.filter_by(user_id=user.id).order_by(Note.created_at.desc()).limit(5).all()
 
@@ -2771,7 +2851,34 @@ def public_profile(user_id):
     is_following = current_user.is_following(user)
     is_study_partner = current_user.is_following(user) and user.is_following(current_user)
 
-    return render_template("user/profile.html", user=user, stats=stats, user_badges=user_badges, unearned_badges=unearned_badges, recent_notes=recent_notes, is_following=is_following, is_study_partner=is_study_partner)
+    return render_template("user/profile.html", 
+                           user=user, 
+                           stats=stats, 
+                           user_badges=user_badges, 
+                           unearned_badges=unearned_badges, 
+                           user_bookmarks=user_bookmarks, # 💡 传入书签数据
+                           recent_notes=recent_notes, 
+                           is_following=is_following, 
+                           is_study_partner=is_study_partner)
+
+# 💡 新增：书签图鉴全屏页面路由
+@app.route("/user/<int:user_id>/bookmark_book")
+@login_required
+def bookmark_book(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # 获取已获得的书签
+    user_bookmarks = UserBookmark.query.filter_by(user_id=user.id).order_by(UserBookmark.earned_at.desc()).all()
+    earned_type_ids = [ub.bookmark_type_id for ub in user_bookmarks]
+    
+    # 获取未获得的书签
+    all_bookmarks = BookmarkType.query.all()
+    unearned_bookmarks = [b for b in all_bookmarks if b.id not in earned_type_ids]
+    
+    return render_template("user/bookmark_book.html", 
+                           user=user,
+                           user_bookmarks=user_bookmarks,
+                           unearned_bookmarks=unearned_bookmarks)
 
 @app.route("/user/<int:user_id>/achievement_book")
 @login_required
@@ -3655,13 +3762,43 @@ def heartbeat():
             })
 
         has_new_badges = UserBadge.query.filter_by(user_id=current_user.id, is_notified=False).count() > 0
+        has_new_bookmarks = UserBookmark.query.filter_by(user_id=current_user.id, is_notified=False).count() > 0
 
-        return jsonify({"status": "ok", "notifications": notifications, "has_new_badges": has_new_badges})
+        return jsonify({
+            "status": "ok", 
+            "notifications": notifications, 
+            "has_new_badges": has_new_badges,
+            "has_new_bookmarks": has_new_bookmarks
+        })
         
     except Exception as e:
         db.session.rollback()
         # 出错时返回 JSON 而不是抛出 500 HTML 页面，保护前端不崩溃
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/bookmarks/unnotified", methods=["GET"])
+@login_required
+def api_unnotified_bookmarks():
+    # 查询所有未被通知的新书签
+    ubs = UserBookmark.query.filter_by(user_id=current_user.id, is_notified=False).all()
+    if not ubs:
+        return jsonify([])
+    
+    data = []
+    for ub in ubs:
+        ub.is_notified = True  # 阅后即焚，标记为已通知
+        b_type = ub.bookmark_type
+        is_image = is_image_icon(b_type.icon)
+        
+        data.append({
+            "name": b_type.name,
+            "icon": badge_icon_url(b_type.icon) if is_image else b_type.icon,
+            "is_image": is_image,
+            "rarity": b_type.rarity
+        })
+        
+    db.session.commit()
+    return jsonify(data)
 
 
 @app.route("/api/badges/unnotified", methods=["GET"])
@@ -3720,11 +3857,121 @@ def inject_helpers():
         get_badge_usage=get_badge_usage
     )
 
+
 # ==========================================
-# 3. 自动触发发奖核心服务 (用户动作触发)
+# 🔖 书签自动化发奖核心引擎 (宽容匹配版)
+# ==========================================
+def check_and_award_bookmarks(user):
+    # 1. 查找当前用户所有已有的书签类型 ID
+    earned_ubs = UserBookmark.query.filter_by(user_id=user.id).all()
+    earned_type_ids = [ub.bookmark_type_id for ub in earned_ubs]
+    
+    # 2. 获取所有该用户还没获得的书签模板
+    available_types = BookmarkType.query.filter(BookmarkType.id.notin_(earned_type_ids)).all()
+    awarded_count = 0
+    
+    for b_type in available_types:
+        if b_type.condition_type == 'manual':
+            continue
+
+        earned = False
+        val = b_type.condition_value
+        ctype = b_type.condition_type  # 从数据库读取出的实际条件文本
+        
+        try:
+            # 💡 条件 1：累计番茄专注 (次)
+            if ctype in ['pomo_count']:
+                count = PomodoroRecord.query.filter_by(user_id=user.id).count()
+                if count >= val: earned = True
+                
+            # 💡 条件 2：累计专注时长 (分钟)
+            elif ctype in ['pomo_duration', 'study_hours', 'study_minutes']:
+                records = PomodoroRecord.query.filter_by(user_id=user.id).all()
+                total_mins = sum([r.duration_minutes for r in records if r.duration_minutes])
+                # 注意：如果原来 condition_type 叫 study_hours，这里要换算成小时
+                if ctype == 'study_hours':
+                    if (total_mins / 60.0) >= val: earned = True
+                else:
+                    if total_mins >= val: earned = True
+                
+            # 💡 条件 3：连续打卡登录 (天)
+            elif ctype in ['streak_days']:
+                sessions = StudySession.query.filter_by(user_id=user.id).order_by(StudySession.start_time.desc()).all()
+                dates = sorted(list(set([s.start_time.date() for s in sessions])), reverse=True)
+                streak = 0
+                if dates:
+                    today = now_utc8().date()
+                    if dates[0] == today: 
+                        streak = 1
+                        current = today
+                    elif dates[0] == today - timedelta(days=1): 
+                        streak = 1
+                        current = today - timedelta(days=1)
+                    if streak > 0:
+                        for i in range(1, len(dates)):
+                            if dates[i] == current - timedelta(days=1): 
+                                streak += 1
+                                current = dates[i]
+                            else: break
+                if streak >= val: earned = True
+                
+            # 💡 条件 4：沉淀私人笔记达 (篇) - 兼容 book_note_count 变量
+            elif ctype in ['note_count', 'book_note_count']:
+                count = Note.query.filter_by(user_id=user.id).count()
+                if count >= val: earned = True
+                
+            # 💡 条件 5：创建公开Wiki (个)
+            elif ctype in ['wiki_create_count', 'public_wiki_count']:
+                count = Wiki.query.filter_by(created_by_id=user.id, visibility='public').count()
+                if count >= val: earned = True
+                
+            # 💡 条件 6：Wiki获得订阅数 (次)
+            elif ctype in ['wiki_subscriptions', 'wiki_subscribe_count']:
+                count = Subscription.query.join(Wiki).filter(Wiki.created_by_id == user.id).count()
+                if count >= val: earned = True
+                
+            # 💡 条件 7：便签转化为笔记 (次)
+            elif ctype in ['sticky_to_note']:
+                # 通过匹配 quick_create 自动生成的默认标题作为依据
+                count = Note.query.filter(Note.user_id == user.id, Note.title.like('%便签灵感归档%')).count()
+                if count >= val: earned = True
+                
+            # 💡 条件 8：单篇Wiki阅读达 (分钟)
+            elif ctype in ['single_wiki_read_time', 'wiki_read_time']:
+                sessions = StudySession.query.filter_by(user_id=user.id).all()
+                max_duration = 0
+                for s in sessions:
+                    dur = (s.end_time - s.start_time).total_seconds() / 60.0
+                    if dur > max_duration: max_duration = dur
+                if max_duration >= val: earned = True
+                
+        except Exception as e:
+            print(f"[书签引擎解析警告] 未知条件 {ctype}，报错: {e}")
+
+        # 💡 执行发奖
+        if earned:
+            # 再次确认防止重复发放
+            existing_ub = UserBookmark.query.filter_by(user_id=user.id, bookmark_type_id=b_type.id).first()
+            if not existing_ub:
+                ub = UserBookmark(user_id=user.id, bookmark_type_id=b_type.id, is_notified=False)
+                db.session.add(ub)
+                awarded_count += 1
+
+    if awarded_count > 0:
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[书签发奖出错] {e}")
+
+# ==========================================
+# 3. 自动触发发奖核心服务 (用户动作触发) - 终极修复版
 # ==========================================
 def check_and_award_badges(user):
-    earned_badge_ids = [ub.badge_id for ub in user.earned_badges]
+    # 💡 防御 1：直接查库而不是用 user.earned_badges 缓存，避免拿不到最新数据
+    earned_ubs = UserBadge.query.filter_by(user_id=user.id).all()
+    earned_badge_ids = [ub.badge_id for ub in earned_ubs]
+    
     available_badges = Badge.query.filter(Badge.id.notin_(earned_badge_ids)).all()
     awarded_count = 0
     
@@ -3737,6 +3984,7 @@ def check_and_award_badges(user):
 
         earned = False
          
+        # --- (这里保留所有的条件判断逻辑，比如 'all_users', 'note_count' 等，完全不用动) ---
         if badge.condition_type == 'all_users':
             earned = True
         elif badge.condition_type == 'note_count':
@@ -3803,7 +4051,6 @@ def check_and_award_badges(user):
             total_hours = total_seconds / 3600
             if total_hours >= badge.condition_value: earned = True
         elif badge.condition_type == 'pomo_count':
-            # from .models import PomodoroRecord # Adjust import path as needed
             count = PomodoroRecord.query.filter_by(user_id=user.id).count()
             if count >= badge.condition_value: earned = True
         elif badge.condition_type == 'streak_days':
@@ -3837,31 +4084,43 @@ def check_and_award_badges(user):
                 ).all()
                 login_days = set([s.start_time.date() for s in sessions])
                 if len(login_days) >= badge.condition_value: earned = True
+        # -------------------------------------------------------------
         
         if earned:
-            ub = UserBadge(user_id=user.id, badge_id=badge.id)
-            
-            # 💡 动态拼装靓号
-            ub.serial_number = f"{badge.serial_prefix}-{str(badge.issued_count + 1).zfill(3)}"
-            
-            db.session.add(ub)
-            badge.issued_count += 1
-            awarded_count += 1
-            flash(f"恭喜！您获得了新徽章：{badge.icon} {badge.name}")
-            
-            partners = user.study_partners.all()
-            for p in partners:
-                n = Notification(
-                    user_id=p.id,
-                    message=f"你的学友 {user.username} 获得了 {badge.name} 徽章！",
-                    type='friend_achievement',
-                    link=url_for('public_profile', user_id=user.id)
-                )
-                db.session.add(n)
+            # 💡 防御 2：确认确实没发过才发
+            existing_ub = UserBadge.query.filter_by(user_id=user.id, badge_id=badge.id).first()
+            if not existing_ub:
+                ub = UserBadge(user_id=user.id, badge_id=badge.id, is_notified=False)
+                
+                # 💡 防御 3：加入短 UUID 哈希，彻底解决高并发下 serial_number 重复导致的崩溃回滚！
+                current_count = UserBadge.query.filter_by(badge_id=badge.id).count()
+                ub.serial_number = f"{badge.serial_prefix}-{str(current_count + 1).zfill(3)}-{uuid.uuid4().hex[:4].upper()}"
+                
+                db.session.add(ub)
+                badge.issued_count = current_count + 1
+                awarded_count += 1
+                
+                # 🚨 坚决删除这行导致界面错乱的 flash 消息，发奖提示由前台的 /api/badges/unnotified 接管
+                # flash(f"恭喜！您获得了新徽章：{badge.icon} {badge.name}")
+                
+                partners = user.study_partners.all()
+                for p in partners:
+                    n = Notification(
+                        user_id=p.id,
+                        message=f"你的学友 {user.username} 获得了 {badge.name} 徽章！",
+                        type='friend_achievement',
+                        link=url_for('public_profile', user_id=user.id)
+                    )
+                    db.session.add(n)
             
     if awarded_count > 0:
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[发奖出错] {e}")
 
+    check_and_award_bookmarks(user)
 
 @app.route("/api/stickers/<page_type>/publish", methods=["POST"])
 @login_required
@@ -4242,83 +4501,36 @@ def upgrade_db():
         
         inspector = db.inspect(db.engine)
         
-        # 💡 2. 修复 UserActiveStatus 表，补全新字段
-        if 'user_active_status' in inspector.get_table_names():
-            uas_columns = [c['name'] for c in inspector.get_columns('user_active_status')]
+            # 💡 1. 升级 Assignment 表，增加星级设定
+        if 'assignment' in inspector.get_table_names():
+            assign_columns = [c['name'] for c in inspector.get_columns('assignment')]
             with db.engine.connect() as conn:
                 needs_commit = False
-                if 'pomo_state' not in uas_columns:
-                    conn.execute(db.text("ALTER TABLE user_active_status ADD COLUMN pomo_state VARCHAR(20) DEFAULT 'IDLE'"))
+                # ... (之前的 content_md, target_type 等检查代码保留，这里略过) ...
+                
+                # 👇 重点：补上 star_level 字段
+                if 'star_level' not in assign_columns:
+                    conn.execute(db.text("ALTER TABLE assignment ADD COLUMN star_level INTEGER DEFAULT 1"))
                     needs_commit = True
-                if 'pomo_end_time' not in uas_columns:
-                    conn.execute(db.text("ALTER TABLE user_active_status ADD COLUMN pomo_end_time FLOAT DEFAULT 0.0"))
-                    needs_commit = True
+                
                 if needs_commit:
                     conn.commit()
 
-        # 3. 修复 Badge 表
-        if 'badge' in inspector.get_table_names():
-            columns = [c['name'] for c in inspector.get_columns('badge')]
+        # 💡 2. 升级 Submission 表，增加实得星级
+        if 'submission' in inspector.get_table_names():
+            sub_columns = [c['name'] for c in inspector.get_columns('submission')]
             with db.engine.connect() as conn:
-                if 'start_time' not in columns:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN start_time DATETIME"))
+                needs_commit = False
+                
+                # 👇 重点：补上 stars_earned 字段
+                if 'stars_earned' not in sub_columns:
+                    conn.execute(db.text("ALTER TABLE submission ADD COLUMN stars_earned INTEGER DEFAULT 0"))
+                    needs_commit = True
+                    
+                if needs_commit:
                     conn.commit()
-                if 'end_time' not in columns:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN end_time DATETIME"))
-                    conn.commit()
-                if 'sticker_count' not in columns:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN sticker_count INTEGER DEFAULT 1"))
-                    conn.commit()
-                if 'total_limit' not in columns:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN total_limit INTEGER"))
-                    conn.commit()
-                if 'issued_count' not in columns:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN issued_count INTEGER DEFAULT 0"))
-                    conn.commit()
-                if 'category' not in columns:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN category VARCHAR(50) DEFAULT '一般'"))
-                    conn.commit()
-                if 'custom_condition_text' not in columns:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN custom_condition_text VARCHAR(255)"))
-                    conn.commit()
-                if 'rarity' not in columns:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN rarity VARCHAR(20) DEFAULT 'common'"))
-                    conn.commit()
-                if 'is_secret' not in columns:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN is_secret BOOLEAN DEFAULT 0"))
-                    conn.commit()
-                if 'serial_prefix' not in columns:
-                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN serial_prefix VARCHAR(20) DEFAULT 'SF'"))
-                    conn.commit()
-
-        # 4. 修复 Wiki 表
-        if 'wiki' in inspector.get_table_names():
-            wiki_columns = [c['name'] for c in inspector.get_columns('wiki')]
-            with db.engine.connect() as conn:
-                if 'bg_color' not in wiki_columns:
-                    conn.execute(db.text("ALTER TABLE wiki ADD COLUMN bg_color VARCHAR(20) DEFAULT '#ffffff'"))
-                    conn.execute(db.text("ALTER TABLE wiki ADD COLUMN fg_color VARCHAR(20) DEFAULT '#1f2937'"))
-                    conn.execute(db.text("ALTER TABLE wiki ADD COLUMN pattern VARCHAR(50) DEFAULT 'pattern-none'"))
-                    conn.commit()
-
-        # 5. 修复 Note 表
-        if 'note' in inspector.get_table_names():
-            note_columns = [c['name'] for c in inspector.get_columns('note')]
-            if 'icon' not in note_columns:
-                with db.engine.connect() as conn:
-                    conn.execute(db.text("ALTER TABLE note ADD COLUMN icon VARCHAR(255)"))
-                    conn.commit()
-
-        # 6. 修复 UserBadge 表
-        if 'user_badge' in inspector.get_table_names():
-            user_badge_columns = [c['name'] for c in inspector.get_columns('user_badge')]
-            with db.engine.connect() as conn:
-                if 'is_notified' not in user_badge_columns:
-                    conn.execute(db.text("ALTER TABLE user_badge ADD COLUMN is_notified BOOLEAN DEFAULT 1"))
-                    conn.commit()
-                if 'serial_number' not in user_badge_columns:
-                    conn.execute(db.text("ALTER TABLE user_badge ADD COLUMN serial_number VARCHAR(50)"))
-                    conn.commit()
+        
+                
 
 @app.route('/service/wiki/pages')
 @login_required
@@ -5086,22 +5298,33 @@ def complete_pomodoro():
 
 class Assignment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    wiki_page_id = db.Column(db.Integer, db.ForeignKey('wiki_page.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
+    content_md = db.Column(db.Text, nullable=True)  
+    target_type = db.Column(db.String(50), default='all') 
+    target_value = db.Column(db.String(200), nullable=True) 
     created_at = db.Column(db.DateTime, default=now_utc8)
+    deadline = db.Column(db.DateTime, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_by = db.relationship('User', backref='created_assignments', foreign_keys=[created_by_id])
     
-    # 建立与提交记录的反向关联
-    submissions = db.relationship('Submission', backref='assignment', cascade='all, delete-orphan', lazy='dynamic')
+    # 👇 加上这一行！用来应付旧数据库的 NOT NULL 检查 (0代表独立作业)
+    wiki_page_id = db.Column(db.Integer, default=0) 
+
+    star_level = db.Column(db.Integer, default=1) # 💡 任务难度星级 (1-5)
+    
+    submissions = db.relationship('Submission', backref='assignment', lazy='dynamic')
 
 class Submission(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     assignment_id = db.Column(db.Integer, db.ForeignKey('assignment.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    is_viewed = db.Column(db.Boolean, default=False) # 💡 新增：是否已查看批改反馈
     
     # 快照核心：保存提交时的笔记 ID 和内容
     source_note_id = db.Column(db.Integer, db.ForeignKey('note.id'), nullable=True)
     content_snapshot_md = db.Column(db.Text, nullable=False)
+    content = db.Column(db.Text, nullable=True)
     
     # 批阅字段
     grade = db.Column(db.String(20)) # 优/良/中/差
@@ -5112,6 +5335,8 @@ class Submission(db.Model):
     graded_at = db.Column(db.DateTime, nullable=True)
 
     user = db.relationship('User', backref=db.backref('submissions', lazy='dynamic'))
+
+    stars_earned = db.Column(db.Integer, default=0) # 💡 学生获得的星级
 
 
 def parse_assignment_tags(html_content, wiki_page_id):
@@ -5255,22 +5480,39 @@ def get_submission_content():
         "grade": sub.grade or "A"
     })
 
-@app.route("/api/assignments/grade", methods=["POST"])
+# ==========================================
+# 👑 管理员：批阅任务中心
+# ==========================================
+@app.route('/assignment/<int:assign_id>/grade', methods=['GET', 'POST'])
 @login_required
-def grade_assignment():
-    if not current_user.is_admin: abort(403)
-    data = request.json
-    assign_id = data.get("assignment_id")
-    user_id = data.get("user_id")
+def grade_assignment(assign_id):
+    # 只有镇长（管理员）能进
+    if not current_user.is_admin:
+        abort(403)
     
-    sub = Submission.query.filter_by(assignment_id=assign_id, user_id=user_id).first_or_404()
-    sub.grade = data.get("grade")
-    sub.feedback = data.get("feedback")
-    sub.status = 'graded'
-    sub.graded_at = now_utc8()
+    stars_earned = request.form.get('stars_earned', 0, type=int)
+    assignment = Assignment.query.get_or_404(assign_id)
     
-    db.session.commit()
-    return jsonify({"success": True})
+    if request.method == 'POST':
+        sub_id = request.form.get('submission_id')
+        grade = request.form.get('grade')
+        feedback = request.form.get('feedback')
+        
+        sub = Submission.query.get(sub_id)
+        if sub and sub.assignment_id == assignment.id:
+            sub.stars_earned = stars_earned
+            sub.grade = grade
+            sub.feedback = feedback
+            sub.status = 'graded'
+            sub.is_viewed = False # 💡 设为未看，学生的告示板上就会亮起绿色感叹号！
+            db.session.commit()
+            flash(f"已成功为 {sub.user.username} 盖上等第印章！", "success")
+            
+        return redirect(url_for('grade_assignment', assign_id=assignment.id))
+        
+    # GET 请求：拉取所有提交了这份作业的记录
+    submissions = Submission.query.filter_by(assignment_id=assignment.id).order_by(Submission.id.desc()).all()
+    return render_template('admin/grade_assignment.html', assignment=assignment, submissions=submissions)
 
 @app.route("/api/assignments/<int:assign_id>/submissions")
 @login_required
@@ -5354,6 +5596,582 @@ def update_featured_wikis():
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)})
 
+
+# 书签管理路由
+
+# ==========================================
+# 管理员：书签种类管理后台
+# ==========================================
+
+@app.route('/admin/bookmarks')
+@login_required
+def manage_bookmarks():
+    if not current_user.is_admin:
+        flash('权限不足，仅管理员可访问此页面', 'error')
+        return redirect(url_for('index'))
+    
+    # 按照稀有度和创建时间排序
+    bookmarks = BookmarkType.query.order_by(
+        db.case(
+            {'legendary': 1, 'epic': 2, 'rare': 3, 'common': 4}, 
+            value=BookmarkType.rarity
+        ),
+        BookmarkType.created_at.desc()
+    ).all()
+    
+    return render_template('admin/manage_bookmarks.html', bookmarks=bookmarks)
+
+@app.route('/admin/bookmarks/save', methods=['POST'])
+@login_required
+def save_bookmark_type():
+    if not current_user.is_admin:
+        flash('权限不足', 'error')
+        return redirect(url_for('manage_bookmarks'))
+        
+    b_id = request.form.get('id')
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    rarity = request.form.get('rarity', 'common')
+    condition_type = request.form.get('condition_type', 'manual')
+    condition_value = int(request.form.get('condition_value', 0))
+    
+    if not name:
+        flash('书签名称不能为空', 'error')
+        return redirect(url_for('manage_bookmarks'))
+
+    # 💡 核心修改：处理图片上传
+    icon_file = request.files.get('icon_file')
+    icon_url = None
+
+    if icon_file and icon_file.filename:
+        # 确保保存目录存在
+        upload_dir = os.path.join(app.root_path, 'static', 'uploads', 'bookmarks')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # 生成安全且唯一的文件名 (防冲突)
+        ext = icon_file.filename.rsplit('.', 1)[1].lower() if '.' in icon_file.filename else 'png'
+        filename = secure_filename(f"bookmark_{int(time.time())}.{ext}")
+        save_path = os.path.join(upload_dir, filename)
+        
+        icon_file.save(save_path)
+        icon_url = f"/static/uploads/bookmarks/{filename}" # 存入数据库的相对路径
+
+    # 数据库操作
+    if b_id:
+        # 编辑已有书签
+        b_type = BookmarkType.query.get_or_404(int(b_id))
+        if icon_url:
+            b_type.icon = icon_url # 如果上传了新图就替换，否则保留老图
+        msg = f'书签 "{name}" 已成功更新！'
+    else:
+        # 新建书签
+        if not icon_url:
+            flash('新建书签必须上传图片！', 'error')
+            return redirect(url_for('manage_bookmarks'))
+        b_type = BookmarkType()
+        b_type.icon = icon_url
+        db.session.add(b_type)
+        msg = f'新书签 "{name}" 已成功创建！'
+        
+    b_type.name = name
+    b_type.description = description
+    b_type.rarity = rarity
+    b_type.condition_type = condition_type
+    b_type.condition_value = condition_value
+    
+    try:
+        db.session.commit()
+        flash(msg, 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('保存失败，请检查数据库', 'error')
+        
+    return redirect(url_for('manage_bookmarks'))
+
+@app.route('/admin/bookmarks/<int:b_id>/delete', methods=['POST'])
+@login_required
+def delete_bookmark_type(b_id):
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'error': '权限不足'}), 403
+        
+    b_type = BookmarkType.query.get_or_404(b_id)
+    try:
+        db.session.delete(b_type)
+        db.session.commit()
+        flash(f'书签 "{b_type.name}" 已被删除', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('删除失败，可能已有用户获得了该书签', 'error')
+        
+    return redirect(url_for('manage_bookmarks'))
+
+
+# ==========================================
+# 用户端：获取我的书签图鉴与坐标 API
+# ==========================================
+@app.route('/api/bookmarks/my')
+@login_required
+def get_my_bookmarks():
+    # 按照获得时间倒序，最新的在最前面
+    user_bms = UserBookmark.query.filter_by(user_id=current_user.id).order_by(UserBookmark.earned_at.desc()).all()
+    
+    results = []
+    for ub in user_bms:
+        b_type = ub.bookmark_type
+        results.append({
+            'id': ub.id,
+            'name': b_type.name,
+            'icon': b_type.icon,
+            'rarity': b_type.rarity,
+            'is_placed': ub.is_placed,
+            'target_title': ub.target_title,
+            'target_snippet': ub.target_snippet,
+            'target_url': ub.target_url,
+            'target_block_id': ub.target_block_id,
+            'earned_at': ub.earned_at.strftime('%Y-%m-%d') if ub.earned_at else ''
+        })
+        
+        # 如果是新获得的，顺便把提醒状态消除
+        if not ub.is_notified:
+            ub.is_notified = True
+
+    # 顺带把状态保存
+    db.session.commit()
+            
+    return jsonify({'success': True, 'bookmarks': results})
+
+
+# ==========================================
+# 书签动作：夹入书签与渲染当前页书签
+# ==========================================
+
+@app.route('/api/bookmarks/place', methods=['POST'])
+@login_required
+def place_bookmark():
+    data = request.json
+    ub_id = data.get('user_bookmark_id')
+    ub = UserBookmark.query.get_or_404(ub_id)
+    
+    # 安全校验：只能用自己的书签
+    if ub.user_id != current_user.id:
+        return jsonify({'success': False, 'error': '无权操作'}), 403
+        
+    ub.is_placed = True
+    ub.target_url = data.get('target_url')
+    ub.target_block_id = data.get('target_block_id')
+    ub.target_title = data.get('target_title', '未命名页面')
+    
+    # 处理摘要文字，超过30个字加省略号
+    snippet = data.get('target_snippet', '')
+    ub.target_snippet = snippet[:30] + '...' if len(snippet) > 30 else snippet
+    
+    ub.placed_at = datetime.utcnow()
+    
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'icon': ub.bookmark_type.icon})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
+
+# ==========================================
+# 书签动作：渲染当前页书签 (互关学友版)
+# ==========================================
+@app.route('/api/bookmarks/page')
+def get_page_bookmarks():
+    target_url = request.args.get('url')
+    if not target_url:
+        return jsonify({'success': False, 'bookmarks': []})
+        
+    # 查询夹在这个 URL 上的所有书签
+    placed_bms = UserBookmark.query.filter_by(target_url=target_url, is_placed=True).all()
+    
+    results = []
+    
+    # 必须是登录状态才能看书签
+    if current_user.is_authenticated:
+        # 💡 性能优化关键：
+        # 利用你写好的 study_partners 属性，一次性查出所有学友的 ID 集合
+        # 这样在下面的循环中就是 O(1) 的内存匹配，极大减轻数据库压力
+        partner_ids = {u.id for u in current_user.study_partners.all()}
+        
+        for bm in placed_bms:
+            is_mine = (bm.user_id == current_user.id)
+            is_partner = (bm.user_id in partner_ids)
+            
+            # 🛡️ 严格拦截：只有当书签是【自己的】或者【互相关注的学友】时，才下发数据
+            if is_mine or is_partner:
+                results.append({
+                    'block_id': bm.target_block_id,
+                    'icon': bm.bookmark_type.icon,
+                    'user_name': bm.user.username,
+                    'is_mine': is_mine
+                })
+                
+    return jsonify({'success': True, 'bookmarks': results})
+
+# 测试使用
+@app.route('/admin/bookmarks/<int:b_id>/test_grant', methods=['POST'])
+@login_required
+def test_grant_bookmark(b_id):
+    if not current_user.is_admin:
+        return jsonify({'success': False})
+    
+    # 检查是否已经拥有一个未使用的同款书签
+    existing = UserBookmark.query.filter_by(user_id=current_user.id, bookmark_type_id=b_id, is_placed=False).first()
+    if existing:
+        flash('你的抽屉里已经有一枚闲置的该书签了，先去把它夹在书里吧！', 'warning')
+    else:
+        # 强制发给自己
+        new_bm = UserBookmark(user_id=current_user.id, bookmark_type_id=b_id)
+        db.session.add(new_bm)
+        db.session.commit()
+        flash('🎉 测试发放成功！快去右上角【书签抽屉】或【个人主页】看看吧！', 'success')
+        
+    return redirect(url_for('manage_bookmarks'))
+
+# ==========================================
+# 📊 星露谷式结算系统 (高级沉浸版)
+# ==========================================
+@app.route('/api/reports/check')
+@login_required
+def check_learning_reports():
+    status = UserActiveStatus.query.get(current_user.id)
+    if not status:
+        return jsonify({"has_report": False})
+        
+    now = now_utc8()
+    today = now.date()
+    
+    last_d = status.last_daily_report
+    last_w = status.last_weekly_report
+    last_m = status.last_monthly_report
+    
+    report_type = None
+    start_dt = None
+    end_dt = None
+    title = ""
+    
+    # 获取自然周一和自然月一号
+    this_month_first = today.replace(day=1)
+    this_monday = today - timedelta(days=today.weekday())
+    
+    # 优先级 1: 月报 (如果没看过上个月的)
+    if last_m is None or last_m < this_month_first:
+        report_type = 'monthly'
+        end_dt = datetime.combine(this_month_first, datetime.min.time())
+        start_dt = (this_month_first - timedelta(days=1)).replace(day=1)
+        start_dt = datetime.combine(start_dt, datetime.min.time())
+        title = f"🌕 {start_dt.strftime('%Y年%m月')} 学习月报"
+        
+    # 优先级 2: 周报 (如果没看过上周的)
+    elif last_w is None or last_w < this_monday:
+        report_type = 'weekly'
+        end_dt = datetime.combine(this_monday, datetime.min.time())
+        start_dt = end_dt - timedelta(days=7)
+        title = f"📅 上周结算 ({start_dt.strftime('%m.%d')} - {(end_dt-timedelta(days=1)).strftime('%m.%d')})"
+        
+    # 优先级 3: 日报 (如果没看过昨天的)
+    elif last_d is None or last_d < today:
+        report_type = 'daily'
+        end_dt = datetime.combine(today, datetime.min.time())
+        start_dt = end_dt - timedelta(days=1)
+        title = f"📝 昨日出货单 ({start_dt.strftime('%m.%d')})"
+        
+    if not report_type:
+        return jsonify({"has_report": False})
+        
+    # 1. 基础数据查询
+    sessions = StudySession.query.filter(StudySession.user_id == current_user.id, StudySession.start_time >= start_dt, StudySession.start_time < end_dt).all()
+    duration = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+    duration_mins = int(duration / 60)
+    
+    notes = Note.query.filter(Note.user_id == current_user.id, Note.created_at >= start_dt, Note.created_at < end_dt).count()
+    pomos = PomodoroRecord.query.filter(PomodoroRecord.user_id == current_user.id, PomodoroRecord.completed_at >= start_dt, PomodoroRecord.completed_at < end_dt).count()
+    
+    # 💡 2. 新增进阶数据：Wiki贡献与社区互动
+    wiki_edits = WikiPageHistory.query.filter(WikiPageHistory.user_id == current_user.id, WikiPageHistory.created_at >= start_dt, WikiPageHistory.created_at < end_dt).count()
+    comments = Comment.query.filter(Comment.user_id == current_user.id, Comment.created_at >= start_dt, Comment.created_at < end_dt).count()
+    
+    # 💡 3. 计算“综合源力值” (EXP) 与 评级
+    # 公式：每分钟1分 + 每番茄5分 + 每笔记15分 + 每次Wiki贡献10分 + 每次评论2分
+    exp = duration_mins + (pomos * 5) + (notes * 15) + (wiki_edits * 10) + (comments * 2)
+    
+    rating = 'C'
+    if report_type == 'daily':
+        if exp >= 150: rating = 'S'
+        elif exp >= 60: rating = 'A'
+        elif exp >= 30: rating = 'B'
+    elif report_type == 'weekly':
+        if exp >= 700: rating = 'S'
+        elif exp >= 300: rating = 'A'
+        elif exp >= 100: rating = 'B'
+    elif report_type == 'monthly':
+        if exp >= 2500: rating = 'S'
+        elif exp >= 1000: rating = 'A'
+        elif exp >= 400: rating = 'B'
+    
+    # 4. 获取徽章
+    badges = UserBadge.query.filter(UserBadge.user_id == current_user.id, UserBadge.earned_at >= start_dt, UserBadge.earned_at < end_dt).all()
+    badge_list = []
+    for b in badges:
+        icon_val = b.badge.icon
+        is_img = is_image_icon(icon_val)
+        badge_list.append({
+            "name": b.badge.name,
+            "icon": badge_icon_url(icon_val) if is_img else icon_val,
+            "is_image": is_img
+        })
+        
+    # 💡 智能静默逻辑（新增的维度也纳入判定，全为0才不弹窗）
+    if duration_mins == 0 and notes == 0 and pomos == 0 and wiki_edits == 0 and comments == 0 and len(badge_list) == 0:
+        if report_type == 'monthly':
+            status.last_monthly_report = today
+            status.last_weekly_report = today
+            status.last_daily_report = today
+        elif report_type == 'weekly':
+            status.last_weekly_report = today
+            status.last_daily_report = today
+        elif report_type == 'daily':
+            status.last_daily_report = today
+        db.session.commit()
+        return jsonify({"has_report": False})
+        
+    return jsonify({
+        "has_report": True,
+        "type": report_type,
+        "title": title,
+        "stats": {
+            "duration": duration_mins,
+            "pomos": pomos,
+            "notes": notes,
+            "wiki_edits": wiki_edits,
+            "comments": comments,
+            "exp": exp,
+            "rating": rating,
+            "badges": badge_list
+        }
+    })
+
+@app.route('/api/reports/mark_read', methods=['POST'])
+@login_required
+def mark_report_read():
+    data = request.json
+    report_type = data.get('type')
+    status = UserActiveStatus.query.get(current_user.id)
+    
+    if status:
+        today = now_utc8().date()
+        # 只要看了高级别报告，低级别的也视为已读
+        if report_type == 'monthly':
+            status.last_monthly_report = today
+            status.last_weekly_report = today
+            status.last_daily_report = today
+        elif report_type == 'weekly':
+            status.last_weekly_report = today
+            status.last_daily_report = today
+        elif report_type == 'daily':
+            status.last_daily_report = today
+        db.session.commit()
+        
+    return jsonify({"success": True})
+
+
+# ==========================================
+# 🛠️ 开发者专用：重置报告状态 API
+# ==========================================
+@app.route('/api/reports/test_reset/<report_type>', methods=['POST'])
+@login_required
+def test_reset_report(report_type):
+    # 可选：如果你想只允许管理员调试，可以加上下面这句
+    # if not current_user.is_admin: abort(403)
+    
+    status = UserActiveStatus.query.get(current_user.id)
+    if not status:
+        return jsonify({"success": False})
+        
+    today = now_utc8().date()
+    
+    # 💡 核心逻辑：为了精准触发某一种报告，必须把比它优先级高的报告标记为“今天已看”，把目标报告设为 None
+    if report_type == 'daily':
+        status.last_monthly_report = today
+        status.last_weekly_report = today
+        status.last_daily_report = None
+    elif report_type == 'weekly':
+        status.last_monthly_report = today
+        status.last_weekly_report = None  # <--- 设为空，下次必弹周报
+        status.last_daily_report = today
+    elif report_type == 'monthly':
+        status.last_monthly_report = None
+        
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+# ==========================================
+# 📌 独立告示栏 (学生端)
+# ==========================================
+@app.route("/bulletin")
+@login_required
+def bulletin_view():
+    return render_template("bulletin.html")
+
+# ==========================================
+# 🛠️ 管理员：作业发布控制台
+# ==========================================
+@app.route("/manage_assignments", methods=["GET", "POST"])
+@login_required
+def manage_assignments():
+    if not current_user.is_admin:
+        abort(403)
+        
+    if request.method == "POST":
+        title = request.form.get("title")
+        content_md = request.form.get("content_md")
+        target_type = request.form.get("target_type")
+        target_value = request.form.get("target_value")
+        deadline_str = request.form.get("deadline")
+        
+        star_level = request.form.get("star_level", 1, type=int)
+        deadline = datetime.strptime(deadline_str, "%Y-%m-%dT%H:%M") if deadline_str else None
+        
+        new_assign = Assignment(
+            title=title, content_md=content_md, target_type=target_type, 
+            target_value=target_value, deadline=deadline, 
+            star_level=star_level,
+            created_by_id=current_user.id, wiki_page_id=0
+        )
+        db.session.add(new_assign)
+        db.session.commit()
+        
+        flash("🎉 委托发布成功！", "success")
+        return redirect(url_for('manage_assignments'))
+        
+    # 💡 获取所有用户
+    all_users = User.query.all()
+    
+    # 💡 动态获取现有的班级和小组 (做安全判断，以防你的User表还没建这两个字段)
+    classes = []
+    groups = []
+    if hasattr(User, 'class_name'):
+        classes = [r[0] for r in db.session.query(User.class_name).filter(User.class_name.isnot(None)).distinct().all() if r[0]]
+    if hasattr(User, 'group_name'):
+        groups = [r[0] for r in db.session.query(User.group_name).filter(User.group_name.isnot(None)).distinct().all() if r[0]]
+
+    assignments = Assignment.query.order_by(Assignment.created_at.desc()).all()
+    return render_template(
+        "admin/manage_assignments.html", 
+        assignments=assignments, 
+        all_users=all_users, 
+        classes=classes, 
+        groups=groups
+    )
+# ==========================================
+# 📡 刷新我的任务 API (带权限过滤)
+# ==========================================
+@app.route("/api/assignments/my_quests")
+@login_required
+def get_my_quests():
+    try:
+        # 1. 拉取所有活跃的作业
+        all_assignments = Assignment.query.filter_by(is_active=True).all()
+        
+        quests = []
+        for am in all_assignments:
+            # 💡 核心鉴权：判断这个作业是否发给当前用户的
+            is_targeted = False
+            if am.target_type == 'all':
+                is_targeted = True
+            elif am.target_type == 'personal' and str(current_user.id) == am.target_value:
+                is_targeted = True
+            
+            # 如果不是发给我的，直接跳过
+            if not is_targeted:
+                continue 
+                
+            sub = Submission.query.filter_by(assignment_id=am.id, user_id=current_user.id).first()
+            status = sub.status if sub else "unsubmitted"
+            
+            quests.append({
+                "id": am.id,
+                "title": am.title,
+                "issuer": am.created_by.username if am.created_by else "Town Mayor",
+                "page_url": f"/assignment/{am.id}", # 临时路由，等会儿建
+                "status": status,
+                "grade": sub.grade if sub else None,
+                "is_viewed": sub.is_viewed if sub else False,
+                "star_level": am.star_level,
+                "stars_earned": sub.stars_earned if sub else 0
+            })
+        return jsonify({"quests": quests})
+    except Exception as e:
+        print(f"拉取委托失败: {e}")
+        return jsonify({"quests": []}) # 避免前端死循环
+
+# ==========================================
+# 📜 学生端：查看委托与提交作业详情页
+# ==========================================
+@app.route('/assignment/<int:assign_id>', methods=['GET', 'POST'])
+@login_required
+def view_assignment(assign_id):
+    assignment = Assignment.query.get_or_404(assign_id)
+    
+    # 获取当前用户的提交记录
+    submission = Submission.query.filter_by(assignment_id=assignment.id, user_id=current_user.id).first()
+    
+    # 💡 如果是刚批改完进来查看的，自动把“已查看”标记为 True，去掉广场上的绿色感叹号
+    if submission and submission.status == 'graded' and not submission.is_viewed:
+        submission.is_viewed = True
+        db.session.commit()
+    
+    # POST 请求：处理学生提交的作业
+    if request.method == 'POST':
+        content = request.form.get('content')
+        
+        if not submission:
+            # 第一次提交
+            submission = Submission(
+                assignment_id=assignment.id, 
+                user_id=current_user.id, 
+                content=content, 
+                content_snapshot_md=content,
+                status='pending'
+            )
+            db.session.add(submission)
+        else:
+            # 重新提交修改
+            submission.content = content
+            submission.status = 'pending'
+            submission.content_snapshot_md = content
+            # submission.submitted_at = now_utc8() # 如果有提交时间字段可以解开这行
+            
+        db.session.commit()
+        flash("✨ 委托提交成功！请等待批阅。", "success")
+        return redirect(url_for('view_assignment', assign_id=assignment.id))
+        
+    return render_template('view_assignment.html', assignment=assignment, submission=submission, now_utc8=now_utc8)
+
+# ==========================================
+# 🗑️ 管理员：撕下(删除)委托 API
+# ==========================================
+@app.route('/api/assignments/<int:assign_id>', methods=['DELETE'])
+@login_required
+def delete_assignment_api(assign_id):
+    # 安全拦截：只有管理员能删
+    if not current_user.is_admin:
+        return jsonify({"success": False, "error": "权限不足"}), 403
+        
+    assign = Assignment.query.get_or_404(assign_id)
+    
+    # 💡 必须先删除关联的提交记录，否则数据库会因为外键约束报错
+    Submission.query.filter_by(assignment_id=assign.id).delete()
+    
+    # 彻底删除该任务
+    db.session.delete(assign)
+    db.session.commit()
+    
+    return jsonify({"success": True})
 
 if __name__ == "__main__":
     with app.app_context():

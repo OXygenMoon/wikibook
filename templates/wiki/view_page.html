@@ -56,6 +56,23 @@
     .custom-mde-wrapper .editor-toolbar { border: none !important; border-bottom: 1px solid hsl(var(--bc) / 0.1) !important; background: rgba(0,0,0,0.02) !important; border-radius: 0.75rem 0.75rem 0 0 !important; padding: 6px; }
     
     body.is-split-active .hero-glow { opacity: 0.2; }
+
+    .custom-mde-wrapper {
+        max-height: calc(100vh - 350px); /* 给整个包裹区域设定极限高度 */
+    }
+    
+    /* 针对 EasyMDE 的内部 CodeMirror 实例强制设定滚动规则 */
+    .custom-mde-wrapper .EasyMDEContainer .CodeMirror {
+        height: auto !important; /* 覆盖可能被 JS 写死的 height */
+        max-height: calc(100vh - 400px); /* 略小于外层容器，留出工具栏空间 */
+    }
+    
+    /* 这一层才是真正负责滚动的核心元素 */
+    .custom-mde-wrapper .EasyMDEContainer .CodeMirror-scroll {
+        max-height: calc(100vh - 400px); /* 必须和上面一致 */
+        overflow-y: auto !important; /* 强制垂直滚动 */
+        overflow-x: hidden;
+    }
 </style>
 {% endblock %}
 
@@ -128,17 +145,38 @@
     <div class="relative pointer-events-auto">
         <div class="absolute inset-y-0 left-0 w-8 bg-white/20 dark:bg-black/20 backdrop-blur-md rounded-full border border-white/30 shadow-lg transition-all duration-500 group-hover/left-nav:bg-white/40 dark:group-hover/left-nav:bg-black/40 -z-10"></div>
         
-        <div class="flex flex-col gap-3 py-4 pl-3">
-            {% for p in pages %}
-            <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="flex items-center gap-3 group/item relative z-10 w-max cursor-pointer">
-                <div class="w-2 h-2 rounded-full transition-all duration-300 group-hover/item:scale-150 flex-shrink-0"
-                     style="background-color: {{ 'var(--theme-primary)' if page and p.id == page.id else 'hsl(var(--bc) / 0.3)' }}; 
-                            box-shadow: {{ '0 0 10px var(--theme-primary)' if page and p.id == page.id else 'none' }};">
+        <div class="flex flex-col gap-3 py-4">
+            {% for item in root_items %}
+                
+                {% if item.item_type == 'folder' and item.children %}
+                <div class="flex flex-col items-center gap-2.5 py-2.5 w-5 ml-[6px] rounded-full bg-base-content/5 dark:bg-base-content/10 border border-base-content/10 relative group/folder shadow-inner transition-colors hover:bg-base-content/10">
+
+                    
+                    {% for p in item.children %}
+                    <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="flex items-center group/item relative z-10 cursor-pointer w-full justify-center">
+                        <div class="w-2 h-2 rounded-full transition-all duration-300 group-hover/item:scale-150 flex-shrink-0"
+                             style="background-color: {{ 'var(--theme-primary)' if page and p.id == page.id else 'hsl(var(--bc) / 0.4)' }}; 
+                                    box-shadow: {{ '0 0 10px var(--theme-primary)' if page and p.id == page.id else 'none' }};">
+                        </div>
+                        <span class="absolute left-full ml-1.5 opacity-0 group-hover/left-nav:opacity-80 text-[10px] font-bold whitespace-nowrap transition-all duration-300 -translate-x-2 group-hover/left-nav:translate-x-0 text-base-content drop-shadow-sm pointer-events-none">
+                            {{ p.title }}
+                        </span>
+                    </a>
+                    {% endfor %}
                 </div>
-                <span class="opacity-0 group-hover/left-nav:opacity-50 text-[10px] font-bold whitespace-nowrap transition-all duration-300 -translate-x-2 group-hover/left-nav:translate-x-0 text-base-content drop-shadow-sm">
-                    {{ p.title }}
-                </span>
-            </a>
+                
+                {% elif item.item_type == 'page' %}
+                <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=item.slug) }}" class="flex items-center group/item relative z-10 cursor-pointer ml-[12px] h-3">
+                    <div class="w-2 h-2 rounded-full transition-all duration-300 group-hover/item:scale-150 flex-shrink-0"
+                         style="background-color: {{ 'var(--theme-primary)' if page and item.id == page.id else 'hsl(var(--bc) / 0.3)' }}; 
+                                box-shadow: {{ '0 0 10px var(--theme-primary)' if page and item.id == page.id else 'none' }};">
+                    </div>
+                    <span class="absolute left-full ml-3 opacity-0 group-hover/left-nav:opacity-80 text-[10px] font-bold whitespace-nowrap transition-all duration-300 -translate-x-2 group-hover/left-nav:translate-x-0 text-base-content drop-shadow-sm pointer-events-none">
+                        {{ item.title }}
+                    </span>
+                </a>
+                {% endif %}
+                
             {% endfor %}
         </div>
     </div>
@@ -589,20 +627,34 @@ document.addEventListener('DOMContentLoaded', function() {
         const savedMode = localStorage.getItem('wiki_width_mode');
         let isWide = savedMode ? savedMode === 'wide' : true;
         
-        window.applyLayout = function(wide) {
+// 获取圆点导航容器
+        const leftNavDots = document.querySelector('.group\\/left-nav');
+        const rightNavDots = document.getElementById('right-toc-dots');
+
+window.applyLayout = function(wide) {
             if (window.isSplitMode) return; 
             if (wide) {
+                // 宽屏模式
                 splitContainer.classList.remove('max-w-5xl');
                 splitContainer.classList.add('max-w-[96%]', '2xl:max-w-[1600px]'); 
                 widthBtn.innerHTML = iconCompress; 
                 widthBtn.setAttribute('title', '恢复窄屏');
                 widthBtn.classList.add('bg-base-300/50', 'shadow-inner'); 
+                
+                // 💡 宽屏时：用 !hidden 强制隐藏两侧圆点
+                if(leftNavDots) leftNavDots.classList.add('!hidden');
+                if(rightNavDots) rightNavDots.classList.add('!hidden');
             } else {
+                // 居中模式 (窄屏)
                 splitContainer.classList.add('max-w-5xl');
                 splitContainer.classList.remove('max-w-[96%]', '2xl:max-w-[1600px]');
                 widthBtn.innerHTML = iconExpand; 
                 widthBtn.setAttribute('title', '切换宽屏');
                 widthBtn.classList.remove('bg-base-300/50', 'shadow-inner');
+                
+                // 💡 居中时：移除 !hidden，恢复它们原本的响应式显示
+                if(leftNavDots) leftNavDots.classList.remove('!hidden');
+                if(rightNavDots) rightNavDots.classList.remove('!hidden');
             }
         };
 
@@ -829,29 +881,64 @@ builtins.input = custom_input
 });
 
 // ==========================================
-    // 💡 动态生成右侧标题小圆点 (含悬浮全显标签，瘦身版)
+    // 💡 动态生成右侧标题小圆点 (防爆屏 + 精确跳转版)
     // ==========================================
     const rightDotsContainer = document.getElementById('toc-dots-container');
     const rightDotsWrapper = document.getElementById('right-toc-dots');
-    const articleHeaders = document.querySelectorAll('.markdown-body h1, .markdown-body h2, .markdown-body h3');
+    
+    // 初始获取所有一二三级标题
+    let articleHeaders = document.querySelectorAll('.markdown-body h1, .markdown-body h2, .markdown-body h3');
 
     if (articleHeaders.length > 0 && rightDotsContainer) {
+        
+        // 💡 优雅降级机制：如果标题数量超过 40 个，就自动隐藏 H3 (三级标题)，防止小圆点把屏幕撑破
+        if (articleHeaders.length > 40) {
+            articleHeaders = document.querySelectorAll('.markdown-body h1, .markdown-body h2');
+        }
+        
+        // 💡 动态调整间距：数量越多，排列越紧凑，保证完美居中
+        let gapClass = 'gap-3';
+        if (articleHeaders.length > 30) gapClass = 'gap-1';
+        else if (articleHeaders.length > 15) gapClass = 'gap-2';
+        
+        // 重置容器 class，应用新的间距
+        rightDotsContainer.className = `flex flex-col ${gapClass} py-6 pr-3 items-end`;
         rightDotsWrapper.classList.remove('opacity-0');
+        
         let dotsHtml = '';
         articleHeaders.forEach((h, index) => {
+            // 给没有 ID 的标题补上，保证滚动侦测正常
             if (!h.id) h.id = 'dot-heading-' + index;
-            // 💡 构造带标签的右侧结构：文字在外侧，圆点在内侧对齐胶囊
+            
+            // 💡 核心修复：不用 href 存 ID，而是把数组索引 data-index 存进去
             dotsHtml += `
-                <a href="#${h.id}" class="flex items-center justify-end gap-3 group/item w-max relative z-10 cursor-pointer" 
-                   onclick="event.preventDefault(); window.scrollTo({top: document.getElementById('${h.id}').offsetTop - 80, behavior: 'smooth'});">
-                    <span class="opacity-0 group-hover/right-nav:opacity-50 text-[10px] font-bold whitespace-nowrap transition-all duration-300 translate-x-2 group-hover/right-nav:translate-x-0 text-base-content drop-shadow-sm">
-                        ${h.innerText}
+                <a href="javascript:void(0);" data-index="${index}" class="right-toc-link flex items-center justify-end gap-3 group/item w-max relative z-10 cursor-pointer outline-none">
+                    <span class="opacity-0 group-hover/right-nav:opacity-100 text-[10px] font-bold whitespace-nowrap transition-all duration-300 translate-x-2 group-hover/right-nav:translate-x-0 text-base-content drop-shadow-sm pointer-events-none">
+                        ${h.innerText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
                     </span>
                     <div class="toc-dot w-2 h-2 rounded-full transition-all duration-300 group-hover/item:scale-150 flex-shrink-0 bg-base-content/30"></div>
                 </a>`;
         });
         rightDotsContainer.innerHTML = dotsHtml;
 
+        // 💡 核心修复：使用“事件委托”绑定点击，并通过 getBoundingClientRect 计算绝对位置
+        rightDotsContainer.addEventListener('click', function(e) {
+            const link = e.target.closest('.right-toc-link');
+            if (link) {
+                e.preventDefault(); // 阻止默认跳转导致页面抽搐
+                // 直接从内存里的 NodeList 取出对应的 HTML 元素，无视任何特殊字符 ID！
+                const index = parseInt(link.getAttribute('data-index'));
+                const targetEl = articleHeaders[index]; 
+                
+                if (targetEl) {
+                    // 获取精确的物理像素位置，减去 80px 留出顶部导航栏的距离
+                    const y = targetEl.getBoundingClientRect().top + window.scrollY - 80;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+            }
+        });
+
+        // 保持不变：滚动时的自动高亮侦测
         const dotElements = rightDotsContainer.querySelectorAll('.toc-dot');
         const observerOptions = { rootMargin: '-100px 0px -66%', threshold: 0 };
         
@@ -862,11 +949,11 @@ builtins.input = custom_input
                     const activeIndex = Array.from(articleHeaders).findIndex(h => h.id === activeId);
                     dotElements.forEach((dot, i) => {
                         if (i === activeIndex) {
-                            dot.classList.add('bg-primary', 'scale-125');
+                            dot.classList.add('bg-primary', 'scale-150');
                             dot.style.boxShadow = '0 0 10px var(--theme-primary)';
                             dot.classList.remove('bg-base-content/30');
                         } else {
-                            dot.classList.remove('bg-primary', 'scale-125');
+                            dot.classList.remove('bg-primary', 'scale-150');
                             dot.style.boxShadow = 'none';
                             dot.classList.add('bg-base-content/30');
                         }
@@ -887,6 +974,9 @@ window.toggleSplitScreen = function() {
     const bookPanel = document.getElementById('book-side-panel');
     const toggleBtn = document.getElementById('toggle-split-btn');
 
+    const leftNavDots = document.querySelector('.group\\/left-nav');
+    const rightNavDots = document.getElementById('right-toc-dots');
+
     window.isSplitMode = !window.isSplitMode;
 
     if (window.isSplitMode) {
@@ -903,6 +993,10 @@ window.toggleSplitScreen = function() {
             toggleBtn.innerHTML = '<i class="fas fa-times text-[11px] text-error"></i><span class="text-xs font-medium text-error">关闭分屏</span>';
             toggleBtn.setAttribute('title', '关闭分屏笔记');
         }
+        
+        // 💡 开启分屏时：无论如何，强制隐藏两侧圆点导航
+        if(leftNavDots) leftNavDots.classList.add('!hidden');
+        if(rightNavDots) rightNavDots.classList.add('!hidden');
         
         if (!window.quickEditor) {
             setTimeout(() => {

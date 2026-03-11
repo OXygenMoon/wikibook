@@ -253,6 +253,47 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="bg-base-100 rounded-[2rem] border border-base-200 shadow-sm p-8 mb-6">
+                    <div class="flex items-center justify-between mb-6 border-b border-stone-50 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-6 bg-indigo-500 rounded-full"></div>
+                            <h3 class="font-bold text-base-content text-lg">记忆书签</h3>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="badge badge-sm badge-ghost font-mono text-base-content/50">{{ user_bookmarks|length }} 收集</span>
+                            <a href="{{ url_for('bookmark_book', user_id=user.id) }}" class="w-7 h-7 rounded-full bg-indigo-50 text-indigo-500 hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center tooltip tooltip-left" data-tip="书签图鉴">
+                                <i class="fas fa-bookmark text-[10px]"></i>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-4 overflow-x-auto pb-2 hide-scrollbar snap-x">
+                        {% for ub in user_bookmarks %}
+                            {% set b_type = ub.bookmark_type %}
+                            <div class="snap-start flex-shrink-0 w-24 flex flex-col items-center gap-2 group cursor-pointer" onclick="window.location.href='{{ url_for('bookmark_book', user_id=user.id) }}'">
+                                <div class="w-16 h-20 rounded-2xl bg-stone-50 border border-base-200 shadow-sm flex items-center justify-center overflow-hidden relative transition-transform duration-300 group-hover:-translate-y-2 group-hover:shadow-md">
+                                    {% set rarity_colors = {'common': 'from-stone-200 to-stone-300', 'rare': 'from-blue-400 to-blue-500', 'epic': 'from-fuchsia-400 to-purple-500', 'legendary': 'from-amber-400 to-orange-500'} %}
+                                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b {{ rarity_colors.get(b_type.rarity, 'from-stone-200 to-stone-300') }}"></div>
+                                    
+                                    {% if b_type.icon|is_image_icon %}
+                                        <img src="{{ b_type.icon|badge_icon_url }}" class="w-8 h-8 object-contain drop-shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform origin-top">
+                                    {% else %}
+                                        <span class="text-3xl leading-none drop-shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform origin-top">{{ b_type.icon }}</span>
+                                    {% endif %}
+                                </div>
+                                <span class="text-[10px] font-bold text-base-content/70 text-center w-full truncate px-1 group-hover:text-indigo-600 transition-colors">{{ b_type.name }}</span>
+                            </div>
+                        {% endfor %}
+                        
+                        {% if not user_bookmarks %}
+                            <div class="w-full py-8 flex flex-col items-center justify-center text-base-content/40 bg-stone-50/50 rounded-2xl border border-dashed border-base-200">
+                                <i class="fas fa-bookmark text-3xl mb-2 opacity-20"></i>
+                                <p class="text-sm font-medium">暂未收集到任何书签</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
 
             <div class="bg-base-100 rounded-[2rem] border border-base-200 shadow-sm p-8">
                 <div class="flex items-center justify-between mb-6 border-b border-stone-50 pb-4">

@@ -6070,44 +6070,50 @@ def manage_assignments():
 # ==========================================
 # 📡 刷新我的任务 API (带权限过滤)
 # ==========================================
-@app.route("/api/assignments/my_quests")
+@app.route('/api/assignments/my_quests')
 @login_required
 def get_my_quests():
-    try:
-        # 1. 拉取所有活跃的作业
-        all_assignments = Assignment.query.filter_by(is_active=True).all()
+    # 1. 基础查询：获取所有任务
+    query = Assignment.query
+    
+    # 2. 👑 管理员特权：如果是管理员，直接获取全部任务，不做任何过滤
+    if current_user.is_admin:
+        my_assignments = query.order_by(Assignment.created_at.desc()).all()
+    else:
+        # 3. 普通村民逻辑：只显示针对 全员、自己班级、自己小组 或 自己的任务
+        # 这里使用了 SQLAlchemy 的 or_ 进行多条件并列筛选
+        from sqlalchemy import or_
         
-        quests = []
-        for am in all_assignments:
-            # 💡 核心鉴权：判断这个作业是否发给当前用户的
-            is_targeted = False
-            if am.target_type == 'all':
-                is_targeted = True
-            elif am.target_type == 'personal' and str(current_user.id) == am.target_value:
-                is_targeted = True
+        filters = [Assignment.target_type == 'all']
+        
+        if hasattr(current_user, 'class_name') and current_user.class_name:
+            filters.append(db.and_(Assignment.target_type == 'class', Assignment.target_value == current_user.class_name))
             
-            # 如果不是发给我的，直接跳过
-            if not is_targeted:
-                continue 
-                
-            sub = Submission.query.filter_by(assignment_id=am.id, user_id=current_user.id).first()
-            status = sub.status if sub else "unsubmitted"
+        if hasattr(current_user, 'group_name') and current_user.group_name:
+            filters.append(db.and_(Assignment.target_type == 'group', Assignment.target_value == current_user.group_name))
             
-            quests.append({
-                "id": am.id,
-                "title": am.title,
-                "issuer": am.created_by.username if am.created_by else "Town Mayor",
-                "page_url": f"/assignment/{am.id}", # 临时路由，等会儿建
-                "status": status,
-                "grade": sub.grade if sub else None,
-                "is_viewed": sub.is_viewed if sub else False,
-                "star_level": am.star_level,
-                "stars_earned": sub.stars_earned if sub else 0
-            })
-        return jsonify({"quests": quests})
-    except Exception as e:
-        print(f"拉取委托失败: {e}")
-        return jsonify({"quests": []}) # 避免前端死循环
+        filters.append(db.and_(Assignment.target_type == 'personal', Assignment.target_value == str(current_user.id)))
+        
+        my_assignments = query.filter(or_(*filters)).order_by(Assignment.created_at.desc()).all()
+
+    # 4. 组装数据（这部分保持你原来的逻辑即可，确保包含 star_level 等字段）
+    quests = []
+    for am in my_assignments:
+        sub = Submission.query.filter_by(assignment_id=am.id, user_id=current_user.id).first()
+        quests.append({
+            "id": am.id,
+            "title": am.title,
+            "issuer": am.created_by.username if am.created_by else "系统",
+            "status": sub.status if sub else "active",
+            "is_viewed": sub.is_viewed if sub else False,
+            "grade": sub.grade if sub else None,
+            "stars_earned": sub.stars_earned if sub else 0,
+            "star_level": am.star_level,
+            "page_url": url_for('view_assignment', assign_id=am.id)
+        })
+    
+    return jsonify({"quests": quests})
+
 
 # ==========================================
 # 📜 学生端：查看委托与提交作业详情页

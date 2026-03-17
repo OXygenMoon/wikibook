@@ -4,300 +4,274 @@
 
 {% block extra_css %}
 <style>
-    /* 隐藏滚动条 */
+    /* ==========================================
+       FWA 极简网格野兽派风格 (Brutalist / Grid UI)
+       ========================================== */
+    body {
+        background-color: #f5f5f5 !important; 
+        color: #1a1a1a;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    /* 隐藏原生滚动条 */
     .scrollbar-hide::-webkit-scrollbar { display: none; }
-    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-    
-    /* 自定义弹窗/容器内的滚动条 */
-    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.1); border-radius: 10px; }
-    .custom-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--bc) / 0.2); }
+    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; border-left: 1px solid rgba(0,0,0,0.05); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #ccc; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #999; }
 
-    /* 背景装饰光晕 */
-    .hero-glow {
-        position: absolute;
-        width: 800px;
-        height: 400px;
-        background: radial-gradient(ellipse at top, rgba(234,88,12,0.1) 0%, rgba(250,204,21,0.05) 40%, rgba(255,255,255,0) 70%);
-        top: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 0;
-        pointer-events: none;
-    }
-    .dark .hero-glow {
-        background: radial-gradient(ellipse at top, rgba(234,88,12,0.15) 0%, rgba(250,204,21,0.05) 40%, rgba(0,0,0,0) 70%);
+    /* 横线纹理背景 */
+    .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px);
     }
 
-    /* 表格样式优化 */
-    .modern-table th {
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-size: 0.75rem;
-        font-weight: 800;
-        color: hsl(var(--bc) / 0.4);
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid hsl(var(--bc) / 0.05);
+    /* 极简网格容器与边框 */
+    .grid-border { border-color: rgba(0,0,0,0.1); }
+    .border-b-solid { border-bottom: 1px solid rgba(0,0,0,0.1); }
+    .border-r-solid { border-right: 1px solid rgba(0,0,0,0.1); }
+
+    /* 极简列表项悬浮 */
+    .list-item-brutal { transition: background-color 0.2s; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .list-item-brutal:hover { background-color: #fafafa; }
+    .list-item-brutal.active { background-color: #111; color: #fff; border-color: #111; }
+    .list-item-brutal.active * { color: #fff; }
+
+    /* 极简表格 */
+    .brutal-table { width: 100%; border-collapse: collapse; }
+    .brutal-table th {
+        text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; font-weight: 800;
+        color: #888; padding: 1rem 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.1); text-align: left;
+        background: #fff; position: sticky; top: 0; z-index: 10;
     }
-    .modern-table td {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid hsl(var(--bc) / 0.03);
+    .brutal-table td {
+        padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.05); vertical-align: middle;
     }
-    .modern-table tr:last-child td {
-        border-bottom: none;
+    .brutal-table tr:hover td { background-color: #fafafa; }
+
+    /* Top 3 专属排版 */
+    .rank-1 td { background-color: #fff9e6 !important; }
+    .rank-2 td { background-color: #f0f4f8 !important; }
+    .rank-3 td { background-color: #fff5eb !important; }
+
+    .rank-number { font-family: monospace; font-weight: 900; font-size: 1.5rem; color: #111; }
+    .rank-1 .rank-number { color: #d97706; font-size: 2rem; }
+    .rank-2 .rank-number { color: #64748b; font-size: 1.75rem; }
+    .rank-3 .rank-number { color: #b45309; font-size: 1.5rem; }
+
+    /* 底部悬浮我的数据栏 */
+    .my-stats-bar {
+        background: #fff; border-top: 1px solid rgba(0,0,0,0.1);
+        box-shadow: 0 -10px 20px rgba(0,0,0,0.02);
     }
-    
-    /* Top 3 专属行高亮 */
-    .rank-row-1 { background-color: rgba(250, 204, 21, 0.05); }
-    .rank-row-2 { background-color: rgba(148, 163, 184, 0.05); }
-    .rank-row-3 { background-color: rgba(217, 119, 6, 0.05); }
-    
-    .dark .rank-row-1 { background-color: rgba(250, 204, 21, 0.08); }
-    .dark .rank-row-2 { background-color: rgba(148, 163, 184, 0.08); }
-    .dark .rank-row-3 { background-color: rgba(217, 119, 6, 0.08); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="hero-glow"></div>
 
-<div class="max-w-[1400px] mx-auto w-full flex flex-col h-[calc(100vh-7.5rem)] relative z-10">
-    
-    <div class="flex items-center gap-4 mb-6 pl-2 shrink-0">
-        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-yellow-500 text-white flex items-center justify-center text-xl shadow-lg shadow-orange-500/30 border border-orange-400/50">
-            <i class="fas fa-trophy"></i>
-        </div>
-        <div>
-            <h1 class="text-2xl font-black text-stone-800 dark:text-stone-100 tracking-tight">巅峰竞技场</h1>
-            <p class="text-sm text-base-content/60 font-medium tracking-wide">Leaderboard & Achievements</p>
-        </div>
-    </div>
+<div class="w-full min-h-screen pt-4 pb-20">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12">
 
-    <div class="flex flex-col lg:flex-row gap-6 flex-1 overflow-hidden pb-4">
-        
-        <div class="w-full lg:w-[300px] xl:w-[320px] shrink-0 flex flex-col gap-4 overflow-y-auto custom-scroll pr-1 pb-2">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 border-b grid-border pb-6">
+            <div>
+                <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2">SYSTEM RANKING ENGINE</span>
+                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase">
+                    Leaderboard
+                </h1>
+            </div>
             
-            <div class="bg-white/80 dark:bg-base-200/80 backdrop-blur-md p-1.5 rounded-[1.25rem] flex items-center shrink-0 border border-black/5 dark:border-white/5 shadow-sm">
+            <div class="flex border grid-border p-1 bg-white mt-6 md:mt-0">
                 <a href="{{ url_for('leaderboard', metric=metric, period='weekly') }}" 
-                   class="flex-1 text-center py-2.5 rounded-xl text-sm font-bold transition-all {{ 'bg-primary text-white shadow-md shadow-primary/30' if period == 'weekly' else 'text-base-content/60 hover:bg-base-200/50 hover:text-base-content' }}">
-                   本周风云
+                   class="px-6 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors {% if period == 'weekly' %}bg-[#111] text-white{% else %}text-stone-500 hover:bg-stone-50{% endif %}">
+                   This Week
                 </a>
                 <a href="{{ url_for('leaderboard', metric=metric, period='all') }}" 
-                   class="flex-1 text-center py-2.5 rounded-xl text-sm font-bold transition-all {{ 'bg-primary text-white shadow-md shadow-primary/30' if period == 'all' else 'text-base-content/60 hover:bg-base-200/50 hover:text-base-content' }}">
-                   全服总榜
-                </a>
-            </div>
-
-            <div class="flex flex-row lg:flex-col gap-3 overflow-x-auto lg:overflow-visible scrollbar-hide pb-2 lg:pb-0">
-                
-                <a href="{{ url_for('leaderboard', metric='duration', period=period) }}" 
-                   class="shrink-0 w-48 lg:w-full block p-4 lg:p-5 rounded-[1.5rem] border transition-all duration-300 cursor-pointer text-left group
-                          {% if metric == 'duration' %}bg-primary text-white shadow-lg shadow-primary/30 border-primary
-                          {% else %}bg-white/60 dark:bg-base-100/60 hover:bg-white dark:hover:bg-base-200 border-black/5 dark:border-white/5 hover:border-primary/40 hover:shadow-md text-base-content{% endif %}">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shadow-inner {% if metric == 'duration' %}bg-white/20 text-white{% else %}bg-blue-100 text-blue-500 dark:bg-blue-900/30 dark:text-blue-400{% endif %}">
-                            <i class="fas fa-stopwatch"></i>
-                        </div>
-                        <h3 class="font-black text-base leading-snug tracking-wide group-hover:translate-x-1 transition-transform">肝帝榜</h3>
-                    </div>
-                    <p class="text-[11px] font-medium leading-relaxed {% if metric == 'duration' %}text-white/80{% else %}text-base-content/50{% endif %}">累计专注时长排名，致敬每一个深夜亮起的屏幕。</p>
-                </a>
-
-                <a href="{{ url_for('leaderboard', metric='pomo', period=period) }}" 
-                   class="shrink-0 w-48 lg:w-full block p-4 lg:p-5 rounded-[1.5rem] border transition-all duration-300 cursor-pointer text-left group
-                          {% if metric == 'pomo' %}bg-primary text-white shadow-lg shadow-primary/30 border-primary
-                          {% else %}bg-white/60 dark:bg-base-100/60 hover:bg-white dark:hover:bg-base-200 border-black/5 dark:border-white/5 hover:border-primary/40 hover:shadow-md text-base-content{% endif %}">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shadow-inner {% if metric == 'pomo' %}bg-white/20 text-white{% else %}bg-rose-100 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400{% endif %}">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <h3 class="font-black text-base leading-snug tracking-wide group-hover:translate-x-1 transition-transform">番茄榜</h3>
-                    </div>
-                    <p class="text-[11px] font-medium leading-relaxed {% if metric == 'pomo' %}text-white/80{% else %}text-base-content/50{% endif %}">统计完成的番茄钟数量，真正的效率达人聚集地。</p>
-                </a>
-
-                <a href="{{ url_for('leaderboard', metric='contribution', period=period) }}" 
-                   class="shrink-0 w-48 lg:w-full block p-4 lg:p-5 rounded-[1.5rem] border transition-all duration-300 cursor-pointer text-left group
-                          {% if metric == 'contribution' %}bg-primary text-white shadow-lg shadow-primary/30 border-primary
-                          {% else %}bg-white/60 dark:bg-base-100/60 hover:bg-white dark:hover:bg-base-200 border-black/5 dark:border-white/5 hover:border-primary/40 hover:shadow-md text-base-content{% endif %}">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shadow-inner {% if metric == 'contribution' %}bg-white/20 text-white{% else %}bg-purple-100 text-purple-500 dark:bg-purple-900/30 dark:text-purple-400{% endif %}">
-                            <i class="fas fa-pen-nib"></i>
-                        </div>
-                        <h3 class="font-black text-base leading-snug tracking-wide group-hover:translate-x-1 transition-transform">贡献榜</h3>
-                    </div>
-                    <p class="text-[11px] font-medium leading-relaxed {% if metric == 'contribution' %}text-white/80{% else %}text-base-content/50{% endif %}">基于笔记创作与Wiki编辑的综合得分，知识的沉淀者。</p>
-                </a>
-
-                <a href="{{ url_for('leaderboard', metric='streak', period=period) }}" 
-                   class="shrink-0 w-48 lg:w-full block p-4 lg:p-5 rounded-[1.5rem] border transition-all duration-300 cursor-pointer text-left group
-                          {% if metric == 'streak' %}bg-primary text-white shadow-lg shadow-primary/30 border-primary
-                          {% else %}bg-white/60 dark:bg-base-100/60 hover:bg-white dark:hover:bg-base-200 border-black/5 dark:border-white/5 hover:border-primary/40 hover:shadow-md text-base-content{% endif %}">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shadow-inner {% if metric == 'streak' %}bg-white/20 text-white{% else %}bg-rose-100 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400{% endif %}">
-                            <i class="fas fa-fire"></i>
-                        </div>
-                        <h3 class="font-black text-base leading-snug tracking-wide group-hover:translate-x-1 transition-transform">毅力榜</h3>
-                    </div>
-                    <p class="text-[11px] font-medium leading-relaxed {% if metric == 'streak' %}text-white/80{% else %}text-base-content/50{% endif %}">连续坚持打卡天数，水滴石穿，贵在持之以恒。</p>
+                   class="px-6 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors {% if period == 'all' %}bg-[#111] text-white{% else %}text-stone-500 hover:bg-stone-50{% endif %}">
+                   All Time
                 </a>
             </div>
         </div>
 
-        <div class="flex-1 bg-white/80 dark:bg-base-100/80 backdrop-blur-xl border border-black/5 dark:border-white/5 rounded-[2rem] shadow-sm overflow-hidden flex flex-col relative">
+        <div class="flex flex-col lg:flex-row bg-white border grid-border shadow-[0_20px_50px_rgba(0,0,0,0.03)] rounded-sm overflow-hidden h-[calc(100vh-14rem)] min-h-[600px]">
             
-            <div class="px-6 lg:px-8 py-5 border-b border-base-200/60 shrink-0 flex justify-between items-center bg-white/40 dark:bg-base-100/40">
-                <div>
-                    <h2 class="text-xl md:text-2xl font-black text-stone-800 dark:text-stone-100 tracking-tight flex items-center gap-2">
-                        {% if metric == 'duration' %}<i class="fas fa-stopwatch text-blue-500"></i> 肝帝榜
-                        {% elif metric == 'pomo' %}<i class="fas fa-clock text-rose-500"></i> 番茄榜
-                        {% elif metric == 'contribution' %}<i class="fas fa-pen-nib text-purple-500"></i> 贡献榜
-                        {% elif metric == 'streak' %}<i class="fas fa-fire text-rose-500"></i> 毅力榜{% endif %}
-                    </h2>
-                    <p class="text-xs text-base-content/50 mt-1 font-medium">
-                        当前显示: <span class="text-primary font-bold">{{ '本周风云数据' if period == 'weekly' else '全服历史总榜' }}</span>
-                    </p>
-                </div>
+            <div class="w-full lg:w-[280px] xl:w-[320px] flex flex-col border-b lg:border-b-0 lg:border-r grid-border bg-white z-10 shrink-0">
                 
-                <div class="shrink-0 hidden sm:block">
-                    {% if metric == 'pomo' %}
-                    <button onclick="app.pomodoro.handleClick()" class="btn btn-sm btn-primary text-white rounded-xl font-bold shadow-md shadow-primary/20">
-                        <i class="fas fa-hourglass-start text-xs"></i> 开启专注
-                    </button>
-                    {% elif metric == 'duration' or metric == 'streak' %}
-                    <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline border-base-300 text-base-content hover:bg-primary hover:text-white hover:border-primary rounded-xl font-bold shadow-sm">
-                        <i class="fas fa-rocket text-xs"></i> 去挂时长
+                <div class="h-24 md:h-32 border-b grid-border relative stripe-pattern p-6 flex flex-col justify-end">
+                    <p class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">SELECT METRIC</p>
+                    <p class="text-2xl font-light text-stone-800 uppercase tracking-tight mt-1">Categories</p>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scroll flex flex-row lg:flex-col">
+                    
+                    <a href="{{ url_for('leaderboard', metric='duration', period=period) }}" class="list-item-brutal flex-1 lg:flex-none p-5 flex flex-col gap-3 cursor-pointer group {% if metric == 'duration' %}active{% endif %}">
+                        <div class="flex items-center justify-between">
+                            <i class="fas fa-stopwatch text-lg {% if metric == 'duration' %}text-white{% else %}text-stone-400 group-hover:text-stone-800{% endif %}"></i>
+                            <i class="fas fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 transition-opacity {% if metric == 'duration' %}opacity-100{% endif %}"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-wider mb-1">肝帝榜 (Duration)</h3>
+                            <p class="text-[10px] opacity-60 leading-relaxed line-clamp-2 hidden lg:block">累计专注时长排名，致敬每一个深夜亮起的屏幕。</p>
+                        </div>
                     </a>
-                    {% elif metric == 'contribution' %}
-                    <a href="{{ url_for('new_note') }}" class="btn btn-sm btn-outline border-base-300 text-base-content hover:bg-primary hover:text-white hover:border-primary rounded-xl font-bold shadow-sm">
-                        <i class="fas fa-pen-nib text-xs"></i> 创作笔记
+
+                    <a href="{{ url_for('leaderboard', metric='pomo', period=period) }}" class="list-item-brutal flex-1 lg:flex-none p-5 flex flex-col gap-3 cursor-pointer group {% if metric == 'pomo' %}active{% endif %}">
+                        <div class="flex items-center justify-between">
+                            <i class="fas fa-clock text-lg {% if metric == 'pomo' %}text-white{% else %}text-stone-400 group-hover:text-stone-800{% endif %}"></i>
+                            <i class="fas fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 transition-opacity {% if metric == 'pomo' %}opacity-100{% endif %}"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-wider mb-1">番茄榜 (Pomodoro)</h3>
+                            <p class="text-[10px] opacity-60 leading-relaxed line-clamp-2 hidden lg:block">统计完成的番茄钟数量，真正的效率达人聚集地。</p>
+                        </div>
                     </a>
-                    {% endif %}
+
+                    <a href="{{ url_for('leaderboard', metric='contribution', period=period) }}" class="list-item-brutal flex-1 lg:flex-none p-5 flex flex-col gap-3 cursor-pointer group {% if metric == 'contribution' %}active{% endif %}">
+                        <div class="flex items-center justify-between">
+                            <i class="fas fa-pen-nib text-lg {% if metric == 'contribution' %}text-white{% else %}text-stone-400 group-hover:text-stone-800{% endif %}"></i>
+                            <i class="fas fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 transition-opacity {% if metric == 'contribution' %}opacity-100{% endif %}"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-wider mb-1">贡献榜 (Contribute)</h3>
+                            <p class="text-[10px] opacity-60 leading-relaxed line-clamp-2 hidden lg:block">基于笔记创作与Wiki编辑的综合得分，知识的沉淀者。</p>
+                        </div>
+                    </a>
+
+                    <a href="{{ url_for('leaderboard', metric='streak', period=period) }}" class="list-item-brutal flex-1 lg:flex-none p-5 flex flex-col gap-3 cursor-pointer group {% if metric == 'streak' %}active{% endif %}">
+                        <div class="flex items-center justify-between">
+                            <i class="fas fa-fire text-lg {% if metric == 'streak' %}text-white{% else %}text-stone-400 group-hover:text-stone-800{% endif %}"></i>
+                            <i class="fas fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 transition-opacity {% if metric == 'streak' %}opacity-100{% endif %}"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-wider mb-1">毅力榜 (Streak)</h3>
+                            <p class="text-[10px] opacity-60 leading-relaxed line-clamp-2 hidden lg:block">连续坚持打卡天数，水滴石穿，贵在持之以恒。</p>
+                        </div>
+                    </a>
+                    
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto custom-scroll p-0 relative pb-20">
-                <table class="table w-full modern-table m-0">
-                    <thead class="sticky top-0 z-20 bg-stone-50/95 dark:bg-base-200/95 backdrop-blur-md shadow-sm">
-                        <tr>
-                            <th class="w-16 md:w-24 text-center pl-6">排名</th>
-                            <th>用户信息</th>
-                            <th class="hidden md:table-cell text-center">所属班级</th>
-                            <th class="text-right pr-6 lg:pr-10">成绩数据</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for data in ranking_data %}
-                        <tr class="hover:bg-stone-50 dark:hover:bg-base-200/50 transition-colors group {% if data.rank == 1 %}rank-row-1{% elif data.rank == 2 %}rank-row-2{% elif data.rank == 3 %}rank-row-3{% endif %}">
-                            
-                            <td class="text-center font-black pl-6">
-                                {% if data.rank == 1 %}
-                                    <div class="text-yellow-500 text-2xl drop-shadow-sm flex items-center justify-center gap-1">
-                                        <i class="fas fa-crown text-sm -mt-3"></i> 1
-                                    </div>
-                                {% elif data.rank == 2 %}
-                                    <div class="text-slate-400 text-xl drop-shadow-sm">2</div>
-                                {% elif data.rank == 3 %}
-                                    <div class="text-amber-600 text-lg drop-shadow-sm">3</div>
-                                {% else %}
-                                    <div class="text-base-content/30 text-base group-hover:text-primary transition-colors">{{ data.rank }}</div>
-                                {% endif %}
-                            </td>
-                            
-                            <td>
-                                <div class="flex items-center gap-3 md:gap-4 w-fit">
-                                    <div class="avatar placeholder">
-                                        <div class="rounded-xl shadow-inner font-black
-                                            {% if data.rank == 1 %} w-12 h-12 text-xl bg-gradient-to-br from-yellow-100 to-yellow-200 text-yellow-700 ring-2 ring-yellow-400/50
-                                            {% elif data.rank == 2 %} w-10 h-10 text-lg bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 ring-2 ring-slate-300/50
-                                            {% elif data.rank == 3 %} w-10 h-10 text-lg bg-gradient-to-br from-orange-100 to-orange-200 text-orange-800 ring-2 ring-amber-400/50
-                                            {% else %} w-9 h-9 text-base bg-stone-100 dark:bg-base-300 text-stone-600 dark:text-stone-300
-                                            {% endif %}">
-                                            <span>{{ (data.user.real_name or data.user.username)[0]|upper }}</span>
+            <div class="flex-1 flex flex-col relative z-0 bg-[#fafafa]">
+                
+                <div class="h-16 border-b grid-border px-6 flex items-center justify-between bg-white shrink-0">
+                    <div class="flex items-center gap-4">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                        <span class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">LIVE DATA FEED</span>
+                    </div>
+                    <div class="text-[10px] font-mono text-stone-400">
+                        TOTAL RECORDS: {{ ranking_data|length }}
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scroll relative">
+                    <table class="brutal-table">
+                        <thead>
+                            <tr>
+                                <th class="w-20 text-center">RANK</th>
+                                <th>USER IDENTIFIER</th>
+                                <th class="hidden md:table-cell">DEPARTMENT / CLASS</th>
+                                <th class="text-right pr-8">METRIC SCORE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in ranking_data %}
+                            <tr class="group {% if data.rank == 1 %}rank-1{% elif data.rank == 2 %}rank-2{% elif data.rank == 3 %}rank-3{% endif %}">
+                                
+                                <td class="text-center">
+                                    <div class="rank-number">{{ '%02d' % data.rank }}</div>
+                                </td>
+                                
+                                <td>
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-10 h-10 bg-[#111] text-white flex items-center justify-center font-bold text-xs shadow-sm cursor-pointer hover:bg-primary transition-colors" onclick="window.location.href='{{ url_for('public_profile', user_id=data.user.id) }}'">
+                                            {{ (data.user.real_name or data.user.username)[0]|upper }}
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-stone-800 text-sm uppercase tracking-wide cursor-pointer hover:text-primary transition-colors" onclick="window.location.href='{{ url_for('public_profile', user_id=data.user.id) }}'">
+                                                {{ data.user.real_name or data.user.username }}
+                                            </span>
+                                            <span class="text-[10px] text-stone-400 font-mono mt-0.5">@{{ data.user.username }}</span>
                                         </div>
                                     </div>
-                                    
-                                    <div class="flex flex-col min-w-0">
-                                        <span class="font-bold text-base-content truncate group-hover:text-primary transition-colors {% if data.rank <= 3 %}text-base md:text-lg tracking-tight{% else %}text-sm{% endif %}">
-                                            {{ data.user.real_name or data.user.username }}
+                                </td>
+                                
+                                <td class="hidden md:table-cell">
+                                    {% if data.user.student_class %}
+                                        <span class="border border-stone-300 text-stone-500 text-[9px] font-bold px-2 py-1 uppercase tracking-widest bg-white">
+                                            {{ data.user.student_class.name }}
                                         </span>
-                                        <span class="text-[10px] text-base-content/40 font-mono">@{{ data.user.username }}</span>
+                                    {% else %}
+                                        <span class="text-stone-300">-</span>
+                                    {% endif %}
+                                </td>
+                                
+                                <td class="text-right pr-8">
+                                    <div class="flex flex-col items-end justify-center">
+                                        <span class="font-light font-mono text-2xl text-stone-900 leading-none tracking-tighter">
+                                            {{ data.score }}
+                                        </span>
+                                        <span class="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-1">
+                                            {{ data.unit }}
+                                        </span>
                                     </div>
-                                </div>
-                            </td>
-                            
-                            <td class="hidden md:table-cell text-center">
-                                {% if data.user.student_class %}
-                                    <span class="badge badge-sm border-none bg-stone-100 dark:bg-base-300 text-base-content/70 font-bold px-3 py-3 rounded-lg shadow-sm">
-                                        {{ data.user.student_class.name }}
-                                    </span>
-                                {% else %}
-                                    <span class="text-xs text-base-content/30 font-bold">-</span>
-                                {% endif %}
-                            </td>
-                            
-                            <td class="text-right pr-6 lg:pr-10">
-                                <div class="flex flex-col items-end justify-center h-full">
-                                    <span class="font-black font-mono leading-none tracking-tight
-                                        {% if data.rank == 1 %} text-2xl md:text-3xl text-yellow-600 dark:text-yellow-500
-                                        {% elif data.rank == 2 %} text-xl md:text-2xl text-slate-600 dark:text-slate-400
-                                        {% elif data.rank == 3 %} text-lg md:text-xl text-amber-700 dark:text-amber-500
-                                        {% else %} text-base md:text-lg text-base-content/80
-                                        {% endif %}">
-                                        {{ data.score }}
-                                    </span>
-                                    <span class="text-[9px] md:text-[10px] font-bold tracking-widest uppercase mt-1
-                                        {% if data.rank <= 3 %} text-base-content/60 {% else %} text-base-content/40 {% endif %}">
-                                        {{ data.unit }}
-                                    </span>
-                                </div>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4" class="text-center py-24 text-base-content/30">
-                                <i class="fas fa-ghost text-4xl mb-3 opacity-50"></i>
-                                <p class="font-bold tracking-widest uppercase text-sm">该赛道暂无数据</p>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-32 bg-white">
+                                    <p class="font-bold text-stone-300 uppercase tracking-widest text-sm">NO DATA AVAILABLE IN THIS SECTOR</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
 
-            {% if my_rank_info %}
-            <div class="shrink-0 bg-stone-50/95 dark:bg-[#15191e]/95 backdrop-blur-xl border-t border-black/5 dark:border-white/5 py-4 px-6 lg:px-8 flex items-center justify-between shadow-[0_-10px_30px_rgba(0,0,0,0.02)] z-30">
-                <div class="flex items-center gap-4 sm:gap-6">
-                    <div class="flex flex-col items-center justify-center w-12 sm:w-14 bg-gradient-to-b from-primary/10 to-primary/5 rounded-2xl py-1.5 border border-primary/10 shadow-inner">
-                        <span class="text-[9px] font-black text-primary opacity-70 uppercase tracking-widest mb-0.5">Rank</span>
-                        <span class="text-xl sm:text-2xl font-black text-primary leading-none">{{ my_rank_info.rank }}</span>
-                    </div>
-                    
-                    <div class="flex flex-col">
-                        <div class="flex items-baseline gap-2">
-                            <span class="font-bold text-base-content text-sm sm:text-base">我的成绩</span>
-                            <span class="font-mono text-lg sm:text-xl font-black text-base-content">{{ my_rank_info.score }}</span> 
-                            <span class="text-[10px] text-base-content/50 font-bold tracking-widest uppercase">{{ my_rank_info.unit }}</span>
+                {% if my_rank_info %}
+                <div class="my-stats-bar h-20 shrink-0 flex items-center justify-between px-6 lg:px-8 z-20">
+                    <div class="flex items-center gap-6">
+                        <div class="flex flex-col items-center justify-center border-r grid-border pr-6">
+                            <span class="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1">YOUR RANK</span>
+                            <span class="text-2xl font-black font-mono leading-none text-[#111]">{{ '%02d' % my_rank_info.rank }}</span>
                         </div>
                         
-                        {% if my_rank_info.rank > 1 %}
-                        <span class="text-[11px] sm:text-xs text-base-content/60 font-medium mt-0.5 flex items-center gap-1.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
-                            距离超越上一名还差 <strong class="text-error font-mono text-[13px]">{{ gap_to_next }}</strong> {{ my_rank_info.unit }}
-                        </span>
-                        {% else %}
-                        <span class="text-[11px] sm:text-xs text-warning font-black mt-0.5 flex items-center gap-1.5">
-                            <i class="fas fa-crown text-[10px]"></i> 全场第一，独孤求败！
-                        </span>
+                        <div class="flex flex-col">
+                            <div class="flex items-baseline gap-2">
+                                <span class="font-bold text-stone-800 text-sm uppercase">SCORE:</span>
+                                <span class="font-mono text-xl font-light text-stone-900">{{ my_rank_info.score }}</span> 
+                                <span class="text-[9px] text-stone-400 font-bold uppercase tracking-widest">{{ my_rank_info.unit }}</span>
+                            </div>
+                            
+                            {% if my_rank_info.rank > 1 %}
+                            <span class="text-[10px] text-stone-500 font-medium mt-1 flex items-center gap-1.5 uppercase tracking-wide">
+                                <span class="w-1.5 h-1.5 bg-red-500 animate-pulse"></span>
+                                <strong class="font-mono font-bold text-stone-800">{{ gap_to_next }}</strong> TO NEXT RANK
+                            </span>
+                            {% else %}
+                            <span class="text-[10px] text-amber-600 font-bold mt-1 uppercase tracking-wide">
+                                ABSOLUTE DOMINANCE
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="hidden sm:block">
+                        {% if metric == 'pomo' %}
+                        <button onclick="app.pomodoro.handleClick()" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors">
+                            START FOCUS &rarr;
+                        </button>
+                        {% elif metric == 'duration' or metric == 'streak' %}
+                        <a href="{{ url_for('index') }}" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors">
+                            READ WIKI &rarr;
+                        </a>
+                        {% elif metric == 'contribution' %}
+                        <a href="{{ url_for('new_note') }}" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors">
+                            CREATE NOTE &rarr;
+                        </a>
                         {% endif %}
                     </div>
                 </div>
-            </div>
-            {% endif %}
+                {% endif %}
 
+            </div>
         </div>
     </div>
 </div>

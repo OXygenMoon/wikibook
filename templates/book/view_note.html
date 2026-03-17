@@ -1,283 +1,464 @@
 {% extends "base.html" %}
 
-{% block title %}{{ note.title }}{% endblock %}
+{% block title %}{{ note.title }} // DATA NODE{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('markdown_css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
 <style>
+    /* ==========================================
+       FWA 极简野兽派风格 (Brutalist / Grid UI)
+       ========================================== */
+    body {
+        background-color: #f5f5f5 !important;
+        color: #111;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    .grid-border { border-color: rgba(0,0,0,0.15); }
+    .dark .grid-border { border-color: rgba(255,255,255,0.15); }
+
+    .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px);
+    }
+
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #111; border-left: 1px solid rgba(255,255,255,0.1); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 0; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #666; }
+
+    /* 浅色区域的滚动条 */
+    .light-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .light-scroll::-webkit-scrollbar-track { background: transparent; border-left: 1px solid rgba(0,0,0,0.1); }
+    .light-scroll::-webkit-scrollbar-thumb { background: #111; }
+    .light-scroll::-webkit-scrollbar-thumb:hover { background: var(--theme-primary); }
+
+    .btn-brutal {
+        background: #111; color: #fff; border-radius: 2px; font-size: 12px; font-weight: 800; text-transform: uppercase;
+        padding: 0.6rem 1rem; transition: transform 0.1s, box-shadow 0.1s; display: inline-flex; align-items: center; justify-center; border: 1px solid #111;
+        letter-spacing: 0.05em; cursor: pointer; box-shadow: 2px 2px 0 #111;
+    }
+    .btn-brutal:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #111; color: #fff; }
+    .btn-brutal:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111; }
+    
+    .btn-brutal-outline {
+        background: #fff; color: #111; border: 1px solid #111; border-radius: 2px; font-size: 11px; font-weight: 800; text-transform: uppercase;
+        padding: 0.6rem 1rem; transition: transform 0.1s, box-shadow 0.1s; display: inline-flex; align-items: center; justify-center;
+        letter-spacing: 0.05em; cursor: pointer; box-shadow: 2px 2px 0 #111;
+    }
+    .btn-brutal-outline:hover { background: #111; color: #fff; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #111; }
+    .btn-brutal-outline:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111; }
+    
+    .btn-brutal-danger {
+        background: #fff; color: #ef4444; border: 1px solid #ef4444; border-radius: 2px; font-size: 11px; font-weight: 800; text-transform: uppercase;
+        padding: 0.6rem 1rem; transition: transform 0.1s, box-shadow 0.1s; display: inline-flex; align-items: center; justify-center;
+        letter-spacing: 0.05em; cursor: pointer; box-shadow: 2px 2px 0 #ef4444;
+    }
+    .btn-brutal-danger:hover { background: #ef4444; color: #fff; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #ef4444; }
+    .btn-brutal-danger:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #ef4444; }
+
+    .terminal-input {
+        background: #fff; border: 1px solid rgba(0,0,0,0.2); border-radius: 2px; font-family: monospace; font-size: 13px;
+        transition: border-color 0.2s, box-shadow 0.2s; padding: 0.5rem 1rem; width: 100%;
+    }
+    .terminal-input:focus { border-color: #111; box-shadow: 4px 4px 0px rgba(0,0,0,1); outline: none; }
+
+    .brutal-card {
+        background: #fff; border: 1px solid #111; border-radius: 2px;
+        box-shadow: 8px 8px 0 #111;
+    }
+
+    .modal-brutal { box-shadow: 16px 16px 0px rgba(0,0,0,1); border: 2px solid #111; border-radius: 2px; }
+
+    /* ==========================================
+       高级 Markdown 排版 (Brutalist Typography)
+       ========================================== */
+    .prose { max-width: 100%; color: #333; font-size: 15px; line-height: 1.8; }
+    .prose h1 { font-size: 2.25rem; font-weight: 900; color: #111; margin: 2.5rem 0 1.5rem; letter-spacing: -0.03em; text-transform: uppercase; border-bottom: 2px solid #111; padding-bottom: 0.5rem; }
+    .prose h2 { font-size: 1.75rem; font-weight: 800; color: #111; margin: 2rem 0 1rem; letter-spacing: -0.02em; }
+    .prose h3 { font-size: 1.25rem; font-weight: 800; color: #333; margin: 1.5rem 0 0.75rem; }
+    .prose p { margin-bottom: 1.25rem; }
+    
+    /* 行内代码 */
+    .prose code:not(pre code) { 
+        color: #ef4444; background-color: #fce8e8; padding: 0.15rem 0.4rem; 
+        border-radius: 2px; font-size: 0.85em; font-family: monospace; border: 1px solid #fecaca; 
+    }
+    
+    /* 引用块 */
+    .prose blockquote { 
+        border-left: 4px solid #111; font-style: normal; color: #555; 
+        background: #fafafa; padding: 1rem 1.5rem; margin: 1.5rem 0; font-family: monospace;
+    }
+    .prose blockquote p { margin-bottom: 0; }
+
+    /* 表格 */
+    .prose table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9em; }
+    .prose th { background: #111; color: #fff; font-weight: bold; text-align: left; padding: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid #111; }
+    .prose td { padding: 0.75rem; border: 1px solid rgba(0,0,0,0.15); }
+    .prose tr:nth-child(even) { background-color: #fafafa; }
+
+    /* 列表 */
+    .prose ul { list-style-type: square; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+    .prose ol { list-style-type: decimal-leading-zero; padding-left: 1.5rem; margin-bottom: 1.5rem; font-family: monospace; font-weight: bold; }
+    .prose li { margin-bottom: 0.5rem; color: #444; }
+    .prose ol li span { font-family: sans-serif; font-weight: normal; } /* 恢复内容字体 */
+    
+    /* 图片 */
+    .prose img { border-radius: 2px; border: 2px solid #111; box-shadow: 4px 4px 0 #111; margin: 1.5rem 0; max-width: 100%; }
+    
+    /* 链接 */
+    .prose a { color: #111; text-decoration: underline; text-underline-offset: 3px; font-weight: bold; transition: all 0.2s; }
+    .prose a:hover { background: #111; color: #fff; text-decoration: none; }
+
+    /* ==========================================
+       代码块终极外壳 (Brutalist Terminal Window)
+       ========================================== */
+    .brutal-code-window {
+        margin: 2rem 0; border: 1px solid #111; border-radius: 2px;
+        box-shadow: 6px 6px 0px rgba(0,0,0,1); background: #0d1117; 
+        display: flex; flex-direction: column; overflow: hidden;
+    }
+    .brutal-code-header {
+        background: #111; padding: 0.5rem 1rem; display: flex; justify-content: space-between; items-center;
+        border-bottom: 1px solid #333;
+    }
+    .brutal-code-lang {
+        color: #8b949e; font-size: 10px; font-family: monospace; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em;
+        display: flex; items-center; gap: 0.5rem;
+    }
+    .brutal-code-copy {
+        color: #8b949e; font-size: 10px; font-family: monospace; font-weight: bold; text-transform: uppercase; cursor: pointer; transition: color 0.2s;
+    }
+    .brutal-code-copy:hover { color: #fff; }
+    .brutal-code-content {
+        padding: 1.25rem; overflow-x: auto; margin: 0; background: transparent !important;
+    }
+    /* 覆盖 Highlight.js 默认的背景和内边距 */
+    .hljs { background: transparent !important; padding: 0 !important; font-family: 'Fira Code', 'Courier New', monospace; font-size: 14px; line-height: 1.6; }
+
+    /* ==========================================
+       侧边栏目录定制 (TOC Override)
+       ========================================== */
     .toc-link {
-        display: block;
-        padding: 0.25rem 0.5rem;
-        font-size: 0.875rem;
-        color: #57534e;
-        border-left: 2px solid transparent;
-        transition: all 0.2s;
+        display: block; padding: 0.35rem 0.75rem; font-size: 11px; font-family: monospace; font-weight: bold; text-transform: uppercase;
+        color: #888; border-left: 2px solid transparent; transition: all 0.2s; line-height: 1.4;
     }
-    .toc-link:hover {
-        color: #ea580c;
-        background-color: #faf7f5;
-    }
-    .toc-link.active {
-        color: #ea580c;
-        border-left-color: #ea580c;
-        font-weight: 500;
-    }
-    .toc-h1 { margin-left: 0; }
-    .toc-h2 { margin-left: 1rem; }
-    .toc-h3 { margin-left: 2rem; }
+    .toc-link:hover { color: #111; background-color: #fafafa; }
+    .toc-link.active { color: #111; border-left-color: #111; background-color: #f0f0f0; }
+    .toc-h1 { margin-left: 0; } .toc-h2 { margin-left: 1rem; } .toc-h3 { margin-left: 2rem; font-size: 10px; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="flex flex-col lg:flex-row gap-6">
-    <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 text-sm text-base-content/60 mb-6">
-            <a href="{{ url_for('book_index') }}" class="hover:text-primary">我的笔记</a>
-            <span>/</span>
-            <span class="text-base-content/80 truncate max-w-[300px]">{{ note.title }}</span>
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
+
+        <div class="flex items-center gap-3 mb-8">
+            <a href="{{ url_for('book_index') }}" class="w-8 h-8 flex items-center justify-center border grid-border bg-white hover:bg-[#111] hover:text-white transition-colors text-stone-400">
+                <i class="fas fa-arrow-left text-xs"></i>
+            </a>
+            <div class="flex flex-col min-w-0">
+                <span class="text-[9px] font-bold text-stone-400 uppercase tracking-widest">RETURN TO // 数据库</span>
+                <span class="text-xs font-black text-stone-800 uppercase tracking-wider truncate max-w-[300px]">{{ note.title }}</span>
+            </div>
         </div>
 
-        <div class="card bg-base-100 shadow-xl border border-base-200">
-            <div class="card-body p-8">
-                <div class="flex items-start justify-between mb-6 pb-6 border-b border-base-200">
-                    <div>
-                        <h1 class="text-3xl font-bold text-base-content mb-2">{{ note.title }}</h1>
-                        <div class="flex flex-wrap items-center gap-4 text-sm text-base-content/60">
-                            <span class="flex items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                {{ note.user.username }}
+        <div class="flex flex-col lg:flex-row gap-8">
+            <div class="flex-1 min-w-0 flex flex-col gap-8">
+                
+                <div class="brutal-card flex flex-col bg-white">
+                    <div class="p-8 md:p-10 border-b grid-border bg-[#fafafa] stripe-pattern flex flex-col gap-6 shrink-0 relative">
+                        
+                        <div class="flex flex-col md:flex-row justify-between items-start gap-4">
+                            <h1 class="text-3xl md:text-4xl font-light text-stone-900 tracking-tight leading-[1.1] uppercase">
+                                {{ note.title }}
+                            </h1>
+                            
+                            {% if is_owner %}
+                            <div class="flex gap-3 shrink-0 mt-2 md:mt-0 relative z-20">
+                                <a href="{{ url_for('edit_note', note_id=note.id) }}" class="btn-brutal-outline py-1.5 px-3 text-[10px]">
+                                    <i class="fas fa-pen mr-1.5"></i> EDIT
+                                </a>
+                                <button onclick="document.getElementById('delete_modal').showModal()" class="btn-brutal-danger py-1.5 px-3 text-[10px]">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-3 text-[10px] font-mono font-bold text-stone-500 uppercase tracking-widest">
+                            <span class="bg-white border grid-border px-2 py-1 shadow-sm flex items-center gap-1.5 text-stone-800">
+                                <i class="fas fa-user-circle text-stone-400"></i> {{ note.user.username }}
                             </span>
-                            <span class="flex items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                {{ note.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                            <span class="bg-white border grid-border px-2 py-1 shadow-sm flex items-center gap-1.5">
+                                <i class="fas fa-clock text-stone-400"></i> {{ note.updated_at.strftime('%Y.%m.%d / %H:%M') }}
                             </span>
                             {% if note.tags %}
-                            <span class="flex items-center gap-2">
+                                <div class="w-px h-4 bg-stone-300 mx-1"></div>
                                 {% for tag in note.tags %}
-                                <span class="badge badge-sm badge-outline">{{ tag.name }}</span>
+                                <span class="bg-[#111] text-white px-2 py-1">{{ tag.name }}</span>
                                 {% endfor %}
-                            </span>
                             {% endif %}
                         </div>
                     </div>
                     
-                    {% if is_owner %}
-                    <div class="flex gap-2">
-                        <a href="{{ url_for('edit_note', note_id=note.id) }}" class="btn btn-ghost btn-sm gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                            编辑
-                        </a>
-                        <button onclick="delete_modal.showModal()" class="btn btn-ghost btn-sm text-error">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                    </div>
-                    {% endif %}
-                </div>
-                
-                <div class="prose prose-stone max-w-none">
-                    {{ html | safe }}
-                </div>
-            </div>
-        </div>
-
-        <!-- 评论区 -->
-        {% if note.comment_enabled %}
-        <div class="card bg-base-100 shadow-xl border border-base-200 mt-6">
-            <div class="card-body p-8">
-                <h3 class="text-lg font-bold text-base-content mb-4 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
-                    评论 ({{ note.comments|length }})
-                </h3>
-                
-                <div class="space-y-6 mb-8">
-                    {% for comment in note.comments %}
-                    <div class="flex gap-4 group">
-                        <div class="avatar placeholder">
-                            <div class="bg-neutral-focus text-neutral-content rounded-full w-10 h-10">
-                                <span class="text-sm">{{ comment.user.username[0] | upper }}</span>
-                            </div>
-                        </div>
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="font-bold text-sm">{{ comment.user.username }}</span>
-                                <span class="text-xs text-base-content/40">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                                
-                                {% if current_user.is_admin or current_user.id == comment.user_id or is_owner %}
-                                <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post" class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button type="submit" class="btn btn-ghost btn-xs text-error" title="删除评论" onclick="return confirm('确定要删除这条评论吗？')">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                </form>
-                                {% endif %}
-                            </div>
-                            <div class="p-3 bg-base-200 rounded-lg rounded-tl-none text-sm whitespace-pre-wrap">{{ comment.content }}</div>
+                    <div class="p-8 md:p-12 prose max-w-4xl mx-auto w-full relative">
+                        <div class="absolute left-8 md:left-12 top-12 bottom-12 w-px bg-stone-200"></div>
+                        <div class="pl-6">
+                            {{ html | safe }}
                         </div>
                     </div>
-                    {% else %}
-                    <div class="text-center py-8 text-base-content/40 italic">
-                        暂无评论，快来抢沙发吧~
-                    </div>
-                    {% endfor %}
                 </div>
-                
-                <form action="{{ url_for('comment_note', note_id=note.id) }}" method="post" class="flex gap-4">
-                    <div class="avatar placeholder">
-                        <div class="bg-primary text-primary-content rounded-full w-10 h-10">
-                            <span class="text-sm">{{ current_user.username[0] | upper }}</span>
-                        </div>
-                    </div>
-                    <div class="flex-1 flex gap-2">
-                        <textarea name="content" class="textarea textarea-bordered w-full h-20 resize-none" placeholder="写下你的想法..." required></textarea>
-                        <button type="submit" class="btn btn-primary h-auto">发表</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        {% endif %}
-    </div>
 
-    <!-- 侧边栏：目录 + 分享信息 -->
-    <div class="w-full lg:w-72 flex-shrink-0 pt-[3.25rem]">
-        <div class="sticky top-6 flex flex-col gap-6 max-h-[calc(100vh-3rem)] overflow-y-auto hide-scrollbar">
-            
-            <!-- 笔记目录卡片 -->
-            <div class="card bg-base-100 shadow-xl border border-base-200 flex-shrink-0">
-                <div class="card-body p-4">
-                    <h3 class="font-bold text-stone-700 mb-2 px-2 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-                        笔记目录
-                    </h3>
-                    <nav id="toc-container" class="space-y-1 max-h-[40vh] overflow-y-auto">
-                        <!-- TOC will be injected here via JS -->
-                    </nav>
-                </div>
-            </div>
-
-            {% if is_owner %}
-            <div class="card bg-base-100 shadow-xl border border-base-200">
-                <div class="card-body p-5">
-                    <h3 class="card-title text-sm uppercase tracking-wide text-base-content/50 mb-4">分享设置</h3>
+                {% if note.comment_enabled %}
+                <div class="bg-white border grid-border rounded-sm shadow-[0_10px_30px_rgba(0,0,0,0.03)] flex flex-col">
+                    <div class="p-6 border-b grid-border flex items-center gap-3 bg-[#fafafa]">
+                        <span class="text-[10px] font-bold bg-[#111] text-white px-2 py-1 tracking-widest">
+                            <i class="fas fa-comment-alt text-[9px] mr-1"></i> LOG
+                        </span>
+                        <h3 class="text-sm font-bold text-stone-800 uppercase tracking-widest">交流日志 [{{ note.comments|length }}]</h3>
+                    </div>
                     
-                    {% if note.shares %}
-                    <div class="mb-4">
-                        <div class="text-xs font-bold mb-2">已分享给：</div>
-                        <div class="flex flex-wrap gap-2">
-                            {% for share in note.shares %}
-                            <div class="badge badge-ghost gap-1 pl-1 pr-2">
-                                <div class="w-4 h-4 rounded-full bg-neutral-focus text-neutral-content flex items-center justify-center text-[10px]">{{ share.user.username[0]|upper }}</div>
-                                {{ share.user.username }}
+                    <div class="p-6 md:p-8 flex flex-col gap-6">
+                        <div class="space-y-6">
+                            {% for comment in note.comments %}
+                            <div class="flex gap-4 group">
+                                <div class="w-10 h-10 bg-[#111] text-white flex items-center justify-center font-bold text-xs shrink-0 rounded-sm">
+                                    {{ comment.user.username[0] | upper }}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-3 mb-1.5">
+                                        <span class="font-bold text-xs text-stone-800 uppercase tracking-wide">{{ comment.user.username }}</span>
+                                        <span class="text-[9px] text-stone-400 font-mono">TIMESTAMP: {{ comment.created_at.strftime('%Y.%m.%d %H:%M') }}</span>
+                                        
+                                        {% if current_user.is_admin or current_user.id == comment.user_id or is_owner %}
+                                        <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post" class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button type="submit" class="text-red-500 hover:text-red-700 transition-colors" title="DELETE RECORD" onclick="return confirm('警告：确认销毁此日志记录？')">
+                                                <i class="fas fa-times text-sm"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                    <div class="bg-[#fafafa] border grid-border p-4 text-sm text-stone-700 whitespace-pre-wrap font-mono leading-relaxed relative">
+                                        <div class="absolute left-0 top-0 w-1 h-full bg-stone-300 group-hover:bg-[#111] transition-colors"></div>
+                                        {{ comment.content }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-10 bg-[#fafafa] border border-dashed grid-border text-stone-400">
+                                <p class="text-[10px] font-bold uppercase tracking-widest font-mono">COMMUNICATION LOG EMPTY // 暂无通讯记录</p>
                             </div>
                             {% endfor %}
                         </div>
+                        
+                        <form action="{{ url_for('comment_note', note_id=note.id) }}" method="post" class="flex gap-4 mt-4 pt-6 border-t grid-border">
+                            <div class="w-10 h-10 bg-primary text-white flex items-center justify-center font-bold text-xs shrink-0 rounded-sm shadow-sm">
+                                {{ current_user.username[0] | upper }}
+                            </div>
+                            <div class="flex-1 flex flex-col sm:flex-row gap-3">
+                                <textarea name="content" class="terminal-input h-14 resize-none w-full" placeholder="输入日志内容 (Input log data...)" required></textarea>
+                                <button type="submit" class="btn-brutal h-14 px-8 shrink-0">
+                                    TRANSMIT <i class="fas fa-paper-plane ml-2"></i>
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    {% endif %}
-
-                    <button onclick="share_modal.showModal()" class="btn btn-outline btn-primary btn-sm w-full gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                        分享笔记
-                    </button>
                 </div>
+                {% endif %}
             </div>
-            {% endif %}
+
+            <div class="w-full lg:w-[320px] flex-shrink-0 flex flex-col gap-6 lg:sticky lg:top-6 lg:h-max">
+                
+                <div class="bg-white border grid-border rounded-sm shadow-sm flex flex-col">
+                    <div class="p-4 border-b grid-border bg-[#fafafa] flex items-center gap-2">
+                        <i class="fas fa-network-wired text-stone-400 text-xs"></i>
+                        <h3 class="font-bold text-[10px] text-stone-500 uppercase tracking-widest">DATA STRUCTURE // 档案结构</h3>
+                    </div>
+                    <div class="p-2">
+                        <nav id="toc-container" class="max-h-[50vh] overflow-y-auto light-scroll">
+                            </nav>
+                    </div>
+                </div>
+
+                {% if is_owner %}
+                <div class="bg-white border border-[#111] shadow-[4px_4px_0_#111] rounded-sm flex flex-col relative overflow-hidden group">
+                    <div class="absolute -right-4 -top-4 text-[#111]/5 text-6xl group-hover:rotate-12 transition-transform"><i class="fas fa-share-alt"></i></div>
+                    
+                    <div class="p-5 flex flex-col gap-4 relative z-10">
+                        <h3 class="text-sm font-black text-stone-900 uppercase tracking-wide">SHARE PROTOCOL</h3>
+                        <p class="text-[9px] font-bold text-stone-400 font-mono tracking-widest uppercase mb-2">配置档案的数据分发目标</p>
+                        
+                        {% if note.shares %}
+                        <div class="bg-[#fafafa] border grid-border p-3 flex flex-col gap-2">
+                            <div class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">ACTIVE NODES // 已连接节点：</div>
+                            <div class="flex flex-wrap gap-1.5">
+                                {% for share in note.shares %}
+                                <div class="bg-white border grid-border px-1.5 py-0.5 flex items-center gap-1.5">
+                                    <div class="w-3 h-3 bg-[#111] text-white flex items-center justify-center text-[7px] font-bold rounded-sm">{{ share.user.username[0]|upper }}</div>
+                                    <span class="text-[10px] font-mono text-stone-800">{{ share.user.username }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <button onclick="document.getElementById('share_modal').showModal()" class="btn-brutal-outline w-full mt-2">
+                            CONFIGURE SHARING <i class="fas fa-cog ml-2 text-stone-400"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
         </div>
     </div>
 </div>
 
-<!-- 删除确认弹窗 -->
-<dialog id="delete_modal" class="modal">
-    <div class="modal-box">
-        <h3 class="font-bold text-lg">确认删除</h3>
-        <p class="py-4">确定要删除这篇笔记吗？此操作无法撤销。</p>
-        <div class="modal-action">
-            <form action="{{ url_for('delete_note', note_id=note.id) }}" method="post">
-                <button type="submit" class="btn btn-error">确认删除</button>
-            </form>
-            <form method="dialog">
-                <button class="btn">取消</button>
-            </form>
+<dialog id="delete_modal" class="modal bg-stone-900/60 backdrop-blur-sm z-[200]">
+    <div class="modal-box w-11/12 max-w-md bg-white rounded-sm p-0 modal-brutal overflow-hidden">
+        <div class="border-b-2 border-red-500 p-6 bg-[#fff0f0] stripe-pattern flex items-center gap-3">
+            <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+            <h3 class="font-black text-red-600 uppercase tracking-widest text-lg">CRITICAL WARNING</h3>
+        </div>
+        <div class="p-6 md:p-8 bg-white">
+            <p class="text-sm text-stone-700 font-mono leading-relaxed mb-8">
+                指令确认：您正在尝试销毁核心数据节点。<br><br>
+                > 此操作具有不可逆转的破坏性。<br>
+                > 档案数据将从服务器永久擦除。
+            </p>
+            <div class="flex justify-end gap-4 border-t grid-border pt-6">
+                <form method="dialog"><button class="btn-brutal-outline px-6 py-2">ABORT</button></form>
+                <form action="{{ url_for('delete_note', note_id=note.id) }}" method="post">
+                    <button type="submit" class="btn-brutal-danger px-6 py-2">CONFIRM DESTRUCTION</button>
+                </form>
+            </div>
         </div>
     </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
 
-<!-- 分享弹窗 -->
-<dialog id="share_modal" class="modal">
-    <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">分享笔记</h3>
-        <p class="text-sm text-base-content/60 mb-4">选择要分享的用户（可多选）</p>
+<dialog id="share_modal" class="modal bg-stone-900/60 backdrop-blur-sm z-[200]">
+    <div class="modal-box w-11/12 max-w-lg bg-white rounded-sm p-0 modal-brutal overflow-hidden">
+        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern flex justify-between items-center">
+            <h3 class="text-xl font-black text-stone-900 uppercase tracking-widest flex items-center gap-2">
+                <i class="fas fa-network-wired"></i> DATA DISTRIBUTION
+            </h3>
+            <form method="dialog" class="m-0">
+                <button class="w-8 h-8 border border-[#111] bg-white hover:bg-[#111] hover:text-white transition-colors flex items-center justify-center font-bold shadow-[2px_2px_0_#111] active:translate-y-1 active:translate-x-1 active:shadow-none">✕</button>
+            </form>
+        </div>
         
-        <form action="{{ url_for('share_note', note_id=note.id) }}" method="post">
-            <div class="max-h-60 overflow-y-auto border border-base-200 rounded-lg divide-y divide-base-200 mb-6">
-                {% for user in all_users %}
-                <label class="label cursor-pointer px-4 hover:bg-base-100">
-                    <span class="label-text flex items-center gap-2">
-                        <div class="avatar placeholder">
-                            <div class="bg-neutral-focus text-neutral-content rounded-full w-6 h-6">
-                                <span class="text-xs">{{ user.username[0] | upper }}</span>
+        <form action="{{ url_for('share_note', note_id=note.id) }}" method="post" class="flex flex-col">
+            <div class="p-6 md:p-8 bg-white">
+                <p class="text-[10px] text-stone-500 font-mono tracking-widest uppercase mb-4">> SELECT TARGET NODES FOR SYNCHRONIZATION</p>
+                
+                <div class="max-h-60 overflow-y-auto light-scroll border grid-border bg-[#fafafa]">
+                    {% for user in all_users %}
+                    <label class="cursor-pointer px-4 py-3 flex items-center justify-between hover:bg-white border-b grid-border last:border-0 transition-colors group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-6 h-6 bg-[#111] text-white flex items-center justify-center font-bold text-[10px] rounded-sm shrink-0">
+                                {{ user.username[0] | upper }}
+                            </div>
+                            <span class="font-bold text-sm text-stone-800 group-hover:text-primary transition-colors">{{ user.username }}</span>
+                            {% if user.is_admin %}
+                            <span class="text-[8px] bg-amber-400 text-black font-black px-1.5 py-0.5 tracking-widest uppercase">ADMIN</span>
+                            {% endif %}
+                        </div>
+                        <div class="relative flex items-center">
+                            <input type="checkbox" name="user_ids" value="{{ user.id }}" class="peer sr-only" />
+                            <div class="w-5 h-5 border-2 border-stone-300 rounded-sm flex items-center justify-center text-transparent peer-checked:border-[#111] peer-checked:bg-[#111] peer-checked:text-white transition-all">
+                                <i class="fas fa-check text-[10px]"></i>
                             </div>
                         </div>
-                        {{ user.username }}
-                        {% if user.is_admin %}
-                        <span class="badge badge-xs badge-ghost">管理员</span>
-                        {% endif %}
-                    </span> 
-                    <input type="checkbox" name="user_ids" value="{{ user.id }}" class="checkbox checkbox-primary checkbox-sm" />
-                </label>
-                {% endfor %}
+                    </label>
+                    {% endfor %}
+                </div>
             </div>
             
-            <div class="modal-action">
-                <button type="submit" class="btn btn-primary">确认分享</button>
-                <form method="dialog">
-                    <button class="btn" type="button" onclick="share_modal.close()">取消</button>
-                </form>
+            <div class="border-t-2 border-[#111] p-6 bg-[#fafafa] flex justify-end gap-4 shrink-0">
+                <form method="dialog"><button type="button" onclick="document.getElementById('share_modal').close()" class="btn-brutal-outline">ABORT</button></form>
+                <button type="submit" class="btn-brutal">EXECUTE SYNC <i class="fas fa-bolt ml-2 text-yellow-400"></i></button>
             </div>
         </form>
     </div>
-    <form method="dialog" class="modal-backdrop">
-        <button>close</button>
-    </form>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
+
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Code block copy button
+    
+    // ==========================================
+    // 💡 野兽派代码块重构 (Brutalist Terminal Window)
+    // ==========================================
     document.querySelectorAll('pre code').forEach((block) => {
-        // Highlight.js might have already processed the block, so we target the pre
+        // 1. 提取语言标签
+        let lang = 'RAW';
+        block.classList.forEach(c => {
+            if (c.startsWith('language-')) lang = c.replace('language-', '').toUpperCase();
+        });
+
+        // 2. 运行 Highlight.js 语法高亮
+        hljs.highlightElement(block);
+
+        // 3. 构建极客终端外壳
         const pre = block.parentNode;
-        
-        // Create wrapper
         const wrapper = document.createElement('div');
-        wrapper.className = 'relative group';
-        pre.parentNode.insertBefore(wrapper, pre);
-        wrapper.appendChild(pre);
+        wrapper.className = 'brutal-code-window';
         
-        // Create button
-        const button = document.createElement('button');
-        button.className = 'absolute top-2 right-2 p-1.5 rounded-lg bg-base-100/10 text-white/70 hover:bg-base-100/20 hover:text-white transition-all opacity-0 group-hover:opacity-100 focus:opacity-100';
-        button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>';
-        button.title = '复制';
+        // 构建标题栏
+        const header = document.createElement('div');
+        header.className = 'brutal-code-header';
+        header.innerHTML = `
+            <div class="brutal-code-lang">
+                <i class="fas fa-terminal opacity-50"></i> ${lang} PAYLOAD
+            </div>
+        `;
         
-        // Copy functionality
-        button.addEventListener('click', async () => {
-            const code = block.textContent; // Get raw code
+        // 构建复制按钮
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'brutal-code-copy';
+        copyBtn.innerHTML = '<i class="far fa-copy mr-1"></i> COPY';
+        copyBtn.title = 'Copy code payload';
+        
+        copyBtn.addEventListener('click', async () => {
+            const code = block.textContent; 
             try {
                 await navigator.clipboard.writeText(code);
-                const originalIcon = button.innerHTML;
-                button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                const originalIcon = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check text-emerald-400 mr-1"></i> COPIED';
+                copyBtn.style.color = '#fff';
                 setTimeout(() => {
-                    button.innerHTML = originalIcon;
+                    copyBtn.innerHTML = originalIcon;
+                    copyBtn.style.color = '';
                 }, 2000);
             } catch (err) {
                 console.error('Failed to copy!', err);
             }
         });
         
-        wrapper.appendChild(button);
+        header.appendChild(copyBtn);
+
+        // 将 pre 放入自定义 wrapper 中
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(header);
+        
+        // 修改 pre 的样式，使其融入外壳
+        pre.className = 'brutal-code-content custom-scroll';
+        wrapper.appendChild(pre);
     });
 
-    // Table of Contents
+
+    // ==========================================
+    // 目录树生成引擎 (TOC Structure)
+    // ==========================================
     const content = document.querySelector('.prose');
     const tocContainer = document.getElementById('toc-container');
     
@@ -285,24 +466,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const headers = content.querySelectorAll('h1, h2, h3');
         
         if (headers.length === 0) {
-            tocContainer.innerHTML = '<p class="px-2 text-xs text-base-content/50 italic">暂无目录</p>';
+            tocContainer.innerHTML = '<p class="px-4 py-6 text-[10px] font-mono text-stone-400 uppercase tracking-widest text-center border border-dashed grid-border m-2">DATA STRUCTURE EMPTY</p>';
         } else {
             headers.forEach((header, index) => {
-                // Add ID to header if not present
                 if (!header.id) {
                     header.id = 'heading-' + index;
                 }
 
                 const link = document.createElement('a');
                 link.href = '#' + header.id;
-                link.textContent = header.textContent;
+                link.innerHTML = `> ${header.textContent}`; // 加入指令前缀符
                 link.className = 'toc-link toc-' + header.tagName.toLowerCase();
                 
-                // Smooth scroll
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
-                    header.scrollIntoView({ behavior: 'smooth' });
-                    // Update active state
+                    // 滚动时考虑顶部固定导航的偏移
+                    const y = header.getBoundingClientRect().top + window.scrollY - 80;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                    
                     document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
                     link.classList.add('active');
                 });
@@ -310,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tocContainer.appendChild(link);
             });
 
-            // Scroll spy
+            // 滚动监听 (Scroll Spy)
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {

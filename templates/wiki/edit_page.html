@@ -51,6 +51,7 @@
         bottom: 0;
         right: 0;
         top: 50px; 
+        overflow-y: auto !important;
         height: auto !important; 
         z-index: 50;
         padding: 2rem !important; 
@@ -61,6 +62,41 @@
         width: 50% !important;
         top: 52px !important;
         display: block !important;
+        height: calc(100% - 52px) !important;
+    }
+
+    /* =========================================
+       分屏预览区 (Side by Side) 核心布局修复
+       ========================================= */
+       
+    /* 1. 锁死分屏状态下外层总容器的高度 */
+    .EasyMDEContainer.sided--no-fullscreen {
+        position: relative;
+        height: 70vh !important; /* 💡 锁死总高度，你可以根据喜好调整为 60vh 或 80vh */
+        min-height: 500px;
+    }
+
+    /* 2. 左侧源码区：严格继承容器高度 */
+    .EasyMDEContainer.sided--no-fullscreen .CodeMirror {
+        width: 50% !important;
+        height: calc(100% - 52px) !important; /* 减去顶部工具栏的大致高度 */
+        max-height: none !important; /* 清除之前的 max-height 干扰 */
+    }
+
+    /* 3. 右侧预览区：绝对定位，严禁高度溢出，强制内部滚动 */
+    .EasyMDEContainer.sided--no-fullscreen .editor-preview-side {
+        display: block !important;
+        position: absolute !important;
+        top: 52px !important; /* 避开工具栏 */
+        right: 0 !important;
+        width: 50% !important;
+        height: calc(100% - 52px) !important; /* 💡 关键：高度严格限制，和左侧对齐 */
+        border: none !important;
+        border-left: 1px solid hsl(var(--bc) / 0.1) !important;
+        background-color: hsl(var(--b1));
+        overflow-y: auto !important; /* 💡 强制内部出现滚动条 */
+        z-index: 50;
+        padding: 2rem !important; 
     }
 </style>
 {% endblock %}
@@ -127,12 +163,13 @@
 
   const easyMDE = new EasyMDE({
     element: document.getElementById('md-editor'),
+    spellChecker: false,
     minHeight: "400px",
     maxHeight: "60vh",
     
     // 💡 允许分屏与同步滚动
     sideBySideFullscreen: false, 
-    syncSideBySidePreviewScroll: true,
+    syncSideBySidePreviewScroll: false,
     toolbar: [
         "bold", "italic", "strikethrough", "heading", "|", 
         "quote", "unordered-list", "ordered-list", "|", 

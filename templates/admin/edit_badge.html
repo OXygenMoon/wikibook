@@ -93,9 +93,7 @@
                             <select name="condition_type" class="select select-bordered w-full font-bold" required onchange="toggleConditionInputs(this)">
                                 <option value="manual" {% if badge.condition_type == 'manual' %}selected{% endif %}>✋ 手动发放 (管理员分配)</option>
                                 <option value="all_users" {% if badge.condition_type == 'all_users' %}selected{% endif %}>🌟 全员获取 (新老用户)</option>
-                                
                                 <option value="pomo_count" {% if badge.condition_type == 'pomo_count' %}selected{% endif %}>🍅 番茄达人 (累计完成番茄钟数量)</option>
-
                                 <option value="login_days_in_range" {% if badge.condition_type == 'login_days_in_range' %}selected{% endif %}>📅 限时登录天数</option>
                                 <option value="streak_days" {% if badge.condition_type == 'streak_days' %}selected{% endif %}>🔥 连续打卡天数</option>
                                 <option value="study_hours" {% if badge.condition_type == 'study_hours' %}selected{% endif %}>⏱️ 累计学习小时数</option>
@@ -110,16 +108,42 @@
                                 <option value="long_session_count" {% if badge.condition_type == 'long_session_count' %}selected{% endif %}>⏳ 深度专注次数</option>
                                 <option value="share_count" {% if badge.condition_type == 'share_count' %}selected{% endif %}>📢 分享笔记次数</option>
                                 <option value="total_views_received" {% if badge.condition_type == 'total_views_received' %}selected{% endif %}>📈 笔记被阅读次数</option>
+                                
+                                <option value="user_level" {% if badge.condition_type == 'user_level' %}selected{% endif %}>🎖️ 用户等级达标 (Lv.X)</option>
+                                <option value="wiki_specific_duration" {% if badge.condition_type == 'wiki_specific_duration' %}selected{% endif %}>📖 指定 Wiki 学习时长 (分钟)</option>
+                                <option value="assignment_complete" {% if badge.condition_type == 'assignment_complete' %}selected{% endif %}>✅ 完成指定任务</option>
+                                <option value="assignment_stars" {% if badge.condition_type == 'assignment_stars' %}selected{% endif %}>⭐ 任务实得星星数达标</option>
+                                <option value="assignment_grade" {% if badge.condition_type == 'assignment_grade' %}selected{% endif %}>🏆 任务获得等第达标 (A/S/S+ 等)</option>
                             </select>
                         </div>
 
-                        <div class="form-control" id="condition_value_group">
-                            <label class="label"><span class="label-text font-medium">条件阈值</span></label>
+                        <div class="form-control md:col-span-2" id="target_assignment_group" style="{% if badge.condition_type not in ['assignment_complete', 'assignment_stars', 'assignment_grade'] %}display:none;{% endif %}">
+                            <label class="label"><span class="label-text font-bold text-primary">选择关联的委托任务</span></label>
+                            <select id="target_assignment_select" class="select select-bordered border-primary/50 w-full font-bold" {% if badge.condition_type in ['assignment_complete', 'assignment_stars', 'assignment_grade'] %}name="target_id"{% endif %}>
+                                <option value="" disabled {% if not badge.target_id %}selected{% endif %}>-- 请下拉选择一个任务 --</option>
+                                {% for a in assignments %}
+                                    <option value="{{ a.id }}" {% if badge.target_id == a.id %}selected{% endif %}>{{ a.title }} (悬赏: {{ a.star_level }}星)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-control md:col-span-2" id="target_wiki_group" style="{% if badge.condition_type != 'wiki_specific_duration' %}display:none;{% endif %}">
+                            <label class="label"><span class="label-text font-bold text-primary">选择关联的 Wiki 手册</span></label>
+                            <select id="target_wiki_select" class="select select-bordered border-primary/50 w-full font-bold" {% if badge.condition_type == 'wiki_specific_duration' %}name="target_id"{% endif %}>
+                                <option value="" disabled {% if not badge.target_id %}selected{% endif %}>-- 请下拉选择一个 Wiki --</option>
+                                {% for w in wikis %}
+                                    <option value="{{ w.id }}" {% if badge.target_id == w.id %}selected{% endif %}>《{{ w.title }}》</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-control" id="condition_value_group" style="{% if badge.condition_type in ['manual', 'all_users', 'assignment_complete'] %}display:none;{% endif %}">
+                            <label class="label"><span class="label-text font-medium">条件阈值 / 权重</span></label>
                             <div class="join w-full">
                                 <input type="number" name="condition_value" class="input input-bordered join-item w-full" value="{{ badge.condition_value }}" placeholder="例如：10" />
-                                <span class="btn btn-disabled join-item border-base-300">个/次/天/时</span>
+                                <span class="btn btn-disabled join-item border-base-300">个/次/天/时/级</span>
                             </div>
-                            <label class="label"><span class="label-text-alt text-base-content/60">达到此数值时自动触发发放逻辑</span></label>
+                            <label class="label pt-1 pb-0"><span class="label-text-alt opacity-60">注：等第权重 S+=6, S=5, A=4, B=3, C=2, D=1</span></label>
                         </div>
 
                         <div class="form-control">
@@ -141,7 +165,7 @@
                             </div>
                         </div>
 
-                        <div class="form-control hidden" id="time_range_group">
+                        <div class="form-control {% if badge.condition_type != 'login_days_in_range' %}hidden{% endif %}" id="time_range_group">
                             <label class="label"><span class="label-text font-medium">有效时间段</span></label>
                             <div class="flex flex-col sm:flex-row gap-2">
                                 <input type="date" name="start_time" class="input input-bordered w-full" value="{{ badge.start_time.strftime('%Y-%m-%d') if badge.start_time else '' }}" />
@@ -244,21 +268,39 @@ function previewImage(input) {
     }
 }
 
-// 动态条件表单联动逻辑
+// 💡 动态条件表单联动逻辑 (智能下拉菜单版)
 function toggleConditionInputs(select) {
     const val = select.value;
     const timeGroup = document.getElementById('time_range_group');
     const valueGroup = document.getElementById('condition_value_group');
     
-    if (val === 'login_days_in_range') {
-        timeGroup.classList.remove('hidden');
-        valueGroup.classList.remove('hidden');
-    } else if (val === 'all_users' || val === 'manual') {
-        timeGroup.classList.add('hidden');
-        valueGroup.classList.add('hidden');
+    const targetAssignmentGroup = document.getElementById('target_assignment_group');
+    const targetWikiGroup = document.getElementById('target_wiki_group');
+    const assignSelect = document.getElementById('target_assignment_select');
+    const wikiSelect = document.getElementById('target_wiki_select');
+    
+    // 1. 控制限时范围
+    if(timeGroup) timeGroup.classList.toggle('hidden', val !== 'login_days_in_range');
+    
+    // 2. 控制数值阈值输入框
+    if(valueGroup) valueGroup.style.display = (['manual', 'all_users', 'assignment_complete'].includes(val)) ? 'none' : 'block';
+    
+    // 3. 智能显示目标下拉框，并动态分配 name="target_id" 属性（防止提交错误的数据）
+    if (['assignment_complete', 'assignment_stars', 'assignment_grade'].includes(val)) {
+        targetAssignmentGroup.style.display = 'block';
+        targetWikiGroup.style.display = 'none';
+        assignSelect.setAttribute('name', 'target_id');
+        wikiSelect.removeAttribute('name');
+    } else if (val === 'wiki_specific_duration') {
+        targetAssignmentGroup.style.display = 'none';
+        targetWikiGroup.style.display = 'block';
+        wikiSelect.setAttribute('name', 'target_id');
+        assignSelect.removeAttribute('name');
     } else {
-        timeGroup.classList.add('hidden');
-        valueGroup.classList.remove('hidden');
+        targetAssignmentGroup.style.display = 'none';
+        targetWikiGroup.style.display = 'none';
+        assignSelect.removeAttribute('name');
+        wikiSelect.removeAttribute('name');
     }
 }
 

@@ -1,35 +1,92 @@
 {% extends "base.html" %}
 
-{% block title %}小镇告示板 - 任务中心{% endblock %}
+{% block title %}任务中心 - WikiBook{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ==========================================
+       FWA 极简网格野兽派风格 (Brutalist / Grid UI)
+       ========================================== */
+    body {
+        background-color: #f5f5f5 !important; 
+        color: #1a1a1a;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    /* 极简网格容器与边框 */
+    .grid-border { border-color: rgba(0,0,0,0.1); }
+    .dark .grid-border { border-color: rgba(255,255,255,0.1); }
+
+    /* 横线纹理背景 */
+    .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px);
+    }
+
+    /* 极简按钮 */
+    .btn-brutal {
+        background: #111; color: #fff; border-radius: 2px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+        padding: 0.75rem 1.5rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center; border: 1px solid #111;
+        letter-spacing: 0.05em; cursor: pointer;
+    }
+    .btn-brutal:hover { background: var(--theme-primary); border-color: var(--theme-primary); color: #fff; }
+    
+    .btn-brutal-outline {
+        background: transparent; color: #111; border: 1px solid rgba(0,0,0,0.2); border-radius: 2px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+        padding: 0.75rem 1.5rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center;
+        letter-spacing: 0.05em; cursor: pointer;
+    }
+    .btn-brutal-outline:hover { border-color: #111; background: #f0f0f0; }
+
+    /* 任务卡片悬浮特效 */
+    .task-card-brutal { transition: background-color 0.2s ease, filter 0.2s ease; }
+    .task-card-brutal:hover { background-color: #fafafa; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="min-h-[calc(100vh-6rem)] bg-stone-100 dark:bg-[#111318] pt-12 pb-24 px-4 relative z-10">
-    
-    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between mb-12 gap-6">
-        <div class="flex items-center gap-5 text-center md:text-left">
-            <div class="w-16 h-16 bg-[#8b5a2b] rounded-2xl flex items-center justify-center text-white shadow-xl rotate-[-6deg] border-4 border-[#5c3a18]">
-                <i class="fas fa-thumbtack text-3xl"></i>
-            </div>
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
+        
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 border-b grid-border pb-6">
             <div>
-                <h1 class="text-4xl md:text-5xl font-black text-stone-800 tracking-tight drop-shadow-sm">每日告示栏</h1>
-                <p class="text-sm font-bold text-stone-500 uppercase tracking-[0.2em] mt-2">Village Bulletin Board</p>
+                <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2">OPERATIONAL TASKS</span>
+                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase">
+                    Assignment Feed
+                </h1>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3 mt-6 md:mt-0">
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('global_grading_hub') }}" class="btn-brutal-outline shadow-sm">
+                    <i class="fas fa-check-double mr-2"></i> 批阅大厅
+                </a>
+                {% endif %}
+
+                <button onclick="app.quests.openLog()" class="btn-brutal shadow-sm">
+                    <i class="fas fa-scroll mr-2"></i> 任务手册
+                </button>
             </div>
         </div>
-        
-        <button onclick="app.quests.openLog()" class="btn btn-lg bg-white/80 backdrop-blur-md border-2 border-[#8b5a2b]/20 hover:border-[#8b5a2b] hover:bg-white rounded-2xl gap-3 font-black text-stone-700 transition-all shadow-md">
-            <i class="fas fa-scroll text-[#8b5a2b] text-xl"></i>
-            打开任务手册
-        </button>
-    </div>
 
-    <div class="max-w-6xl mx-auto relative bg-[#d4a373] p-8 md:p-16 rounded-[3rem] shadow-[0_20px_0_0_#bc8a5f,0_30px_60px_-12px_rgba(0,0,0,0.4)] border-[12px] border-[#bc8a5f] min-h-[500px]">
-        <div class="absolute inset-4 border-4 border-[#bc8a5f]/40 rounded-[2rem] pointer-events-none" style="background-image: radial-gradient(#bc8a5f 1.5px, transparent 1.5px); background-size: 24px 24px;"></div>
-        
-        <div id="bulletin-stickers" class="relative z-10 flex flex-wrap gap-8 justify-center items-start pt-4">
-            <div class="py-32 text-center opacity-50 w-full flex flex-col items-center">
-                <span class="loading loading-spinner loading-lg mb-4 text-[#8b5a2b]"></span>
-                <p class="font-bold tracking-widest text-[#5c3a18] text-lg">正在从镇长办公室拉取委托...</p>
+        <div class="bg-white border grid-border shadow-[0_20px_50px_rgba(0,0,0,0.03)] rounded-sm min-h-[600px] relative flex flex-col overflow-hidden">
+            
+            <div class="h-12 border-b grid-border px-6 flex items-center justify-between bg-[#fafafa] shrink-0">
+                <div class="flex items-center gap-3">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">LIVE SYNC ACTIVE</span>
+                </div>
+                <div class="text-[10px] font-mono text-stone-400 uppercase tracking-widest">
+                    AWAITING USER INPUT
+                </div>
             </div>
+
+            <div id="bulletin-stickers" class="flex-1 w-full relative">
+                <div class="absolute inset-0 flex flex-col items-center justify-center py-32 opacity-30 stripe-pattern">
+                    <span class="loading loading-spinner loading-lg mb-4 text-[#111]"></span>
+                    <p class="font-mono text-[10px] font-bold uppercase tracking-widest text-[#111]">Fetching Data Feed...</p>
+                </div>
+            </div>
+            
         </div>
     </div>
 </div>
@@ -38,8 +95,108 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // 页面加载完成后，直接叫任务系统去拉取告示板贴纸
+        
+        // 💡 核心：在 bulletin.html 页面内，直接重写 base.html 里的 renderBoard 方法
+        // 抛弃以前的黄色旋转便利贴，改用极其硬核的网格卡片排版
         if(window.app && app.quests) {
+            
+            app.quests.renderBoard = function() {
+                // 1. 顶部统计数据更新（保留原有逻辑）
+                let countPending = 0; let countCompleted = 0; let countStars = 0;
+                this.data.forEach(q => {
+                    if (q.status === 'graded') { 
+                        countCompleted++; 
+                        countStars += (q.stars_earned || 0); 
+                    } else { 
+                        countPending++; 
+                    }
+                });
+
+                const elPending = document.getElementById('nav-stat-pending');
+                const elCompleted = document.getElementById('nav-stat-completed');
+                const elStars = document.getElementById('nav-stat-stars');
+                if (elPending) elPending.innerText = countPending;
+                if (elCompleted) elCompleted.innerText = countCompleted;
+                if (elStars) elStars.innerText = countStars;
+
+                const board = document.getElementById('bulletin-stickers');
+                if (!board) return;
+                
+                const isAdmin = {{ 'true' if current_user.is_authenticated and current_user.is_admin else 'false' }};
+                const boardItems = this.data.filter(q => q.status !== 'graded' || !q.is_viewed);
+                
+                // 2. 空状态渲染 (Brutalist Style)
+                if (boardItems.length === 0) {
+                    board.className = "flex-1 w-full flex items-center justify-center bg-[#fafafa]";
+                    board.innerHTML = `
+                        <div class="text-center">
+                            <i class="fas fa-inbox text-4xl text-stone-300 mb-4"></i>
+                            <p class="font-bold text-stone-400 uppercase tracking-widest text-xs">NO ACTIVE ASSIGNMENTS</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // 3. 注入网格布局类
+                board.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 bg-white";
+                
+                // 4. 渲染极简数据卡片
+                board.innerHTML = boardItems.map((q, idx) => {
+                    const isGraded = q.status === 'graded';
+                    const starCount = q.star_level || 1;
+                    
+                    // 星星渲染：黑白风格
+                    const starsHtml = `
+                        <div class="flex gap-1 mb-4" title="难度: ${starCount}星">
+                            ${Array(starCount).fill('<i class="fas fa-star text-stone-800 text-[10px]"></i>').join('')}
+                            ${Array(5 - starCount).fill('<i class="far fa-star text-stone-300 text-[10px]"></i>').join('')}
+                        </div>
+                    `;
+
+                    // 状态角标
+                    const alertBadge = isGraded 
+                        ? `<span class="bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 uppercase tracking-widest border border-emerald-600">Graded</span>`
+                        : `<span class="bg-amber-400 text-black text-[9px] font-bold px-2 py-0.5 uppercase tracking-widest animate-pulse border border-amber-500">Pending</span>`;
+
+                    // 删除按钮 (管理员专属)
+                    const deleteBtn = isAdmin 
+                        ? `<button onclick="app.quests.deleteQuest(${q.id}, event)" class="absolute top-6 right-6 text-stone-300 hover:text-red-500 transition-colors tooltip tooltip-left" data-tip="DELETE">
+                             <i class="fas fa-times text-sm"></i>
+                           </button>` 
+                        : '';
+
+                    return `
+                        <div onclick="window.location.href='${q.page_url}'" 
+                             class="task-card-brutal border-r border-b grid-border p-8 cursor-pointer relative group flex flex-col justify-between min-h-[260px]">
+                            ${deleteBtn}
+                            
+                            <div>
+                                <div class="flex justify-between items-start mb-5">
+                                    ${alertBadge}
+                                    <span class="text-[10px] text-stone-400 font-mono tracking-wider">ID:${String(q.id).padStart(4, '0')}</span>
+                                </div>
+                                
+                                <h4 class="text-xl font-bold text-stone-900 leading-snug mb-3 tracking-tight group-hover:text-primary transition-colors line-clamp-3">
+                                    ${q.title}
+                                </h4>
+                                ${starsHtml}
+                            </div>
+                            
+                            <div class="mt-6 pt-4 border-t grid-border flex justify-between items-end">
+                                <div>
+                                    <p class="text-[9px] text-stone-400 uppercase tracking-widest mb-1">ISSUED BY</p>
+                                    <p class="text-xs font-bold text-stone-800 uppercase tracking-wide">${q.issuer}</p>
+                                </div>
+                                <div class="w-8 h-8 rounded-sm border border-stone-300 flex items-center justify-center text-stone-400 group-hover:bg-[#111] group-hover:text-white group-hover:border-[#111] transition-all">
+                                    <i class="fas fa-arrow-right text-xs -rotate-45 group-hover:rotate-0 transition-transform"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            };
+
+            // 触发拉取与渲染
             app.quests.refreshBoard();
         }
     });

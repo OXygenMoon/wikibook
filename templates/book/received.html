@@ -1,65 +1,155 @@
 {% extends "base.html" %}
 
-{% block title %}收到笔记{% endblock %}
+{% block title %}收到笔记 - WikiBook{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ==========================================
+       FWA 极简野兽派风格 (Brutalist / Grid UI)
+       ========================================== */
+    body {
+        background-color: #f5f5f5 !important;
+        color: #111;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    /* 极简网格容器与边框 */
+    .grid-border { border-color: rgba(0,0,0,0.15); }
+    .dark .grid-border { border-color: rgba(255,255,255,0.15); }
+
+    /* 横线纹理背景 */
+    .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px);
+    }
+
+    /* 隐藏滚动条并自定义 */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; border-left: 1px solid rgba(0,0,0,0.1); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #111; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--theme-primary); }
+
+    /* 极简按钮 */
+    .btn-brutal {
+        background: #111; color: #fff; border-radius: 2px; font-size: 11px; font-weight: 800; text-transform: uppercase;
+        padding: 0.6rem 1rem; transition: transform 0.1s, box-shadow 0.1s; display: inline-flex; align-items: center; justify-center; border: 1px solid #111;
+        letter-spacing: 0.05em; cursor: pointer; box-shadow: 2px 2px 0 #111;
+    }
+    .btn-brutal:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #111; color: #fff; }
+    .btn-brutal:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111; }
+    
+    .btn-brutal-outline {
+        background: #fff; color: #111; border: 1px solid #111; border-radius: 2px; font-size: 11px; font-weight: 800; text-transform: uppercase;
+        padding: 0.6rem 1rem; transition: transform 0.1s, box-shadow 0.1s; display: inline-flex; align-items: center; justify-center;
+        letter-spacing: 0.05em; cursor: pointer; box-shadow: 2px 2px 0 #111;
+    }
+    .btn-brutal-outline:hover { background: #111; color: #fff; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #111; }
+    .btn-brutal-outline:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111; }
+    
+    /* 危险操作按钮 (删除) */
+    .btn-brutal-danger {
+        background: #fff; color: #ef4444; border: 1px solid #ef4444; border-radius: 2px; font-size: 11px; font-weight: 800; text-transform: uppercase;
+        padding: 0.6rem 1rem; transition: transform 0.1s, box-shadow 0.1s; display: inline-flex; align-items: center; justify-center;
+        letter-spacing: 0.05em; cursor: pointer; box-shadow: 2px 2px 0 #ef4444;
+    }
+    .btn-brutal-danger:hover { background: #ef4444; color: #fff; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #ef4444; }
+    .btn-brutal-danger:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #ef4444; }
+
+    /* 野兽派卡片特效 */
+    .brutal-card {
+        background: #fff; border: 1px solid #111; border-radius: 2px;
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative; overflow: hidden; box-shadow: 4px 4px 0 #111;
+    }
+    .brutal-card:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: 6px 6px 0px rgba(0,0,0,1);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="flex justify-between items-center mb-8">
-    <div>
-        <h1 class="text-3xl font-bold text-base-content tracking-tight">收到笔记</h1>
-        <p class="text-base-content/60 mt-2">查看其他用户分享给您的笔记</p>
-    </div>
-</div>
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10 flex flex-col gap-6">
 
-<div class="space-y-4">
-    {% if note_shares %}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {% for share in note_shares %}
-            {% set note = share.note %}
-            <div class="card bg-base-100 shadow-sm hover:shadow-md transition-all border border-base-200 group">
-                <div class="card-body p-5">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="avatar placeholder">
-                            <div class="bg-neutral-focus text-neutral-content rounded-full w-6 h-6">
-                                <span class="text-xs">{{ note.user.username[0] | upper }}</span>
-                            </div>
-                        </div>
-                        <span class="text-xs font-bold text-base-content/60">{{ note.user.username }} 分享</span>
-                        <span class="text-[10px] text-base-content/40 ml-auto">{{ note.updated_at.strftime('%Y-%m-%d') }}</span>
-                    </div>
-                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="block">
-                        <h3 class="card-title text-lg group-hover:text-primary transition-colors">{{ note.title }}</h3>
-                        <p class="text-sm text-base-content/60 line-clamp-2 mt-2">
-                            {{ note.content_md | striptags }}
-                        </p>
-                    </a>
-                    <div class="flex gap-2 mt-4">
-                        <button onclick="delete_share({{ share.id }})" class="btn btn-sm btn-ghost btn-error">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            删除
-                        </button>
-                        <button onclick="convert_note({{ share.id }}, '{{ note.title }}', '{{ note.user.username }}')" class="btn btn-sm btn-ghost btn-primary">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
-                            转换为自己的笔记
-                        </button>
-                    </div>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b grid-border pb-6">
+            <div>
+                <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2">共享数据通道 // INBOX</span>
+                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase flex items-center gap-4">
+                    收到笔记
+                </h1>
+                <p class="text-[10px] text-stone-400 font-mono tracking-widest mt-4 uppercase">
+                    > 查看并管理其他节点传输至此的数据档案
+                </p>
+            </div>
+            
+            <div class="mt-6 md:mt-0 w-full md:w-auto text-right">
+                <div class="text-[10px] font-mono text-stone-400 uppercase tracking-widest border border-stone-200 bg-white px-3 py-1.5">
+                    待处理入站数据: <span class="font-black text-stone-800 text-sm ml-1">{{ note_shares|length }}</span> 份
                 </div>
             </div>
-            {% endfor %}
         </div>
-    {% else %}
-        <div class="text-center py-12 bg-base-100 rounded-xl border border-base-200 border-dashed">
-            <p class="text-base-content/40">暂时没有收到分享的笔记</p>
-        </div>
-    {% endif %}
-</div>
 
+        <div class="space-y-6">
+            {% if note_shares %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for share in note_shares %}
+                    {% set note = share.note %}
+                    <div class="brutal-card flex flex-col h-[280px]">
+                        
+                        <div class="p-4 border-b grid-border bg-[#fafafa] stripe-pattern flex justify-between items-center shrink-0">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 bg-[#111] text-white flex items-center justify-center font-bold text-xs rounded-sm">
+                                    {{ note.user.username[0] | upper }}
+                                </div>
+                                <span class="text-[10px] font-bold text-stone-800 tracking-widest uppercase">来源节点: {{ note.user.username }}</span>
+                            </div>
+                            <span class="text-[9px] text-stone-500 font-mono tracking-wider px-1.5 py-0.5 border border-stone-200 bg-white">
+                                时间戳: {{ note.updated_at.strftime('%Y-%m-%d') }}
+                            </span>
+                        </div>
+                        
+                        <a href="{{ url_for('view_note', note_id=note.id) }}" class="flex-1 p-5 flex flex-col min-h-0 group cursor-pointer">
+                            <h3 class="text-lg font-black text-stone-900 group-hover:text-primary transition-colors line-clamp-1 mb-2">{{ note.title }}</h3>
+                            <div class="flex-1 bg-stone-50 border border-stone-200 p-3 overflow-hidden relative">
+                                <p class="text-[11px] font-mono text-stone-500 line-clamp-4 leading-relaxed">
+                                    {{ note.content_md | striptags }}
+                                </p>
+                                <div class="absolute bottom-0 left-0 w-full h-6 bg-gradient-to-t from-stone-50 to-transparent"></div>
+                            </div>
+                        </a>
+                        
+                        <div class="p-4 border-t grid-border flex gap-3 shrink-0 bg-white">
+                            <button onclick="convert_note({{ share.id }}, '{{ note.title }}', '{{ note.user.username }}')" class="btn-brutal flex-1" title="保存为自己的笔记">
+                                <i class="fas fa-download mr-1.5"></i> 转存至本地
+                            </button>
+                            <button onclick="delete_share({{ share.id }})" class="btn-brutal-danger shrink-0" title="删除该分享记录">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                        
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="flex flex-col items-center justify-center py-32 bg-white border border-dashed grid-border rounded-sm">
+                    <div class="w-16 h-16 bg-[#fafafa] border grid-border flex items-center justify-center mb-6">
+                        <i class="fas fa-inbox text-2xl text-stone-300"></i>
+                    </div>
+                    <h3 class="text-lg font-light text-stone-800 tracking-widest uppercase mb-1">暂无入站数据</h3>
+                    <p class="text-[10px] text-stone-400 font-mono tracking-widest uppercase">您的收件箱目前空空如也</p>
+                </div>
+            {% endif %}
+        </div>
+        
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
 function delete_share(shareId) {
-    if (confirm('确定要删除这条分享记录吗？')) {
+    if (confirm('指令确认：是否销毁此共享记录？此操作不可逆。')) {
         fetch(`/book/share/${shareId}/delete`, {
             method: 'POST',
             headers: {
@@ -69,20 +159,21 @@ function delete_share(shareId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                if(window.app && window.app.toast) window.app.toast.show('已从收件箱销毁该数据', 'success');
+                setTimeout(() => location.reload(), 500);
             } else {
-                alert('删除失败: ' + (data.error || '未知错误'));
+                alert('系统错误: ' + (data.error || '无法执行指令'));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('请求发生错误');
+            alert('网络传输故障');
         });
     }
 }
 
 function convert_note(shareId, noteTitle, senderName) {
-    if (confirm(`确定要将笔记"${noteTitle}"转换为自己的笔记吗？\n新的笔记标题将包含发送人姓名。`)) {
+    if (confirm(`指令确认：将档案 [${noteTitle}] 提取并转存至您的本地数据库？`)) {
         fetch(`/book/share/${shareId}/convert`, {
             method: 'POST',
             headers: {
@@ -92,15 +183,15 @@ function convert_note(shareId, noteTitle, senderName) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('转换成功！');
-                location.reload();
+                if(window.app && window.app.toast) window.app.toast.show('档案转存完毕！', 'success');
+                setTimeout(() => location.reload(), 500);
             } else {
-                alert('转换失败: ' + (data.error || '未知错误'));
+                alert('系统错误: ' + (data.error || '无法执行指令'));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('请求发生错误');
+            alert('网络传输故障');
         });
     }
 }

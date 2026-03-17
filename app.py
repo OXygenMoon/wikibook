@@ -335,6 +335,25 @@ class User(db.Model, UserMixin):
 
         return stats
 
+    @property
+    def total_exp(self):
+        """计算用户总源力值 (EXP)"""
+        stats = self.calculate_stats()
+        # 基于你之前的逻辑：每分钟1分 + 每番茄5分 + 每笔记15分 + 每次Wiki贡献10分 + 每次评论2分
+        # 我们这里直接复用计算逻辑
+        duration_mins = int(stats.get("study_hours", 0) * 60)
+        pomos = PomodoroRecord.query.filter_by(user_id=self.id).count()
+        notes = stats.get("note_count", 0)
+        wiki_edits = stats.get("wiki_edit_count", 0)
+        comments = stats.get("comment_count", 0)
+        return duration_mins + (pomos * 5) + (notes * 15) + (wiki_edits * 10) + (comments * 2)
+
+    @property
+    def level(self):
+        """根据 EXP 计算等级：等级 = sqrt(EXP / 10) 的向下取整"""
+        import math
+        return int(math.sqrt(self.total_exp / 10)) if self.total_exp > 0 else 0
+
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -397,6 +416,7 @@ class Badge(db.Model):
     serial_prefix = db.Column(db.String(20), default="SF")
     
     users = db.relationship("UserBadge", backref="badge_info", lazy="dynamic")
+    target_id = db.Column(db.Integer, nullable=True) # 💡 新增：用于存储具体的 Wiki_id 或 Assignment_id
 
 class UserBadge(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2409,8 +2429,11 @@ def manage_badges():
         
         # 💡 新增：获取自定义序号前缀
         serial_prefix = request.form.get("serial_prefix", "SF").strip().upper() or "SF"
-        
         custom_condition_text = request.form.get("custom_condition_text", "").strip()
+
+        # 💡 新增：获取 target_id (来自下拉菜单的选择)
+        target_id_str = request.form.get("target_id", "").strip()
+        target_id = int(target_id_str) if target_id_str.isdigit() else None
         
         # Parse dates
         start_time = None
@@ -2440,13 +2463,14 @@ def manage_badges():
             category=category,
             rarity=rarity,
             issuer=issuer,
-            serial_prefix=serial_prefix,  # 💡 新增字段写入
+            serial_prefix=serial_prefix,
             custom_condition_text=custom_condition_text,
             total_limit=total_limit,
             is_hidden=is_hidden,
             is_secret=is_secret,
             start_time=start_time,
-            end_time=end_time
+            end_time=end_time,
+            target_id=target_id  # 💡 保存 target_id
         )
         db.session.add(b)
         db.session.commit()
@@ -2460,7 +2484,6 @@ def manage_badges():
                     
                 if not UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first():
                     ub = UserBadge(user_id=user.id, badge_id=b.id)
-                    # 按照前缀 + 自增数字生成靓号
                     ub.serial_number = f"{b.serial_prefix}-{str(b.issued_count + 1).zfill(3)}"
                     db.session.add(ub)
                     b.issued_count += 1
@@ -2491,6 +2514,20 @@ def manage_badges():
     badges = query.order_by(Badge.created_at.desc()).all()
     users = User.query.all()
 
+    # 💡 1. 后端直接算出总发放量，避免前端 Jinja2 循环
+    total_issued = sum(b.issued_count for b in badges)
+    
+    # 💡 2. 预先处理好每个徽章的已获得用户 ID，避免前端发生 N+1 数据库查询导致卡死
+    # 建立一个字典，key 是 badge.id，value 是 'id1,id2,id3' 格式的字符串
+    badge_earned_map = {}
+    for b in badges:
+        if b.condition_type == 'manual':
+            # 只为手动发放的徽章查询用户列表，因为其他徽章前端用不到这个数据
+            earned_ids = [str(ub.user_id) for ub in b.users.all()]
+            badge_earned_map[b.id] = ",".join(earned_ids)
+        else:
+            badge_earned_map[b.id] = ""
+
     existing_conditions = [c[0] for c in db.session.query(Badge.condition_type).distinct().all() if c[0]]
 
     condition_map = {
@@ -2510,15 +2547,29 @@ def manage_badges():
         'long_session_count': '深度专注',
         'share_count': '分享笔记',
         'total_views_received': '笔记被阅读',
-        'pomo_count': '番茄达人'
+        'pomo_count': '番茄达人',
+        # 💡 新增映射映射
+        'user_level': '用户等级达标',
+        'wiki_specific_duration': '特定Wiki学习时长',
+        'assignment_complete': '完成指定任务',
+        'assignment_stars': '任务实得星星',
+        'assignment_grade': '任务等第要求'
     }
+
+    # 💡 提取全部任务和 Wiki 供下拉菜单选择
+    assignments = Assignment.query.order_by(Assignment.created_at.desc()).all()
+    wikis = Wiki.query.order_by(Wiki.created_at.desc()).all()
 
     return render_template("admin/manage_badges.html", 
                            badges=badges, 
                            users=users,
+                           total_issued=total_issued,            # 传给前端
+                           badge_earned_map=badge_earned_map,    # 传给前端
                            current_filter=condition_filter,
                            existing_conditions=existing_conditions,
-                           condition_map=condition_map)
+                           condition_map=condition_map,
+                           assignments=assignments,
+                           wikis=wikis)
 
 @app.route("/admin/badges/<int:badge_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -2589,6 +2640,10 @@ def edit_badge(badge_id):
         b.serial_prefix = new_prefix
         b.custom_condition_text = request.form.get("custom_condition_text", "").strip()
         
+        # 💡 新增：获取 target_id
+        target_id_str = request.form.get("target_id", "").strip()
+        b.target_id = int(target_id_str) if target_id_str.isdigit() else None
+
         if request.form.get("start_time"):
             try: b.start_time = datetime.strptime(request.form.get("start_time"), "%Y-%m-%d")
             except ValueError: pass
@@ -2630,50 +2685,52 @@ def edit_badge(badge_id):
             users = User.query.all()
             for user in users:
                 meets_condition = False
+                val = b.condition_value
+                tid = b.target_id
                 
                 # 各类条件判定逻辑...
                 if b.condition_type == 'login_days_in_range':
                     if b.start_time and b.end_time:
                         sessions = StudySession.query.filter(StudySession.user_id == user.id, StudySession.start_time >= b.start_time, StudySession.start_time <= b.end_time).all()
-                        meets_condition = len(set([s.start_time.date() for s in sessions])) >= b.condition_value
+                        meets_condition = len(set([s.start_time.date() for s in sessions])) >= val
                 elif b.condition_type == 'note_count':
-                    meets_condition = Note.query.filter_by(user_id=user.id).count() >= b.condition_value
+                    meets_condition = Note.query.filter_by(user_id=user.id).count() >= val
                 elif b.condition_type == 'featured_count':
-                    meets_condition = Note.query.filter_by(user_id=user.id, is_featured=True).count() >= b.condition_value
+                    meets_condition = Note.query.filter_by(user_id=user.id, is_featured=True).count() >= val
                 elif b.condition_type == 'wiki_edit_count':
-                    meets_condition = WikiPageHistory.query.filter_by(user_id=user.id).count() >= b.condition_value
+                    meets_condition = WikiPageHistory.query.filter_by(user_id=user.id).count() >= val
                 elif b.condition_type == 'comment_count':
-                    meets_condition = Comment.query.filter_by(user_id=user.id).count() >= b.condition_value
+                    meets_condition = Comment.query.filter_by(user_id=user.id).count() >= val
                 elif b.condition_type == 'night_owl_sessions':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
                     night_days = set([(s.start_time - timedelta(hours=4)).date() for s in sessions if s.start_time.hour >= 23 or s.start_time.hour < 4])
-                    meets_condition = len(night_days) >= b.condition_value
+                    meets_condition = len(night_days) >= val
                 elif b.condition_type == 'early_bird':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
                     early_days = set([s.start_time.date() for s in sessions if 5 <= s.start_time.hour < 8])
-                    meets_condition = len(early_days) >= b.condition_value
+                    meets_condition = len(early_days) >= val
                 elif b.condition_type == 'weekend_warrior':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
                     total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if s.start_time.weekday() in [5, 6] and (s.end_time - s.start_time).total_seconds() > 0])
-                    meets_condition = (total_seconds / 3600) >= b.condition_value
+                    meets_condition = (total_seconds / 3600) >= val
                 elif b.condition_type == 'long_session_count':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
                     long_count = sum([1 for s in sessions if (s.end_time - s.start_time).total_seconds() >= 7200])
-                    meets_condition = long_count >= b.condition_value
+                    meets_condition = long_count >= val
                 elif b.condition_type == 'share_count':
-                    meets_condition = NoteShare.query.join(Note).filter(Note.user_id == user.id).count() >= b.condition_value
+                    meets_condition = NoteShare.query.join(Note).filter(Note.user_id == user.id).count() >= val
                 elif b.condition_type == 'total_views_received':
-                    meets_condition = NoteViewLog.query.join(Note).filter(Note.user_id == user.id).count() >= b.condition_value
+                    meets_condition = NoteViewLog.query.join(Note).filter(Note.user_id == user.id).count() >= val
                 elif b.condition_type == 'wiki_create_count':
                     from sqlalchemy import func
                     subquery = db.session.query(func.min(WikiPageHistory.id)).group_by(WikiPageHistory.page_id)
-                    meets_condition = WikiPageHistory.query.filter(WikiPageHistory.id.in_(subquery), WikiPageHistory.user_id == user.id).count() >= b.condition_value
+                    meets_condition = WikiPageHistory.query.filter(WikiPageHistory.id.in_(subquery), WikiPageHistory.user_id == user.id).count() >= val
                 elif b.condition_type == 'study_hours':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
                     total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
-                    meets_condition = (total_seconds / 3600) >= b.condition_value
+                    meets_condition = (total_seconds / 3600) >= val
                 elif b.condition_type == 'pomo_count':
-                    meets_condition = PomodoroRecord.query.filter_by(user_id=user.id).count() >= b.condition_value
+                    meets_condition = PomodoroRecord.query.filter_by(user_id=user.id).count() >= val
                 elif b.condition_type == 'streak_days':
                     sessions = StudySession.query.filter_by(user_id=user.id).order_by(StudySession.start_time.desc()).all()
                     dates = sorted(list(set([s.start_time.date() for s in sessions])), reverse=True)
@@ -2686,7 +2743,29 @@ def edit_badge(badge_id):
                             for i in range(1, len(dates)):
                                 if dates[i] == current - timedelta(days=1): streak += 1; current = dates[i]
                                 else: break
-                    meets_condition = streak >= b.condition_value
+                    meets_condition = streak >= val
+                    
+                # 💡 新的重算规则补充
+                elif b.condition_type == 'user_level':
+                    meets_condition = user.level >= val
+                elif b.condition_type == 'wiki_specific_duration':
+                    if tid:
+                        logs_count = WikiViewLog.query.filter_by(user_id=user.id, wiki_id=tid).count()
+                        meets_condition = (logs_count * 10) >= val
+                elif b.condition_type == 'assignment_complete':
+                    if tid:
+                        sub = Submission.query.filter_by(user_id=user.id, assignment_id=tid, status='graded').first()
+                        meets_condition = sub is not None
+                elif b.condition_type == 'assignment_stars':
+                    if tid:
+                        sub = Submission.query.filter_by(user_id=user.id, assignment_id=tid, status='graded').first()
+                        meets_condition = sub and (sub.stars_earned or 0) >= val
+                elif b.condition_type == 'assignment_grade':
+                    if tid:
+                        sub = Submission.query.filter_by(user_id=user.id, assignment_id=tid, status='graded').first()
+                        if sub and sub.grade:
+                            grade_map = {'S+': 6, 'S': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1}
+                            meets_condition = grade_map.get(sub.grade.upper(), 0) >= val
 
                 existing_ub = UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first()
                 
@@ -2713,8 +2792,17 @@ def edit_badge(badge_id):
     
     users = User.query.order_by(User.class_name, User.student_id).all()
     earned_user_ids = [ub.user_id for ub in b.users.all()]
+    
+    # 💡 提取供下拉菜单用的数据
+    assignments = Assignment.query.order_by(Assignment.created_at.desc()).all()
+    wikis = Wiki.query.order_by(Wiki.created_at.desc()).all()
 
-    return render_template("admin/edit_badge.html", badge=b, users=users, earned_user_ids=earned_user_ids)
+    return render_template("admin/edit_badge.html", 
+                           badge=b, 
+                           users=users, 
+                           earned_user_ids=earned_user_ids,
+                           assignments=assignments,
+                           wikis=wikis)
 
 @app.route("/admin/badges/<int:badge_id>/award", methods=["POST"])
 @login_required
@@ -3965,7 +4053,7 @@ def check_and_award_bookmarks(user):
             print(f"[书签发奖出错] {e}")
 
 # ==========================================
-# 3. 自动触发发奖核心服务 (用户动作触发) - 终极修复版
+# 3. 自动触发发奖核心服务 (用户动作触发) - 终极游戏化升级版
 # ==========================================
 def check_and_award_badges(user):
     # 💡 防御 1：直接查库而不是用 user.earned_badges 缓存，避免拿不到最新数据
@@ -3983,22 +4071,24 @@ def check_and_award_badges(user):
             continue
 
         earned = False
+        val = badge.condition_value
+        tid = badge.target_id  # 💡 提取目标 ID (用于新条件)
          
-        # --- (这里保留所有的条件判断逻辑，比如 'all_users', 'note_count' 等，完全不用动) ---
+        # --- 原始条件判断逻辑 ---
         if badge.condition_type == 'all_users':
             earned = True
         elif badge.condition_type == 'note_count':
             count = Note.query.filter_by(user_id=user.id).count()
-            if count >= badge.condition_value: earned = True
+            if count >= val: earned = True
         elif badge.condition_type == 'featured_count':
             count = Note.query.filter_by(user_id=user.id, is_featured=True).count()
-            if count >= badge.condition_value: earned = True
+            if count >= val: earned = True
         elif badge.condition_type == 'wiki_edit_count':
             count = WikiPageHistory.query.filter_by(user_id=user.id).count()
-            if count >= badge.condition_value: earned = True
+            if count >= val: earned = True
         elif badge.condition_type == 'comment_count':
             count = Comment.query.filter_by(user_id=user.id).count()
-            if count >= badge.condition_value: earned = True
+            if count >= val: earned = True
         elif badge.condition_type == 'night_owl_sessions':
             sessions = StudySession.query.filter_by(user_id=user.id).all()
             night_days = set()
@@ -4007,7 +4097,7 @@ def check_and_award_badges(user):
                 if h >= 23 or h < 4:
                     logical_date = (s.start_time - timedelta(hours=4)).date()
                     night_days.add(logical_date)
-            if len(night_days) >= badge.condition_value: earned = True
+            if len(night_days) >= val: earned = True
         elif badge.condition_type == 'early_bird':
             sessions = StudySession.query.filter_by(user_id=user.id).all()
             early_days = set()
@@ -4015,7 +4105,7 @@ def check_and_award_badges(user):
                 h = s.start_time.hour
                 if 5 <= h < 8:
                     early_days.add(s.start_time.date())
-            if len(early_days) >= badge.condition_value: earned = True
+            if len(early_days) >= val: earned = True
         elif badge.condition_type == 'weekend_warrior':
             sessions = StudySession.query.filter_by(user_id=user.id).all()
             total_seconds = 0
@@ -4025,7 +4115,7 @@ def check_and_award_badges(user):
                     if duration > 0:
                         total_seconds += duration
             total_hours = total_seconds / 3600
-            if total_hours >= badge.condition_value: earned = True
+            if total_hours >= val: earned = True
         elif badge.condition_type == 'long_session_count':
             sessions = StudySession.query.filter_by(user_id=user.id).all()
             long_count = 0
@@ -4033,26 +4123,26 @@ def check_and_award_badges(user):
                 duration = (s.end_time - s.start_time).total_seconds()
                 if duration >= 7200:
                     long_count += 1
-            if long_count >= badge.condition_value: earned = True
+            if long_count >= val: earned = True
         elif badge.condition_type == 'share_count':
             count = NoteShare.query.join(Note).filter(Note.user_id == user.id).count()
-            if count >= badge.condition_value: earned = True
+            if count >= val: earned = True
         elif badge.condition_type == 'total_views_received':
             count = NoteViewLog.query.join(Note).filter(Note.user_id == user.id).count()
-            if count >= badge.condition_value: earned = True
+            if count >= val: earned = True
         elif badge.condition_type == 'wiki_create_count':
             from sqlalchemy import func
             subquery = db.session.query(func.min(WikiPageHistory.id)).group_by(WikiPageHistory.page_id)
             count = WikiPageHistory.query.filter(WikiPageHistory.id.in_(subquery), WikiPageHistory.user_id == user.id).count()
-            if count >= badge.condition_value: earned = True
+            if count >= val: earned = True
         elif badge.condition_type == 'study_hours':
             sessions = StudySession.query.filter_by(user_id=user.id).all()
             total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
             total_hours = total_seconds / 3600
-            if total_hours >= badge.condition_value: earned = True
+            if total_hours >= val: earned = True
         elif badge.condition_type == 'pomo_count':
             count = PomodoroRecord.query.filter_by(user_id=user.id).count()
-            if count >= badge.condition_value: earned = True
+            if count >= val: earned = True
         elif badge.condition_type == 'streak_days':
             sessions = StudySession.query.filter_by(user_id=user.id).order_by(StudySession.start_time.desc()).all()
             dates = sorted(list(set([s.start_time.date() for s in sessions])), reverse=True)
@@ -4074,7 +4164,7 @@ def check_and_award_badges(user):
                             current = dates[i]
                         else:
                             break
-            if streak >= badge.condition_value: earned = True
+            if streak >= val: earned = True
         elif badge.condition_type == 'login_days_in_range':
             if badge.start_time and badge.end_time:
                 sessions = StudySession.query.filter(
@@ -4083,7 +4173,51 @@ def check_and_award_badges(user):
                     StudySession.start_time <= badge.end_time
                 ).all()
                 login_days = set([s.start_time.date() for s in sessions])
-                if len(login_days) >= badge.condition_value: earned = True
+                if len(login_days) >= val: earned = True
+
+        # ==========================================
+        # 🚀 进阶逻辑：全新的 5 大游戏化触发条件
+        # ==========================================
+        
+        # 💡 条件 1：用户等级达标 (Lv.X)
+        elif badge.condition_type == 'user_level':
+            # 直接调用之前在 User 模型中写好的 level 属性
+            if user.level >= val: earned = True
+            
+        # 💡 条件 2：指定 Wiki 学习时长达标 (分钟)
+        elif badge.condition_type == 'wiki_specific_duration':
+            if tid:
+                # 统计该用户在该指定 wiki_id 下的日志数量 (粗略估算：1个log约代表10分钟停留)
+                # 也可以根据你的业务逻辑调整为更精确的 session 时长计算
+                view_logs_count = WikiViewLog.query.filter_by(user_id=user.id, wiki_id=tid).count()
+                estimated_minutes = view_logs_count * 10
+                if estimated_minutes >= val: earned = True
+
+        # 💡 条件 3：完成指定的任务
+        elif badge.condition_type == 'assignment_complete':
+            if tid:
+                # 查找该作业的提交记录，且状态必须为已批改 (graded)
+                sub = Submission.query.filter_by(user_id=user.id, assignment_id=tid, status='graded').first()
+                if sub: earned = True
+                
+        # 💡 条件 4：在指定任务中获得星星数量达标
+        elif badge.condition_type == 'assignment_stars':
+            if tid:
+                sub = Submission.query.filter_by(user_id=user.id, assignment_id=tid, status='graded').first()
+                if sub and (sub.stars_earned or 0) >= val: earned = True
+                
+        # 💡 条件 5：在指定任务中等第达标
+        elif badge.condition_type == 'assignment_grade':
+            if tid:
+                sub = Submission.query.filter_by(user_id=user.id, assignment_id=tid, status='graded').first()
+                if sub and sub.grade:
+                    # 设定等第的数字权重，6 代表最高级
+                    grade_map = {'S+': 6, 'S': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1}
+                    # 获取当前提交的等第权重
+                    current_grade_val = grade_map.get(sub.grade.upper(), 0)
+                    # 只要大于等于管理员设定的权重值 (val) 就发奖
+                    if current_grade_val >= val: earned = True
+
         # -------------------------------------------------------------
         
         if earned:
@@ -4099,9 +4233,6 @@ def check_and_award_badges(user):
                 db.session.add(ub)
                 badge.issued_count = current_count + 1
                 awarded_count += 1
-                
-                # 🚨 坚决删除这行导致界面错乱的 flash 消息，发奖提示由前台的 /api/badges/unnotified 接管
-                # flash(f"恭喜！您获得了新徽章：{badge.icon} {badge.name}")
                 
                 partners = user.study_partners.all()
                 for p in partners:
@@ -4528,6 +4659,13 @@ def upgrade_db():
                     needs_commit = True
                     
                 if needs_commit:
+                    conn.commit()
+        # 升级 Badge 表
+        if 'badge' in inspector.get_table_names():
+            badge_columns = [c['name'] for c in inspector.get_columns('badge')]
+            with db.engine.connect() as conn:
+                if 'target_id' not in badge_columns:
+                    conn.execute(db.text("ALTER TABLE badge ADD COLUMN target_id INTEGER"))
                     conn.commit()
         
                 
@@ -5480,40 +5618,6 @@ def get_submission_content():
         "grade": sub.grade or "A"
     })
 
-# ==========================================
-# 👑 管理员：批阅任务中心
-# ==========================================
-@app.route('/assignment/<int:assign_id>/grade', methods=['GET', 'POST'])
-@login_required
-def grade_assignment(assign_id):
-    # 只有镇长（管理员）能进
-    if not current_user.is_admin:
-        abort(403)
-    
-    stars_earned = request.form.get('stars_earned', 0, type=int)
-    assignment = Assignment.query.get_or_404(assign_id)
-    
-    if request.method == 'POST':
-        sub_id = request.form.get('submission_id')
-        grade = request.form.get('grade')
-        feedback = request.form.get('feedback')
-        
-        sub = Submission.query.get(sub_id)
-        if sub and sub.assignment_id == assignment.id:
-            sub.stars_earned = stars_earned
-            sub.grade = grade
-            sub.feedback = feedback
-            sub.status = 'graded'
-            sub.is_viewed = False # 💡 设为未看，学生的告示板上就会亮起绿色感叹号！
-            db.session.commit()
-            flash(f"已成功为 {sub.user.username} 盖上等第印章！", "success")
-            
-        return redirect(url_for('grade_assignment', assign_id=assignment.id))
-        
-    # GET 请求：拉取所有提交了这份作业的记录
-    submissions = Submission.query.filter_by(assignment_id=assignment.id).order_by(Submission.id.desc()).all()
-    return render_template('admin/grade_assignment.html', assignment=assignment, submissions=submissions)
-
 @app.route("/api/assignments/<int:assign_id>/submissions")
 @login_required
 def get_assignment_submissions(assign_id):
@@ -6067,8 +6171,9 @@ def manage_assignments():
         classes=classes, 
         groups=groups
     )
+
 # ==========================================
-# 📡 刷新我的任务 API (带权限过滤)
+# 📡 刷新我的任务 API (带权限过滤 & 👑管理员增强)
 # ==========================================
 @app.route('/api/assignments/my_quests')
 @login_required
@@ -6081,7 +6186,6 @@ def get_my_quests():
         my_assignments = query.order_by(Assignment.created_at.desc()).all()
     else:
         # 3. 普通村民逻辑：只显示针对 全员、自己班级、自己小组 或 自己的任务
-        # 这里使用了 SQLAlchemy 的 or_ 进行多条件并列筛选
         from sqlalchemy import or_
         
         filters = [Assignment.target_type == 'all']
@@ -6096,10 +6200,16 @@ def get_my_quests():
         
         my_assignments = query.filter(or_(*filters)).order_by(Assignment.created_at.desc()).all()
 
-    # 4. 组装数据（这部分保持你原来的逻辑即可，确保包含 star_level 等字段）
+    # 4. 组装数据
     quests = []
     for am in my_assignments:
         sub = Submission.query.filter_by(assignment_id=am.id, user_id=current_user.id).first()
+        
+        # 💡 核心新增：如果当前是管理员，实时计算该任务下有多少【待批改 (pending)】的作业
+        pending_count = 0
+        if current_user.is_admin:
+            pending_count = Submission.query.filter_by(assignment_id=am.id, status='pending').count()
+
         quests.append({
             "id": am.id,
             "title": am.title,
@@ -6109,11 +6219,112 @@ def get_my_quests():
             "grade": sub.grade if sub else None,
             "stars_earned": sub.stars_earned if sub else 0,
             "star_level": am.star_level,
-            "page_url": url_for('view_assignment', assign_id=am.id)
+            "page_url": url_for('view_assignment', assign_id=am.id),
+            
+            # 💡 新增管理员专属字段：传给前端 JS 用于渲染快捷按钮和红点角标
+            "is_admin": current_user.is_admin,
+            "grade_url": url_for('grade_assignment', assign_id=am.id),
+            "pending_count": pending_count
         })
     
     return jsonify({"quests": quests})
 
+# ==========================================
+# 👑 管理员专属：全局批改大厅 (总览所有任务进度)
+# ==========================================
+@app.route('/admin/grading_hub')
+@login_required
+def global_grading_hub():
+    if not current_user.is_admin:
+        abort(403)
+        
+    # 获取所有作业（按创建时间倒序）
+    all_assignments = Assignment.query.order_by(Assignment.created_at.desc()).all()
+    
+    assignments_data = []
+    for assign in all_assignments:
+        # 计算该作业下的提交总数和待批改数
+        total_subs = Submission.query.filter_by(assignment_id=assign.id).count()
+        pending_subs = Submission.query.filter_by(assignment_id=assign.id, status='pending').count()
+        
+        # 只在列表里展示有人提交过的作业
+        if total_subs > 0:
+            assignments_data.append({
+                'assignment': assign,
+                'total_subs': total_subs,
+                'pending_subs': pending_subs
+            })
+            
+    # 排序：有待批改的排在前面，其次按发布时间倒序
+    assignments_data.sort(key=lambda x: (x['pending_subs'] > 0, x['assignment'].created_at), reverse=True)
+    
+    return render_template('admin/grading_hub.html', assignments_data=assignments_data)
+
+
+# ==========================================
+# 👑 管理员：具体任务的分屏批阅控制台
+# ==========================================
+@app.route('/assignment/<int:assign_id>/grade', methods=['GET', 'POST'])
+@login_required
+def grade_assignment(assign_id):
+    if not current_user.is_admin:
+        abort(403)
+    
+    assignment = Assignment.query.get_or_404(assign_id)
+    
+    # 1. 处理批改提交请求
+    if request.method == 'POST':
+        sub_id = request.form.get('submission_id')
+        grade = request.form.get('grade')
+        feedback = request.form.get('feedback')
+        stars_earned = request.form.get('stars_earned', assignment.star_level, type=int)
+        
+        sub = Submission.query.get(sub_id)
+        if sub and sub.assignment_id == assignment.id:
+            sub.stars_earned = stars_earned
+            sub.grade = grade
+            sub.feedback = feedback
+            sub.status = 'graded'
+            sub.is_viewed = False # 设为未看，触发学生端提醒
+            db.session.commit()
+            flash(f"已成功为 {sub.user.real_name or sub.user.username} 批改作业！", "success")
+            
+        return redirect(url_for('grade_assignment', assign_id=assignment.id))
+        
+    # 2. GET 请求：准备分屏界面的所有数据
+    # 按提交时间先后排序
+    submissions = Submission.query.filter_by(assignment_id=assignment.id).order_by(Submission.submitted_at.desc()).all()
+    
+    classes_set = set()
+    subs_data = []
+    
+    for sub in submissions:
+        c_name = sub.user.class_name or "未分配班级"
+        classes_set.add(c_name)
+        
+        # 将 Markdown 转换为 HTML，方便前端直接渲染
+        html_content = markdown(sub.content_snapshot_md or "*内容为空*")
+        
+        subs_data.append({
+            'id': sub.id,
+            'user_id': sub.user.id,
+            'username': sub.user.username,
+            'real_name': sub.user.real_name or sub.user.username,
+            'class_name': c_name,
+            'status': sub.status,
+            'grade': sub.grade or 'A',
+            'stars_earned': sub.stars_earned or assignment.star_level,
+            'feedback': sub.feedback or '',
+            'submitted_at': sub.submitted_at.strftime("%m-%d %H:%M"),
+            'content_html': html_content
+        })
+        
+    classes_list = sorted(list(classes_set))
+    
+    return render_template('admin/grade_assignment.html', 
+                           assignment=assignment, 
+                           submissions_json=subs_data, 
+                           classes=classes_list)
 
 # ==========================================
 # 📜 学生端：查看委托与提交作业详情页
@@ -6178,6 +6389,7 @@ def delete_assignment_api(assign_id):
     db.session.commit()
     
     return jsonify({"success": True})
+
 
 if __name__ == "__main__":
     with app.app_context():

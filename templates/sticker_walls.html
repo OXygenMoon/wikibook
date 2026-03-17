@@ -5,59 +5,70 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/sticker.css') }}">
 <style>
+    /* ==========================================
+       FWA 极简野兽派风格 (Brutalist / Grid UI)
+       ========================================== */
+    body {
+        background-color: #f5f5f5 !important;
+        color: #1a1a1a;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     
-    /* === 页面进场动画 === */
-    @keyframes slideDownFade {
-        from { opacity: 0; transform: translateY(-20px); filter: blur(5px); }
-        to { opacity: 1; transform: translateY(0); filter: blur(0); }
-    }
-    .animate-slide-down {
-        animation: slideDownFade 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-    }
+    /* 抽屉内自定义极简滚动条 */
+    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; border-left: 1px solid rgba(0,0,0,0.05); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #ccc; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #999; }
 
-    /* === 控制面板渐变背景 === */
-    .control-panel-bg {
-        background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-    }
-    .dark .control-panel-bg {
-        background: linear-gradient(135deg, rgba(30,30,30,0.9) 0%, rgba(30,30,30,0.7) 100%);
-    }
+    /* 极简网格边框 */
+    .grid-border { border-color: rgba(0,0,0,0.1); }
+    .dark .grid-border { border-color: rgba(255,255,255,0.1); }
 
-    /* === 墙面信息文字切换动画 === */
-    .fade-text-transition {
-        transition: opacity 0.3s ease, transform 0.3s ease;
+    /* 极简按钮 */
+    .btn-brutal {
+        background: #111; color: #fff; border-radius: 2px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+        padding: 0.5rem 1.2rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center; border: 1px solid #111;
+        letter-spacing: 0.05em;
     }
+    .btn-brutal:hover { background: var(--theme-primary); border-color: var(--theme-primary); color: #fff; }
+    
+    .btn-brutal-outline {
+        background: transparent; color: #111; border: 1px solid rgba(0,0,0,0.2); border-radius: 2px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+        padding: 0.5rem 1.2rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center;
+        letter-spacing: 0.05em;
+    }
+    .btn-brutal-outline:hover { border-color: #111; background: #f0f0f0; }
 
-    /* === 贴纸墙画布容器 (The Canvas Box) === */
+    /* === 贴纸墙画布容器 (Brutalist Canvas) === */
     .wall-wrapper {
         position: relative;
         width: 100%;
         height: 75vh; 
         min-height: 600px;
-        background-color: #fcfcfc; 
-        border-radius: 2rem; 
+        background-color: #fff; 
+        border-radius: 2px; /* 极简方角 */
         overflow: hidden;
-        box-shadow: inset 0 8px 32px rgba(0,0,0,0.04), 0 10px 40px -10px rgba(0,0,0,0.05);
-        border: 1px solid rgba(0,0,0,0.06);
+        border: 1px solid rgba(0,0,0,0.15);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
         transition: background-image 0.4s ease, background-color 0.4s ease;
     }
     .dark .wall-wrapper {
-        background-color: #12151a;
-        box-shadow: inset 0 8px 32px rgba(0,0,0,0.4), 0 10px 40px -10px rgba(0,0,0,0.3);
-        border: 1px solid rgba(255,255,255,0.05);
+        background-color: #12151a; border-color: rgba(255,255,255,0.1);
     }
     
-    /* 背景样式 */
-    .wall-wrapper.bg-dots { background-image: radial-gradient(#cbd5e1 2px, transparent 2px); background-size: 32px 32px; }
-    .dark .wall-wrapper.bg-dots { background-image: radial-gradient(#30363d 2px, transparent 2px); }
-    .wall-wrapper.bg-grid { background-image: linear-gradient(rgba(203,213,225,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(203,213,225,0.6) 1px, transparent 1px); background-size: 40px 40px; }
-    .dark .wall-wrapper.bg-grid { background-image: linear-gradient(rgba(48,54,61,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(48,54,61,0.6) 1px, transparent 1px); }
-    .wall-wrapper.bg-lines { background-image: repeating-linear-gradient(45deg, rgba(203,213,225,0.4) 0, rgba(203,213,225,0.4) 1px, transparent 0, transparent 50%); background-size: 24px 24px; }
-    .dark .wall-wrapper.bg-lines { background-image: repeating-linear-gradient(45deg, rgba(48,54,61,0.4) 0, rgba(48,54,61,0.4) 1px, transparent 0, transparent 50%); }
+    /* 极简背景样式：更锐利的工程图纸感 */
+    .wall-wrapper.bg-dots { background-image: radial-gradient(#111 1px, transparent 1px); background-size: 40px 40px; opacity: 0.8; }
+    .dark .wall-wrapper.bg-dots { background-image: radial-gradient(#fff 1px, transparent 1px); opacity: 0.2; }
+    
+    .wall-wrapper.bg-grid { background-image: linear-gradient(rgba(0,0,0,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.08) 1px, transparent 1px); background-size: 40px 40px; }
+    .dark .wall-wrapper.bg-grid { background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); }
+    
+    .wall-wrapper.bg-lines { background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,0.05) 0, rgba(0,0,0,0.05) 1px, transparent 1px, transparent 40px); }
+    .dark .wall-wrapper.bg-lines { background-image: repeating-linear-gradient(to bottom, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 40px); }
+    
     .wall-wrapper.bg-empty { background-image: none; }
 
     #sticker-canvas { position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: auto; overflow: hidden; }
@@ -67,145 +78,174 @@
     .wall-wrapper .sticker-handle-scale-bl,
     .wall-wrapper .sticker-handle-scale-br { display: none !important; }
 
-    /* 强制开启交互，以便触发悬浮窗 */
+    /* 强制开启交互 */
     #sticker-canvas .sticker-item { pointer-events: auto !important; }
 
-    /* === 精致悬浮信息提示框 === */
+    /* === 极简硬核信息提示框 === */
     .sticker-tooltip {
-        position: fixed; background: rgba(20, 20, 20, 0.85); color: white; padding: 10px 14px; border-radius: 16px; font-size: 13px;
+        position: fixed; background: #111; color: #fff; padding: 12px 16px; border-radius: 2px; font-size: 12px;
         pointer-events: none; opacity: 0; z-index: 9999;
-        transition: opacity 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-        transform: scale(0.9) translateY(10px);
-        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+        transition: opacity 0.1s, transform 0.1s;
+        transform: translate(-50%, -100%) translateY(-10px);
+        border: 1px solid #333; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        font-family: monospace;
     }
-    .sticker-tooltip.show { opacity: 1; transform: scale(1) translateY(0); }
+    .sticker-tooltip.show { opacity: 1; transform: translate(-50%, -100%) translateY(-5px); }
 
-    /* 抽屉内滚动条 */
-    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
-    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-    .custom-scroll::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.1); border-radius: 10px; }
-    .custom-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--bc) / 0.2); }
+    /* 右下角悬浮按钮 */
+    .sticker-fab {
+        border-radius: 2px !important; border: 1px solid #111 !important;
+        background: #111 !important; color: #fff !important;
+        transition: all 0.2s; box-shadow: 4px 4px 0px rgba(0,0,0,1) !important;
+    }
+    .sticker-fab:hover { transform: translate(-2px, -2px) !important; box-shadow: 6px 6px 0px rgba(0,0,0,1) !important; }
+    
+    /* 侧边栏抽屉 */
+    .sticker-drawer {
+        border-radius: 0 !important; background: #fff !important; border-left: 1px solid rgba(0,0,0,0.15) !important;
+        box-shadow: -20px 0 50px rgba(0,0,0,0.05) !important;
+    }
+    
+    .inventory-item-brutal {
+        border: 1px solid rgba(0,0,0,0.1); border-radius: 2px; transition: all 0.2s;
+    }
+    .inventory-item-brutal:hover:not(.is-empty) { border-color: #111; background: #fafafa; }
+    
+    .inventory-badge {
+        position: absolute; bottom: 0; right: 0; background: #111; color: #fff; font-family: monospace;
+        font-size: 10px; padding: 2px 4px; line-height: 1;
+    }
+    #desktop-toc-list {
+        -webkit-mask-image: none !important;
+        mask-image: none !important;
+        padding-bottom: 2rem !important;
+    }
+
+    .drawer-peek {
+        transform: translateY(calc(100% - 64px)) !important;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="w-full max-w-[98%] 2xl:max-w-[1600px] mx-auto flex flex-col gap-6 animate-slide-down pb-12 mt-4 relative z-40">
-    
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 control-panel-bg p-5 md:px-8 rounded-[2.5rem] border border-black/5 dark:border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] relative overflow-hidden group">
+<div class="w-full min-h-screen pt-4 pb-20">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 flex flex-col gap-6 relative z-40">
         
-        <div class="absolute -right-20 -top-20 w-64 h-64 bg-primary/10 rounded-full blur-[60px] pointer-events-none transition-transform duration-700 group-hover:scale-110"></div>
-        <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-info/10 rounded-full blur-[40px] pointer-events-none transition-transform duration-700 group-hover:scale-110"></div>
-
-        <div class="relative z-10 flex-1 min-w-0">
-            <h1 class="text-2xl md:text-3xl font-black text-stone-800 dark:text-stone-100 flex items-center gap-3 tracking-tight fade-text-transition" id="wall-name-container">
-                <i class="fas fa-border-all text-primary drop-shadow-sm"></i> 
-                <span id="wall-name-display" class="truncate">{{ walls[0].name if walls else '全员贴纸墙' }}</span>
-                <div class="badge badge-lg bg-base-200/80 border-none font-mono text-sm shadow-sm gap-1 text-base-content/70" title="当前墙面贴纸总数">
-                    <i class="fas fa-shapes text-xs opacity-50"></i>
-                    <span id="wall-count-display">0</span>
-                </div>
-            </h1>
-            <p class="text-sm text-base-content/50 mt-1.5 font-medium hidden md:block fade-text-transition truncate" id="wall-desc-display">
-                {{ walls[0].description if walls else '暂无可用墙面' }}
-            </p>
-        </div>
-        
-        <div class="flex flex-wrap items-center gap-3 relative z-10 shrink-0">
-            <div class="bg-white/80 dark:bg-base-200/80 backdrop-blur-md px-5 py-2.5 rounded-2xl flex items-center gap-3 border border-black/5 shadow-sm">
-                <span class="text-xs font-bold text-base-content/60 tracking-wider uppercase">已用额度</span>
-                <div class="badge border-none font-black font-mono text-sm px-2.5 py-3 shadow-inner {{ 'bg-error text-white animate-pulse' if my_total_stickers >= 10 else 'bg-stone-100 dark:bg-base-300 text-primary' }}" id="quota-badge">
-                    <span id="quota-display">{{ my_total_stickers }}</span><span class="opacity-50 ml-0.5 text-xs">/10</span>
-                </div>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b grid-border pb-6 bg-transparent relative overflow-hidden group">
+            
+            <div class="relative z-10 flex-1 min-w-0">
+                <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2">INTERACTIVE BOARD</span>
+                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase flex items-center gap-4 fade-text-transition" id="wall-name-container">
+                    <span id="wall-name-display" class="truncate">{{ walls[0].name if walls else 'STICKER WALL' }}</span>
+                    <span class="font-mono font-bold text-sm bg-stone-100 text-stone-500 px-3 py-1 border grid-border align-middle -translate-y-1">
+                        <i class="fas fa-shapes text-[10px] mr-1"></i> <span id="wall-count-display">0</span>
+                    </span>
+                </h1>
+                <p class="text-xs text-stone-500 mt-4 font-medium hidden md:block fade-text-transition truncate uppercase tracking-widest" id="wall-desc-display">
+                    {{ walls[0].description if walls else 'No active wall available' }}
+                </p>
             </div>
             
-            {% if walls|length > 1 %}
-            <div class="flex items-center gap-1.5 bg-white/80 dark:bg-base-200/80 backdrop-blur-md p-1.5 rounded-2xl border border-black/5 shadow-sm">
-                <button onclick="switchWall(-1)" class="btn btn-sm h-10 w-10 btn-ghost rounded-xl hover:bg-stone-100 dark:hover:bg-base-300 text-base-content/70 hover:text-primary transition-colors tooltip tooltip-bottom" data-tip="上一面墙"><i class="fas fa-chevron-left text-sm"></i></button>
-                <div class="w-[1px] h-6 bg-base-content/10"></div>
-                <button onclick="switchWall(1)" class="btn btn-sm h-10 w-10 btn-ghost rounded-xl hover:bg-stone-100 dark:hover:bg-base-300 text-base-content/70 hover:text-primary transition-colors tooltip tooltip-bottom" data-tip="下一面墙"><i class="fas fa-chevron-right text-sm"></i></button>
+            <div class="flex flex-wrap items-center gap-4 relative z-10 shrink-0 mt-6 md:mt-0">
+                <div class="bg-white px-4 py-2 border grid-border flex items-center gap-3">
+                    <span class="text-[10px] font-bold text-stone-400 tracking-widest uppercase">QUOTA</span>
+                    <div class="font-black font-mono text-base {{ 'text-red-500 animate-pulse' if my_total_stickers >= 10 else 'text-stone-800' }}" id="quota-badge">
+                        <span id="quota-display">{{ my_total_stickers }}</span><span class="opacity-40 text-xs">/10</span>
+                    </div>
+                </div>
+                
+                {% if walls|length > 1 %}
+                <div class="flex items-center bg-white border grid-border p-1">
+                    <button onclick="switchWall(-1)" class="w-8 h-8 flex items-center justify-center hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition-colors" title="Previous Wall"><i class="fas fa-chevron-left text-xs"></i></button>
+                    <div class="w-px h-4 bg-stone-200 mx-1"></div>
+                    <button onclick="switchWall(1)" class="w-8 h-8 flex items-center justify-center hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition-colors" title="Next Wall"><i class="fas fa-chevron-right text-xs"></i></button>
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
-    </div>
 
-    {% if walls %}
-    <div class="wall-wrapper group" id="profile-sticker-header"> <div id="sticker-canvas"></div>
-        
-        <div class="absolute bottom-6 right-8 opacity-[0.03] dark:opacity-[0.02] font-black text-6xl tracking-[0.5em] select-none pointer-events-none z-10 transition-opacity duration-500 group-hover:opacity-[0.05]">
-            WIKIBOOK
+        {% if walls %}
+        <div class="wall-wrapper group" id="profile-sticker-header"> 
+            <div id="sticker-canvas"></div>
+            
+            <div class="absolute bottom-6 right-8 opacity-[0.05] font-black text-6xl tracking-[0.5em] select-none pointer-events-none z-10 transition-opacity duration-500">
+                WIKIBOOK
+            </div>
+            
+            <div class="absolute inset-0 flex flex-col items-center justify-center opacity-40 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none z-10" id="empty-wall-hint" style="display:none;">
+                <i class="fas fa-plus text-4xl mb-4 text-stone-300"></i>
+                <span class="text-[10px] font-bold tracking-widest text-stone-400 uppercase">Awaiting First Input...</span>
+            </div>
         </div>
-        
-        <div class="absolute inset-0 flex flex-col items-center justify-center opacity-40 group-hover:opacity-10 transition-opacity duration-700 pointer-events-none z-10" id="empty-wall-hint" style="display:none;">
-            <i class="fas fa-magic text-6xl mb-4 text-base-content/30"></i>
-            <span class="text-sm font-bold tracking-[0.4em] text-base-content/50 uppercase">墙面空空如也，来抢首贴！</span>
+        {% else %}
+        <div class="text-center py-32 bg-white border border-dashed grid-border mt-8">
+            <div class="w-16 h-16 bg-stone-100 border grid-border flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-lock text-xl text-stone-400"></i>
+            </div>
+            <h2 class="text-xl font-light text-stone-800 tracking-widest uppercase mb-2">SYSTEM LOCKED</h2>
+            <p class="text-xs text-stone-400 font-medium uppercase tracking-widest">No accessible walls assigned to your profile.</p>
         </div>
-    </div>
-    {% else %}
-    <div class="text-center py-40 bg-white/60 dark:bg-base-100/60 backdrop-blur-2xl rounded-[2.5rem] border border-dashed border-base-300/50 shadow-sm">
-        <div class="w-24 h-24 bg-stone-100 dark:bg-base-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-            <i class="fas fa-paint-roller text-4xl text-base-content/20"></i>
-        </div>
-        <h2 class="text-2xl font-black text-base-content/80 tracking-tight">墙面施工中</h2>
-        <p class="text-base-content/50 mt-2 font-medium">管理员尚未开放任何贴纸墙，请稍后再来</p>
-    </div>
-    {% endif %}
+        {% endif %}
 
-    <div id="sticker-tooltip" class="sticker-tooltip flex flex-col gap-2">
-        <div class="flex items-center gap-2.5 border-b border-white/10 pb-2 mb-0.5">
-            <div class="w-5 h-5 rounded-full bg-gradient-to-br from-primary to-orange-400 flex items-center justify-center text-[10px] font-black text-white shadow-sm" id="tt-avatar"></div>
-            <span class="font-bold text-white tracking-wide" id="tt-user"></span>
+        <div id="sticker-tooltip" class="sticker-tooltip flex flex-col gap-1">
+            <div class="flex justify-between items-center border-b border-[#333] pb-1 mb-1 gap-4">
+                <span class="font-bold text-[#ffd700] uppercase" id="tt-user"></span>
+                <span class="text-[#888] text-[9px]" id="tt-time"></span>
+            </div>
+            <div class="text-[#ccc] flex items-center gap-1.5 uppercase text-[10px]">
+                <i class="fas fa-cube text-[9px]"></i> 
+                <span id="tt-badge"></span>
+            </div>
         </div>
-        <div class="text-white/95 font-medium flex items-center gap-2">
-            <i class="fas fa-medal text-amber-400 text-sm drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]"></i> 
-            <span id="tt-badge" class="tracking-wide"></span>
-        </div>
-        <div class="text-white/40 text-[10px] font-mono mt-0.5 tracking-wider"><span id="tt-time"></span></div>
     </div>
 </div>
 
 {% if walls and current_user.is_authenticated %}
-<button id="sticker-fab" aria-label="打开贴纸库" class="sticker-fab btn btn-circle w-16 h-16 fixed bottom-8 right-8 z-[100] bg-base-content/90 backdrop-blur-2xl text-base-100 shadow-2xl shadow-base-content/20 border border-white/10 hover:scale-110 hover:-rotate-12 transition-transform duration-300">
-    <i class="fas fa-shapes text-2xl"></i>
+<button id="sticker-fab" class="sticker-fab btn btn-circle w-14 h-14 fixed bottom-10 right-10 z-[150]" aria-label="Open Inventory">
+    <i class="fas fa-layer-group text-xl"></i>
 </button>
 
-<div id="sticker-drawer" class="sticker-drawer bg-base-100/95 backdrop-blur-3xl border-l border-base-content/10 shadow-2xl z-[90]">
-    <div class="sticker-drawer-header border-b border-base-content/5 p-5">
-        <h3 class="font-black text-lg text-base-content flex items-center gap-2"><i class="fas fa-shapes text-primary"></i> 我的贴纸库</h3>
-        <div class="flex gap-2">
-            <button id="sticker-clear-all-btn" class="btn btn-sm bg-orange-50 text-orange-600 hover:bg-orange-100 border-none rounded-xl font-bold px-3">
-                <i class="fas fa-undo mr-1"></i>一键回收
-            </button>
-            <button id="sticker-save-btn" class="btn btn-sm btn-primary border-none rounded-xl font-bold shadow-lg shadow-primary/30 px-6">保存</button>
-            <button id="sticker-close-btn" class="btn btn-ghost btn-sm btn-circle bg-base-200 hover:bg-base-300" aria-label="关闭">✕</button>
+<div id="sticker-drawer" class="z-[140] fixed bottom-0 left-0 w-full h-[35vh] min-h-[250px] transform translate-y-full transition-transform duration-300 flex flex-col bg-white border-t grid-border shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+    
+    <div id="sticker-drawer-header" class="border-b grid-border p-4 md:px-8 flex justify-between items-center bg-[#fafafa] hover:bg-[#f0f0f0] transition-colors shrink-0 cursor-pointer" title="点击折叠/展开面板">
+        <h3 class="font-light text-lg md:text-xl text-stone-800 uppercase tracking-tight">Inventory</h3>
+        <div class="flex items-center gap-2 md:gap-4 pr-16 md:pr-24">
+            <button id="sticker-clear-all-btn" class="btn-brutal-outline text-[10px] py-1.5 px-3"><i class="fas fa-undo mr-1.5"></i> Recall</button>
+            <button id="sticker-save-btn" class="btn-brutal text-[10px] bg-primary border-primary py-1.5 px-4">Save <i class="fas fa-check ml-1.5"></i></button>
+            <div class="w-px h-6 bg-stone-200 mx-2"></div>
+            <button id="sticker-close-btn" class="w-8 h-8 border grid-border hover:bg-stone-200 text-stone-500 flex justify-center items-center rounded-sm transition-colors"><i class="fas fa-times text-sm"></i></button>
         </div>
     </div>
-    <div class="sticker-drawer-body p-4 custom-scroll">
-        <div class="grid gap-2 sm:gap-3" style="grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));">
+    
+    <div class="flex-1 p-4 md:p-6 custom-scroll overflow-y-auto bg-white">
+        <div class="flex flex-wrap gap-3 md:gap-4">
             {% for item in my_inventory %}
                 <div onclick="handleDrawerClick(this)"
-                     class="sticker-option select-none p-2 rounded-2xl transition-all flex flex-col items-center gap-1.5 group relative {{ 'opacity-40 grayscale pointer-events-none is-empty bg-base-200/30 border border-dashed border-base-content/10' if item.available <= 0 else 'bg-base-200/50 hover:bg-base-100 border border-transparent hover:border-primary/30 hover:shadow-md cursor-pointer' }}"
+                     class="inventory-item-brutal w-20 h-24 shrink-0 select-none p-2 flex flex-col items-center justify-center gap-1.5 group relative {{ 'opacity-30 grayscale pointer-events-none is-empty border-dashed' if item.available <= 0 else 'cursor-pointer' }}"
                      data-badge-id="{{ item.badge.id }}"
                      data-badge-icon="{{ item.badge.icon|badge_icon_url if item.badge.icon|is_image_icon else item.badge.icon }}"
                      data-sticker-limit="{{ item.owned }}">
                     
-                    <div class="text-3xl transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6 relative">
+                    <div class="text-3xl transition-transform duration-200 group-hover:scale-110 relative h-10 flex items-center justify-center">
                         {% if item.badge.icon|is_image_icon %}
-                            <img src="{{ item.badge.icon|badge_icon_url }}" class="w-10 h-10 object-contain drop-shadow-sm">
+                            <img src="{{ item.badge.icon|badge_icon_url }}" class="w-8 h-8 object-contain">
                         {% else %}
-                            <span class="drop-shadow-sm">{{ item.badge.icon }}</span>
+                            <span>{{ item.badge.icon }}</span>
                         {% endif %}
-                        
-                        <div class="absolute -bottom-1 -right-2 bg-base-content text-base-100 font-black text-[9px] px-1.5 py-0 rounded-full border-2 border-base-100 shadow-sm sticker-count-badge leading-tight">
-                            <span class="inventory-used">{{ item.used }}</span>/{{ item.owned }}
-                        </div>
                     </div>
-                    <span class="text-[9px] font-bold text-center w-full truncate opacity-60 group-hover:opacity-100 transition-opacity mt-0.5 pointer-events-none">{{ item.badge.name }}</span>
+                    
+                    <div class="inventory-badge sticker-count-badge">
+                        <span class="inventory-used">{{ item.used }}</span>/{{ item.owned }}
+                    </div>
+                    
+                    <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#111] text-white text-[9px] uppercase px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 font-mono">
+                        {{ item.badge.name }}
+                    </div>
                 </div>
             {% else %}
-                <div class="col-span-full py-10 flex flex-col items-center justify-center gap-3 bg-base-200/30 rounded-3xl border border-dashed border-base-content/10">
-                    <i class="fas fa-box-open text-4xl text-base-content/20"></i>
-                    <p class="text-base-content/50 font-bold text-xs tracking-widest">库存空空，快去收集成就吧！</p>
+                <div class="w-full py-10 flex flex-col items-center justify-center gap-3 border border-dashed grid-border text-stone-300">
+                    <i class="fas fa-box-open text-3xl"></i>
+                    <p class="font-bold text-[10px] tracking-widest uppercase">INVENTORY EMPTY</p>
                 </div>
             {% endfor %}
         </div>
@@ -232,11 +272,12 @@
     let baseGlobalUsed = {{ my_total_stickers }};
     const MAX_QUOTA = 10;
 
-    // 💡 新增：独立更新墙面计数器的函数
+    // 💡 独立更新墙面计数器的函数
     function updateWallCountDisplay(count) {
         const countDisplay = document.getElementById('wall-count-display');
         if (countDisplay) {
-            countDisplay.innerText = count;
+            // 补零特效，增加数码感
+            countDisplay.innerText = String(count).padStart(3, '0');
         }
     }
 
@@ -245,6 +286,67 @@
         const drawer = document.getElementById('sticker-drawer');
         if (fab) document.body.appendChild(fab);
         if (drawer) document.body.appendChild(drawer);
+
+        // ==========================================
+        // 💡 修复：贴纸库抽屉滑入滑出逻辑
+        // ==========================================
+const fabBtn = document.getElementById('sticker-fab');
+        const drawerEl = document.getElementById('sticker-drawer');
+        const closeBtn = document.getElementById('sticker-close-btn');
+        const drawerHeader = document.getElementById('sticker-drawer-header'); // 💡 新增
+
+        // 1. 右下角圆形悬浮按钮点击
+        if (fabBtn && drawerEl) {
+            fabBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // 如果是全关或半收起状态，直接全开
+                if (drawerEl.classList.contains('translate-y-full') || drawerEl.classList.contains('drawer-peek')) {
+                    drawerEl.classList.remove('translate-y-full', 'drawer-peek');
+                    drawerEl.classList.add('translate-y-0');
+                } else {
+                    // 全开状态则全关
+                    drawerEl.classList.remove('translate-y-0', 'drawer-peek');
+                    drawerEl.classList.add('translate-y-full');
+                }
+            });
+        }
+
+        // 2. 面板内部的 ✕ 关闭按钮点击
+        if (closeBtn && drawerEl) {
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // 防止事件冒泡触发 Header 的折叠
+                drawerEl.classList.remove('translate-y-0', 'drawer-peek');
+                drawerEl.classList.add('translate-y-full');
+            });
+        }
+
+        // 💡 3. 新增：点击面板头部触发“半收起 (Peek)”状态
+        if (drawerHeader && drawerEl) {
+            drawerHeader.addEventListener('click', (e) => {
+                // 防误触：如果点到的是按钮（Recall, Save, X），不要触发折叠
+                if (e.target.closest('button')) return;
+                
+                if (drawerEl.classList.contains('translate-y-0')) {
+                    // 全开状态 -> 变成半收起 (只露出这层 Header)
+                    drawerEl.classList.remove('translate-y-0');
+                    drawerEl.classList.add('drawer-peek');
+                } else if (drawerEl.classList.contains('drawer-peek')) {
+                    // 半收起状态 -> 恢复全开
+                    drawerEl.classList.remove('drawer-peek');
+                    drawerEl.classList.add('translate-y-0');
+                }
+            });
+        }
+
+        // 点击页面外部区域，自动收起抽屉
+        document.addEventListener('click', (e) => {
+            if (drawerEl && drawerEl.classList.contains('translate-x-0')) {
+                if (!drawerEl.contains(e.target) && (!fabBtn || !fabBtn.contains(e.target))) {
+                    drawerEl.classList.remove('translate-x-0');
+                    drawerEl.classList.add('translate-x-full');
+                }
+            }
+        });
 
         // ==========================================
         // 核心代理：拦截大小、渲染与保存请求
@@ -299,7 +401,7 @@
             bindScaleEvents(handle, sticker, el) {
                 super.bindScaleEvents(handle, sticker, el);
                 handle.addEventListener('mousemove', () => {
-                    sticker.scale = 0.3;
+                    sticker.scale = 0.3; // 强制缩放锁定
                     this.updateStickerTransform(el, sticker);
                 }, true);
             }
@@ -331,7 +433,7 @@
                     const data = await res.json();
                     if(data.success) {
                         if(!silent && typeof window.app !== 'undefined' && window.app.toast) {
-                            window.app.toast.show('状态已锁定！', 'success');
+                            window.app.toast.show('SYSTEM UPDATED SUCCESSFULLY', 'success');
                             setTimeout(() => window.location.reload(), 400);
                         } else if (!silent) {
                             alert("保存成功");
@@ -349,7 +451,7 @@
                 const myStickers = this.stickers.filter(s => s.is_editable || s.id == null);
                 if (myStickers.length === 0) return;
                 
-                if (!confirm(`确定要从墙上收回这 ${myStickers.length} 张属于你的贴纸吗？(收回后记得点击保存)`)) return;
+                if (!confirm(`CONFIRM RECALL? (${myStickers.length} units will be moved to inventory. Must click SAVE after.)`)) return;
 
                 // 从后往前删，避免索引错乱
                 for (let i = this.stickers.length - 1; i >= 0; i--) {
@@ -357,10 +459,10 @@
                         const s = this.stickers[i];
                         const el = s.el || document.getElementById(`sticker-${s.id}`);
                         if (el) {
-                            el.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                            el.style.transform = 'scale(0) rotate(-180deg) translateY(50px)';
+                            el.style.transition = 'all 0.2s';
+                            el.style.transform = 'scale(0)';
                             el.style.opacity = '0';
-                            setTimeout(() => el.remove(), 400);
+                            setTimeout(() => el.remove(), 200);
                         }
                         this.stickers.splice(i, 1);
                     }
@@ -368,7 +470,6 @@
                 syncInventoryAndQuota();
                 // 💡 一键回收后，更新墙面贴纸总数
                 updateWallCountDisplay(this.stickers.length);
-                if(window.app && window.app.toast) window.app.toast.show('已收回贴纸，记得点击保存哦！', 'info');
             }
 
             recallStickersByBadgeId(badgeId) {
@@ -379,10 +480,10 @@
                         const s = this.stickers[i];
                         const el = s.el || document.getElementById(`sticker-${s.id}`);
                         if (el) {
-                            el.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                            el.style.transform = 'scale(0) rotate(-180deg)';
+                            el.style.transition = 'all 0.15s';
+                            el.style.transform = 'scale(0)';
                             el.style.opacity = '0';
-                            setTimeout(() => el.remove(), 300);
+                            setTimeout(() => el.remove(), 150);
                         }
                         this.stickers.splice(i, 1);
                         recalledCount++;
@@ -392,7 +493,6 @@
                     syncInventoryAndQuota();
                     // 💡 双击回收后，更新墙面贴纸总数
                     updateWallCountDisplay(this.stickers.length);
-                    if(window.app && window.app.toast) window.app.toast.show(`已收回 ${recalledCount} 张该贴纸`, 'success');
                 }
             }
         };
@@ -408,14 +508,12 @@
         });
 
         // 双击选项回收该类型贴纸
-        document.querySelectorAll('.sticker-option').forEach(option => {
+        document.querySelectorAll('.inventory-item-brutal').forEach(option => {
             option.addEventListener('dblclick', (e) => {
                 e.preventDefault();
                 if (window.getSelection) window.getSelection().removeAllRanges(); 
                 const badgeId = option.dataset.badgeId;
                 if (window.wallStickerManager) {
-                    option.style.transform = 'scale(0.9)';
-                    setTimeout(() => option.style.transform = '', 150);
                     window.wallStickerManager.recallStickersByBadgeId(badgeId);
                 }
             });
@@ -429,7 +527,7 @@
         const saveBtn = document.getElementById('sticker-save-btn');
         if(saveBtn) saveBtn.addEventListener('click', () => window.wallStickerManager?.saveStickers(false));
 
-        // ================= 悬浮窗逻辑 =================
+        // ================= 极简悬浮窗逻辑 =================
         const tooltip = document.getElementById('sticker-tooltip');
         if (tooltip && tooltip.parentElement !== document.body) document.body.appendChild(tooltip);
 
@@ -438,16 +536,15 @@
             if (stickerItem && !stickerItem.classList.contains('is-dragging')) {
                 const sData = window.wallStickerManager.stickers.find(s => s.element === stickerItem);
                 if (sData && sData.user_name) { 
-                    document.getElementById('tt-avatar').innerText = sData.user_name.charAt(0).toUpperCase();
                     document.getElementById('tt-user').innerText = sData.user_name;
-                    document.getElementById('tt-time').innerText = sData.created_at;
-                    document.getElementById('tt-badge').innerText = sData.badge_name || '荣誉徽章';
+                    // 精简时间显示格式
+                    const d = new Date(sData.created_at || Date.now());
+                    document.getElementById('tt-time').innerText = d.toLocaleTimeString([],{hour: '2-digit', minute:'2-digit'});
+                    document.getElementById('tt-badge').innerText = sData.badge_name || 'ACHIEVEMENT';
                     
                     tooltip.classList.add('show');
-                    let x = e.clientX + 20; 
-                    let y = e.clientY + 20;
-                    if (x + 200 > window.innerWidth) x = e.clientX - 220;
-                    if (y + 100 > window.innerHeight) y = e.clientY - 120;
+                    let x = e.clientX; 
+                    let y = e.clientY;
                     tooltip.style.left = x + 'px';
                     tooltip.style.top = y + 'px';
                     return; 
@@ -466,6 +563,7 @@
         observer.observe(canvas, { childList: true });
     });
 
+    // 处理抽屉点击
     window.handleDrawerClick = function(opt) {
         if (!window.wallStickerManager || opt.classList.contains('is-empty')) return;
         
@@ -475,9 +573,9 @@
         let newCount = window.wallStickerManager.stickers.filter(s => !s.id).length;
         if (baseGlobalUsed + newCount >= MAX_QUOTA) {
             if(window.app && window.app.toast) {
-                window.app.toast.show('额度已达 10张 上限！请在墙上双击收回贴纸。', 'error');
+                window.app.toast.show('QUOTA EXCEEDED (MAX 10). Double click on wall to recall.', 'error');
             } else {
-                alert('您的全局贴纸总额度已达 10张 上限！请在墙上双击收回一些贴纸。');
+                alert('QUOTA EXCEEDED (MAX 10). Double click on wall to recall.');
             }
             return;
         }
@@ -490,6 +588,7 @@
         window.wallStickerManager.addStickerToCanvas(newSticker, true);
     }
 
+    // 同步抽屉数字与状态
     function syncInventoryAndQuota() {
         if (!window.wallStickerManager) return;
         
@@ -502,18 +601,18 @@
         const display = document.getElementById('quota-display');
         const badge = document.getElementById('quota-badge');
         
-        if(display) display.innerText = totalUsedNow;
+        if(display) display.innerText = String(totalUsedNow).padStart(2, '0'); // 数字补零对齐
         if(badge) {
             if(totalUsedNow >= MAX_QUOTA) {
-                badge.classList.add('bg-error', 'animate-pulse', 'text-white');
-                badge.classList.remove('bg-stone-100', 'dark:bg-base-300', 'text-primary');
+                badge.classList.add('text-red-500', 'animate-pulse');
+                badge.classList.remove('text-stone-800');
             } else {
-                badge.classList.add('bg-stone-100', 'dark:bg-base-300', 'text-primary');
-                badge.classList.remove('bg-error', 'animate-pulse', 'text-white');
+                badge.classList.add('text-stone-800');
+                badge.classList.remove('text-red-500', 'animate-pulse');
             }
         }
         
-        document.querySelectorAll('.sticker-option').forEach(opt => {
+        document.querySelectorAll('.inventory-item-brutal').forEach(opt => {
             const badgeId = parseInt(opt.dataset.badgeId);
             const limit = parseInt(opt.dataset.stickerLimit); 
             
@@ -531,15 +630,16 @@
             if(uiBadge) uiBadge.innerText = Math.max(0, totalBadgeUsed); 
             
             if (totalUsedNow >= MAX_QUOTA || totalBadgeUsed >= limit) {
-                opt.classList.add('opacity-40', 'grayscale', 'is-empty', 'pointer-events-none', 'bg-base-200/30', 'border', 'border-dashed', 'border-base-content/10');
-                opt.classList.remove('bg-base-200/50', 'hover:bg-base-100', 'hover:border-primary/30', 'cursor-pointer', 'hover:shadow-md');
+                opt.classList.add('opacity-30', 'grayscale', 'is-empty', 'pointer-events-none', 'border-dashed');
+                opt.classList.remove('cursor-pointer');
             } else {
-                opt.classList.remove('opacity-40', 'grayscale', 'is-empty', 'pointer-events-none', 'bg-base-200/30', 'border', 'border-dashed', 'border-base-content/10');
-                opt.classList.add('bg-base-200/50', 'hover:bg-base-100', 'hover:border-primary/30', 'cursor-pointer', 'hover:shadow-md');
+                opt.classList.remove('opacity-30', 'grayscale', 'is-empty', 'pointer-events-none', 'border-dashed');
+                opt.classList.add('cursor-pointer');
             }
         });
     }
 
+    // 切换墙面
     window.switchWall = function(delta) {
         if(window.wallStickerManager) window.wallStickerManager.saveStickers(true);
         currentWallIndex = (currentWallIndex + delta + wallsData.length) % wallsData.length;
@@ -548,27 +648,19 @@
         updateWallUI();
         const canvasDiv = document.getElementById('sticker-canvas');
         canvasDiv.innerHTML = ''; 
-        // 💡 切换墙面时，先将数量重置为 0，等待 loadStickers 加载最新数据
+        // 💡 切换墙面时，先将数量重置为 0
         updateWallCountDisplay(0); 
         window.wallStickerManager = new StickerManager('wall', wallsData[currentWallIndex].id, false);
     }
     
+    // 更新墙面UI文案
     function updateWallUI() {
         const wall = wallsData[currentWallIndex];
         const titleEl = document.getElementById('wall-name-display');
         const descEl = document.getElementById('wall-desc-display');
-        const containerEl = document.getElementById('wall-name-container');
         
-        if(containerEl) { containerEl.style.opacity = '0'; containerEl.style.transform = 'translateY(-5px)'; }
-        if(descEl) { descEl.style.opacity = '0'; descEl.style.transform = 'translateY(5px)'; }
-        
-        setTimeout(() => {
-            if(titleEl) titleEl.innerText = wall.name;
-            if(descEl) descEl.innerText = wall.desc || '公共墙面';
-            
-            if(containerEl) { containerEl.style.opacity = '1'; containerEl.style.transform = 'translateY(0)'; }
-            if(descEl) { descEl.style.opacity = '1'; descEl.style.transform = 'translateY(0)'; }
-        }, 150);
+        if(titleEl) titleEl.innerText = wall.name;
+        if(descEl) descEl.innerText = wall.desc || 'PUBLIC CANVAS ZONE';
         
         const wrapper = document.querySelector('.wall-wrapper');
         if(wrapper) {

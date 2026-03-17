@@ -2182,69 +2182,67 @@
 
 
 
+// ==========================================
+            // 💡 1. 大纲生成逻辑 (修复点击不跳转问题)
+            // ==========================================
             generateTOC() {
-
-                const contentDiv = document.querySelector('.prose'); 
-
+                const contentDiv = document.querySelector('.prose') || document.querySelector('.markdown-body'); 
                 if (!contentDiv) return;
-
                 
-
                 const headings = contentDiv.querySelectorAll('h1, h2, h3, h4');
-
                 const tocLists = document.querySelectorAll('#desktop-toc-list, #mobile-toc-list-modal');
-
                 
-
                 if (headings.length > 0 && tocLists.length > 0) {
-
                     let html = '';
-
                     headings.forEach((h, index) => {
-
                         if (!h.id) h.id = 'heading-' + index;
-
                         const level = parseInt(h.tagName.substring(1));
-
                         const padding = (level - 1) * 1.2; 
-
                         const dotColor = level === 1 ? 'bg-primary' : 'bg-base-content/20';
-
                         const fontWeight = level === 1 ? 'font-bold text-base-content' : 'font-normal text-base-content/70';
-
                         
-
+                        // 💡 核心修复：添加 href="javascript:void(0)"，并确保 onclick 中有 return false
                         html += `
-
                             <li>
-
-                                <a href="#${h.id}" onclick="document.getElementById('mobile_toc_modal')?.close()" class="nav-menu-item flex items-center w-full max-w-full overflow-hidden" style="padding-left: ${padding}rem">
-
+                                <a href="javascript:void(0);" onclick="app.scrollToHeading('${h.id}'); return false;" class="nav-menu-item flex items-center w-full max-w-full overflow-hidden cursor-pointer" style="padding-left: ${padding}rem">
                                     <div class="w-1.5 h-1.5 rounded-full ${dotColor} shrink-0"></div>
-
                                     <div class="flex-1 min-w-0 ml-1.5">
-
                                         <span class="text-fade-edge w-full text-xs ${fontWeight}" title="${h.innerText}">${h.innerText}</span>
-
                                     </div>
-
                                 </a>
-
                             </li>`;
-
                     });
-
                     tocLists.forEach(list => list.innerHTML = html);
-
                 } else if (tocLists.length > 0) {
-
                     tocLists.forEach(list => list.innerHTML = '<li class="px-4 py-6 text-xs text-base-content/40 text-center">本页暂无层级标题</li>');
-
                 }
-
             },
 
-
+            // ==========================================
+            // 💡 2. 丝滑滚动与防遮挡定位引擎
+            // ==========================================
+            scrollToHeading(id) {
+                // 关闭手机端弹窗
+                const mobileModal = document.getElementById('mobile_toc_modal');
+                if (mobileModal && typeof mobileModal.close === 'function') {
+                    mobileModal.close();
+                }
+                
+                // 让桌面端下拉菜单失去焦点自动收起
+                if(document.activeElement) document.activeElement.blur();
+                
+                const el = document.getElementById(id);
+                if (el) {
+                    // 计算元素位置时，减去 100 像素，避开顶部固定导航栏的遮挡
+                    const offset = 100; 
+                    const y = el.getBoundingClientRect().top + window.scrollY - offset;
+                    
+                    window.scrollTo({
+                        top: y, 
+                        behavior: 'smooth'
+                    });
+                }
+            },
 
             backToTop: {
 

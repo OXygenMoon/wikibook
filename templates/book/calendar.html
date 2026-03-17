@@ -1,159 +1,184 @@
 {% extends "base.html" %}
 
-{% block title %}日历视图{% endblock %}
+{% block title %}时序终端 - WikiBook{% endblock %}
 
 {% block extra_css %}
 <script src="{{ url_for('static', filename='js/fullcalendar.min.js') }}"></script>
 <style>
-    /* FullCalendar Customization */
+    /* ==========================================
+       FWA 极简野兽派风格 (Brutalist / Grid UI)
+       ========================================== */
+    body {
+        background-color: #f5f5f5 !important;
+        color: #111;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    /* 极简网格容器与边框 */
+    .grid-border { border-color: rgba(0,0,0,0.15); }
+    .dark .grid-border { border-color: rgba(255,255,255,0.15); }
+
+    /* 横线纹理背景 */
+    .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px);
+    }
+
+    /* 隐藏滚动条并自定义 */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; border-left: 1px solid rgba(0,0,0,0.1); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #111; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--theme-primary); }
+
+    /* 极简按钮 */
+    .btn-brutal {
+        background: #111; color: #fff; border-radius: 2px; font-size: 12px; font-weight: 800; text-transform: uppercase;
+        padding: 0.6rem 1.2rem; transition: transform 0.1s, box-shadow 0.1s; display: inline-flex; align-items: center; justify-center; border: 1px solid #111;
+        letter-spacing: 0.05em; cursor: pointer; box-shadow: 4px 4px 0 #111;
+    }
+    .btn-brutal:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #111; color: #fff; }
+    .btn-brutal:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111; }
+    
+    .btn-brutal-outline {
+        background: #fff; color: #111; border: 1px solid #111; border-radius: 2px; font-size: 12px; font-weight: 800; text-transform: uppercase;
+        padding: 0.6rem 1.2rem; transition: transform 0.1s, box-shadow 0.1s; display: inline-flex; align-items: center; justify-center;
+        letter-spacing: 0.05em; cursor: pointer; box-shadow: 4px 4px 0 #111;
+    }
+    .btn-brutal-outline:hover { background: #111; color: #fff; transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #111; }
+    .btn-brutal-outline:active { transform: translate(4px, 4px); box-shadow: 0 0 0 #111; }
+
+    /* 表单输入框 (Input Terminal) */
+    .terminal-input {
+        background: #fff; border: 1px solid rgba(0,0,0,0.2); border-radius: 2px; font-family: monospace; font-size: 13px;
+        transition: border-color 0.2s, box-shadow 0.2s; padding: 0.5rem 1rem; width: 100%;
+    }
+    .terminal-input:focus { border-color: #111; box-shadow: 4px 4px 0px rgba(0,0,0,1); outline: none; }
+
+    /* 弹窗粗犷阴影 */
+    .modal-brutal { box-shadow: 16px 16px 0px rgba(0,0,0,1); border: 2px solid #111; }
+
+    /* ==========================================
+       FullCalendar 深度定制 (Brutalist Override)
+       ========================================== */
     :root {
-        --fc-border-color: #e5e7eb;
-        --fc-button-bg-color: white;
-        --fc-button-border-color: #e5e7eb;
-        --fc-button-text-color: #374151;
-        --fc-button-hover-bg-color: #f3f4f6;
-        --fc-button-hover-border-color: #d1d5db;
-        --fc-button-active-bg-color: #e5e7eb;
-        --fc-button-active-border-color: #d1d5db;
-        --fc-event-bg-color: #4f46e5;
-        --fc-event-border-color: #4f46e5;
-        --fc-today-bg-color: #f0fdf4;
+        --fc-border-color: rgba(0,0,0,0.15);
+        --fc-button-bg-color: #fff;
+        --fc-button-border-color: #111;
+        --fc-button-text-color: #111;
+        --fc-button-hover-bg-color: #111;
+        --fc-button-hover-border-color: #111;
+        --fc-button-active-bg-color: #111;
+        --fc-button-active-border-color: #111;
+        --fc-today-bg-color: rgba(0,0,0,0.03);
+        --fc-event-bg-color: #111;
+        --fc-event-border-color: #111;
     }
 
-    .fc {
-        font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
-    }
+    .fc { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
 
+    /* 日历头部标题 */
     .fc-toolbar-title {
-        font-size: 1.1rem !important;
-        font-weight: 700 !important;
-        color: #1f2937;
+        font-size: 1.5rem !important; font-weight: 900 !important; color: #111;
+        text-transform: uppercase; letter-spacing: -0.02em;
     }
+    .fc-toolbar { margin-bottom: 1.5rem !important; }
     
-    .fc-toolbar {
-        margin-bottom: 0.5rem !important;
-    }
-    
+    /* 机械感按钮 */
     .fc-button {
-        padding: 0.2rem 0.5rem !important;
-        font-size: 0.85rem !important;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        font-weight: 500 !important;
-        text-transform: capitalize;
-        transition: all 0.2s !important;
+        border-radius: 2px !important; padding: 0.4rem 0.8rem !important;
+        font-size: 10px !important; font-weight: 800 !important; text-transform: uppercase !important;
+        letter-spacing: 0.1em; transition: all 0.1s !important; box-shadow: 3px 3px 0 #111 !important;
+        background-color: #fff !important; color: #111 !important; border: 1px solid #111 !important;
     }
-
-    .fc-button:focus {
-        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2) !important;
+    .fc-button:hover { background-color: #f0f0f0 !important; transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #111 !important; }
+    .fc-button:active, .fc-button.fc-button-active {
+        background-color: #111 !important; color: #fff !important;
+        box-shadow: 0 0 0 #111 !important; transform: translate(3px, 3px);
     }
+    .fc-button:focus { box-shadow: 3px 3px 0 #111 !important; outline: none !important; }
     
-    .fc-daygrid-day-frame {
-        min-height: 80px !important; /* Reduce min height */
-    }
+    /* 日历网格细节 */
+    .fc-daygrid-day-frame { min-height: 100px !important; }
+    .fc-daygrid-day { transition: background-color 0.2s; }
+    .fc-daygrid-day:hover { background-color: #fafafa; }
+    .fc-daygrid-day-number { font-weight: 900; font-family: monospace; font-size: 14px; padding: 4px 8px !important; }
+    .fc-col-header-cell { padding: 0.5rem 0 !important; background: #fafafa; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; }
 
-    .fc-daygrid-day {
-        transition: background-color 0.2s;
-    }
-
-    .fc-daygrid-day:hover {
-        background-color: #f9fafb;
-    }
-
+    /* 事件胶囊 (Brutalist Events) */
     .fc-event {
-        cursor: pointer;
-        border-radius: 4px;
-        padding: 2px 4px;
-        font-size: 0.85rem;
-        transition: transform 0.1s, box-shadow 0.1s;
+        cursor: pointer; border-radius: 0 !important; padding: 2px 4px;
+        font-size: 10px !important; font-family: monospace; font-weight: bold; text-transform: uppercase;
+        border: 1px solid #111 !important; transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .fc-event:hover { transform: translate(-2px, -2px); box-shadow: 3px 3px 0 #111; z-index: 10; }
+    
+    /* 💡 新增：强制内部文本继承我们在 JS 里计算好的颜色，防止变成白字 */
+    .fc-event .fc-event-main, 
+    .fc-event .fc-event-main * {
+        color: inherit !important;
     }
 
-    .fc-event:hover {
-        transform: scale(1.02);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
-    
-    /* Snapshot Modal Animation */
-    @keyframes modal-pop {
-        0% { transform: scale(0.9); opacity: 0; }
-        100% { transform: scale(1); opacity: 1; }
-    }
-    
-    .modal-box.animate-pop {
-        animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    
-    /* Timeline styles */
-    .timeline-container {
-        position: relative;
-        padding-left: 2rem;
-    }
-    .timeline-line {
-        position: absolute;
-        left: 0.5rem;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background: #e5e7eb;
-    }
-    .timeline-item {
-        position: relative;
-        margin-bottom: 2rem;
-    }
-    .timeline-dot {
-        position: absolute;
-        left: -1.85rem;
-        top: 0.25rem;
-        width: 1rem;
-        height: 1rem;
-        border-radius: 50%;
-        background: #4f46e5;
-        border: 2px solid white;
-        box-shadow: 0 0 0 2px #e0e7ff;
-    }
+
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="flex flex-col gap-6">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-            <h1 class="text-3xl font-bold text-base-content tracking-tight">日历时光机</h1>
-            <p class="text-base-content/60 mt-2">点击日期快速创建笔记，或筛选查看特定主题</p>
-        </div>
-        
-        <!-- Tag Filter -->
-        <div class="form-control w-full md:w-auto">
-            <div class="input-group">
-                <select id="tag-filter" class="select select-bordered w-full md:w-48">
-                    <option value="">所有标签</option>
-                    <!-- Tags will be populated via JS -->
-                </select>
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10 flex flex-col gap-6">
+
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b grid-border pb-6">
+            <div>
+                <span class="text-[9px] text-stone-400 uppercase tracking-[0.2em] font-bold block mb-2">CHRONICLE TERMINAL</span>
+                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase flex items-center gap-4">
+                    时序终端
+                </h1>
+                <p class="text-[10px] text-stone-400 font-mono tracking-widest mt-4 uppercase">
+                    > 选取时间戳建立新节点，或注入指令筛选数据簇
+                </p>
+            </div>
+            
+            <div class="mt-6 md:mt-0 w-full md:w-auto">
+                <label class="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1 block">NODE FILTER // 标签过滤</label>
+                <select id="tag-filter" class="terminal-input w-full md:w-48 h-10 font-bold uppercase tracking-wider">
+                    <option value="">ALL TAGS // 全局</option>
+                    </select>
             </div>
         </div>
-    </div>
 
-    <!-- Calendar View -->
-    <div id="calendar-view" class="card bg-base-100 shadow-xl border border-base-200">
-        <div class="card-body p-6">
+        <div class="bg-white border border-[#111] shadow-[8px_8px_0_#111] p-4 md:p-8 rounded-sm relative z-0">
             <div id='calendar'></div>
         </div>
+        
     </div>
 </div>
 
-<!-- Note Snapshot Modal -->
-<dialog id="note_snapshot_modal" class="modal">
-    <div class="modal-box w-11/12 max-w-2xl bg-base-100/90 backdrop-blur-md border border-white/20 shadow-2xl animate-pop">
-        <form method="dialog">
-            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-        </form>
-        <div id="snapshot-content">
-            <!-- Content injected via JS -->
-            <div class="h-48 bg-gray-100 rounded-lg animate-pulse mb-4"></div>
-            <div class="h-4 bg-gray-100 rounded animate-pulse w-3/4 mb-2"></div>
-            <div class="h-4 bg-gray-100 rounded animate-pulse w-1/2"></div>
+<dialog id="note_snapshot_modal" class="modal bg-stone-900/60 backdrop-blur-sm z-[200]">
+    <div class="modal-box w-11/12 max-w-2xl bg-white rounded-sm p-0 modal-brutal overflow-hidden flex flex-col max-h-[85vh]">
+        
+        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern flex justify-between items-start shrink-0">
+            <div class="flex flex-col gap-2">
+                <span class="text-[9px] font-mono text-stone-500 tracking-widest uppercase bg-white border grid-border px-2 py-1 w-fit" id="snap-date">TIMESTAMP: --</span>
+                <h2 id="snap-title" class="text-2xl font-black text-stone-900 leading-tight bg-white inline-block w-fit px-1 uppercase">NODE TITLE</h2>
+            </div>
+            <form method="dialog" class="m-0 shrink-0 ml-4">
+                <button class="w-10 h-10 border border-[#111] bg-white hover:bg-[#111] hover:text-white transition-colors flex items-center justify-center font-bold shadow-[2px_2px_0_#111] active:translate-y-1 active:translate-x-1 active:shadow-none">✕</button>
+            </form>
         </div>
-        <div class="modal-action">
-            <a id="view-full-note" href="#" class="btn btn-primary btn-sm">查看完整笔记</a>
+        
+        <div class="flex-1 overflow-y-auto custom-scroll p-6 md:p-8 bg-white relative flex flex-col gap-6">
+            <div id="snap-tags" class="flex flex-wrap gap-2">
+                </div>
+            
+            <div class="bg-[#fafafa] border grid-border p-6 font-mono text-stone-600 text-sm leading-relaxed min-h-[150px] relative">
+                <div class="absolute top-0 left-0 w-1 h-full bg-[#111]"></div>
+                <div id="snap-content"></div>
+            </div>
+        </div>
+        
+        <div class="border-t-2 border-[#111] p-6 bg-white flex justify-end shrink-0">
+            <a id="view-full-note" href="#" class="btn-brutal">
+                DECRYPT FULL RECORD <i class="fas fa-arrow-right ml-2"></i>
+            </a>
         </div>
     </div>
     <form method="dialog" class="modal-backdrop">
@@ -161,33 +186,42 @@
     </form>
 </dialog>
 
-<!-- Quick Create Modal -->
-<dialog id="quick_create_modal" class="modal">
-    <div class="modal-box">
-        <h3 class="font-bold text-lg mb-4">新建笔记</h3>
-        <p class="text-sm text-base-content/60 mb-4">创建于: <span id="create-date-display" class="font-mono font-bold"></span></p>
+<dialog id="quick_create_modal" class="modal bg-stone-900/60 backdrop-blur-sm z-[200]">
+    <div class="modal-box w-11/12 max-w-lg bg-white rounded-sm p-0 modal-brutal overflow-hidden flex flex-col">
         
-        <form id="quick-create-form" method="dialog">
-            <input type="hidden" id="create-date-input">
-            <div class="form-control w-full mb-4">
-                <label class="label">
-                    <span class="label-text">笔记标题</span>
-                </label>
-                <input type="text" id="new-note-title" class="input input-bordered w-full" placeholder="例如：今日学习总结" />
+        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern flex justify-between items-center shrink-0">
+            <h3 class="text-xl font-black text-stone-900 uppercase tracking-widest bg-white inline-block px-2">
+                <i class="fas fa-terminal mr-2"></i> INITIALIZE NODE
+            </h3>
+            <form method="dialog" class="m-0">
+                <button class="w-8 h-8 border border-[#111] bg-white hover:bg-[#111] hover:text-white transition-colors flex items-center justify-center font-bold shadow-[2px_2px_0_#111] active:translate-y-1 active:translate-x-1 active:shadow-none">✕</button>
+            </form>
+        </div>
+        
+        <div class="p-6 md:p-8 bg-white flex flex-col gap-5">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">TIMESTAMP // 时间戳</label>
+                <div id="create-date-display" class="font-mono font-bold text-stone-800 bg-[#fafafa] border grid-border px-3 py-2 w-fit"></div>
+                <input type="hidden" id="create-date-input">
             </div>
             
-            <div class="form-control w-full mb-6">
-                <label class="label">
-                    <span class="label-text">内容摘要</span>
-                </label>
-                <textarea id="new-note-content" class="textarea textarea-bordered h-24" placeholder="写点什么..."></textarea>
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">NODE IDENTIFIER // 节点标识 (标题)</label>
+                <input type="text" id="new-note-title" class="terminal-input font-bold uppercase" placeholder="e.g., SYSTEM LOG 01" />
             </div>
             
-            <div class="modal-action">
-                <button class="btn btn-ghost">取消</button>
-                <button type="button" class="btn btn-primary" onclick="submitQuickNote()">创建笔记</button>
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">DATA PAYLOAD // 数据载荷 (内容)</label>
+                <textarea id="new-note-content" class="terminal-input h-32 resize-none" placeholder="Input raw data here..."></textarea>
             </div>
-        </form>
+        </div>
+        
+        <div class="border-t-2 border-[#111] p-6 bg-white flex justify-end gap-4 shrink-0 bg-[#fafafa]">
+            <form method="dialog"><button class="btn-brutal-outline">ABORT</button></form>
+            <button type="button" id="execute-create-btn" class="btn-brutal" onclick="submitQuickNote()">
+                EXECUTE <i class="fas fa-bolt ml-2 text-yellow-400"></i>
+            </button>
+        </div>
     </div>
     <form method="dialog" class="modal-backdrop">
         <button>close</button>
@@ -199,24 +233,20 @@
 {% block scripts %}
 <script>
     let calendar;
-    let allEvents = [];
     
-    // Tag colors mapping - Low Saturation (Pastel-like)
+    // 💡 Brutalist (野兽派) 高饱和荧光色签
     const tagColors = [
-        '#fca5a5', // Red 300
-        '#fdba74', // Orange 300
-        '#fcd34d', // Amber 300
-        '#bef264', // Lime 300
-        '#6ee7b7', // Emerald 300
-        '#67e8f9', // Cyan 300
-        '#93c5fd', // Blue 300
-        '#a5b4fc', // Indigo 300
-        '#c4b5fd', // Violet 300
-        '#f0abfc', // Fuchsia 300
-        '#fda4af'  // Rose 300
+        '#FFDF00', // Cyber Yellow
+        '#00FF66', // Neon Green
+        '#FF3366', // Hot Pink
+        '#00E5FF', // Cyan
+        '#FF6600', // Neon Orange
+        '#B026FF', // Purple
+        '#111111'  // Pure Black
     ];
-    // Text color for better contrast on pastel backgrounds
-    const tagTextColors = '#1f2937'; // Gray 800
+    // 决定文字颜色的逻辑：背景是黑/紫时用白字，其他亮色用黑字
+    const getTextColor = (bgColor) => ['#111111', '#B026FF'].includes(bgColor) ? '#FFFFFF' : '#111111';
+    
     const tagColorMap = new Map();
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -226,18 +256,18 @@
         calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             locale: 'zh-cn',
-            height: 'auto', // Auto height
-            contentHeight: 600, // Limit content height
-            aspectRatio: 1.8, // Increase aspect ratio to make it shorter
+            height: 'auto',
+            contentHeight: 650, 
+            aspectRatio: 1.8, 
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
                 right: 'dayGridMonth,listMonth'
             },
             buttonText: {
-                today: '今天',
-                month: '月视图',
-                list: '列表'
+                today: 'TODAY // 今日',
+                month: 'GRID // 矩阵',
+                list: 'FEED // 数据流'
             },
             events: '/api/notes/calendar',
             eventClick: function(info) {
@@ -246,30 +276,39 @@
             dateClick: function(info) {
                 showQuickCreate(info.dateStr);
             },
-            eventDidMount: function(info) {
-                // Color coding logic
+eventDidMount: function(info) {
+                // 颜色高亮逻辑
                 const tags = info.event.extendedProps.tags;
+                let textColor = '#111'; // 默认文字颜色
+                
                 if (tags && tags.length > 0) {
                     const primaryTag = tags[0];
                     if (!tagColorMap.has(primaryTag)) {
-                        // Assign a random color from palette based on hash or sequence
                         const colorIndex = tagColorMap.size % tagColors.length;
                         tagColorMap.set(primaryTag, tagColors[colorIndex]);
                     }
-                    info.el.style.backgroundColor = tagColorMap.get(primaryTag);
-                    info.el.style.borderColor = tagColorMap.get(primaryTag);
-                    info.el.style.color = tagTextColors; // Dark text for pastel background
+                    const bgColor = tagColorMap.get(primaryTag);
+                    textColor = getTextColor(bgColor); // 根据背景算文字颜色
+                    
+                    info.el.style.backgroundColor = bgColor;
+                    info.el.style.borderColor = '#111'; // 永远保持黑框
+                } else {
+                    // 没有标签的默认样式：白底黑框黑字
+                    info.el.style.backgroundColor = '#fff';
+                    info.el.style.borderColor = '#111';
+                    textColor = '#111';
                 }
+                
+                // 💡 核心修复：同时设置 color 和 CSS变量，彻底压制 FullCalendar 的默认白字
+                info.el.style.color = textColor;
+                info.el.style.setProperty('--fc-event-text-color', textColor);
                 
                 info.el.title = info.event.title;
             },
             loading: function(isLoading) {
                 if (!isLoading) {
-                    // Data loaded
-                    // Use setTimeout to ensure getEvents returns data
                     setTimeout(() => {
                         const events = calendar.getEvents();
-                        console.log('Events loaded:', events.length);
                         populateTagFilter(events);
                     }, 100);
                 }
@@ -278,7 +317,7 @@
         
         calendar.render();
         
-        // Tag Filter Logic
+        // 筛选逻辑
         tagFilter.addEventListener('change', function() {
             const selectedTag = this.value;
             const currentEvents = calendar.getEvents();
@@ -295,38 +334,27 @@
 
     function populateTagFilter(events) {
         const tagFilter = document.getElementById('tag-filter');
-        
-        // Always rebuild to ensure we have all tags
-        // Save current selection
         const currentSelection = tagFilter.value;
         
-        // Clear existing options except first
         while (tagFilter.options.length > 1) {
             tagFilter.remove(1);
         }
         
         const uniqueTags = new Set();
-        
         events.forEach(e => {
             const tags = e.extendedProps.tags || [];
             tags.forEach(t => uniqueTags.add(t));
         });
         
-        console.log('Unique tags found:', uniqueTags);
-        
-        if (uniqueTags.size === 0) {
-            // Optional: add a disabled option saying "No tags found"
-            return;
-        }
+        if (uniqueTags.size === 0) return;
         
         Array.from(uniqueTags).sort().forEach(tag => {
             const option = document.createElement('option');
             option.value = tag;
-            option.textContent = tag;
+            option.textContent = `[TAG] ${tag.toUpperCase()}`;
             tagFilter.appendChild(option);
         });
         
-        // Restore selection if valid
         if (currentSelection && uniqueTags.has(currentSelection)) {
             tagFilter.value = currentSelection;
         }
@@ -334,46 +362,35 @@
 
     function showSnapshot(event) {
         const modal = document.getElementById('note_snapshot_modal');
-        const contentDiv = document.getElementById('snapshot-content');
-        const viewBtn = document.getElementById('view-full-note');
         const props = event.extendedProps;
 
-        viewBtn.href = `/book/notes/${event.id}`;
+        document.getElementById('view-full-note').href = `/book/notes/${event.id}`;
+        document.getElementById('snap-date').textContent = `TIMESTAMP: ${props.created_at || 'UNKNOWN'}`;
+        document.getElementById('snap-title').textContent = event.title;
         
-        let tagsHtml = '';
+        // 渲染极简高对比 Tags
+        const tagsContainer = document.getElementById('snap-tags');
         if (props.tags && props.tags.length > 0) {
-            tagsHtml = `<div class="flex gap-2 mt-2 mb-4">
-                ${props.tags.map(tag => {
-                    const color = tagColorMap.get(tag) || '#374151'; // Fallback color
-                    // Use style for custom color
-                    return `<span class="badge badge-sm border-0 text-white" style="background-color: ${color}">${tag}</span>`;
-                }).join('')}
-            </div>`;
+            tagsContainer.innerHTML = props.tags.map(tag => {
+                const color = tagColorMap.get(tag) || '#111';
+                const textColor = getTextColor(color);
+                return `<span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border border-[#111]" style="background-color: ${color}; color: ${textColor}; box-shadow: 2px 2px 0 #111;">${tag}</span>`;
+            }).join('');
+        } else {
+            tagsContainer.innerHTML = `<span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border border-stone-300 text-stone-400">UNTAGGED</span>`;
         }
 
-        contentDiv.innerHTML = `
-            <div class="text-sm text-base-content/50 mb-1">${props.created_at}</div>
-            <h3 class="text-2xl font-bold mb-2">${event.title}</h3>
-            ${tagsHtml}
-            <div class="p-4 bg-base-200/50 rounded-lg text-base-content/80 text-sm leading-relaxed max-h-60 overflow-y-auto">
-                ${props.content || '<span class="italic text-base-content/40">暂无预览内容</span>'}
-            </div>
-        `;
+        // 内容
+        document.getElementById('snap-content').innerHTML = props.content || '<span class="opacity-30 uppercase tracking-widest">DATA PAYLOAD EMPTY</span>';
 
         modal.showModal();
     }
     
     function showQuickCreate(dateStr) {
         const modal = document.getElementById('quick_create_modal');
-        const dateDisplay = document.getElementById('create-date-display');
-        const dateInput = document.getElementById('create-date-input');
-        const titleInput = document.getElementById('new-note-title');
-        
-        dateDisplay.textContent = dateStr;
-        dateInput.value = dateStr;
-        
-        // Pre-fill title with date
-        titleInput.value = `${dateStr} 随记`;
+        document.getElementById('create-date-display').textContent = dateStr;
+        document.getElementById('create-date-input').value = dateStr;
+        document.getElementById('new-note-title').value = `${dateStr} LOG`;
         
         modal.showModal();
     }
@@ -384,63 +401,51 @@
         const content = document.getElementById('new-note-content').value;
         
         if (!title) {
-            alert('请输入标题');
+            if(window.app && window.app.toast) window.app.toast.show('IDENTIFIER CANNOT BE EMPTY', 'error');
+            else alert('请输入节点标题');
             return;
         }
-        
-        // Reuse quick create endpoint but need to support custom title and content
-        // The current endpoint /book/notes/quick_create uses timestamp as title.
-        // Let's create a new one or modify existing?
-        // Let's use the standard new note endpoint or modify quick_create logic.
-        // Actually, quick_create_note in app.py takes content and generates title.
-        // Let's use /book/notes/new (POST) but it's form data and redirects.
-        // Better to add a JSON endpoint or update quick_create.
-        // Let's call a new endpoint logic via fetch using the existing /book/notes/quick_create 
-        // BUT wait, quick_create generates its own title.
-        // I should probably use the standard form submission via JS to /book/notes/new?
-        // Or modify app.py to accept title in quick_create?
-        
-        // Plan: Submit to /book/notes/new as form data using fetch to avoid redirect page load if possible,
-        // or just let it redirect.
-        // But user might want to stay on calendar.
-        // Let's update app.py to support title in quick_create_note.
+
+        const btn = document.getElementById('execute-create-btn');
+        const oldHtml = btn.innerHTML;
+        btn.classList.add('pointer-events-none', 'opacity-50');
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> PROCESSING...';
         
         fetch('/book/notes/quick_create', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                title: title,
-                content: content
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: title, content: content })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Add event to calendar immediately
+                // 实时写入日历面板
                 calendar.addEvent({
                     id: data.note_id,
                     title: title,
                     start: dateStr,
                     extendedProps: {
                         content: content,
-                        tags: [], // No tags for quick create yet
+                        tags: [], 
                         created_at: dateStr + ' ' + new Date().toTimeString().split(' ')[0].substring(0,5)
                     }
                 });
                 
                 document.getElementById('quick_create_modal').close();
-                // Clear form
                 document.getElementById('new-note-title').value = '';
                 document.getElementById('new-note-content').value = '';
+                if(window.app && window.app.toast) window.app.toast.show('NODE CREATED SUCCESSFULLY', 'success');
             } else {
-                alert('创建失败: ' + data.error);
+                alert('SYS ERROR: ' + data.error);
             }
         })
         .catch(err => {
             console.error(err);
-            alert('创建失败，请重试');
+            alert('NETWORK FAILURE');
+        })
+        .finally(() => {
+            btn.classList.remove('pointer-events-none', 'opacity-50');
+            btn.innerHTML = oldHtml;
         });
     }
 </script>

@@ -6,33 +6,34 @@
 <style>
     /* 页面淡入动画 */
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(15px); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-    .animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+    /* 优化：去掉初加载的 blur 滤镜，极大减轻 GPU 压力，消灭闪屏 */
+    .animate-fade-in { 
+        animation: fadeIn 0.4s ease-out forwards; 
+        will-change: transform, opacity;
+    }
     
-    /* 徽章出现动画 */
     @keyframes popIn {
-        0% { opacity: 0; transform: scale(0.9); }
+        0% { opacity: 0; transform: scale(0.95); }
         100% { opacity: 1; transform: scale(1); }
     }
-    .badge-card { animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+    .badge-card { animation: popIn 0.3s ease-out forwards; }
     
-    /* 背景动画 */
+    /* 优化：去除极度消耗性能的 mix-blend-multiply 和过大的模糊半径 */
     @keyframes blob {
-        0% { transform: translate(0px, 0px) scale(1); }
-        33% { transform: translate(30px, -50px) scale(1.05); }
-        66% { transform: translate(-20px, 20px) scale(0.95); }
-        100% { transform: translate(0px, 0px) scale(1); }
+        0% { transform: translate(0px, 0px); }
+        50% { transform: translate(20px, -20px); }
+        100% { transform: translate(0px, 0px); }
     }
-    .animate-blob { animation: blob 10s infinite alternate; }
-    .animation-delay-2000 { animation-delay: 2s; }
+    .animate-blob { 
+        animation: blob 15s infinite alternate ease-in-out; 
+        will-change: transform;
+    }
     .animation-delay-4000 { animation-delay: 4s; }
 
-    /* 隐藏滚动条 */
     .scrollbar-hide::-webkit-scrollbar { display: none; }
-    
-    /* 自定义滚动条 */
     .custom-scroll::-webkit-scrollbar { width: 6px; }
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.1); border-radius: 10px; }
@@ -41,9 +42,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-stone-50 dark:bg-[#15191e] transition-colors duration-500">
-    <div class="absolute top-[10%] right-[10%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[120px] animate-blob mix-blend-multiply opacity-60 dark:opacity-30"></div>
-    <div class="absolute bottom-[10%] left-[20%] w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[120px] animate-blob animation-delay-4000 mix-blend-multiply opacity-60 dark:opacity-30"></div>
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-stone-50 dark:bg-[#15191e]">
+    <div class="absolute top-[10%] right-[10%] w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[80px] animate-blob opacity-40"></div>
+    <div class="absolute bottom-[10%] left-[20%] w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[80px] animate-blob animation-delay-4000 opacity-40"></div>
 </div>
 
 {# 提取分类逻辑 #}
@@ -53,7 +54,7 @@
 {% endfor %}
 {% set unique_categories = all_categories|unique|list|sort %}
 
-<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-8 transition-all duration-500 ease-in-out pb-12 animate-fade-in">
+<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-8 pb-12 animate-fade-in">
     
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-2">
         <div>
@@ -62,13 +63,13 @@
             </h1>
             <p class="text-sm text-base-content/60 mt-1.5 font-medium ml-1">管理自动分发规则与勋章库，驱动社区活力</p>
         </div>
-        <button onclick="document.getElementById('create_modal').showModal()" class="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all gap-2 text-white font-bold">
+        <button onclick="document.getElementById('create_modal').showModal()" class="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-primary/30 hover:-translate-y-1 transition-transform gap-2 text-white font-bold">
             <i class="fas fa-plus"></i> 新建徽章
         </button>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-sm border border-black/5 dark:border-white/5 rounded-2xl transition-all hover:-translate-y-0.5">
+        <div class="card bg-white dark:bg-base-200/80 shadow-sm border border-black/5 dark:border-white/5 rounded-2xl">
             <div class="card-body p-6 flex flex-row items-center gap-5">
                 <div class="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 flex items-center justify-center text-2xl shadow-inner">
                     <i class="fas fa-layer-group"></i>
@@ -79,22 +80,18 @@
                 </div>
             </div>
         </div>
-        <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-sm border border-black/5 dark:border-white/5 rounded-2xl transition-all hover:-translate-y-0.5">
+        <div class="card bg-white dark:bg-base-200/80 shadow-sm border border-black/5 dark:border-white/5 rounded-2xl">
             <div class="card-body p-6 flex flex-row items-center gap-5">
                 <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 flex items-center justify-center text-2xl shadow-inner">
                     <i class="fas fa-gift"></i>
                 </div>
                 <div>
                     <p class="text-sm font-bold text-base-content/50 mb-0.5 uppercase tracking-wider">累计发放</p>
-                    <p class="text-3xl font-black text-base-content leading-none">
-                        {% set total_issued = namespace(val=0) %}
-                        {% for b in badges %}{% set total_issued.val = total_issued.val + b.issued_count %}{% endfor %}
-                        {{ total_issued.val }}
-                    </p>
+                    <p class="text-3xl font-black text-base-content leading-none">{{ total_issued }}</p>
                 </div>
             </div>
         </div>
-        <div class="card bg-white/80 dark:bg-base-100/80 backdrop-blur-xl shadow-sm border border-black/5 dark:border-white/5 rounded-2xl transition-all hover:-translate-y-0.5">
+        <div class="card bg-white dark:bg-base-200/80 shadow-sm border border-black/5 dark:border-white/5 rounded-2xl">
             <div class="card-body p-6 flex flex-row items-center gap-5">
                 <div class="w-14 h-14 rounded-2xl bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 flex items-center justify-center text-2xl shadow-inner">
                     <i class="fas fa-tags"></i>
@@ -107,20 +104,20 @@
         </div>
     </div>
 
-    <div class="card bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl border border-black/5 dark:border-white/5 shadow-xl rounded-[2rem] overflow-hidden">
+    <div class="card bg-white/95 dark:bg-base-200/90 border border-black/5 dark:border-white/5 shadow-xl rounded-[2rem] overflow-hidden">
         <div class="card-body p-6 lg:p-10">
             
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-base-200/60 mb-6">
                 <div class="flex items-center gap-3 overflow-x-auto scrollbar-hide flex-1">
-                    <button onclick="filterBadges('all', this)" class="btn btn-sm rounded-full filter-btn bg-primary text-white" data-cat="all">全部</button>
+                    <button onclick="filterBadges('all', this)" class="btn btn-sm rounded-full filter-btn bg-primary text-white border-none" data-cat="all">全部</button>
                     {% for cat in unique_categories %}
-                        <button onclick="filterBadges('{{ cat }}', this)" class="btn btn-sm rounded-full btn-ghost filter-btn bg-base-200/50 text-base-content/70" data-cat="{{ cat }}">{{ cat }}</button>
+                        <button onclick="filterBadges('{{ cat }}', this)" class="btn btn-sm rounded-full btn-ghost filter-btn bg-base-200/50 text-base-content/70 border-none" data-cat="{{ cat }}">{{ cat }}</button>
                     {% endfor %}
                 </div>
 
                 <div class="flex items-center gap-2 bg-base-200/40 p-1.5 rounded-xl border border-base-200">
-                    <span class="text-xs font-bold text-base-content/50 ml-2">条件筛选:</span>
-                    <select class="select select-sm select-ghost font-bold text-primary border-none focus:ring-0" onchange="window.location.href='?condition_type=' + this.value">
+                    <span class="text-xs font-bold text-base-content/50 ml-2 shrink-0">条件筛选:</span>
+                    <select class="select select-sm select-ghost font-bold text-primary border-none focus:ring-0 max-w-[150px]" onchange="window.location.href='?condition_type=' + this.value">
                         <option value="all" {% if current_filter == 'all' %}selected{% endif %}>全部规则</option>
                         {% for cond in existing_conditions %}
                             <option value="{{ cond }}" {% if current_filter == cond %}selected{% endif %}>{{ condition_map.get(cond, cond) }}</option>
@@ -130,11 +127,11 @@
             </div>
 
             {% if badges %}
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="badge_grid">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="badge_grid">
                     {% for badge in badges %}
-                    <div class="card bg-stone-50/50 dark:bg-base-200/30 border border-black/5 dark:border-white/5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 group badge-card" data-category="{{ badge.category or '一般' }}">
+                    <div class="card bg-stone-50/80 dark:bg-base-300/30 border border-black/5 dark:border-white/5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group badge-card" data-category="{{ badge.category or '一般' }}">
                         <div class="card-body p-6 items-center text-center">
-                            <div class="w-20 h-20 mb-3 grid place-items-center rounded-2xl bg-white dark:bg-base-200 shadow-inner group-hover:scale-110 transition-transform duration-500">
+                            <div class="w-20 h-20 mb-3 grid place-items-center rounded-2xl bg-white dark:bg-base-200 shadow-inner group-hover:scale-105 transition-transform">
                                 {% if badge.icon|is_image_icon %}
                                     <img src="{{ badge.icon|badge_icon_url }}" class="w-14 h-14 object-contain" alt="{{ badge.name }}">
                                 {% else %}
@@ -144,7 +141,7 @@
                             <h2 class="text-lg font-black text-stone-800 dark:text-stone-100 truncate w-full">{{ badge.name }}</h2>
                             <p class="text-xs text-base-content/50 line-clamp-2 h-8 mt-1">{{ badge.description }}</p>
                             
-                            <div class="w-full flex justify-between gap-2 mt-4 bg-white/60 dark:bg-base-100/60 p-2.5 rounded-xl border border-black/5">
+                            <div class="w-full flex justify-between gap-2 mt-4 bg-white/80 dark:bg-base-100/80 p-2.5 rounded-xl border border-black/5">
                                 <div class="flex flex-col flex-1 items-center border-r border-base-200">
                                     <span class="opacity-40 text-[10px] font-bold uppercase">已发</span>
                                     <span class="font-black text-base-content/80 font-mono">{{ badge.issued_count }}</span>
@@ -157,13 +154,13 @@
 
                             <div class="w-full flex justify-between items-center pt-4 border-t border-base-200/60 mt-4">
                                 <div class="flex gap-2">
-                                    <a href="{{ url_for('edit_badge', badge_id=badge.id) }}" class="btn btn-xs btn-circle btn-ghost hover:text-primary"><i class="fas fa-pen"></i></a>
+                                    <a href="{{ url_for('edit_badge', badge_id=badge.id) }}" class="btn btn-xs btn-circle btn-ghost hover:text-primary bg-base-200/50"><i class="fas fa-pen"></i></a>
                                     <form method="post" action="{{ url_for('delete_badge', badge_id=badge.id) }}" onsubmit="return confirm('确定删除吗？')" class="m-0">
-                                        <button type="submit" class="btn btn-xs btn-circle btn-ghost hover:text-error"><i class="fas fa-trash"></i></button>
+                                        <button type="submit" class="btn btn-xs btn-circle btn-ghost hover:text-error bg-base-200/50"><i class="fas fa-trash"></i></button>
                                     </form>
                                 </div>
                                 {% if badge.condition_type == 'manual' %}
-                                    <button onclick="openAwardModal({{ badge.id }}, '{{ badge.name }}', '{{ badge.users.all()|map(attribute='user_id')|join(',') }}')" class="btn btn-xs btn-primary px-3 rounded-lg font-bold">派发</button>
+                                    <button onclick="openAwardModal({{ badge.id }}, '{{ badge.name }}', '{{ badge_earned_map.get(badge.id, '') }}')" class="btn btn-xs btn-primary px-3 rounded-lg font-bold border-none shadow-sm">派发</button>
                                 {% endif %}
                             </div>
                         </div>
@@ -189,7 +186,7 @@
                 <i class="fas fa-hammer text-primary"></i> 锻造新徽章
             </h3>
             <form method="dialog" class="relative z-10">
-                <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+                <button class="btn btn-sm btn-circle btn-ghost bg-white/50">✕</button>
             </form>
         </div>
         
@@ -233,17 +230,17 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
-    <div class="form-control">
-        <label class="label pb-1"><span class="label-text font-bold text-indigo-900 dark:text-indigo-200">发行方</span></label>
-        <input type="text" name="issuer" value="WikiBook" class="input input-bordered border-indigo-200 dark:border-indigo-800 bg-white dark:bg-base-100 rounded-xl" />
-    </div>
-    
-    <div class="form-control">
-        <label class="label pb-1"><span class="label-text font-bold text-indigo-900 dark:text-indigo-200">唯一序号前缀</span></label>
-        <input type="text" name="serial_prefix" value="SF" class="input input-bordered border-indigo-200 dark:border-indigo-800 bg-white dark:bg-base-100 rounded-xl font-mono font-black uppercase text-primary" placeholder="例如：SF, POMO" />
-        <label class="label pt-1 pb-0"><span class="label-text-alt text-indigo-500/60">效果预览：<span class="font-mono font-bold">SF-001</span></span></label>
-    </div>
-</div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text font-bold text-indigo-900 dark:text-indigo-200">发行方</span></label>
+                    <input type="text" name="issuer" value="WikiBook" class="input input-bordered border-indigo-200 dark:border-indigo-800 bg-white dark:bg-base-100 rounded-xl" />
+                </div>
+                
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text font-bold text-indigo-900 dark:text-indigo-200">唯一序号前缀</span></label>
+                    <input type="text" name="serial_prefix" value="SF" class="input input-bordered border-indigo-200 dark:border-indigo-800 bg-white dark:bg-base-100 rounded-xl font-mono font-black uppercase text-primary" placeholder="例如：SF, POMO" />
+                    <label class="label pt-1 pb-0"><span class="label-text-alt text-indigo-500/60">效果预览：<span class="font-mono font-bold">SF-001</span></span></label>
+                </div>
+            </div>
 
             <div class="bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-800/30 p-6 shadow-sm space-y-4">
                 <div class="text-xs font-black text-indigo-500 uppercase tracking-widest">Logic Engine / 触发规则</div>
@@ -259,23 +256,49 @@
                             <option value="study_hours">⏱️ 时间领主 (累计小时数)</option>
                             <option value="note_count">📝 创作大师 (累计笔记数)</option>
                             <option value="login_days_in_range">📅 限时活动 (指定时间内登录)</option>
+                            <option value="user_level">🎖️ 用户等级达标 (Lv.X)</option>
+                            <option value="wiki_specific_duration">📖 指定 Wiki 学习时长 (分钟)</option>
+                            <option value="assignment_complete">✅ 完成指定任务</option>
+                            <option value="assignment_stars">⭐ 任务实得星星数达标</option>
+                            <option value="assignment_grade">🏆 任务获得等第达标 (A/S/S+ 等)</option>
                         </select>
                     </div>
 
-                    <div class="form-control" id="condition_value_group">
-                        <label class="label"><span class="label-text font-bold">目标达标数值</span></label>
-                        <div class="join">
-                            <input type="number" name="condition_value" class="input input-bordered join-item w-full" placeholder="例如：10" />
-                            <span class="btn btn-disabled join-item border-base-300">个/次/天</span>
-                        </div>
+                    <div class="form-control md:col-span-2" id="target_assignment_group" style="display:none;">
+                        <label class="label"><span class="label-text font-bold text-primary">选择关联的委托任务</span></label>
+                        <select id="target_assignment_select" class="select select-bordered border-primary/50 w-full font-bold">
+                            <option value="" disabled selected>-- 请下拉选择一个任务 --</option>
+                            {% for a in assignments %}
+                                <option value="{{ a.id }}">{{ a.title }} (悬赏: {{ a.star_level }}星)</option>
+                            {% endfor %}
+                        </select>
                     </div>
 
-                    <div class="form-control" id="time_range_group">
+                    <div class="form-control md:col-span-2" id="target_wiki_group" style="display:none;">
+                        <label class="label"><span class="label-text font-bold text-primary">选择关联的 Wiki 手册</span></label>
+                        <select id="target_wiki_select" class="select select-bordered border-primary/50 w-full font-bold">
+                            <option value="" disabled selected>-- 请下拉选择一个 Wiki --</option>
+                            {% for w in wikis %}
+                                <option value="{{ w.id }}">《{{ w.title }}》</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-control" id="condition_value_group" style="display:none;">
+                        <label class="label"><span class="label-text font-bold">目标达标数值 / 权重</span></label>
+                        <div class="join">
+                            <input type="number" name="condition_value" class="input input-bordered join-item w-full" placeholder="例如：10" />
+                            <span class="btn btn-disabled join-item border-base-300">个/次/级</span>
+                        </div>
+                        <label class="label pt-1 pb-0"><span class="label-text-alt opacity-60">注：等第权重 S+=6, S=5, A=4, B=3, C=2, D=1</span></label>
+                    </div>
+
+                    <div class="form-control hidden" id="time_range_group">
                         <label class="label"><span class="label-text font-bold">限时范围</span></label>
                         <div class="flex gap-2 items-center">
-                            <input type="date" name="start_time" class="input input-bordered input-sm rounded-lg flex-1" />
+                            <input type="date" name="start_time" class="input input-bordered input-sm rounded-lg flex-1 h-12" />
                             <span class="text-indigo-300">-</span>
-                            <input type="date" name="end_time" class="input input-bordered input-sm rounded-lg flex-1" />
+                            <input type="date" name="end_time" class="input input-bordered input-sm rounded-lg flex-1 h-12" />
                         </div>
                     </div>
 
@@ -300,24 +323,15 @@
   <div class="modal-box w-11/12 max-w-xl h-[650px] flex flex-col rounded-[2.5rem] p-0 shadow-2xl border border-base-200 overflow-hidden">
     <div class="px-6 py-5 bg-stone-50 border-b border-base-200 flex justify-between items-center">
         <h3 class="font-black text-xl flex items-center gap-2"><i class="fas fa-gift text-primary"></i> 派发徽章: <span id="award_badge_name" class="text-primary"></span></h3>
-        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost bg-white/50">✕</button></form>
     </div>
-    <div class="p-6 flex flex-col flex-1 overflow-hidden">
-        <input type="text" id="user_search" class="input input-bordered w-full mb-4 rounded-xl" placeholder="搜索用户..." onkeyup="filterUsers()">
-        <div class="flex-1 overflow-y-auto custom-scroll space-y-2" id="user_list_container">
-            {% for user in users %}
-            <label class="label cursor-pointer justify-start gap-4 p-3 rounded-xl border border-transparent hover:bg-base-200 user-row" data-user-id="{{ user.id }}">
-                <input type="checkbox" class="checkbox checkbox-primary user-checkbox" value="{{ user.id }}" />
-                <div class="flex flex-col">
-                    <span class="font-bold user-name text-sm">{{ user.username }}</span>
-                    <span class="text-[10px] opacity-40">{{ user.email }}</span>
-                </div>
-            </label>
-            {% endfor %}
-        </div>
+    <div class="p-6 flex flex-col flex-1 overflow-hidden bg-white">
+        <input type="text" id="user_search" class="input input-bordered w-full mb-4 rounded-xl bg-stone-50" placeholder="搜索用户(输入姓名或账号)..." onkeyup="filterUsers()">
+        <div class="flex-1 overflow-y-auto custom-scroll space-y-1.5" id="user_list_container">
+             </div>
     </div>
     <div class="p-6 border-t border-base-200 flex justify-between items-center bg-stone-50">
-        <span class="text-xs font-bold opacity-50">已选 <span id="selected_count">0</span> 人</span>
+        <span class="text-xs font-bold opacity-50">已选 <span id="selected_count" class="text-primary text-lg">0</span> 人</span>
         <button class="btn btn-primary px-8 rounded-xl font-bold shadow-lg shadow-primary/30" onclick="submitAward()">确认派发</button>
     </div>
   </div>
@@ -327,7 +341,13 @@
 
 {% block scripts %}
 <script>
-// 筛选
+// 💡 1. 剥离了 DOM 渲染，仅生成轻量级的 JS 数组，避免 HTML 庞大
+const allUsersData = [
+    {% for u in users %}
+        { id: {{ u.id }}, username: "{{ u.username|replace('"', '\\"') }}", email: "{{ u.email|replace('"', '\\"') }}" }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
 function filterBadges(category, btnElement) {
     document.querySelectorAll('.badge-card').forEach(card => {
         card.style.display = (category === 'all' || card.dataset.category === category) ? '' : 'none';
@@ -340,40 +360,135 @@ function filterBadges(category, btnElement) {
     btnElement.classList.add('bg-primary', 'text-white');
 }
 
-// 动态显示输入框
 function toggleConditionInputs(select) {
     const val = select.value;
-    document.getElementById('time_range_group').style.display = (val === 'login_days_in_range') ? 'block' : 'none';
-    document.getElementById('condition_value_group').style.display = (['manual', 'all_users'].includes(val)) ? 'none' : 'block';
+    const timeGroup = document.getElementById('time_range_group');
+    const valueGroup = document.getElementById('condition_value_group');
+    
+    const targetAssignmentGroup = document.getElementById('target_assignment_group');
+    const targetWikiGroup = document.getElementById('target_wiki_group');
+    const assignSelect = document.getElementById('target_assignment_select');
+    const wikiSelect = document.getElementById('target_wiki_select');
+    
+    if(timeGroup) timeGroup.classList.toggle('hidden', val !== 'login_days_in_range');
+    if(valueGroup) valueGroup.style.display = (['manual', 'all_users', 'assignment_complete'].includes(val)) ? 'none' : 'block';
+    
+    if (['assignment_complete', 'assignment_stars', 'assignment_grade'].includes(val)) {
+        targetAssignmentGroup.style.display = 'block';
+        targetWikiGroup.style.display = 'none';
+        assignSelect.setAttribute('name', 'target_id');
+        wikiSelect.removeAttribute('name');
+    } else if (val === 'wiki_specific_duration') {
+        targetAssignmentGroup.style.display = 'none';
+        targetWikiGroup.style.display = 'block';
+        wikiSelect.setAttribute('name', 'target_id');
+        assignSelect.removeAttribute('name');
+    } else {
+        targetAssignmentGroup.style.display = 'none';
+        targetWikiGroup.style.display = 'none';
+        assignSelect.removeAttribute('name');
+        wikiSelect.removeAttribute('name');
+    }
 }
 
 // 手动派发
 let currentBadgeId = null;
-function openAwardModal(id, name, earnedIds) {
+let currentEarnedIds = [];
+
+function openAwardModal(id, name, earnedIdsStr) {
     currentBadgeId = id;
     document.getElementById('award_badge_name').innerText = name;
-    const earnedArr = earnedIds.split(',');
-    document.querySelectorAll('.user-checkbox').forEach(cb => {
-        cb.checked = earnedArr.includes(cb.value);
-    });
-    updateSelectedCount();
+    currentEarnedIds = earnedIdsStr ? earnedIdsStr.split(',').map(Number) : [];
+    
+    // 💡 清空搜索框并渲染列表
+    document.getElementById('user_search').value = '';
+    renderUserList('');
+    
     document.getElementById('award_modal').showModal();
 }
 
-function updateSelectedCount() {
-    document.getElementById('selected_count').innerText = document.querySelectorAll('.user-checkbox:checked').length;
+function renderUserList(searchTerm) {
+    const container = document.getElementById('user_list_container');
+    const term = searchTerm.toLowerCase().trim();
+    
+    const filteredUsers = term === '' 
+        ? allUsersData 
+        : allUsersData.filter(u => u.username.toLowerCase().includes(term) || u.email.toLowerCase().includes(term));
+    
+    let html = '';
+    const maxRender = 150; // 降低渲染数量保证丝滑
+    const renderData = filteredUsers.slice(0, maxRender);
+    
+    renderData.forEach(u => {
+        const isChecked = currentEarnedIds.includes(u.id) ? 'checked' : '';
+        html += `
+            <label class="label cursor-pointer justify-start gap-4 p-3 rounded-xl border border-stone-100 hover:border-primary/30 hover:bg-primary/5 transition-colors">
+                <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" value="${u.id}" ${isChecked} onchange="handleCheckChange(this, ${u.id})" />
+                <div class="flex flex-col">
+                    <span class="font-bold text-sm text-stone-800">${u.username}</span>
+                    <span class="text-[10px] text-stone-400">${u.email || '无邮箱'}</span>
+                </div>
+            </label>
+        `;
+    });
+    
+    if(filteredUsers.length > maxRender) {
+        html += `<div class="p-4 text-center text-xs text-stone-400 font-bold">已隐藏部分结果，请使用上方搜索框精确查找...</div>`;
+    } else if (filteredUsers.length === 0) {
+        html += `<div class="p-10 text-center text-sm text-stone-400 font-bold">没有找到匹配的村民。</div>`;
+    }
+    
+    container.innerHTML = html;
+    updateSelectedCount();
 }
 
-document.getElementById('user_list_container').addEventListener('change', updateSelectedCount);
+function handleCheckChange(cb, userId) {
+    if (cb.checked) {
+        if (!currentEarnedIds.includes(userId)) currentEarnedIds.push(userId);
+    } else {
+        currentEarnedIds = currentEarnedIds.filter(id => id !== userId);
+    }
+    updateSelectedCount();
+}
+
+let searchTimeout;
+function filterUsers() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        const term = document.getElementById('user_search').value;
+        renderUserList(term);
+    }, 150); // 加快防抖响应速度
+}
+
+function updateSelectedCount() {
+    document.getElementById('selected_count').innerText = currentEarnedIds.length;
+}
 
 async function submitAward() {
-    const userIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
-    const res = await fetch(`/admin/badges/${currentBadgeId}/award`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_ids: userIds })
-    });
-    if ((await res.json()).success) location.reload();
+    // 禁用按钮防止连点
+    const btn = document.querySelector('#award_modal .btn-primary');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span> 正在派发...';
+
+    try {
+        const res = await fetch(`/admin/badges/${currentBadgeId}/award`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_ids: currentEarnedIds })
+        });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('派发失败：' + (data.error || '未知错误'));
+            btn.disabled = false;
+            btn.innerText = '确认派发';
+        }
+    } catch (e) {
+        alert('网络请求失败');
+        btn.disabled = false;
+        btn.innerText = '确认派发';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

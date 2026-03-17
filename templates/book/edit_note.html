@@ -58,6 +58,7 @@
     }
     .CodeMirror-scroll { min-height: 100% !important; }
 
+/* 预览区样式 (已修复高度与滚动) */
     .editor-preview-side {
         border: none !important;
         border-left: 1px solid #e5e7eb !important;
@@ -65,15 +66,23 @@
         position: absolute;
         bottom: 0;
         right: 0;
-        top: 50px;
-        height: auto !important;
+        top: 61px !important; /* 适配当前页面的工具栏高度 */
+        height: calc(100% - 61px) !important; /* 💡 严格限制高度，防止溢出 */
+        overflow-y: auto !important; /* 💡 强制内部出现滚动条 */
         z-index: 50;
     }
 
-    .EasyMDEContainer.sided--no-fullscreen .CodeMirror { width: 50% !important; }
+    /* 分屏布局控制 (左右各50%) */
+    .EasyMDEContainer.sided--no-fullscreen {
+        position: relative; /* 确保预览区绝对定位的参考系正确 */
+    }
+    .EasyMDEContainer.sided--no-fullscreen .CodeMirror { 
+        width: 50% !important; 
+        height: calc(100% - 61px) !important; /* 💡 左侧代码区继承相同限制 */
+        max-height: none !important;
+    }
     .EasyMDEContainer.sided--no-fullscreen .editor-preview-side {
         width: 50% !important;
-        top: 61px !important;
         display: block !important;
     }
     .editor-preview-side p { margin: 0.5em 0; }
@@ -161,8 +170,9 @@
 
     const easyMDE = new EasyMDE({
         element: document.getElementById('markdown-editor'),
+        spellChecker: false,
         sideBySideFullscreen: false,
-        syncSideBySidePreviewScroll: true,
+        syncSideBySidePreviewScroll: false,
         status: ["lines", "words", "cursor"],
         toolbar: [
             "bold", "italic", "strikethrough", "heading", "|",

@@ -1,178 +1,260 @@
 {% extends "base.html" %}
 
-{% block title %}委托详情 - {{ assignment.title }}{% endblock %}
+{% block title %}任务档案 - {{ assignment.title }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/easymde.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/easymde.min.css') }}">
 <style>
-    /* 📜 羊皮纸质感特效 */
-    .quest-paper {
-        background-color: #fdfbf7;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-        box-shadow: 0 20px 40px -10px rgba(139, 90, 43, 0.15), inset 0 0 60px rgba(139, 90, 43, 0.05);
-        border: 1px solid #e7e5e4;
-    }
-    
-    .quest-stamp {
-        position: absolute; right: 1rem; top: 1rem; font-family: 'Impact', sans-serif;
-        font-size: 3rem; transform: rotate(15deg); opacity: 0.8; pointer-events: none;
+    /* ==========================================
+       FWA 极简野兽派风格 (Brutalist / Grid UI)
+       ========================================== */
+    body {
+        background-color: #f5f5f5 !important;
+        color: #1a1a1a;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     }
 
-    /* 编辑器适配 */
-    .EasyMDEContainer { background: white; border-radius: 1rem; overflow: hidden; border-color: #e5e7eb;}
-    .editor-toolbar { background: #f8fafc; border-bottom: 1px solid #e5e7eb !important; }
+    /* 极简网格容器与边框 */
+    .grid-border { border-color: rgba(0,0,0,0.1); }
+    .dark .grid-border { border-color: rgba(255,255,255,0.1); }
+
+    /* 横线纹理背景 */
+    .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px);
+    }
+
+    /* 极简按钮 */
+    .btn-brutal {
+        background: #111; color: #fff; border-radius: 2px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+        padding: 0.75rem 1.5rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center; border: 1px solid #111;
+        letter-spacing: 0.05em; cursor: pointer;
+    }
+    .btn-brutal:hover { background: var(--theme-primary); border-color: var(--theme-primary); color: #fff; }
     
-    /* 💡 优化 Markdown 内容的排版细节 */
-    .prose pre { background-color: #1e293b; color: #f8fafc; border-radius: 0.5rem; padding: 1rem; overflow-x: auto; }
-    .prose code { color: #8b5a2b; background-color: #fdf8f6; padding: 0.125rem 0.25rem; border-radius: 0.25rem; }
-    .prose blockquote { border-left-color: #8b5a2b; font-style: italic; color: #5c3a18; }
+    .btn-brutal-outline {
+        background: transparent; color: #111; border: 1px solid rgba(0,0,0,0.2); border-radius: 2px; font-size: 12px; font-weight: 700; text-transform: uppercase;
+        padding: 0.75rem 1.5rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center;
+        letter-spacing: 0.05em; cursor: pointer;
+    }
+    .btn-brutal-outline:hover { border-color: #111; background: #f0f0f0; }
+
+    /* ==========================================
+       排版细节重置 (Typography Reset)
+       ========================================== */
+    .prose { max-width: 100%; color: #333; }
+    .prose h1, .prose h2, .prose h3 { font-weight: 800; color: #111; margin-top: 2rem; margin-bottom: 1rem; letter-spacing: -0.02em; }
+    .prose p { margin-bottom: 1.5rem; line-height: 1.7; font-size: 0.95rem; }
+    .prose pre { background-color: #111; color: #eee; border-radius: 2px; padding: 1.5rem; border: 1px solid #333; }
+    .prose code { color: #111; background-color: #f0f0f0; padding: 0.2rem 0.4rem; border-radius: 2px; font-size: 0.85em; font-family: monospace; }
+    .prose blockquote { border-left: 4px solid #111; font-style: normal; color: #666; padding-left: 1rem; background: #fafafa; padding: 1rem; margin-left: 0; margin-right: 0;}
+
+    /* ==========================================
+       EasyMDE 极简定制
+       ========================================== */
+    .EasyMDEContainer { background: #fff; border-radius: 2px; border: 1px solid rgba(0,0,0,0.15) !important; box-shadow: none !important;}
+    .editor-toolbar { border: none !important; border-bottom: 1px solid rgba(0,0,0,0.1) !important; background: #fafafa !important; border-radius: 2px 2px 0 0 !important; opacity: 0.8; transition: opacity 0.2s; }
+    .editor-toolbar:hover { opacity: 1; }
+    .CodeMirror { border: none !important; font-family: monospace; font-size: 14px; background: transparent !important; }
+    
+    /* 巨大的背景水印印章 */
+    .bg-stamp {
+        position: absolute; right: -5%; bottom: -10%; font-size: 15rem; font-weight: 900; 
+        color: rgba(0,0,0,0.02); pointer-events: none; user-select: none; z-index: 0;
+        transform: rotate(-10deg); font-family: monospace; line-height: 0.8;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto py-10 px-4">
-    <div class="flex items-center gap-2 text-sm text-stone-500 font-bold mb-6">
-        <a href="{{ url_for('bulletin_view') }}" class="hover:text-[#8b5a2b] transition-colors"><i class="fas fa-thumbtack mr-1"></i> 告示栏</a>
-        <span>/</span>
-        <span class="text-stone-800">委托详情</span>
-    </div>
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        <div class="lg:col-span-5">
-            <div class="quest-paper rounded-[2rem] p-8 relative min-h-[500px] flex flex-col">
-                
-                {% if submission %}
-                    {% if submission.status == 'graded' %}
-                        <div class="quest-stamp text-emerald-600 border-4 border-emerald-600 px-3 py-1 rounded-xl filter drop-shadow-sm">COMPLETED</div>
-                    {% else %}
-                        <div class="quest-stamp text-amber-500 border-4 border-amber-500 px-3 py-1 rounded-xl filter drop-shadow-sm scale-75">PENDING</div>
-                    {% endif %}
-                {% endif %}
-
-                <div class="border-b-2 border-stone-300 border-dashed pb-6 mb-6">
-                    <p class="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2"><i class="fas fa-scroll"></i> OFFICIAL QUEST</p>
-                    <h1 class="text-3xl font-black text-stone-800 tracking-tight leading-tight">{{ assignment.title }}</h1>
-                    
-                    <div class="flex flex-col gap-2 mt-5 text-sm font-bold text-stone-500">
-                        <div class="flex items-center gap-2"><i class="fas fa-user-circle w-5 text-center text-[#8b5a2b]"></i> 发布人: {{ assignment.created_by.username if assignment.created_by else 'Town Mayor' }}</div>
-                        <div class="flex items-center gap-2"><i class="fas fa-clock w-5 text-center text-[#8b5a2b]"></i> 截止日: <span class="{{ 'text-rose-500' if assignment.deadline and assignment.deadline < now_utc8() else '' }}">{{ assignment.deadline.strftime('%Y-%m-%d %H:%M') if assignment.deadline else '无期限' }}</span></div>
-                        
-                        <div class="flex items-center gap-2 mt-1">
-                            <i class="fas fa-award w-5 text-center text-[#8b5a2b]"></i> 悬赏级别:
-                            <span class="flex gap-0.5 ml-1">
-                                {% for i in range(assignment.star_level or 1) %}
-                                    <i class="fas fa-star text-amber-400 text-xs drop-shadow-sm"></i>
-                                {% endfor %}
-                            </span>
-                        </div>
-                    </div> </div> <textarea id="raw-markdown-content" style="display:none;">{{ assignment.content_md or '' }}</textarea>
-                
-                <div id="rendered-markdown-content" class="prose prose-stone max-w-none text-stone-700 flex-1 leading-relaxed">
-                </div>
+        <div class="flex items-center gap-3 mb-8">
+            <a href="{{ url_for('bulletin_view') }}" class="w-8 h-8 flex items-center justify-center border grid-border bg-white hover:bg-[#111] hover:text-white transition-colors text-stone-400">
+                <i class="fas fa-arrow-left text-xs"></i>
+            </a>
+            <div class="flex flex-col">
+                <span class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">返回至</span>
+                <span class="text-xs font-black text-stone-800 uppercase tracking-wider">任务大厅</span>
             </div>
         </div>
 
-        <div class="lg:col-span-7 flex flex-col gap-6">
+        <div class="flex flex-col lg:flex-row gap-6 items-start">
             
-            {% if current_user.is_admin %}
-            <div class="bg-amber-50 border-2 border-amber-200 rounded-[2rem] p-6 flex items-center justify-between shadow-sm relative overflow-hidden">
-                <div class="absolute -right-4 -top-8 text-amber-500/10 text-8xl"><i class="fas fa-crown"></i></div>
-                <div class="relative z-10">
-                    <h3 class="font-black text-amber-800 text-lg flex items-center gap-2"><i class="fas fa-stamp text-amber-600"></i> 镇长控制台</h3>
-                    <p class="text-xs font-bold text-amber-600 mt-1">此通道仅管理员可见，点击前往批改村民们的作业</p>
-                </div>
-                <a href="{{ url_for('grade_assignment', assign_id=assignment.id) }}" class="btn bg-amber-600 hover:bg-amber-700 text-white border-none rounded-xl shadow-lg shadow-amber-600/30 relative z-10 transition-transform active:scale-95">
-                    前往批阅中心 <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
-            {% endif %}
-
-            {% if submission and submission.status == 'graded' %}
-            <div class="bg-emerald-50 border-2 border-emerald-200 rounded-[2rem] p-8 shadow-sm relative overflow-hidden">
-                <div class="absolute -right-4 -top-4 text-emerald-500/10 text-8xl"><i class="fas fa-check-circle"></i></div>
-                <h3 class="text-emerald-800 font-black text-xl mb-6 relative z-10"><i class="fas fa-envelope-open-text mr-2"></i> 镇长的回信 (批改结果)</h3>
+            <div class="w-full lg:w-[45%] flex flex-col bg-white border grid-border shadow-[0_20px_50px_rgba(0,0,0,0.03)] rounded-sm relative overflow-hidden shrink-0 min-h-[600px]">
                 
-                <div class="flex items-end gap-8 mb-6 relative z-10">
-                    <div>
-                        <div class="flex items-center gap-4 mb-1">
-                            <div class="text-4xl font-black text-emerald-600 drop-shadow-sm">{{ submission.grade }}</div>
-                            <div class="text-sm font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-lg">综合等第</div>
-                        </div>
+                <div class="bg-stamp">档案<br>{{ '%03d' % assignment.id }}</div>
+
+                <div class="border-b grid-border relative p-8 md:p-10 z-10 bg-white/90 backdrop-blur-sm">
+                    <div class="flex justify-between items-start mb-6">
+                        <span class="text-[10px] font-bold text-stone-400 uppercase tracking-widest border border-stone-200 px-2 py-1">
+                            行动简报 // {{ '%04d' % assignment.id }}
+                        </span>
+                        
+                        {% if submission %}
+                            {% if submission.status == 'graded' %}
+                                <span class="bg-emerald-500 text-white text-[10px] font-black px-3 py-1.5 uppercase tracking-widest border border-emerald-600 shadow-sm">
+                                    已完成
+                                </span>
+                            {% else %}
+                                <span class="bg-amber-400 text-black text-[10px] font-black px-3 py-1.5 uppercase tracking-widest border border-amber-500 shadow-sm animate-pulse">
+                                    进行中
+                                </span>
+                            {% endif %}
+                        {% else %}
+                            <span class="bg-stone-200 text-stone-500 text-[10px] font-black px-3 py-1.5 uppercase tracking-widest border border-stone-300 shadow-sm">
+                                未分配
+                            </span>
+                        {% endif %}
                     </div>
+
+                    <h1 class="text-3xl md:text-4xl font-light text-stone-900 tracking-tight leading-[1.1] mb-8">
+                        {{ assignment.title }}
+                    </h1>
                     
-                    <div class="flex flex-col gap-1 pb-1 border-l-2 border-emerald-200 pl-6">
-                        <span class="text-xs font-bold text-emerald-700 uppercase tracking-widest">实得星级</span>
-                        <div class="flex gap-1">
-                            {% for i in range(submission.stars_earned or 0) %}
-                                <i class="fas fa-star text-amber-500 text-xl drop-shadow-sm animate-pulse"></i>
-                            {% endfor %}
-                            {% for i in range(assignment.star_level - (submission.stars_earned or 0)) %}
-                                <i class="far fa-star text-emerald-200 text-xl"></i>
-                            {% endfor %}
+                    <div class="grid grid-cols-2 gap-4 border-t border-b grid-border py-6">
+                        <div>
+                            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">委派人</p>
+                            <p class="text-sm font-black text-stone-800 uppercase truncate">
+                                {{ assignment.created_by.username if assignment.created_by else '系统' }}
+                            </p>
+                        </div>
+                        <div class="border-l grid-border pl-4">
+                            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">终止期限</p>
+                            <p class="text-sm font-bold {{ 'text-red-500' if assignment.deadline and assignment.deadline < now_utc8() else 'text-stone-800' }} font-mono tracking-tighter">
+                                {{ assignment.deadline.strftime('%Y-%m-%d %H:%M') if assignment.deadline else '无期限' }}
+                            </p>
+                        </div>
+                        <div class="col-span-2 pt-2 mt-2 border-t grid-border flex items-center justify-between">
+                            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">难度评级</p>
+                            <div class="flex gap-1">
+                                {% for i in range(assignment.star_level or 1) %}
+                                    <i class="fas fa-star text-stone-800 text-[10px]"></i>
+                                {% endfor %}
+                                {% for i in range(5 - (assignment.star_level or 1)) %}
+                                    <i class="far fa-star text-stone-300 text-[10px]"></i>
+                                {% endfor %}
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white/60 p-4 rounded-xl text-emerald-900 text-sm font-medium leading-relaxed relative z-10">
-                    {{ submission.feedback or "干得漂亮！继续保持！" }}
+                <div class="p-8 md:p-10 flex-1 z-10 bg-white/90 backdrop-blur-sm overflow-y-auto custom-scroll">
+                    <textarea id="raw-markdown-content" style="display:none;">{{ assignment.content_md or '' }}</textarea>
+                    <div id="rendered-markdown-content" class="prose"></div>
                 </div>
             </div>
-            {% endif %}
 
-            <div class="bg-white rounded-[2rem] border border-stone-200 shadow-xl shadow-stone-200/50 p-8 flex-1">
-                <h3 class="font-black text-xl text-stone-800 mb-6 flex items-center gap-2">
-                    <i class="fas fa-feather-alt text-[#8b5a2b]"></i> 
-                    {% if submission and submission.status == 'graded' %}
-                        重新挑战 (覆盖提交)
-                    {% elif submission %}
-                        修改你的回执
-                    {% else %}
-                        撰写任务回执
-                    {% endif %}
-                </h3>
+            <div class="w-full lg:w-[55%] flex flex-col gap-6">
+                
+                {% if current_user.is_admin %}
+                <div class="bg-[#111] text-white p-6 border border-[#333] shadow-lg rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 stripe-pattern relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 text-white/5 text-6xl rotate-12"><i class="fas fa-cogs"></i></div>
+                    <div class="relative z-10">
+                        <h3 class="font-black text-sm uppercase tracking-widest mb-1 flex items-center gap-2 text-primary">
+                            <i class="fas fa-terminal"></i> 最高权限控制台
+                        </h3>
+                        <p class="text-[10px] text-stone-400 font-mono tracking-widest">仅限授权访问：启动批阅矩阵</p>
+                    </div>
+                    <a href="{{ url_for('grade_assignment', assign_id=assignment.id) }}" class="btn-brutal bg-white text-black hover:bg-primary border-none shrink-0 relative z-10">
+                        批阅核心 &rarr;
+                    </a>
+                </div>
+                {% endif %}
 
-                <form method="POST" class="flex flex-col h-full">
-                    <div class="flex-1 mb-4">
-                        <textarea id="md-editor" name="content">{{ submission.content if submission else '' }}</textarea>
+                {% if submission and submission.status == 'graded' %}
+                <div class="bg-emerald-50/50 border border-emerald-200 p-8 rounded-sm shadow-sm relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                    
+                    <h3 class="text-xs font-black text-emerald-800 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                        <i class="fas fa-check-circle"></i> 评估回执
+                    </h3>
+                    
+                    <div class="flex items-end gap-8 mb-6 border-b border-emerald-200/50 pb-6">
+                        <div>
+                            <p class="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest mb-1">综合评定</p>
+                            <div class="text-5xl font-light text-emerald-700 leading-none">{{ submission.grade }}</div>
+                        </div>
+                        
+                        <div class="flex flex-col gap-2">
+                            <p class="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest">获得星级</p>
+                            <div class="flex gap-1.5">
+                                {% for i in range(submission.stars_earned or 0) %}
+                                    <i class="fas fa-star text-amber-500 text-lg drop-shadow-sm animate-pulse"></i>
+                                {% endfor %}
+                                {% for i in range(assignment.star_level - (submission.stars_earned or 0)) %}
+                                    <i class="far fa-star text-stone-300 text-lg"></i>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="btn bg-[#8b5a2b] hover:bg-[#5c3a18] text-white border-none h-12 px-10 text-lg shadow-lg shadow-[#8b5a2b]/30 rounded-xl transition-transform active:scale-95">
-                            <i class="fas fa-paper-plane mr-2"></i> 提交委托
-                        </button>
+
+                    <div>
+                        <p class="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest mb-2">评语反馈</p>
+                        <div class="bg-white p-4 border border-emerald-100 text-stone-700 text-sm font-medium leading-relaxed font-mono">
+                            {{ submission.feedback or "干得漂亮。协议已完成。" }}
+                        </div>
                     </div>
-                </form>
+                </div>
+                {% endif %}
+
+                <div class="bg-white border grid-border shadow-[0_20px_50px_rgba(0,0,0,0.03)] p-8 rounded-sm flex-1 flex flex-col">
+                    <div class="flex justify-between items-center mb-6 border-b grid-border pb-4">
+                        <h3 class="font-light text-xl text-stone-900 tracking-tight uppercase">
+                            {% if submission and submission.status == 'graded' %}
+                                <i class="fas fa-redo text-stone-300 mr-2 text-sm"></i> 覆盖当前记录
+                            {% elif submission %}
+                                <i class="fas fa-pen text-stone-300 mr-2 text-sm"></i> 修正数据记录
+                            {% else %}
+                                <i class="fas fa-terminal text-stone-300 mr-2 text-sm"></i> 数据输入终端
+                            {% endif %}
+                        </h3>
+                        <span class="text-[10px] font-bold text-stone-400 uppercase tracking-widest font-mono">支持 Markdown 语法</span>
+                    </div>
+
+                    <form method="POST" class="flex flex-col flex-1 h-full min-h-[300px]">
+                        <div class="flex-1 mb-6">
+                            <textarea id="md-editor" name="content">{{ submission.content if submission else '' }}</textarea>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="btn-brutal px-12 py-3 text-sm">
+                                传输数据 <i class="fas fa-paper-plane ml-2"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
             </div>
-            
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/vendor/easymde.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/easymde.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // 1. 初始化右侧编辑器
+        // 1. 初始化右侧极简编辑器
         const easyMDE = new EasyMDE({
             element: document.getElementById('md-editor'),
             spellChecker: false,
             status: false,
-            minHeight: "300px",
-            placeholder: "在这里写下你的任务解答、代码或学习心得..."
+            minHeight: "350px",
+            placeholder: "在此输入您的响应数据... 全面支持 Markdown 语法。",
+            toolbar: ["bold", "italic", "heading", "|", "quote", "code", "unordered-list", "ordered-list", "|", "preview"]
         });
 
-        // 2. 💡 读取并实时渲染左侧的任务内容
+        // 2. 💡 读取并实时渲染左侧的任务内容 (Brutalist Markdown rendering)
         const rawMd = document.getElementById('raw-markdown-content').value;
         const targetDiv = document.getElementById('rendered-markdown-content');
         
         if (rawMd && rawMd.trim() !== '') {
-            // 使用 marked 库将 markdown 解析为漂亮的 html
+            // 使用 marked 库将 markdown 解析为 html
             targetDiv.innerHTML = marked.parse(rawMd);
         } else {
-            targetDiv.innerHTML = '<p class="italic opacity-50">镇长没有写具体要求，请自由发挥。</p>';
+            targetDiv.innerHTML = '<p class="text-xs font-mono text-stone-400 uppercase tracking-widest border border-dashed border-stone-200 p-4 text-center">未提供详细简报。</p>';
         }
     });
 </script>

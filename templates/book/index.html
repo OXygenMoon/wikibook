@@ -1,350 +1,274 @@
 {% extends "base.html" %}
 
-{% block title %}Book 知识库{% endblock %}
+{% block title %}BOOK 数据库 - WikiBook{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* 定义背景模糊光球动画 */
-    @keyframes blob {
-        0% { transform: translate(0px, 0px) scale(1); }
-        33% { transform: translate(30px, -50px) scale(1.1); }
-        66% { transform: translate(-20px, 20px) scale(0.9); }
-        100% { transform: translate(0px, 0px) scale(1); }
-    }
-    .animate-blob {
-        animation: blob 7s infinite;
-    }
-    .animation-delay-2000 {
-        animation-delay: 2s;
-    }
-    
-    /* 搜索框高亮动画 */
-    .search-glow:focus-within {
-        box-shadow: 0 0 0 4px hsl(var(--p) / 0.1), 0 20px 40px -10px hsl(var(--p) / 0.15);
+    /* ==========================================
+       FWA 极简野兽派风格 (Brutalist / Grid UI)
+       ========================================== */
+    body {
+        background-color: #f5f5f5 !important;
+        color: #1a1a1a;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     }
 
-    /* 自定义分段控制器样式 */
-    .book-tabs-container {
-        background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 4px 15px rgba(0,0,0,0.03), inset 0 2px 4px rgba(0,0,0,0.02);
+    /* 极简网格容器与边框 */
+    .grid-border { border-color: rgba(0,0,0,0.15); }
+    .dark .grid-border { border-color: rgba(255,255,255,0.15); }
+
+    /* 横线纹理背景 */
+    .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px);
     }
-    .dark .book-tabs-container {
-        background: rgba(0, 0, 0, 0.2); border-color: rgba(255, 255, 255, 0.05);
+
+    /* 隐藏滚动条并自定义 */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; border-left: 1px solid rgba(0,0,0,0.1); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #111; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--theme-primary); }
+
+    /* 极简按钮 */
+    .btn-brutal {
+        background: #111; color: #fff; border-radius: 2px; font-size: 12px; font-weight: 800; text-transform: uppercase;
+        padding: 0.75rem 1.5rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center; border: 1px solid #111;
+        letter-spacing: 0.05em; cursor: pointer;
     }
+    .btn-brutal:hover { background: var(--theme-primary); border-color: var(--theme-primary); color: #fff; }
     
-    .book-tab {
-        color: hsl(var(--bc) / 0.6); font-weight: 600; transition: all 0.3s ease; position: relative; z-index: 10;
+    .btn-brutal-outline {
+        background: transparent; color: #111; border: 1px solid rgba(0,0,0,0.2); border-radius: 2px; font-size: 12px; font-weight: 800; text-transform: uppercase;
+        padding: 0.75rem 1.5rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center;
+        letter-spacing: 0.05em; cursor: pointer;
     }
-    .book-tab.active {
-        color: var(--theme-primary); font-weight: 800;
+    .btn-brutal-outline:hover { background: #111; color: #fff; border-color: #111; }
+
+    /* 搜索栏发光特效 */
+    .search-minimal {
+        background: #fff; border: 1px solid rgba(0,0,0,0.2); transition: all 0.3s; border-radius: 2px;
     }
-    /* 动态滑块的占位 */
-    .tab-slider {
-        position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px);
-        background: white; border-radius: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 1;
+    .search-minimal:focus-within { border-color: #111; box-shadow: 4px 4px 0px rgba(0,0,0,1); outline: none; }
+
+    /* 档案卡片交互特效 */
+    .brutal-card {
+        background: #fff; border: 1px solid rgba(0,0,0,0.15); border-radius: 2px;
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative; overflow: hidden;
     }
-    .dark .tab-slider { background: hsl(var(--b1)); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
-    .slider-right { transform: translateX(100%); }
+    .brutal-card:hover {
+        transform: translate(-4px, -4px);
+        box-shadow: 6px 6px 0px rgba(0,0,0,1);
+        border-color: #111;
+    }
+
+    /* 选项卡状态 */
+    .tab-active { background: #111; color: #fff; border-color: #111; }
+    .tab-inactive { background: #fff; color: #666; border-color: rgba(0,0,0,0.15); }
+    .tab-inactive:hover { background: #f0f0f0; color: #111; }
+    
+    /* 弹窗粗犷阴影 */
+    .modal-brutal { box-shadow: 12px 12px 0px rgba(0,0,0,1); border: 2px solid #111; }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
 
-<div class="relative z-[100] rounded-[3rem] bg-white/40 dark:bg-base-100/40 backdrop-blur-3xl border border-white/60 dark:border-white/5 px-6 py-12 md:p-16 mb-12 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.03)] text-center flex flex-col items-center justify-center">
-    
-    <div class="absolute inset-0 overflow-hidden rounded-[3rem] pointer-events-none z-0">
-        <div class="absolute top-0 left-1/4 w-72 h-72 bg-primary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
-        <div class="absolute top-0 right-1/4 w-72 h-72 bg-secondary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
-    </div>
-
-    <div class="relative z-10 flex flex-col items-center w-full">
-        <h1 class="text-4xl md:text-5xl font-black text-stone-800 dark:text-white tracking-tight mb-4 drop-shadow-sm">
-            我的<span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-500">知识图谱</span>
-        </h1>
-        <p class="text-base md:text-lg text-stone-500 dark:text-stone-400 max-w-xl font-medium mb-10">
-            随时记录灵感、沉淀学习心得，或是搜索过往的知识碎片。
-        </p>
-
-        <div class="w-full max-w-2xl relative group search-glow rounded-[1.5rem] transition-all duration-300 bg-white dark:bg-base-200 border border-stone-200 dark:border-base-300">
-            <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-primary transition-colors text-lg"></i>
-            <input type="text" id="quickInput" name="q" value="{{ q }}" 
-                oninput="handleSearchInput(this.value)"
-                class="w-full bg-transparent outline-none h-16 pl-14 pr-36 text-stone-700 dark:text-stone-200 font-medium placeholder-stone-400 text-lg relative z-20" 
-                placeholder="搜索笔记，或输入内容直接生成..." autocomplete="off">
+        <div class="mb-10 flex flex-col gap-4">
+            <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block">DATA RETRIEVAL TERMINAL</span>
             
-            <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-stone-50 dark:bg-base-300 p-1 rounded-xl z-20">
-                <button type="button" onclick="quickCreate()" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-primary border-none shadow-sm rounded-lg" title="快捷生成">
-                    <i class="fas fa-bolt"></i><span class="hidden sm:inline ml-1 font-bold">速记</span>
-                </button>
-                <div class="w-px h-4 bg-stone-200 dark:bg-stone-600 mx-0.5"></div>
-                <button type="button" onclick="doSearch()" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-stone-500 border-none shadow-sm rounded-lg">
-                    <span class="hidden sm:inline font-bold">搜索</span>
-                    <i class="fas fa-arrow-right sm:hidden"></i>
-                </button>
-            </div>
+            <div id="searchContainer" class="w-full relative group search-minimal flex items-center p-1">
+                <i class="fas fa-terminal absolute left-4 text-stone-400 group-focus-within:text-stone-900 transition-colors text-sm z-20"></i>
+                <input type="text" id="quickInput" name="q" value="{{ q }}" 
+                    oninput="handleSearchInput(this.value)"
+                    class="flex-1 bg-transparent outline-none h-12 pl-10 pr-4 text-stone-800 font-mono text-sm placeholder-stone-400 relative z-20" 
+                    placeholder="输入检索指令或建立新节点..." autocomplete="off">
+                
+                <div class="flex items-center gap-2 pr-1 z-20 shrink-0">
+                    <button type="button" onclick="doSearch()" class="btn-brutal-outline px-4 py-2 border-none hover:bg-stone-100">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <div class="w-px h-6 bg-stone-200 mx-1"></div>
+                    <button type="button" onclick="quickCreate()" class="btn-brutal bg-[#111] hover:bg-primary px-6 py-2 shadow-none">
+                        <i class="fas fa-plus text-[10px] mr-2"></i> 写入档案
+                    </button>
+                </div>
 
-            <div id="instantSearchResults" class="absolute top-full left-0 right-0 mt-3 bg-white/95 dark:bg-base-200/95 backdrop-blur-xl rounded-[1.5rem] shadow-2xl border border-stone-100 dark:border-white/10 hidden overflow-hidden transition-all text-left z-[10000] max-h-[300px] overflow-y-auto custom-scroll">
+                <div id="instantSearchResults" class="absolute top-full left-0 right-0 mt-2 bg-white rounded-sm border border-[#111] shadow-[4px_4px_0_#111] hidden overflow-hidden transition-all text-left z-[100] max-h-[400px] overflow-y-auto custom-scroll">
+                </div>
             </div>
         </div>
 
-        {% if last_note %}
-        <div class="mt-6 flex items-center justify-center animate-fade-in">
-            <a href="{{ url_for('view_note', note_id=last_note.id) }}" class="group flex items-center gap-3 bg-stone-50/80 dark:bg-base-300/50 hover:bg-white dark:hover:bg-base-200 border border-stone-200/50 dark:border-white/5 rounded-full px-4 py-2 pr-2 shadow-sm hover:shadow-md transition-all duration-300 backdrop-blur-sm cursor-pointer">
-                <div class="flex items-center gap-2">
-                    <span class="relative flex h-2 w-2">
-                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                    </span>
-                    <span class="text-xs font-bold text-stone-500 uppercase tracking-widest">近期编辑</span>
+        {% if not q %}
+            <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b grid-border pb-4">
+                <div>
+                    <h1 class="text-4xl font-light text-stone-900 tracking-tight leading-none uppercase">
+                        系统档案列阵
+                    </h1>
                 </div>
-                <div class="h-3 w-px bg-stone-300 dark:bg-stone-600"></div>
-                <div class="flex items-center gap-2">
-                    <span class="text-sm font-black text-stone-700 dark:text-stone-200 truncate max-w-[150px] md:max-w-[200px]">{{ last_note.title }}</span>
-                    <div class="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                        <i class="fas fa-arrow-right text-[10px]"></i>
+
+                <div class="flex items-center gap-2 w-full sm:w-auto font-mono text-[10px] uppercase tracking-widest font-bold">
+                    <button onclick="switchTab('my')" id="tab-my" class="tab-active flex-1 sm:flex-none px-6 py-2.5 border transition-colors rounded-sm flex items-center justify-center gap-2">
+                        私有档案 <span class="opacity-60">[{{ my_notes|length }}]</span>
+                    </button>
+                    <button onclick="switchTab('shared')" id="tab-shared" class="tab-inactive flex-1 sm:flex-none px-6 py-2.5 border transition-colors rounded-sm flex items-center justify-center gap-2">
+                        共享通道 <span class="opacity-60">[{{ shared_notes|length }}]</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="content-my" class="animate-fade-in mb-12">
+                {% if my_notes %}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {% for note in my_notes %}
+                        <div onclick="openPreviewModal(this)"
+                             data-title="{{ note.title }}"
+                             data-date="{{ note.updated_at.strftime('%Y.%m.%d / %H:%M') }}"
+                             data-content="{{ note.content_md | striptags }}"
+                             data-url="{{ url_for('view_note', note_id=note.id) }}"
+                             class="brutal-card flex flex-col p-6 h-[240px] cursor-pointer group stripe-pattern">
+                            
+                            <div class="flex justify-between items-start mb-4 border-b grid-border pb-3 shrink-0">
+                                <span class="text-[9px] font-mono text-stone-400 tracking-widest">{{ note.updated_at.strftime('%Y.%m.%d') }}</span>
+                                <i class="fas fa-arrow-right text-[10px] text-stone-300 -rotate-45 group-hover:rotate-0 group-hover:text-[#111] transition-transform"></i>
+                            </div>
+
+                            <h3 class="font-bold text-lg text-stone-900 mb-2 line-clamp-1 bg-white inline-block w-fit">{{ note.title }}</h3>
+                            
+                            <div class="flex-1 bg-white p-3 border grid-border overflow-hidden mt-1 relative">
+                                <p class="text-stone-500 text-[11px] font-mono line-clamp-4 leading-relaxed">
+                                    {{ note.content_md | striptags }}
+                                </p>
+                                <div class="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
+                {% else %}
+                    <div class="py-24 bg-white border border-dashed grid-border flex flex-col items-center justify-center rounded-sm">
+                        <i class="fas fa-hdd text-3xl text-stone-300 mb-4"></i>
+                        <h3 class="text-sm font-bold text-stone-800 uppercase tracking-widest mb-1">数据库为空</h3>
+                        <p class="text-[10px] text-stone-400 font-mono tracking-widest uppercase">未发现任何私有档案，等待数据写入</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div id="content-shared" class="hidden animate-fade-in mb-12">
+                {% if shared_notes %}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {% for note in shared_notes %}
+                        <div onclick="openPreviewModal(this)"
+                             data-title="{{ note.title }}"
+                             data-date="{{ note.updated_at.strftime('%Y.%m.%d / %H:%M') }}"
+                             data-content="{{ note.content_md | striptags }}"
+                             data-url="{{ url_for('view_note', note_id=note.id) }}"
+                             class="brutal-card flex flex-col p-6 h-[240px] cursor-pointer group bg-[#fafafa]">
+                            
+                            <div class="flex justify-between items-start mb-4 border-b grid-border pb-3 shrink-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                                    <span class="text-[9px] font-bold text-stone-800 uppercase tracking-widest">FROM: {{ note.user.username }}</span>
+                                </div>
+                                <i class="fas fa-link text-[10px] text-stone-400 group-hover:text-[#111] transition-colors"></i>
+                            </div>
+
+                            <h3 class="font-bold text-lg text-stone-900 mb-2 line-clamp-1">{{ note.title }}</h3>
+                            
+                            <div class="flex-1 bg-white p-3 border grid-border overflow-hidden mt-1 relative">
+                                <p class="text-stone-500 text-[11px] font-mono line-clamp-4 leading-relaxed">
+                                    {{ note.content_md | striptags }}
+                                </p>
+                                <div class="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="py-24 bg-[#fafafa] border border-dashed grid-border flex flex-col items-center justify-center rounded-sm">
+                        <i class="fas fa-network-wired text-3xl text-stone-300 mb-4"></i>
+                        <h3 class="text-sm font-bold text-stone-800 uppercase tracking-widest mb-1">无共享连接</h3>
+                        <p class="text-[10px] text-stone-400 font-mono tracking-widest uppercase">当其他节点与您共享数据时将显示在此处</p>
+                    </div>
+                {% endif %}
+            </div>
+
+        {% else %}
+            <div class="space-y-8 mb-12">
+                <div class="pb-6 border-b grid-border">
+                    <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2">QUERY EXECUTED</span>
+                    <h2 class="text-3xl font-light text-stone-900 uppercase">
+                        检索结果: <span class="font-bold">"{{ q }}"</span>
+                    </h2>
+                    <p class="text-stone-500 font-mono text-[10px] mt-2 uppercase tracking-widest">MATCHES FOUND: {{ title_matches|length + content_matches|length }}</p>
                 </div>
-            </a>
-        </div>
+                
+                {% if title_matches %}
+                    <h3 class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] mb-4">MATCHED IN TITLE // 标题匹配</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                        {% for note in title_matches %}
+                        <a href="{{ url_for('view_note', note_id=note.id) }}" class="brutal-card p-6 block">
+                            <h4 class="font-bold text-lg mb-3 text-stone-900">
+                                {{ note.title | replace(q, '<mark class="bg-[#111] text-white px-1 py-0.5 rounded-sm">' + q + '</mark>') | safe }}
+                            </h4>
+                            <p class="text-[11px] text-stone-500 line-clamp-2 font-mono">{{ note.content_md | striptags }}</p>
+                        </a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if content_matches %}
+                    <h3 class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] mb-4">MATCHED IN CONTENT // 内容匹配</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {% for note in content_matches %}
+                        <a href="{{ url_for('view_note', note_id=note.id) }}" class="brutal-card p-6 block bg-[#fafafa]">
+                            <h4 class="font-bold text-base mb-3 text-stone-800 truncate">{{ note.title }}</h4>
+                            <p class="text-[11px] text-stone-500 line-clamp-3 leading-relaxed font-mono bg-white p-3 border grid-border">
+                                {{ note.content_md | striptags | replace(q, '<mark class="bg-[#111] text-white px-1 py-0.5 rounded-sm font-bold">' + q + '</mark>') | safe }}
+                            </p>
+                        </a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
         {% endif %}
+        
     </div>
 </div>
 
-{% if not q %}
-    {% if featured_notes %}
-    <div class="mb-14">
-        <h2 class="text-2xl font-black text-stone-800 dark:text-white flex items-center gap-3 mb-6 px-2">
-            <div class="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-500/20 text-amber-500 flex items-center justify-center text-xl shadow-inner">
-                <i class="fas fa-crown"></i>
+<dialog id="note_preview_modal" class="modal bg-stone-900/60 backdrop-blur-sm z-[200]">
+    <div class="modal-box w-11/12 max-w-3xl bg-white rounded-sm p-0 modal-brutal overflow-hidden flex flex-col max-h-[85vh]">
+        
+        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern flex justify-between items-start shrink-0">
+            <div class="flex flex-col gap-2">
+                <span class="text-[9px] font-mono text-stone-500 tracking-widest uppercase bg-white border grid-border px-2 py-1 w-fit" id="modal_date"></span>
+                <h2 id="modal_title" class="text-2xl font-black text-stone-900 leading-tight bg-white inline-block w-fit px-1"></h2>
             </div>
-            精选高光
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for note in featured_notes %}
-            <a href="{{ url_for('view_note', note_id=note.id) }}" class="group relative flex flex-col bg-gradient-to-br from-white to-amber-50/30 dark:from-base-200 dark:to-amber-900/10 rounded-[2rem] p-6 border border-amber-100 dark:border-amber-500/20 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden h-full">
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-amber-400/10 rounded-full blur-2xl group-hover:bg-amber-400/20 transition-colors"></div>
-                
-                <div class="flex justify-between items-start mb-4 relative z-10">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 font-black text-sm flex items-center justify-center shadow-inner border border-white dark:border-amber-500/30">
-                            {{ note.user.username[0] | upper }}
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-stone-700 dark:text-stone-200 leading-tight">{{ note.user.username }}</span>
-                            <span class="text-[10px] text-stone-400 font-mono">{{ note.updated_at.strftime('%Y-%m-%d') }}</span>
-                        </div>
-                    </div>
-                    <div class="badge badge-warning gap-1 font-black shadow-sm text-xs py-2.5">
-                        <i class="fas fa-star text-[10px]"></i> 精选
-                    </div>
-                </div>
-                
-                <h3 class="font-black text-xl text-stone-800 dark:text-white mb-2 line-clamp-1 group-hover:text-amber-600 transition-colors relative z-10">{{ note.title }}</h3>
-                <p class="text-sm text-stone-500 dark:text-stone-400 line-clamp-3 leading-relaxed flex-grow relative z-10">
-                    {{ note.content_md | striptags }}
-                </p>
-            </a>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
-    {% set paper_styles = [
-        {'bg': 'bg-yellow-100 dark:bg-yellow-900', 'text': 'text-yellow-900 dark:text-yellow-100', 'border': 'border-yellow-200 dark:border-yellow-700', 'rotate': '-rotate-2', 'tape': 'rotate-3'},
-        {'bg': 'bg-emerald-100 dark:bg-emerald-900', 'text': 'text-emerald-900 dark:text-emerald-100', 'border': 'border-emerald-200 dark:border-emerald-700', 'rotate': 'rotate-2', 'tape': '-rotate-2'},
-        {'bg': 'bg-blue-100 dark:bg-blue-900', 'text': 'text-blue-900 dark:text-blue-100', 'border': 'border-blue-200 dark:border-blue-700', 'rotate': '-rotate-1', 'tape': 'rotate-2'},
-        {'bg': 'bg-rose-100 dark:bg-rose-900', 'text': 'text-rose-900 dark:text-rose-100', 'border': 'border-rose-200 dark:border-rose-700', 'rotate': 'rotate-1', 'tape': '-rotate-1'},
-        {'bg': 'bg-violet-100 dark:bg-violet-900', 'text': 'text-violet-900 dark:text-violet-100', 'border': 'border-violet-200 dark:border-violet-700', 'rotate': '-rotate-2', 'tape': 'rotate-1'}
-    ] %}
-
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-2">
-        <h2 class="text-2xl font-black text-stone-800 dark:text-white flex items-center gap-3">
-            <div class="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-xl shadow-inner">
-                <i class="fas fa-layer-group"></i>
-            </div>
-            个人空间
-        </h2>
-
-        <div class="relative book-tabs-container rounded-2xl p-1 w-full sm:w-auto flex items-center z-10">
-            <div id="tab-slider-bg" class="tab-slider"></div>
-            <button onclick="switchTab('my')" id="tab-my" class="book-tab active flex-1 sm:flex-none px-6 py-2 rounded-xl text-sm flex items-center justify-center gap-2">
-                我的笔记
-                <span class="bg-black/5 dark:bg-white/10 px-1.5 py-0.5 rounded-md text-[10px]">{{ my_notes|length }}</span>
-            </button>
-            <button onclick="switchTab('shared')" id="tab-shared" class="book-tab flex-1 sm:flex-none px-6 py-2 rounded-xl text-sm flex items-center justify-center gap-2">
-                收到分享
-                <span class="bg-black/5 dark:bg-white/10 px-1.5 py-0.5 rounded-md text-[10px]">{{ shared_notes|length }}</span>
-            </button>
-        </div>
-    </div>
-
-    <div id="content-my" class="animate-fade-in mb-12">
-        {% if my_notes %}
-            <div class="grid gap-6 sm:gap-8 md:grid-cols-2 xl:grid-cols-3 xl:gap-10 p-4">
-                {% for note in my_notes %}
-                {% set style = paper_styles[loop.index0 % 5] %}
-                <a href="{{ url_for('view_note', note_id=note.id) }}" class="group relative flex flex-col {{ style.bg }} {{ style.border }} {{ style.rotate }} rounded-tl-md rounded-tr-md rounded-bl-md rounded-br-[2.5rem] p-6 border shadow-[3px_5px_15px_rgba(0,0,0,0.05)] hover:shadow-[8px_15px_25px_rgba(0,0,0,0.12)] hover:-translate-y-2 hover:rotate-0 transition-all duration-300 h-[280px]">
-                    
-                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-white/50 dark:bg-white/10 backdrop-blur-sm shadow-sm {{ style.tape }} z-20"></div>
-
-                    <div class="absolute bottom-2 right-2 w-12 h-12 bg-black/10 dark:bg-black/30 rounded-tl-[2rem] rounded-br-[2.5rem] -z-10 group-hover:scale-110 transition-transform blur-[6px]"></div>
-
-                    <div class="flex justify-between items-start mb-4 relative z-10 mt-1">
-                        <div class="w-10 h-10 rounded-full bg-white/40 dark:bg-black/20 flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
-                            {{ note.icon or '📝' }}
-                        </div>
-                        <div class="flex flex-col items-end">
-                            <span class="text-xs font-black {{ style.text }} opacity-50 mix-blend-multiply dark:mix-blend-screen">{{ note.updated_at.strftime('%Y-%m-%d') }}</span>
-                        </div>
-                    </div>
-
-                    <h3 class="font-black text-lg mb-2 line-clamp-1 {{ style.text }} group-hover:opacity-80 transition-opacity relative z-10">{{ note.title }}</h3>
-                    <p class="text-sm font-medium opacity-70 line-clamp-4 leading-relaxed mb-4 flex-grow {{ style.text }} relative z-10">
-                        {{ note.content_md | striptags }}
-                    </p>
-                    
-                    <div class="flex items-center justify-between pt-4 border-t border-black/5 dark:border-white/10 relative z-10">
-                        <div class="flex flex-wrap gap-1.5 max-w-[70%]">
-                            {% for tag in note.tags[:2] %}
-                                <span class="px-2 py-1 rounded-md bg-white/40 dark:bg-black/20 text-[10px] font-bold {{ style.text }}"># {{ tag.name }}</span>
-                            {% endfor %}
-                            {% if note.tags|length > 2 %}
-                                <span class="px-1.5 py-1 rounded-md bg-white/40 dark:bg-black/20 text-[10px] font-bold {{ style.text }}">...</span>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="flex items-center gap-3 text-xs font-bold {{ style.text }} opacity-50 group-hover:opacity-100 transition-opacity">
-                            {% if note.shares %}
-                            <div class="flex items-center gap-1 bg-white/40 dark:bg-black/20 px-2 py-1 rounded-lg tooltip tooltip-top" data-tip="已分享给 {{ note.shares|length }} 人">
-                                <i class="fas fa-paper-plane"></i> {{ note.shares|length }}
-                            </div>
-                            {% endif %}
-                            <i class="fas fa-arrow-right group-hover:translate-x-1 transition-all"></i>
-                        </div>
-                    </div>
+            
+            <div class="flex items-center gap-2 shrink-0 ml-4">
+                <a id="modal_edit_btn" href="#" class="btn-brutal-outline py-2 px-4 shadow-sm" title="进入编辑">
+                    <i class="fas fa-terminal mr-2"></i> EDIT
                 </a>
-                {% endfor %}
+                <form method="dialog" class="m-0">
+                    <button class="w-10 h-10 border grid-border bg-white hover:bg-[#111] hover:text-white transition-colors flex items-center justify-center font-bold">
+                        ✕
+                    </button>
+                </form>
             </div>
-        {% else %}
-            <div class="text-center py-20 bg-white/50 dark:bg-base-200/50 rounded-[3rem] border border-dashed border-stone-200 dark:border-base-300 shadow-inner">
-                <div class="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-inner">
-                    <i class="fas fa-feather-alt text-primary/40"></i>
-                </div>
-                <h3 class="font-black text-xl text-stone-700 dark:text-stone-300 mb-2">灵感是一张白纸</h3>
-                <p class="text-sm font-medium text-stone-400 mb-6">点击右上角的“新写一篇”，开始构建你的知识库</p>
-                <a href="{{ url_for('new_note') }}" class="btn btn-primary rounded-2xl px-8 shadow-lg shadow-primary/20">动笔写写</a>
-            </div>
-        {% endif %}
-    </div>
-
-    <div id="content-shared" class="hidden animate-fade-in mb-12">
-        {% if shared_notes %}
-            <div class="grid gap-6 sm:gap-8 md:grid-cols-2 xl:grid-cols-3 xl:gap-10 p-4">
-                {% for note in shared_notes %}
-                {% set style = paper_styles[loop.index0 % 5] %}
-                <a href="{{ url_for('view_note', note_id=note.id) }}" class="group relative flex flex-col {{ style.bg }} {{ style.border }} {{ style.rotate }} rounded-tl-md rounded-tr-md rounded-bl-md rounded-br-[2.5rem] p-6 border shadow-[3px_5px_15px_rgba(0,0,0,0.05)] hover:shadow-[8px_15px_25px_rgba(0,0,0,0.12)] hover:-translate-y-2 hover:rotate-0 transition-all duration-300 h-[280px]">
-                    
-                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-white/50 dark:bg-white/10 backdrop-blur-sm shadow-sm {{ style.tape }} z-20"></div>
-                    <div class="absolute bottom-2 right-2 w-12 h-12 bg-black/10 dark:bg-black/30 rounded-tl-[2rem] rounded-br-[2.5rem] -z-10 group-hover:scale-110 transition-transform blur-[6px]"></div>
-
-                    <div class="flex justify-between items-start mb-4 mt-1">
-                        <div class="flex items-center gap-3 relative z-10">
-                            <div class="w-10 h-10 rounded-full bg-white/40 dark:bg-black/20 text-xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                                {{ note.icon or '📬' }}
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-sm font-black {{ style.text }}">{{ note.user.username }}</span>
-                                <span class="text-[10px] font-bold {{ style.text }} opacity-50 mix-blend-multiply dark:mix-blend-screen">分享于 {{ note.updated_at.strftime('%m-%d') }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h3 class="font-black text-lg mb-2 line-clamp-1 {{ style.text }} group-hover:opacity-80 transition-colors relative z-10">{{ note.title }}</h3>
-                    <p class="text-sm font-medium opacity-70 line-clamp-4 leading-relaxed mb-4 flex-grow {{ style.text }} relative z-10">
-                        {{ note.content_md | striptags }}
-                    </p>
-                </a>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="text-center py-20 bg-white/50 dark:bg-base-200/50 rounded-[3rem] border border-dashed border-stone-200 dark:border-base-300 shadow-inner">
-                <div class="w-20 h-20 bg-stone-100 dark:bg-base-300 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-inner">
-                    <i class="fas fa-inbox text-stone-300 dark:text-stone-600"></i>
-                </div>
-                <h3 class="font-black text-xl text-stone-700 dark:text-stone-300 mb-2">信箱空空如也</h3>
-                <p class="text-sm font-medium text-stone-400">当学友与你分享笔记时，它们会出现在这里</p>
-            </div>
-        {% endif %}
-    </div>
-
-{% else %}
-    <div class="space-y-12 mb-12">
-        <div class="text-center py-8 bg-white/40 dark:bg-base-200/40 rounded-[2.5rem] border border-white/50 dark:border-white/5 shadow-sm backdrop-blur-md">
-            <h2 class="text-3xl font-black text-stone-800 dark:text-white mb-2">
-                搜索关键字 <span class="text-primary font-mono bg-primary/10 px-3 py-1 rounded-xl ml-1">"{{ q }}"</span>
-            </h2>
-            <p class="text-stone-500 font-bold">
-                浩瀚卷帙中，为你找到 <span class="text-primary">{{ title_matches|length + content_matches|length }}</span> 处印记
-            </p>
         </div>
         
-        <div class="space-y-6">
-            <h3 class="text-xl font-black text-stone-800 dark:text-white flex items-center gap-3 px-2">
-                <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center"><i class="fas fa-heading"></i></div>
-                核心命题 <span class="badge border-none bg-stone-200 text-stone-600 font-bold ml-1">{{ title_matches|length }}</span>
-            </h3>
-            {% if title_matches %}
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {% for note in title_matches %}
-                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="group flex flex-col bg-white dark:bg-base-200 rounded-[1.5rem] p-5 border border-stone-100 dark:border-white/5 hover:border-blue-400/30 hover:shadow-lg transition-all h-full">
-                        <div class="flex items-center gap-2 mb-3">
-                            {% if note.source_type == 'my' %}
-                                <div class="badge badge-sm border-none bg-primary/10 text-primary font-bold px-2 py-3 rounded-md">我的</div>
-                            {% else %}
-                                <div class="badge badge-sm border-none bg-emerald-500/10 text-emerald-600 font-bold px-2 py-3 rounded-md">来自 {{ note.user.username }}</div>
-                            {% endif %}
-                            <span class="text-[10px] font-bold text-stone-400 ml-auto">{{ note.updated_at.strftime('%Y-%m-%d') }}</span>
-                        </div>
-                        <h3 class="font-black text-lg text-stone-800 dark:text-stone-100 group-hover:text-blue-500 transition-colors leading-tight mb-2">
-                            {{ note.title | replace(q, '<mark style="background:var(--fallback-wa,oklch(var(--wa)));color:black;border-radius:4px;padding:0 4px;">' + q + '</mark>') | safe }}
-                        </h3>
-                        <p class="text-sm text-stone-500 dark:text-stone-400 line-clamp-2 mt-auto">
-                            {{ note.content_md | striptags }}
-                        </p>
-                    </a>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="pl-4 border-l-2 border-stone-200 dark:border-stone-700 py-2 text-stone-400 font-medium text-sm">没有标题直接命中该关键词</div>
-            {% endif %}
+        <div class="flex-1 overflow-y-auto custom-scroll p-8 bg-white relative">
+            <div class="absolute left-4 top-8 bottom-8 w-px bg-stone-200"></div>
+            <div id="modal_content" class="text-stone-700 text-sm leading-loose whitespace-pre-wrap font-mono pl-6">
+            </div>
         </div>
-
-        <div class="space-y-6 pt-6 border-t border-stone-100 dark:border-white/5">
-            <h3 class="text-xl font-black text-stone-800 dark:text-white flex items-center gap-3 px-2">
-                <div class="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center"><i class="fas fa-align-left"></i></div>
-                字里行间 <span class="badge border-none bg-stone-200 text-stone-600 font-bold ml-1">{{ content_matches|length }}</span>
-            </h3>
-            {% if content_matches %}
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {% for note in content_matches %}
-                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="group flex flex-col bg-white dark:bg-base-200 rounded-[1.5rem] p-5 border border-stone-100 dark:border-white/5 hover:border-orange-400/30 hover:shadow-lg transition-all h-full">
-                        <div class="flex items-center gap-2 mb-2">
-                            <h3 class="font-black text-base text-stone-800 dark:text-stone-100 truncate group-hover:text-orange-500 transition-colors">{{ note.title }}</h3>
-                            <span class="text-[10px] font-bold text-stone-400 ml-auto flex-shrink-0">{{ note.updated_at.strftime('%Y-%m-%d') }}</span>
-                        </div>
-                        <p class="text-sm text-stone-600 dark:text-stone-400 line-clamp-3 leading-relaxed bg-stone-50 dark:bg-base-300/50 p-3 rounded-xl border border-stone-100 dark:border-white/5">
-                            {{ note.content_md | striptags | replace(q, '<mark style="background:var(--fallback-wa,oklch(var(--wa)));color:black;border-radius:4px;padding:0 4px;font-weight:bold;">' + q + '</mark>') | safe }}
-                        </p>
-                    </a>
-                    {% endfor %}
-                </div>
-            {% else %}
-                 <div class="pl-4 border-l-2 border-stone-200 dark:border-stone-700 py-2 text-stone-400 font-medium text-sm">内容中未发现该关键词</div>
-            {% endif %}
-        </div>
+        
     </div>
-{% endif %}
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
 
 {% endblock %}
 
@@ -352,6 +276,7 @@
 <script>
 let searchTimeout;
 
+// 实时搜索 (Brutalist Style)
 function handleSearchInput(val) {
     clearTimeout(searchTimeout);
     const resultsDiv = document.getElementById('instantSearchResults');
@@ -369,27 +294,21 @@ function handleSearchInput(val) {
             
             if (data.results && data.results.length > 0) {
                 resultsDiv.innerHTML = data.results.map(item => `
-                    <a href="/book/notes/${item.id}" class="flex items-center gap-4 p-4 hover:bg-stone-50 dark:hover:bg-base-300 border-b border-stone-100 dark:border-white/5 last:border-0 transition-colors cursor-pointer group">
-                        <div class="w-10 h-10 rounded-xl ${item.type === 'my' ? 'bg-primary/10 text-primary' : 'bg-emerald-500/10 text-emerald-500'} flex items-center justify-center text-xl shadow-inner">
-                            ${item.icon || (item.type === 'my' ? '📝' : '📬')}
+                    <a href="/book/notes/${item.id}" class="flex items-start gap-4 p-4 hover:bg-[#fafafa] border-b border-stone-100 last:border-0 transition-colors cursor-pointer group">
+                        <div class="w-8 h-8 rounded-sm ${item.type === 'my' ? 'bg-[#111] text-white' : 'bg-stone-200 text-stone-600'} flex items-center justify-center font-bold text-xs shrink-0">
+                            <i class="fas ${item.type === 'my' ? 'fa-file-alt' : 'fa-link'}"></i>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <h4 class="font-bold text-sm text-stone-800 dark:text-stone-200 truncate group-hover:text-primary transition-colors">${item.title}</h4>
-                            <p class="text-[11px] font-bold text-stone-400 uppercase tracking-widest mt-0.5">
-                                ${item.type === 'my' ? 'Private Note' : `From ${item.user}`}
+                        <div class="flex-1 min-w-0 pt-0.5">
+                            <h4 class="font-bold text-sm text-stone-800 truncate group-hover:text-primary transition-colors">${item.title}</h4>
+                            <p class="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-1 font-mono">
+                                ${item.type === 'my' ? 'PRIVATE NODE' : `LINKED FROM: ${item.user}`}
                             </p>
                         </div>
-                        <i class="fas fa-chevron-right text-stone-300 group-hover:text-primary group-hover:translate-x-1 transition-all text-xs"></i>
                     </a>
                 `).join('');
                 resultsDiv.classList.remove('hidden');
             } else {
-                resultsDiv.innerHTML = `
-                    <div class="p-6 text-center">
-                        <i class="fas fa-search text-2xl text-stone-300 mb-2"></i>
-                        <p class="text-sm font-bold text-stone-500">无直接匹配，按回车全库搜索</p>
-                    </div>
-                `;
+                resultsDiv.innerHTML = `<div class="p-5 text-center text-[10px] font-bold text-stone-400 uppercase tracking-widest font-mono">QUERY RETURNED 0 RESULTS. PRESS ENTER FOR DEEP SEARCH.</div>`;
                 resultsDiv.classList.remove('hidden');
             }
         } catch (e) {
@@ -400,47 +319,44 @@ function handleSearchInput(val) {
 
 // 自动关闭下拉框
 document.addEventListener('click', (e) => {
-    const container = document.querySelector('.relative.group');
+    const container = document.querySelector('.search-minimal');
     const resultsDiv = document.getElementById('instantSearchResults');
     if (container && !container.contains(e.target) && resultsDiv) {
         resultsDiv.classList.add('hidden');
     }
 });
 
+// 硬核 Tab 切换逻辑
 function switchTab(tab) {
-    // 处理胶囊动画和激活状态
     const tabs = ['my', 'shared'];
-    const slider = document.getElementById('tab-slider-bg');
-    
     tabs.forEach(t => {
         const btn = document.getElementById(`tab-${t}`);
         if(t === tab) {
-            btn.classList.add('active');
-            if (tab === 'shared') {
-                slider.classList.add('slider-right');
-            } else {
-                slider.classList.remove('slider-right');
-            }
+            btn.classList.remove('tab-inactive');
+            btn.classList.add('tab-active');
         } else {
-            btn.classList.remove('active');
+            btn.classList.remove('tab-active');
+            btn.classList.add('tab-inactive');
         }
     });
     
-    // 切换内容显示
     document.getElementById('content-my').classList.add('hidden');
     document.getElementById('content-shared').classList.add('hidden');
     document.getElementById(`content-${tab}`).classList.remove('hidden');
 }
 
+// 搜索跳转
 function doSearch() {
     const val = document.getElementById('quickInput').value.trim();
     window.location.href = "{{ url_for('book_index') }}?q=" + encodeURIComponent(val);
 }
 
+// 快捷创建档案
 async function quickCreate() {
     const val = document.getElementById('quickInput').value.trim();
     if (!val) {
-        if(app && app.toast) app.toast.show('请输入笔记内容或标题', 'warning');
+        if(app && app.toast) app.toast.show('COMMAND ERROR: EMPTY INPUT', 'warning');
+        else alert('请输入检索指令或新建内容');
         return;
     }
     
@@ -448,7 +364,7 @@ async function quickCreate() {
         const btn = event.currentTarget;
         const originalHTML = btn.innerHTML;
         btn.classList.add('pointer-events-none', 'opacity-50');
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin text-[10px] mr-2"></i> PROCESSING';
         
         const response = await fetch("{{ url_for('quick_create_note') }}", {
             method: 'POST',
@@ -461,13 +377,13 @@ async function quickCreate() {
         if (data.success) {
             window.location.href = "/book/notes/" + data.note_id;
         } else {
-            if(app && app.toast) app.toast.show('创建失败: ' + (data.error || '未知错误'), 'error');
+            if(app && app.toast) app.toast.show('SYS ERROR: ' + (data.error || 'UNKNOWN'), 'error');
             btn.classList.remove('pointer-events-none', 'opacity-50');
             btn.innerHTML = originalHTML;
         }
     } catch (error) {
         console.error('Error:', error);
-        if(app && app.toast) app.toast.show('网络请求出错', 'error');
+        if(app && app.toast) app.toast.show('NETWORK ERROR', 'error');
     }
 }
 
@@ -478,5 +394,21 @@ document.getElementById('quickInput').addEventListener('keypress', function(e) {
         doSearch();
     }
 });
+
+// 打开极简数据视窗 (Modal)
+function openPreviewModal(el) {
+    const title = el.getAttribute('data-title');
+    const date = el.getAttribute('data-date');
+    const content = el.getAttribute('data-content');
+    const url = el.getAttribute('data-url');
+    
+    document.getElementById('modal_title').textContent = title;
+    document.getElementById('modal_date').textContent = `TIMESTAMP: ${date}`;
+    document.getElementById('modal_content').textContent = content || 'CONTENT EMPTY // 数据丢失';
+    
+    document.getElementById('modal_edit_btn').href = url;
+    
+    document.getElementById('note_preview_modal').showModal();
+}
 </script>
 {% endblock %}

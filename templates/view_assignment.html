@@ -4,26 +4,21 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/easymde.min.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
 <style>
     /* ==========================================
        FWA 极简野兽派风格 (Brutalist / Grid UI)
        ========================================== */
     body {
-        background-color: #f5f5f5 !important;
-        color: #1a1a1a;
+        background-color: #f5f5f5 !important; color: #1a1a1a;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     }
 
-    /* 极简网格容器与边框 */
     .grid-border { border-color: rgba(0,0,0,0.1); }
     .dark .grid-border { border-color: rgba(255,255,255,0.1); }
+    
+    .stripe-pattern { background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px); }
 
-    /* 横线纹理背景 */
-    .stripe-pattern {
-        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px);
-    }
-
-    /* 极简按钮 */
     .btn-brutal {
         background: #111; color: #fff; border-radius: 2px; font-size: 12px; font-weight: 700; text-transform: uppercase;
         padding: 0.75rem 1.5rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center; border: 1px solid #111;
@@ -38,15 +33,45 @@
     }
     .btn-brutal-outline:hover { border-color: #111; background: #f0f0f0; }
 
+    /* 巨大的背景水印印章 */
+    .bg-stamp {
+        position: absolute; right: -5%; bottom: -10%; font-size: 15rem; font-weight: 900; 
+        color: rgba(0,0,0,0.02); pointer-events: none; user-select: none; z-index: 0;
+        transform: rotate(-10deg); font-family: monospace; line-height: 0.8;
+    }
+
     /* ==========================================
        排版细节重置 (Typography Reset)
        ========================================== */
-    .prose { max-width: 100%; color: #333; }
-    .prose h1, .prose h2, .prose h3 { font-weight: 800; color: #111; margin-top: 2rem; margin-bottom: 1rem; letter-spacing: -0.02em; }
-    .prose p { margin-bottom: 1.5rem; line-height: 1.7; font-size: 0.95rem; }
-    .prose pre { background-color: #111; color: #eee; border-radius: 2px; padding: 1.5rem; border: 1px solid #333; }
-    .prose code { color: #111; background-color: #f0f0f0; padding: 0.2rem 0.4rem; border-radius: 2px; font-size: 0.85em; font-family: monospace; }
-    .prose blockquote { border-left: 4px solid #111; font-style: normal; color: #666; padding-left: 1rem; background: #fafafa; padding: 1rem; margin-left: 0; margin-right: 0;}
+    .prose { max-width: 100%; color: #333; font-size: 15px; line-height: 1.8; }
+    .prose h1 { font-size: 2rem; font-weight: 900; color: #111; margin: 2.5rem 0 1.5rem; letter-spacing: -0.03em; text-transform: uppercase; border-bottom: 2px solid #111; padding-bottom: 0.5rem; }
+    .prose h2 { font-size: 1.5rem; font-weight: 800; color: #111; margin: 2rem 0 1rem; letter-spacing: -0.02em; }
+    .prose h3 { font-size: 1.15rem; font-weight: 800; color: #333; margin: 1.5rem 0 0.75rem; }
+    .prose p { margin-bottom: 1.25rem; }
+    
+    .prose code:not(pre code) { color: #ef4444; background-color: #fce8e8; padding: 0.15rem 0.4rem; border-radius: 2px; font-size: 0.85em; font-family: monospace; border: 1px solid #fecaca; }
+    .prose blockquote { border-left: 4px solid #111; font-style: normal; color: #555; background: #fafafa; padding: 1rem 1.5rem; margin: 1.5rem 0; font-family: monospace; }
+    .prose blockquote p { margin-bottom: 0; }
+
+    .prose ul { list-style-type: square; padding-left: 1.5rem; margin-bottom: 1.5rem; }
+    .prose ol { list-style-type: decimal-leading-zero; padding-left: 1.5rem; margin-bottom: 1.5rem; font-family: monospace; font-weight: bold; }
+    .prose li { margin-bottom: 0.5rem; color: #444; }
+    .prose ol li span { font-family: sans-serif; font-weight: normal; } 
+    
+    .prose img { border-radius: 2px; border: 2px solid #111; box-shadow: 4px 4px 0 #111; margin: 1.5rem 0; max-width: 100%; }
+    .prose a { color: #111; text-decoration: underline; text-underline-offset: 3px; font-weight: bold; transition: all 0.2s; }
+    .prose a:hover { background: #111; color: #fff; text-decoration: none; }
+
+    /* ==========================================
+       代码块终极外壳 (Brutalist Terminal Window)
+       ========================================== */
+    .brutal-code-window { margin: 2rem 0; border: 1px solid #111; border-radius: 2px; box-shadow: 6px 6px 0px rgba(0,0,0,1); background: #0d1117; display: flex; flex-direction: column; overflow: hidden; }
+    .brutal-code-header { background: #111; padding: 0.5rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+    .brutal-code-lang { color: #8b949e; font-size: 10px; font-family: monospace; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 0.5rem; }
+    .brutal-code-copy { color: #8b949e; font-size: 10px; font-family: monospace; font-weight: bold; text-transform: uppercase; cursor: pointer; transition: color 0.2s; }
+    .brutal-code-copy:hover { color: #fff; }
+    .brutal-code-content { padding: 1.25rem; overflow-x: auto; margin: 0; background: transparent !important; }
+    .hljs { background: transparent !important; padding: 0 !important; font-family: 'Fira Code', 'Courier New', monospace; font-size: 14px; line-height: 1.6; }
 
     /* ==========================================
        EasyMDE 极简定制
@@ -55,13 +80,6 @@
     .editor-toolbar { border: none !important; border-bottom: 1px solid rgba(0,0,0,0.1) !important; background: #fafafa !important; border-radius: 2px 2px 0 0 !important; opacity: 0.8; transition: opacity 0.2s; }
     .editor-toolbar:hover { opacity: 1; }
     .CodeMirror { border: none !important; font-family: monospace; font-size: 14px; background: transparent !important; }
-    
-    /* 巨大的背景水印印章 */
-    .bg-stamp {
-        position: absolute; right: -5%; bottom: -10%; font-size: 15rem; font-weight: 900; 
-        color: rgba(0,0,0,0.02); pointer-events: none; user-select: none; z-index: 0;
-        transform: rotate(-10deg); font-family: monospace; line-height: 0.8;
-    }
 </style>
 {% endblock %}
 
@@ -93,18 +111,12 @@
                         
                         {% if submission %}
                             {% if submission.status == 'graded' %}
-                                <span class="bg-emerald-500 text-white text-[10px] font-black px-3 py-1.5 uppercase tracking-widest border border-emerald-600 shadow-sm">
-                                    已完成
-                                </span>
+                                <span class="bg-emerald-500 text-white text-[10px] font-black px-3 py-1.5 uppercase tracking-widest border border-emerald-600 shadow-sm">已完成</span>
                             {% else %}
-                                <span class="bg-amber-400 text-black text-[10px] font-black px-3 py-1.5 uppercase tracking-widest border border-amber-500 shadow-sm animate-pulse">
-                                    进行中
-                                </span>
+                                <span class="bg-amber-400 text-black text-[10px] font-black px-3 py-1.5 uppercase tracking-widest border border-amber-500 shadow-sm animate-pulse">进行中</span>
                             {% endif %}
                         {% else %}
-                            <span class="bg-stone-200 text-stone-500 text-[10px] font-black px-3 py-1.5 uppercase tracking-widest border border-stone-300 shadow-sm">
-                                未分配
-                            </span>
+                            <span class="bg-stone-200 text-stone-500 text-[10px] font-black px-3 py-1.5 uppercase tracking-widest border border-stone-300 shadow-sm">未分配</span>
                         {% endif %}
                     </div>
 
@@ -165,17 +177,14 @@
                 {% if submission and submission.status == 'graded' %}
                 <div class="bg-emerald-50/50 border border-emerald-200 p-8 rounded-sm shadow-sm relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                    
                     <h3 class="text-xs font-black text-emerald-800 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
                         <i class="fas fa-check-circle"></i> 评估回执
                     </h3>
-                    
                     <div class="flex items-end gap-8 mb-6 border-b border-emerald-200/50 pb-6">
                         <div>
                             <p class="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest mb-1">综合评定</p>
                             <div class="text-5xl font-light text-emerald-700 leading-none">{{ submission.grade }}</div>
                         </div>
-                        
                         <div class="flex flex-col gap-2">
                             <p class="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest">获得星级</p>
                             <div class="flex gap-1.5">
@@ -188,7 +197,6 @@
                             </div>
                         </div>
                     </div>
-
                     <div>
                         <p class="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest mb-2">评语反馈</p>
                         <div class="bg-white p-4 border border-emerald-100 text-stone-700 text-sm font-medium leading-relaxed font-mono">
@@ -223,7 +231,6 @@
                         </div>
                     </form>
                 </div>
-                
             </div>
         </div>
     </div>
@@ -232,10 +239,12 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/easymde.min.js') }}"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/highlight.min.js') }}"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        
         // 1. 初始化右侧极简编辑器
         const easyMDE = new EasyMDE({
             element: document.getElementById('md-editor'),
@@ -246,13 +255,62 @@
             toolbar: ["bold", "italic", "heading", "|", "quote", "code", "unordered-list", "ordered-list", "|", "preview"]
         });
 
-        // 2. 💡 读取并实时渲染左侧的任务内容 (Brutalist Markdown rendering)
+        // 2. 💡 读取并实时渲染左侧的任务内容
         const rawMd = document.getElementById('raw-markdown-content').value;
         const targetDiv = document.getElementById('rendered-markdown-content');
         
         if (rawMd && rawMd.trim() !== '') {
             // 使用 marked 库将 markdown 解析为 html
             targetDiv.innerHTML = marked.parse(rawMd);
+            
+            // 💡 增强：代码块注入“野兽派终端”样式并执行语法高亮
+            targetDiv.querySelectorAll('pre code').forEach((block) => {
+                let lang = 'RAW';
+                block.classList.forEach(c => {
+                    if (c.startsWith('language-')) lang = c.replace('language-', '').toUpperCase();
+                });
+
+                hljs.highlightElement(block);
+
+                const pre = block.parentNode;
+                const wrapper = document.createElement('div');
+                wrapper.className = 'brutal-code-window';
+                
+                const header = document.createElement('div');
+                header.className = 'brutal-code-header';
+                header.innerHTML = `
+                    <div class="brutal-code-lang">
+                        <i class="fas fa-terminal opacity-50"></i> ${lang} PAYLOAD
+                    </div>
+                `;
+                
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'brutal-code-copy';
+                copyBtn.innerHTML = '<i class="far fa-copy mr-1"></i> COPY';
+                copyBtn.title = 'Copy code payload';
+                
+                copyBtn.addEventListener('click', async () => {
+                    const code = block.textContent; 
+                    try {
+                        await navigator.clipboard.writeText(code);
+                        const originalIcon = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '<i class="fas fa-check text-emerald-400 mr-1"></i> COPIED';
+                        copyBtn.style.color = '#fff';
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalIcon;
+                            copyBtn.style.color = '';
+                        }, 2000);
+                    } catch (err) { console.error('Failed to copy!', err); }
+                });
+                
+                header.appendChild(copyBtn);
+
+                pre.parentNode.insertBefore(wrapper, pre);
+                wrapper.appendChild(header);
+                pre.className = 'brutal-code-content custom-scroll';
+                wrapper.appendChild(pre);
+            });
+            
         } else {
             targetDiv.innerHTML = '<p class="text-xs font-mono text-stone-400 uppercase tracking-widest border border-dashed border-stone-200 p-4 text-center">未提供详细简报。</p>';
         }

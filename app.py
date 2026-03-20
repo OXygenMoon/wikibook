@@ -739,6 +739,25 @@ class UserBookmark(db.Model):
     placed_at = db.Column(db.DateTime, nullable=True)      # 夹入书签的时间
 
 
+class VinylRecord(db.Model):
+    __tablename__ = 'vinyl_record'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    cover_url = db.Column(db.String(255), nullable=False) # 圆形封面图
+    audio_url = db.Column(db.String(255), nullable=False) # 音频文件
+    condition_type = db.Column(db.String(50), nullable=False) # 获取条件类型
+    condition_value = db.Column(db.Integer, default=0)        # 获取条件阈值
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    
+    users = db.relationship('UserVinyl', backref='vinyl', cascade="all, delete-orphan")
+
+class UserVinyl(db.Model):
+    __tablename__ = 'user_vinyl'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    vinyl_id = db.Column(db.Integer, db.ForeignKey('vinyl_record.id'), nullable=False)
+    earned_at = db.Column(db.DateTime, default=now_utc8)
+    is_notified = db.Column(db.Boolean, default=False)
 
 
 @login_manager.user_loader
@@ -3264,6 +3283,7 @@ def online_users():
     users = UserActiveStatus.query.filter(UserActiveStatus.last_active_at > online_threshold).all()
     return render_template("online_users.html", users=users)
 
+
 @app.route("/book/notes")
 @login_required
 def my_notes():
@@ -3938,12 +3958,22 @@ def inject_helpers():
     def get_badge_usage(user_id, badge_id):
         return UserSticker.query.filter_by(user_id=user_id, badge_id=badge_id).count()
     
+    # 💡 新增：动态计算全局贴纸上限 (基础 10 张 + 完成的委托数量)
+    def get_global_sticker_limit(user):
+        if not user.is_authenticated:
+            return 10
+        completed_tasks = Submission.query.filter_by(user_id=user.id, status='graded').count()
+        return 10 + completed_tasks
+    
     return dict(
         can_view_wiki=can_view_wiki, 
         can_edit_wiki=can_edit_wiki,
         online_user_count=online_count,
-        get_badge_usage=get_badge_usage
+        get_badge_usage=get_badge_usage,
+        get_global_sticker_limit=get_global_sticker_limit
     )
+
+
 
 
 # ==========================================
@@ -5012,7 +5042,7 @@ def sticker_walls_view():
             badge_counts[ub.badge_id] = {'badge': ub.badge, 'owned': 0}
         badge_counts[ub.badge_id]['owned'] += 1
         
-    # 2. 获取用户在【所有贴纸墙】上已经贴出的徽章数量 (用于计算各徽章的使用量和全局 10 张限制)
+    # 2. 获取用户在【所有贴纸墙】上已经贴出的徽章数量
     used_stickers = WallSticker.query.filter_by(user_id=current_user.id).all()
     used_counts = {}
     for s in used_stickers:
@@ -5033,8 +5063,15 @@ def sticker_walls_view():
     my_inventory.sort(key=lambda x: (-x['available'], x['badge'].id))
     my_total_stickers = len(used_stickers) # 全局已用总数
     
-    return render_template("sticker_walls.html", walls=visible_walls, my_inventory=my_inventory, my_total_stickers=my_total_stickers)
-
+    # 💡 核心新增：动态计算贴纸上限
+    completed_tasks_count = Submission.query.filter_by(user_id=current_user.id, status='graded').count()
+    max_stickers_limit = 10 + completed_tasks_count
+    
+    return render_template("sticker_walls.html", 
+                           walls=visible_walls, 
+                           my_inventory=my_inventory, 
+                           my_total_stickers=my_total_stickers,
+                           max_stickers_limit=max_stickers_limit) # 传入模板
 
 # ==========================================
 # 2. API路由：接管 sticker.js 的保存和加载
@@ -5141,10 +5178,13 @@ def api_stickers(page_type):
             incoming_count = len(stickers_data)
             
             # 严格限制最多只能贴 10 张
-            if other_walls_count + incoming_count > 10:
-                # db.session.rollback() # Flask-SQLAlchemy 自动管理事务，通常不需要手动 rollback 除非在同一个 session 内还要继续操作
-                return jsonify({"error": "保存失败：您的全局贴纸总数不可超过 10 张！请先收回其他墙面的贴纸。"}), 400
+            # 💡 动态获取当前用户的贴纸上限
+            completed_tasks_count = Submission.query.filter_by(user_id=current_user.id, status='graded').count()
+            max_limit = 10 + completed_tasks_count
 
+            # 严格限制最多只能贴 max_limit 张
+            if other_walls_count + incoming_count > max_limit:
+                return jsonify({"error": f"OVERLOAD // 保存失败：您的全局贴纸总数不可超过 {max_limit} 张！多去完成任务可以提升上限。"}), 400
             # [安全校验：防止篡改他人贴纸]
             # 后端只信任当前登录用户 (current_user.id)，无视前端传来的 user_id 或贴纸归属信息
             # 我们采取“先清空我的，再插入新的”策略，这样无论前端传什么，操作范围永远局限于“我的贴纸”
@@ -5878,6 +5918,35 @@ def place_bookmark():
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
 
+# ==========================================
+# 书签动作：取下已夹入的书签
+# ==========================================
+@app.route('/api/bookmarks/unplace', methods=['POST'])
+@login_required
+def unplace_bookmark():
+    data = request.json
+    ub_id = data.get('user_bookmark_id')
+    ub = UserBookmark.query.get_or_404(ub_id)
+    
+    # 安全校验：只能操作自己的书签
+    if ub.user_id != current_user.id:
+        return jsonify({'success': False, 'error': '无权操作'}), 403
+        
+    # 清空夹入位置的数据，恢复为闲置状态
+    ub.is_placed = False
+    ub.target_url = None
+    ub.target_block_id = None
+    ub.target_title = None
+    ub.target_snippet = None
+    ub.placed_at = None
+    
+    try:
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
 
 # ==========================================
 # 书签动作：渲染当前页书签 (互关学友版)
@@ -6173,6 +6242,44 @@ def manage_assignments():
     )
 
 # ==========================================
+# 🛠️ 管理员：编辑具体任务 API
+# ==========================================
+@app.route('/admin/assignments/<int:assign_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_assignment(assign_id):
+    if not current_user.is_admin:
+        abort(403)
+        
+    assign = Assignment.query.get_or_404(assign_id)
+    
+    if request.method == 'POST':
+        assign.title = request.form.get("title")
+        assign.content_md = request.form.get("content_md")
+        assign.target_type = request.form.get("target_type")
+        assign.target_value = request.form.get("target_value")
+        deadline_str = request.form.get("deadline")
+        assign.star_level = request.form.get("star_level", 1, type=int)
+        
+        if deadline_str:
+            assign.deadline = datetime.strptime(deadline_str, "%Y-%m-%dT%H:%M")
+        else:
+            assign.deadline = None
+            
+        db.session.commit()
+        flash("SYSTEM UPDATED // 任务节点已成功覆写", "success")
+        return redirect(url_for('global_grading_hub'))
+
+    # 动态获取现有的班级和小组供下拉菜单使用
+    classes = []
+    groups = []
+    if hasattr(User, 'class_name'):
+        classes = [r[0] for r in db.session.query(User.class_name).filter(User.class_name.isnot(None)).distinct().all() if r[0]]
+    if hasattr(User, 'group_name'):
+        groups = [r[0] for r in db.session.query(User.group_name).filter(User.group_name.isnot(None)).distinct().all() if r[0]]
+
+    return render_template("admin/edit_assignment.html", assign=assign, classes=classes, groups=groups)
+
+# ==========================================
 # 📡 刷新我的任务 API (带权限过滤 & 👑管理员增强)
 # ==========================================
 @app.route('/api/assignments/my_quests')
@@ -6389,6 +6496,106 @@ def delete_assignment_api(assign_id):
     db.session.commit()
     
     return jsonify({"success": True})
+
+
+# ==========================================
+# 🎛️ 管理员：白噪声唱片管理
+# ==========================================
+@app.route('/admin/vinyls', methods=['GET', 'POST'])
+@login_required
+def manage_vinyls():
+    if not current_user.is_admin:
+        abort(403)
+        
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        condition_type = request.form.get('condition_type', 'all_users')
+        condition_value = int(request.form.get('condition_value', 0))
+        
+        cover_file = request.files.get('cover_file')
+        audio_file = request.files.get('audio_file')
+        
+        if not name or not cover_file or not audio_file:
+            flash("名称、封面和音频文件缺一不可", "error")
+            return redirect(url_for('manage_vinyls'))
+            
+        # 保存目录
+        cover_dir = os.path.join(app.root_path, 'static', 'uploads', 'vinyls', 'covers')
+        audio_dir = os.path.join(app.root_path, 'static', 'uploads', 'vinyls', 'audio')
+        os.makedirs(cover_dir, exist_ok=True)
+        os.makedirs(audio_dir, exist_ok=True)
+        
+        # 处理封面图
+        cover_ext = cover_file.filename.rsplit('.', 1)[-1].lower()
+        cover_filename = f"cover_{uuid.uuid4().hex[:8]}.{cover_ext}"
+        cover_file.save(os.path.join(cover_dir, cover_filename))
+        cover_url = f"/static/uploads/vinyls/covers/{cover_filename}"
+        
+        # 处理音频流 (支持 mp3, wav, ogg)
+        audio_ext = audio_file.filename.rsplit('.', 1)[-1].lower()
+        audio_filename = f"audio_{uuid.uuid4().hex[:8]}.{audio_ext}"
+        audio_file.save(os.path.join(audio_dir, audio_filename))
+        audio_url = f"/static/uploads/vinyls/audio/{audio_filename}"
+        
+        # 存入数据库
+        v = VinylRecord(name=name, cover_url=cover_url, audio_url=audio_url, 
+                        condition_type=condition_type, condition_value=condition_value)
+        db.session.add(v)
+        db.session.commit()
+        
+        # 💡 如果是全员发放，直接分发
+        if condition_type == 'all_users':
+            users = User.query.all()
+            for u in users:
+                if not UserVinyl.query.filter_by(user_id=u.id, vinyl_id=v.id).first():
+                    db.session.add(UserVinyl(user_id=u.id, vinyl_id=v.id))
+            db.session.commit()
+            
+        flash(f"唱片 {name} 压制成功并已发布！", "success")
+        return redirect(url_for('manage_vinyls'))
+        
+    vinyls = VinylRecord.query.order_by(VinylRecord.created_at.desc()).all()
+    # 借用徽章的条件字典展示
+    condition_map = {
+        'all_users': '全员派发', 'pomo_count': '番茄达人(次)', 'study_hours': '专注时长(小时)',
+        'streak_days': '连续打卡(天)', 'note_count': '产出笔记(篇)'
+    }
+    return render_template('admin/manage_vinyls.html', vinyls=vinyls, condition_map=condition_map)
+
+@app.route('/admin/vinyls/<int:v_id>/delete', methods=['POST'])
+@login_required
+def delete_vinyl(v_id):
+    if not current_user.is_admin: abort(403)
+    v = VinylRecord.query.get_or_404(v_id)
+    db.session.delete(v)
+    db.session.commit()
+    flash("唱片已销毁", "success")
+    return redirect(url_for('manage_vinyls'))
+
+# ==========================================
+# 🎧 学生端：赛博频段 (Cyber Radio)
+# ==========================================
+@app.route('/radio')
+@login_required
+def cyber_radio():
+    # 1. 查出用户已获得的唱片 ID
+    user_vinyls = UserVinyl.query.filter_by(user_id=current_user.id).all()
+    earned_v_ids = [uv.vinyl_id for uv in user_vinyls]
+    
+    # 2. 取出所有唱片
+    all_vinyls = VinylRecord.query.order_by(VinylRecord.created_at.asc()).all()
+    
+    # 借用条件中英文字典
+    condition_map = {
+        'all_users': 'DEFAULT_INIT // 默认配发', 'pomo_count': 'POMO_REQ // 专注次数需达', 
+        'study_hours': 'TIME_REQ // 累计时长需达', 'streak_days': 'STREAK_REQ // 连续打卡需达', 
+        'note_count': 'DATA_REQ // 产出笔记需达'
+    }
+    
+    return render_template('cyber_radio.html', all_vinyls=all_vinyls, earned_v_ids=earned_v_ids, condition_map=condition_map)
+    
+
+
 
 
 if __name__ == "__main__":

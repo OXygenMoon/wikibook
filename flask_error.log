@@ -3302,3 +3302,175 @@ Traceback (most recent call last):
     
 jinja2.exceptions.UndefinedError: 'app.Wiki object' has no attribute 'view_count'
 
+2026-03-17 12:24:38,373 - DEBUG - Starting new HTTP connection (1): 211.154.20.65:20020
+2026-03-17 12:24:38,373 - DEBUG - Starting new HTTP connection (1): 211.154.20.65:20020
+2026-03-17 12:24:38,373 - DEBUG - Starting new HTTP connection (1): 211.154.20.65:20020
+2026-03-17 12:24:38,452 - DEBUG - http://211.154.20.65:20020 "GET /p/P1038 HTTP/1.1" 200 None
+2026-03-17 12:24:38,487 - DEBUG - http://211.154.20.65:20020 "GET /p/P1037 HTTP/1.1" 200 None
+2026-03-17 12:24:38,511 - DEBUG - http://211.154.20.65:20020 "GET /p/P1039 HTTP/1.1" 200 None
+2026-03-17 12:25:01,161 - DEBUG - Starting new HTTP connection (1): 211.154.20.65:20020
+2026-03-17 12:25:01,190 - DEBUG - http://211.154.20.65:20020 "GET /p/P1038 HTTP/1.1" 200 None
+2026-03-17 12:25:01,400 - DEBUG - Starting new HTTP connection (1): 211.154.20.65:20020
+2026-03-17 12:25:01,433 - DEBUG - http://211.154.20.65:20020 "GET /p/P1039 HTTP/1.1" 200 None
+2026-03-17 12:25:02,054 - DEBUG - Starting new HTTP connection (1): 211.154.20.65:20020
+2026-03-17 12:25:02,095 - DEBUG - http://211.154.20.65:20020 "GET /p/P1037 HTTP/1.1" 200 None
+2026-03-18 10:37:22,990 - DEBUG - Starting new HTTP connection (1): 211.154.20.65:20020
+2026-03-18 10:37:22,999 - DEBUG - Starting new HTTP connection (1): 211.154.20.65:20020
+2026-03-18 10:37:23,038 - DEBUG - Starting new HTTP connection (1): 211.154.20.65:20020
+2026-03-18 10:37:23,062 - DEBUG - http://211.154.20.65:20020 "GET /p/P1038 HTTP/1.1" 200 None
+2026-03-18 10:37:23,088 - DEBUG - http://211.154.20.65:20020 "GET /p/P1037 HTTP/1.1" 200 None
+2026-03-18 10:37:23,124 - DEBUG - http://211.154.20.65:20020 "GET /p/P1039 HTTP/1.1" 200 None
+2026-03-20 00:40:07,369 - ERROR - Exception on /sticker_walls [GET]
+Traceback (most recent call last):
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 1455, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 869, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 867, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 852, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask_login/utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/root/projects/wikibook/app.py", line 5048, in sticker_walls_view
+    return render_template("sticker_walls.html",
+                           walls=visible_walls,
+                           my_inventory=my_inventory,
+                           my_total_stickers=my_total_stickers,
+                           max_stickers_limit=max_stickers_limit) # 传入模板
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/templating.py", line 152, in render_template
+    return _render(app, template, context)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/templating.py", line 133, in _render
+    rv = template.render(context)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/root/projects/wikibook/templates/sticker_walls.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "/root/projects/wikibook/templates/base.html", line 780, in top-level template code
+    {% set dynamic_limit = get_global_sticker_limit(current_user) %}
+    ^^^^^^^^^^^^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/utils.py", line 92, in from_obj
+    if hasattr(obj, "jinja_pass_arg"):
+       ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'get_global_sticker_limit' is undefined
+2026-03-20 00:40:07,380 - ERROR - 发生 500 错误:
+Traceback (most recent call last):
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 1455, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 869, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 867, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 852, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask_login/utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/root/projects/wikibook/app.py", line 5048, in sticker_walls_view
+    return render_template("sticker_walls.html",
+                           walls=visible_walls,
+                           my_inventory=my_inventory,
+                           my_total_stickers=my_total_stickers,
+                           max_stickers_limit=max_stickers_limit) # 传入模板
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/templating.py", line 152, in render_template
+    return _render(app, template, context)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/templating.py", line 133, in _render
+    rv = template.render(context)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/root/projects/wikibook/templates/sticker_walls.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "/root/projects/wikibook/templates/base.html", line 780, in top-level template code
+    {% set dynamic_limit = get_global_sticker_limit(current_user) %}
+    ^^^^^^^^^^^^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/utils.py", line 92, in from_obj
+    if hasattr(obj, "jinja_pass_arg"):
+       ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'get_global_sticker_limit' is undefined
+
+2026-03-20 00:40:19,306 - ERROR - Exception on /sticker_walls [GET]
+Traceback (most recent call last):
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 1455, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 869, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 867, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 852, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask_login/utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/root/projects/wikibook/app.py", line 5048, in sticker_walls_view
+    return render_template("sticker_walls.html",
+                           walls=visible_walls,
+                           my_inventory=my_inventory,
+                           my_total_stickers=my_total_stickers,
+                           max_stickers_limit=max_stickers_limit) # 传入模板
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/templating.py", line 152, in render_template
+    return _render(app, template, context)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/templating.py", line 133, in _render
+    rv = template.render(context)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/root/projects/wikibook/templates/sticker_walls.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "/root/projects/wikibook/templates/base.html", line 780, in top-level template code
+    {% set dynamic_limit = get_global_sticker_limit(current_user) %}
+    ^^^^^^^^^^^^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/utils.py", line 92, in from_obj
+    if hasattr(obj, "jinja_pass_arg"):
+       ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'get_global_sticker_limit' is undefined
+2026-03-20 00:40:19,318 - ERROR - 发生 500 错误:
+Traceback (most recent call last):
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 1455, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 869, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 867, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/app.py", line 852, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask_login/utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/root/projects/wikibook/app.py", line 5048, in sticker_walls_view
+    return render_template("sticker_walls.html",
+                           walls=visible_walls,
+                           my_inventory=my_inventory,
+                           my_total_stickers=my_total_stickers,
+                           max_stickers_limit=max_stickers_limit) # 传入模板
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/templating.py", line 152, in render_template
+    return _render(app, template, context)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/flask/templating.py", line 133, in _render
+    rv = template.render(context)
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/root/projects/wikibook/templates/sticker_walls.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "/root/projects/wikibook/templates/base.html", line 780, in top-level template code
+    {% set dynamic_limit = get_global_sticker_limit(current_user) %}
+    ^^^^^^^^^^^^^
+  File "/root/projects/wikibook/venv/lib/python3.13/site-packages/jinja2/utils.py", line 92, in from_obj
+    if hasattr(obj, "jinja_pass_arg"):
+       ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.UndefinedError: 'get_global_sticker_limit' is undefined
+

@@ -147,10 +147,10 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-4 relative z-10 shrink-0 mt-6 md:mt-0">
-                <div class="bg-white px-4 py-2 border grid-border flex items-center gap-3">
+                <div class="bg-white px-4 py-2 border grid-border flex items-center gap-3 tooltip tooltip-left" data-tip="每完成一次派发任务，额度上限 +1">
                     <span class="text-[10px] font-bold text-stone-400 tracking-widest uppercase">QUOTA</span>
-                    <div class="font-black font-mono text-base {{ 'text-red-500 animate-pulse' if my_total_stickers >= 10 else 'text-stone-800' }}" id="quota-badge">
-                        <span id="quota-display">{{ my_total_stickers }}</span><span class="opacity-40 text-xs">/10</span>
+                    <div class="font-black font-mono text-base {{ 'text-red-500 animate-pulse' if my_total_stickers >= max_stickers_limit else 'text-stone-800' }}" id="quota-badge">
+                        <span id="quota-display">{{ my_total_stickers }}</span><span class="opacity-40 text-xs">/{{ max_stickers_limit }}</span>
                     </div>
                 </div>
                 
@@ -270,7 +270,8 @@
     if (currentWallIndex >= wallsData.length) currentWallIndex = 0;
     
     let baseGlobalUsed = {{ my_total_stickers }};
-    const MAX_QUOTA = 10;
+    // 💡 核心：把原本写死的 10，变成后端传来的动态上限
+    const MAX_QUOTA = {{ max_stickers_limit }};
 
     // 💡 独立更新墙面计数器的函数
     function updateWallCountDisplay(count) {
@@ -572,10 +573,11 @@ const fabBtn = document.getElementById('sticker-fab');
         
         let newCount = window.wallStickerManager.stickers.filter(s => !s.id).length;
         if (baseGlobalUsed + newCount >= MAX_QUOTA) {
+            const warnMsg = `QUOTA EXCEEDED (MAX ${MAX_QUOTA}). Double click on wall to recall.`;
             if(window.app && window.app.toast) {
-                window.app.toast.show('QUOTA EXCEEDED (MAX 10). Double click on wall to recall.', 'error');
+                window.app.toast.show(warnMsg, 'error');
             } else {
-                alert('QUOTA EXCEEDED (MAX 10). Double click on wall to recall.');
+                alert(warnMsg);
             }
             return;
         }

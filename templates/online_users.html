@@ -1,248 +1,372 @@
 {% extends "base.html" %}
 
-{% block title %}在线大厅{% endblock %}
+{% block title %}在线节点地图 - WikiBook{% endblock %}
 
-{% block content %}
-<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-    <div class="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] animate-blob mix-blend-multiply opacity-50 dark:opacity-20"></div>
-    <div class="absolute bottom-[-10%] left-[-5%] w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[120px] animate-blob animation-delay-4000 mix-blend-multiply opacity-50 dark:opacity-20"></div>
-</div>
-
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 animate-fade-in">
-    
-    <div class="flex items-center justify-between mb-12">
-        <div>
-            <h1 class="text-3xl md:text-4xl font-black tracking-tight flex items-center gap-4 text-stone-800 dark:text-stone-100">
-                在线大厅
-                <div class="relative flex h-3.5 w-3.5 items-center justify-center">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60"></span>
-                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-success shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
-                </div>
-            </h1>
-            <p class="text-stone-500 dark:text-stone-400 mt-2 font-medium tracking-wide">
-                此刻共有 <span class="text-primary font-black font-mono text-xl px-1">{{ users|length }}</span> 位学友与你同行
-            </p>
-        </div>
-        
-        <a href="{{ url_for('online_users') }}" class="btn btn-ghost btn-circle bg-white/50 dark:bg-base-200/50 backdrop-blur-md shadow-sm border border-black/5 hover:bg-white hover:shadow-md hover:rotate-180 transition-all duration-500">
-            <i class="fas fa-sync-alt text-stone-600 dark:text-stone-300"></i>
-        </a>
-    </div>
-    
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
-        {% for status in users %}
-        <div class="group relative rounded-[2rem] transition-all duration-500 hover:-translate-y-2 hover:z-50 z-0 h-full flex flex-col">
-            <div class="absolute -inset-0.5 bg-gradient-to-br from-primary/30 to-secondary/30 rounded-[2.2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl -z-10"></div>
-            
-            <div class="relative flex-1 flex flex-col bg-white/90 dark:bg-base-100/90 backdrop-blur-2xl border border-black/5 dark:border-white/5 rounded-[2rem] p-6 shadow-xl shadow-stone-200/20 dark:shadow-none transition-all overflow-visible z-10">
-                
-                <div class="flex justify-between items-start mb-4">
-                    <a href="{{ url_for('public_profile', user_id=status.user.id) }}" class="relative inline-block group/avatar">
-                        <div class="avatar placeholder">
-                            <div class="w-16 h-16 rounded-[1.25rem] bg-gradient-to-br from-stone-100 to-stone-50 dark:from-base-300 dark:to-base-200 text-stone-700 dark:text-stone-300 shadow-inner ring-1 ring-black/5 dark:ring-white/10 group-hover/avatar:scale-105 group-hover/avatar:rotate-3 transition-transform duration-300">
-                                <span class="text-2xl font-black">{{ status.user.username[0] | upper }}</span>
-                            </div>
-                        </div>
-                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-success border-2 border-white dark:border-[#1d232a] rounded-full shadow-sm"></div>
-                    </a>
-
-                    {% if status.user.selected_badge %}
-                    <div class="group/badge relative inline-block flex-shrink-0 mt-1 mr-1">
-                        <div class="w-9 h-9 rounded-full bg-stone-50 dark:bg-base-200 flex items-center justify-center cursor-help transition-transform hover:scale-110 hover:bg-white shadow-sm border border-black/5 dark:border-white/5">
-                            {% set _icon = status.user.selected_badge.icon %}
-                            {% if _icon|is_image_icon %}
-                                <img src="{{ _icon|badge_icon_url }}" class="w-5 h-5 object-contain" alt="badge">
-                            {% else %}
-                                <span class="text-lg leading-none">{{ _icon }}</span>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="absolute bottom-full right-[-10px] sm:right-auto sm:left-1/2 sm:-translate-x-1/2 mb-3 w-56 bg-white rounded-2xl shadow-2xl opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-300 z-[100] pointer-events-none transform scale-90 group-hover/badge:scale-100 origin-bottom border border-black/5 overflow-hidden">
-                            {% set rarity_colors = {
-                                'common': 'from-stone-400 to-stone-200',
-                                'rare': 'from-[#18293d] to-[#3b82f6]',
-                                'epic': 'from-purple-600 to-fuchsia-400',
-                                'legendary': 'from-amber-500 to-yellow-300'
-                            } %}
-                            {% set current_rarity = status.user.selected_badge.rarity | default('common') %}
-                            {% set gradient_class = rarity_colors.get(current_rarity, rarity_colors['common']) %}
-                            
-                            <div class="absolute top-0 right-0 w-24 h-24 opacity-90 transform translate-x-6 -translate-y-6 rotate-12 -z-10 shadow-inner bg-gradient-to-bl {{ gradient_class }}"></div>
-                            <div class="absolute top-0 right-0 w-full h-full bg-white opacity-20 transform -rotate-[30deg] translate-x-10 -translate-y-4 z-0"></div>
-
-                            <div class="relative z-10 p-4 pb-4 text-left">
-                                <div class="flex justify-between items-start mb-2">
-                                    <p class="text-[#00a8ff] font-extrabold text-[0.65rem] tracking-widest uppercase flex items-center gap-1 mt-1">✨ 佩戴贴纸</p>
-                                    <div class="w-12 h-12 drop-shadow-md opacity-100 -mt-2 -mr-1 transform group-hover/badge:scale-110 group-hover/badge:rotate-3 transition-all duration-500">
-                                        {% if _icon|is_image_icon %}
-                                            <img src="{{ _icon|badge_icon_url }}" class="w-full h-full object-contain">
-                                        {% else %}
-                                            <span class="text-4xl leading-none block text-center">{{ _icon }}</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <h4 class="text-base font-black text-stone-800 leading-tight mb-1.5 tracking-tight">{{ status.user.selected_badge.name }}</h4>
-                                <p class="text-[0.65rem] text-stone-500 line-clamp-2 leading-relaxed font-medium">{{ status.user.selected_badge.description }}</p>
-                            </div>
-                        </div>
-                        <div class="absolute -bottom-1.5 right-[10px] sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-3 h-3 bg-white rotate-45 border-r border-b border-black/5 shadow-sm rounded-br-[2px] opacity-0 invisible group-hover/badge:opacity-100 group-hover/badge:visible transition-all duration-300 z-[101]"></div>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="mb-4">
-                    <a href="{{ url_for('public_profile', user_id=status.user.id) }}" class="block w-fit group-hover:text-primary transition-colors">
-                        <h2 class="text-xl font-bold tracking-tight text-stone-800 dark:text-stone-100 truncate">{{ status.user.username }}</h2>
-                    </a>
-                    
-<div class="mt-2.5 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-inner max-w-full transition-colors duration-300
-    {% if status.pomo_state == 'WORK' %}
-        bg-rose-50/80 border-rose-200/50 text-rose-600
-    {% elif status.pomo_state == 'REST' %}
-        bg-emerald-50/80 border-emerald-200/50 text-emerald-600
-    {% else %}
-        bg-stone-100/80 dark:bg-base-200/80 border-stone-200/50 dark:border-white/5 text-stone-500 dark:text-stone-400
-    {% endif %}">
-    
-    {% if status.pomo_state == 'WORK' %}
-        <i class="fas fa-fire animate-pulse text-xs"></i>
-    <span class="pomo-live-timer text-xs font-bold tracking-wide" 
-        data-endtime="{{ status.pomo_end_time | int }}" 
-        data-type="work">
-        专注中...
-    </span>
-    {% elif status.pomo_state == 'REST' %}
-        <i class="fas fa-coffee animate-pulse text-xs"></i>
-        <span class="pomo-live-timer text-xs font-bold tracking-wide" 
-              data-endtime="{{ status.pomo_end_time }}" 
-              data-type="rest">
-            ☕ 休息中...
-        </span>
-    {% else %}
-        <div class="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse"></div>
-        <span class="text-xs font-semibold truncate tracking-wide" title="{{ status.current_action }}">
-            {{ status.current_action or '发呆中...' }}
-        </span>
-    {% endif %}
-</div>
-                </div>
-
-                <div class="flex-grow"></div>
-
-                <div class="pt-4 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
-                    <div class="text-[0.7rem] text-stone-400 font-mono font-medium flex items-center gap-1.5" title="最后活跃时间">
-                        <i class="far fa-clock opacity-70"></i>
-                        {{ status.last_active_at.strftime('%H:%M') }}
-                    </div>
-
-                    {% if status.user.id != current_user.id %}
-                        <div class="flex items-center">
-                            {% if current_user.is_following(status.user) %}
-                                <form action="{{ url_for('unfollow_user', user_id=status.user.id) }}" method="POST">
-                                    <button class="btn btn-xs btn-ghost text-stone-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 gap-1 rounded-lg transition-all">
-                                        <span class="text-[0.7rem] font-medium tracking-wide">已关注</span>
-                                    </button>
-                                </form>
-                            {% else %}
-                                <form action="{{ url_for('follow_user', user_id=status.user.id) }}" method="POST">
-                                    <button class="btn btn-xs btn-primary rounded-lg gap-1 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all">
-                                        <i class="fas fa-plus text-[10px]"></i> <span class="font-bold tracking-wide">关注</span>
-                                    </button>
-                                </form>
-                            {% endif %}
-                        </div>
-                    {% else %}
-                         <span class="badge badge-sm badge-ghost opacity-50 bg-base-200 border-none">我</span>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        {% else %}
-        <div class="col-span-full flex flex-col items-center justify-center py-24 text-center">
-            <div class="w-32 h-32 bg-white dark:bg-base-200 rounded-full flex items-center justify-center mb-6 shadow-2xl shadow-stone-200/40 dark:shadow-none border border-black/5 dark:border-white/5">
-                <i class="fas fa-wind text-5xl text-stone-300 dark:text-base-content/20"></i>
-            </div>
-            <h3 class="text-xl font-bold text-stone-700 dark:text-base-content/80">暂时没有人在线</h3>
-            <p class="text-sm text-stone-400 dark:text-base-content/50 mt-2 font-medium tracking-wide">夜深了，大家也许都去休息了...</p>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
+{% block extra_css %}
 <style>
-    /* 简单的淡入动画 */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(15px); filter: blur(4px); }
-        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    /* ==========================================
+       FWA 极简野兽派风格 (Brutalist / Grid UI)
+       ========================================== */
+    body {
+        background-color: #f5f5f5 !important;
+        color: #111;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     }
-    .animate-fade-in {
-        animation: fadeIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+
+    .grid-border { border-color: rgba(0,0,0,0.15); }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+    /* ==========================================
+       CSS 工业纹理库 (Industrial Textures)
+       ========================================== */
+    .blueprint-bg {
+        background-color: #fdfdfd;
+        background-image: 
+            linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+        background-size: 30px 30px;
+    }
+    .texture-lines-h {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 4px, rgba(0,0,0,0.05) 4px, rgba(0,0,0,0.05) 6px);
+    }
+    .texture-lines-v {
+        background-image: repeating-linear-gradient(to right, transparent, transparent 4px, rgba(0,0,0,0.05) 4px, rgba(0,0,0,0.05) 6px);
+    }
+    .texture-diagonal {
+        background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 7px);
+    }
+    .texture-dots {
+        background-image: radial-gradient(rgba(0,0,0,0.1) 1px, transparent 1px);
+        background-size: 10px 10px;
+    }
+    .texture-grid-small {
+        background-image: linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+        background-size: 10px 10px;
+    }
+
+    /* ==========================================
+       地图建筑区块 (Map Zones)
+       ========================================== */
+    .map-container {
+        position: relative;
+        width: 100%;
+        height: 75vh;
+        min-height: 650px;
+        border: 2px solid #111;
+        box-shadow: 12px 12px 0px rgba(0,0,0,1);
+        overflow: hidden;
+    }
+
+    .map-zone {
+        position: absolute;
+        border: 2px solid #111;
+        box-shadow: 6px 6px 0 #111;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: all 0.3s;
+    }
+    .map-zone:hover { box-shadow: 8px 8px 0 #111; transform: translate(-2px, -2px); }
+    
+    .zone-label {
+        background: #111; color: #fff; font-family: monospace; font-weight: 900;
+        font-size: 11px; text-transform: uppercase; padding: 4px 10px; letter-spacing: 0.1em;
+        position: absolute; top: -14px; left: 16px; border: 2px solid #111; z-index: 10;
+        box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
     }
     
-    /* 背景动画 */
-    @keyframes blob {
-        0% { transform: translate(0px, 0px) scale(1); }
-        33% { transform: translate(30px, -50px) scale(1.05); }
-        66% { transform: translate(-20px, 20px) scale(0.95); }
-        100% { transform: translate(0px, 0px) scale(1); }
+    .zone-icon { font-size: 5rem; opacity: 0.05; pointer-events: none; }
+
+    /* 坐标布阵 */
+    #zone-inventory { top: 8%; left: 5%; width: 22%; height: 26%; background-color: #ecfccb; }
+    #zone-leaderboard { top: 40%; left: 5%; width: 22%; height: 35%; background-color: #e0f2fe; }
+    #zone-square { top: 8%; left: 30%; width: 38%; height: 42%; background-color: #fff; }
+    #zone-bulletin { top: 55%; left: 30%; width: 38%; height: 35%; background-color: #ffe4e6; }
+    #zone-book { top: 12%; left: 71%; width: 24%; height: 45%; background-color: #fef3c7; }
+    #zone-logs { top: 62%; left: 71%; width: 24%; height: 28%; background-color: #f3e8ff; }
+
+    #zone-wandering { display: none; } /* 兜底隐藏区 */
+
+    /* ==========================================
+       实体节点 (User Avatars on Map)
+       ========================================== */
+    .map-user-node {
+        position: absolute;
+        width: 34px; height: 34px;
+        border: 2px solid #111;
+        background: #fff; color: #111;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 900; font-size: 16px;
+        box-shadow: 3px 3px 0 #111;
+        cursor: crosshair;
+        z-index: 50;
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        animation: float 3s ease-in-out infinite alternate;
     }
-    .animate-blob {
-        animation: blob 10s infinite alternate;
+    .map-user-node:hover {
+        transform: scale(1.25) translateY(-5px) !important;
+        z-index: 100;
+        box-shadow: 6px 6px 0 #111;
+        background: #111; color: #fff;
     }
-    .animation-delay-4000 {
-        animation-delay: 4s;
+    
+    @keyframes float {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(-5px); }
+    }
+
+    /* 状态指示器 */
+    .node-status {
+        position: absolute; top: -5px; right: -5px; width: 12px; height: 12px;
+        border: 2px solid #111;
+    }
+    .status-pomo-work { background: #ef4444; animation: pulse 1s infinite; }
+    .status-pomo-rest { background: #10b981; }
+    .status-idle { background: #3b82f6; }
+
+    /* ==========================================
+       终端悬浮信息卡 (Terminal Tooltip) - 右侧徽章版
+       ========================================== */
+    .map-tooltip {
+        position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%) translateY(10px);
+        width: max-content; min-width: 220px; max-width: 300px;
+        background: #fff; border: 2px solid #111; box-shadow: 6px 6px 0 #111;
+        padding: 0; opacity: 0; visibility: hidden; pointer-events: none; z-index: 200;
+        transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        display: flex; flex-direction: column;
+    }
+    .map-user-node:hover .map-tooltip {
+        opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+    }
+    
+    .tooltip-header {
+        background: #111; color: #fff; padding: 8px 12px; font-weight: 900; font-family: monospace; font-size: 12px;
+        display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111;
+    }
+    
+    /* 中部主体：左右 Flex 布局 + 底部粗虚线 */
+    .tooltip-body {
+        padding: 16px 12px; background: #fafafa;
+        display: flex; align-items: center; justify-content: space-between;
+        border-bottom: 2px dashed #111;
+    }
+    
+    .tooltip-footer {
+        background: #fff; padding: 8px 12px; font-size: 10px; font-family: monospace; color: #555; text-transform: uppercase; font-weight: bold;
     }
 </style>
+
+<script id="users-data" type="application/json">
+[
+    {% for u in users %}
+    {
+        "id": "{{ u.user.id }}",
+        "username": "{{ u.user.username }}",
+        "real_name": "{{ u.user.real_name or u.user.username }}",
+        "char": "{{ (u.user.real_name or u.user.username)[0] | upper }}",
+        "path": "{{ u.current_path }}",
+        "action": "{{ u.current_action }}",
+        "pomo_state": "{{ u.pomo_state }}",
+        "pomo_end_time": {{ u.pomo_end_time or 0 }},
+        "last_active": "{{ u.last_active_at.strftime('%H:%M') }}"
+        {% if u.user.selected_badge %}
+        , "badge": {
+            "name": "{{ u.user.selected_badge.name }}",
+            "icon": "{{ u.user.selected_badge.icon|badge_icon_url if u.user.selected_badge.icon|is_image_icon else u.user.selected_badge.icon }}",
+            "is_image": {{ 'true' if u.user.selected_badge.icon|is_image_icon else 'false' }}
+        }
+        {% endif %}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
 {% endblock %}
 
+{% block content %}
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
+
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b grid-border pb-6 mb-8">
+            <div>
+                <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2">SYSTEM RADAR // 在线雷达图</span>
+                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase flex items-center gap-4">
+                    全网节点监测
+                </h1>
+                <p class="text-[10px] text-stone-400 font-mono tracking-widest mt-4 uppercase">
+                    > 实时探测并定位当前活跃在系统内的物理用户
+                </p>
+            </div>
+            
+            <div class="mt-6 md:mt-0 w-full md:w-auto text-right flex flex-col items-end">
+                <button onclick="location.reload()" class="btn-brutal-outline w-full md:w-auto py-2 text-[10px]">
+                    <i class="fas fa-satellite-dish mr-2 animate-pulse text-emerald-500"></i> REFRESH RADAR
+                </button>
+                <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest border-2 border-[#111] bg-white px-3 py-1.5 mt-3 shadow-[2px_2px_0_#111]">
+                    活跃探针: <span class="font-black text-[#111] text-sm ml-1">{{ users|length }}</span> UNITS
+                </div>
+            </div>
+        </div>
+
+        <div class="map-container blueprint-bg" id="radar-map">
+            
+            <div class="map-zone texture-dots" id="zone-inventory">
+                <div class="zone-label">库存资产库</div>
+                <i class="fas fa-box-open zone-icon"></i>
+            </div>
+            
+            <div class="map-zone texture-diagonal" id="zone-leaderboard">
+                <div class="zone-label">巅峰竞技场</div>
+                <i class="fas fa-trophy zone-icon"></i>
+            </div>
+            
+            <div class="map-zone texture-lines-h" id="zone-square">
+                <div class="zone-label">Wiki 数据枢纽</div>
+                <i class="fas fa-globe zone-icon"></i>
+            </div>
+            
+            <div class="map-zone texture-grid-small" id="zone-bulletin">
+                <div class="zone-label">指令分发中心</div>
+                <i class="fas fa-thumbtack zone-icon"></i>
+            </div>
+
+            <div class="map-zone texture-lines-v" id="zone-book">
+                <div class="zone-label">私人数据档案馆</div>
+                <i class="fas fa-book zone-icon"></i>
+            </div>
+
+            <div class="map-zone texture-diagonal" id="zone-logs">
+                <div class="zone-label">系统日志站</div>
+                <i class="fas fa-broadcast-tower zone-icon"></i>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}
 
 {% block scripts %}
 <script>
-(function() {
-    /**
-     * 核心：番茄钟实时刷新引擎
-     */
-    function refreshPomoDisplay() {
-        const now = Date.now();
-        const timers = document.querySelectorAll('.pomo-live-timer');
-        
-        if (timers.length === 0) return;
+    document.addEventListener('DOMContentLoaded', () => {
+        const mapContainer = document.getElementById('radar-map');
+        if (!mapContainer) return;
 
-        timers.forEach(timer => {
-            let endTime = parseFloat(timer.dataset.endtime);
+        // 1. 读取并解析用户数据
+        const dataEl = document.getElementById('users-data');
+        let users = [];
+        try { users = JSON.parse(dataEl.textContent); } 
+        catch(e) { console.error("Parse error:", e); return; }
+
+        // 2. 映射路由 -> 建筑区域
+        const zonesBounds = {
+            'inventory':   { left: 5, right: 27, top: 8, bottom: 34 },
+            'leaderboard': { left: 5, right: 27, top: 40, bottom: 75 },
+            'square':      { left: 30, right: 68, top: 8, bottom: 50 },
+            'bulletin':    { left: 30, right: 68, top: 55, bottom: 90 },
+            'book':        { left: 71, right: 95, top: 12, bottom: 57 },
+            'logs':        { left: 71, right: 95, top: 62, bottom: 90 },
+            'wandering':   { left: 40, right: 60, top: 40, bottom: 60 }
+        };
+
+        function determineZone(path) {
+            if (!path || path === '/') return 'square';
+            if (path.includes('/book')) return 'book';
+            if (path.includes('/leaderboard')) return 'leaderboard';
+            if (path.includes('/bulletin') || path.includes('/manage_assignments') || path.includes('/assignment')) return 'bulletin';
+            if (path.includes('/sticker') || path.includes('/badges') || path.includes('/bookmarks')) return 'inventory';
+            if (path.includes('/announcements') || path.includes('/online_users')) return 'logs';
+            if (path.includes('/wikis')) return 'square';
+            return 'wandering';
+        }
+
+        // 3. 随机分布算法
+        function getRandomPosition(bounds) {
+            const tolerance = 4; 
+            const width = bounds.right - bounds.left - tolerance * 2;
+            const height = bounds.bottom - bounds.top - tolerance * 2;
+            const randomX = bounds.left + tolerance + (Math.random() * width);
+            const randomY = bounds.top + tolerance + (Math.random() * height); 
+            return { x: randomX, y: randomY };
+        }
+
+        // 4. 生成小人实体并置入地图
+        users.forEach((u) => {
+            const zoneName = determineZone(u.path);
+            const pos = getRandomPosition(zonesBounds[zoneName]);
             
-            // 💡 关键修复：自动识别并对齐毫秒单位
-            // 如果时间戳小于 10^12，说明是秒级单位(Python风格)，乘以 1000 转为毫秒
-            if (endTime > 0 && endTime < 1000000000000) {
-                endTime = endTime * 1000;
+            // 番茄钟状态指示
+            let statusClass = 'status-idle';
+            if (u.pomo_state === 'WORK') statusClass = 'status-pomo-work';
+            if (u.pomo_state === 'REST') statusClass = 'status-pomo-rest';
+
+            // 番茄钟信息解析
+            let pomoText = '';
+            if (u.pomo_state === 'WORK' || u.pomo_state === 'REST') {
+                let endTime = parseFloat(u.pomo_end_time);
+                if (endTime > 0 && endTime < 1000000000000) endTime *= 1000;
+                
+                const remainMs = endTime - Date.now();
+                if (remainMs > 0) {
+                    const minutes = Math.ceil(remainMs / (1000 * 60));
+                    const icon = u.pomo_state === 'WORK' ? '<i class="fas fa-fire text-red-500"></i>' : '<i class="fas fa-coffee text-emerald-500"></i>';
+                    pomoText = `<div class="mt-2 text-[10px] font-mono text-[#111] font-black">${icon} REMAINING: ${minutes}M</div>`;
+                }
             }
 
-            if (!endTime || endTime < now) { 
-                timer.innerText = timer.dataset.type === 'work' ? '专注已完成' : '休息结束';
-                return; 
+            // 💡 重点改造：徽章贴纸 HTML 结构，右侧独立模块
+            let badgeHtml = '';
+            if (u.badge) {
+                const badgeIcon = u.badge.is_image 
+                    ? `<img src="${u.badge.icon}" class="w-7 h-7 object-contain">` 
+                    : `<span class="text-2xl leading-none text-[#111]">${u.badge.icon}</span>`;
+                    
+                // 采用 rotate 稍微倾斜的设计，营造“盖章/贴纸”的物理质感
+                badgeHtml = `
+                    <div class="flex flex-col items-center ml-4 shrink-0 relative group/ttbadge cursor-help">
+                        <div class="w-10 h-10 flex items-center justify-center bg-white border-2 border-[#111] shadow-[2px_2px_0_#111] rotate-6 transition-transform group-hover/ttbadge:rotate-0">
+                            ${badgeIcon}
+                        </div>
+                        <div class="absolute top-full mt-2 right-0 bg-[#111] text-white text-[9px] font-bold px-2 py-1 whitespace-nowrap opacity-0 group-hover/ttbadge:opacity-100 transition-opacity z-10 pointer-events-none border border-[#111]">
+                            ${u.badge.name}
+                        </div>
+                    </div>
+                `;
             }
-            
-            const remainMs = endTime - now;
-            
-            // 💡 核心逻辑：计算剩余分钟数
-            // 使用 Math.ceil 确保即使剩下 10 秒也会显示为 "1 分钟"，符合直觉
-            const minutes = Math.ceil(remainMs / (1000 * 60));
-            const typeText = timer.dataset.type === 'work' ? '专注' : '休息';
-            
-            // 更新 UI
-            timer.innerText = `${typeText}还剩 ${minutes} 分钟`;
+
+            // 构建 DOM
+            const node = document.createElement('div');
+            node.className = 'map-user-node stripe-pattern';
+            node.style.animationDelay = `${Math.random() * 2}s`; 
+            node.style.left = `${pos.x}%`;
+            node.style.top = `${pos.y}%`;
+
+            node.innerHTML = `
+                ${u.char}
+                <div class="node-status ${statusClass}"></div>
+                
+                <div class="map-tooltip">
+                    <div class="tooltip-header">
+                        <span class="truncate max-w-[140px]">${u.real_name}</span>
+                        <span class="text-[10px] text-[#aaa]">@${u.username}</span>
+                    </div>
+                    
+                    <div class="tooltip-body">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <p class="font-mono text-[#888] text-[9px] uppercase mb-1">> CURRENT OP_CODE</p>
+                            <p class="text-sm font-black text-[#111] truncate">${u.action || 'INACTIVE // 节点休眠'}</p>
+                            ${pomoText}
+                        </div>
+                        ${badgeHtml}
+                    </div>
+                    
+                    <div class="tooltip-footer">
+                        LAST PING: ${u.last_active}
+                    </div>
+                </div>
+            `;
+
+            // 点击小人跳转
+            node.addEventListener('click', () => { window.location.href = `/user/${u.id}`; });
+            mapContainer.appendChild(node);
         });
-    }
-
-    // --- 执行机制 ---
-    // 1. 页面加载立即跑一次
-    refreshPomoDisplay();
-    
-    // 2. 建立每 5 秒一次的轮询（分钟级显示不需要太频繁）
-    const pomoInterval = setInterval(refreshPomoDisplay, 5000);
-
-    // 3. 容错：如果页面存在局部刷新，重新绑定
-    document.addEventListener('htmx:afterSwap', refreshPomoDisplay); 
-})();
+    });
 </script>
 {% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}修改任务节点 // ASSIGNMENT OVERRIDE{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/easymde.min.css') }}">
+<style>
+    body { background-color: #f5f5f5 !important; color: #111; font-family: 'Inter', sans-serif; }
+    .grid-border { border-color: rgba(0,0,0,0.15); }
+    .stripe-pattern { background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px); }
+    
+    .btn-brutal {
+        background: #111; color: #fff; border-radius: 2px; font-size: 12px; font-weight: 800; text-transform: uppercase;
+        padding: 0.75rem 1.5rem; transition: transform 0.1s, box-shadow 0.1s; display: inline-flex; align-items: center; justify-center; border: 1px solid #111;
+        letter-spacing: 0.05em; cursor: pointer; box-shadow: 2px 2px 0 #111;
+    }
+    .btn-brutal:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #111; color: #fff; }
+    .btn-brutal:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111; }
+    
+    .btn-brutal-outline {
+        background: #fff; color: #111; border: 1px solid #111; border-radius: 2px; font-size: 12px; font-weight: 800; text-transform: uppercase;
+        padding: 0.75rem 1.5rem; transition: transform 0.1s, box-shadow 0.1s; display: inline-flex; align-items: center; justify-center;
+        letter-spacing: 0.05em; cursor: pointer; box-shadow: 2px 2px 0 #111;
+    }
+    .btn-brutal-outline:hover { background: #111; color: #fff; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #111; }
+    .btn-brutal-outline:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #111; }
+
+    .terminal-input {
+        background: #fff; border: 1px solid rgba(0,0,0,0.2); border-radius: 2px; font-family: monospace; font-size: 13px;
+        transition: border-color 0.2s, box-shadow 0.2s; padding: 0.5rem 1rem; width: 100%;
+    }
+    .terminal-input:focus { border-color: #111; box-shadow: 4px 4px 0px rgba(0,0,0,1); outline: none; }
+
+    .brutal-card { background: #fff; border: 2px solid #111; border-radius: 2px; box-shadow: 8px 8px 0 #111; }
+
+    /* EasyMDE Override */
+    .EasyMDEContainer { background: #fff; border-radius: 2px; overflow: hidden; border: 1px solid #111 !important; box-shadow: 4px 4px 0 #111; }
+    .editor-toolbar { border-bottom: 1px solid #111 !important; background: #fafafa; padding: 10px; }
+    .CodeMirror { min-height: 300px; font-family: monospace; font-size: 14px;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+    <div class="max-w-[1000px] mx-auto px-4 md:px-8 relative z-10">
+
+        <div class="flex items-center gap-3 mb-8">
+            <a href="{{ url_for('global_grading_hub') }}" class="w-8 h-8 flex items-center justify-center border grid-border bg-white hover:bg-[#111] hover:text-white transition-colors text-stone-400">
+                <i class="fas fa-arrow-left text-xs"></i>
+            </a>
+            <div class="flex flex-col">
+                <span class="text-[9px] font-bold text-stone-400 uppercase tracking-widest">RETURN TO // 返回至</span>
+                <span class="text-xs font-black text-stone-800 uppercase tracking-wider">批阅大厅</span>
+            </div>
+        </div>
+
+        <div class="brutal-card flex flex-col bg-white overflow-hidden">
+            <div class="p-8 border-b-2 border-[#111] bg-[#111] text-white stripe-pattern">
+                <span class="text-[10px] uppercase font-bold tracking-[0.2em] text-yellow-400 mb-1 block">> NODE OVERRIDE</span>
+                <h1 class="text-3xl font-black uppercase tracking-tight">修改任务指令</h1>
+            </div>
+
+            <form method="post" class="p-8 md:p-12 flex flex-col gap-6">
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex-1 flex flex-col gap-2">
+                        <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">PAYLOAD IDENTIFIER // 任务标题 <span class="text-red-500">*</span></label>
+                        <input type="text" name="title" value="{{ assign.title }}" required class="terminal-input font-bold text-lg" placeholder="例如：第三周核心作业">
+                    </div>
+                    <div class="w-full md:w-32 flex flex-col gap-2">
+                        <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">DIFFICULTY // 难度星级</label>
+                        <input type="number" name="star_level" value="{{ assign.star_level }}" min="1" max="5" required class="terminal-input font-bold text-lg text-center bg-yellow-50">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-[#fafafa] border border-dashed border-[#ccc]">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">TARGET RANGE // 分发范围</label>
+                        <select name="target_type" id="target_type" class="terminal-input cursor-pointer" onchange="toggleTargetValue()">
+                            <option value="all" {% if assign.target_type == 'all' %}selected{% endif %}>GLOBAL // 全体用户</option>
+                            <option value="class" {% if assign.target_type == 'class' %}selected{% endif %}>CLASS // 指定班级</option>
+                            <option value="group" {% if assign.target_type == 'group' %}selected{% endif %}>GROUP // 指定小组</option>
+                            <option value="personal" {% if assign.target_type == 'personal' %}selected{% endif %}>PERSONAL // 指定学号/ID</option>
+                        </select>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">TARGET PARAM // 具体目标</label>
+                        <input type="text" name="target_value" id="target_value" value="{{ assign.target_value or '' }}" class="terminal-input" placeholder="输入班级名/组名/ID..." {% if assign.target_type == 'all' %}disabled style="opacity:0.5"{% endif %}>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">DEADLINE // 终止期限</label>
+                        <input type="datetime-local" name="deadline" value="{{ assign.deadline.strftime('%Y-%m-%dT%H:%M') if assign.deadline else '' }}" class="terminal-input cursor-pointer font-mono text-sm text-stone-600">
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-2 mt-4">
+                    <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">OPERATION BRIEF // 任务详情 (MD)</label>
+                    <textarea id="md-editor" name="content_md">{{ assign.content_md }}</textarea>
+                </div>
+
+                <div class="border-t-2 border-[#111] pt-6 mt-4 flex justify-between items-center">
+                    <span class="text-[10px] font-mono text-[#888] uppercase tracking-widest">SYS_WARN: 修改将立即生效于所有节点。</span>
+                    <div class="flex gap-4">
+                        <a href="{{ url_for('global_grading_hub') }}" class="btn-brutal-outline px-8 py-3">ABORT</a>
+                        <button type="submit" class="btn-brutal px-8 py-3 bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-500 shadow-none">
+                            OVERRIDE SYS <i class="fas fa-database ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        new EasyMDE({
+            element: document.getElementById('md-editor'),
+            spellChecker: false,
+            status: false,
+            placeholder: "Input brief parameters here...",
+            toolbar: ["bold", "italic", "heading", "|", "quote", "code", "unordered-list", "ordered-list", "|", "preview"]
+        });
+    });
+
+    function toggleTargetValue() {
+        const type = document.getElementById('target_type').value;
+        const valueInput = document.getElementById('target_value');
+        if(type === 'all') {
+            valueInput.value = '';
+            valueInput.disabled = true;
+            valueInput.style.opacity = '0.5';
+        } else {
+            valueInput.disabled = false;
+            valueInput.style.opacity = '1';
+        }
+    }
+</script>
+{% endblock %}

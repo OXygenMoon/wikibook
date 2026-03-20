@@ -766,33 +766,21 @@
 
 
         {% elif current_app == 'sticker' %}
-
             {% if walls is defined and walls|length > 0 %}
-
             <div class="dropdown dropdown-end">
-
-                <div tabindex="0" role="button" class="nav-btn border border-black/5 bg-white shadow-sm"><i class="fas fa-map text-primary opacity-80"></i> <span id="topbar-wall-name">{{ walls[0].name }}</span> <i class="fas fa-chevron-down text-[10px] ml-1 opacity-50"></i></div>
-
+                <div tabindex="0" role="button" class="nav-btn"><i class="fas fa-map opacity-80"></i> <span id="topbar-wall-name">{{ walls[0].name }}</span> <i class="fas fa-chevron-down text-[10px] ml-1"></i></div>
                 <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 w-52 glass-dropdown-content flex-nowrap">
-
                     {% for w in walls %}
-
                     <li><a onclick="if(typeof switchWall === 'function') switchWallTo({{ loop.index0 }})" class="nav-menu-item"><i class="fas fa-layer-group w-4 opacity-40"></i> {{ w.name }}</a></li>
-
                     {% endfor %}
-
                 </ul>
-
             </div>
-
             {% endif %}
-
             
-
-            <div class="nav-btn cursor-default hover:translate-y-0 hover:shadow-none bg-base-200/50">
-
-                额度: <span class="badge badge-sm border-none ml-1 font-bold font-mono {% if my_total_stickers is defined and my_total_stickers >= 10 %}bg-error text-white animate-pulse{% else %}bg-primary text-white{% endif %}" id="topbar-quota">{{ my_total_stickers if my_total_stickers is defined else 0 }}/10</span>
-
+            {% set dynamic_limit = get_global_sticker_limit(current_user) %}
+            
+            <div class="nav-btn cursor-default pointer-events-none">
+                QUOTA: <span class="ml-1 font-bold font-mono px-1 border border-[#111] {% if my_total_stickers is defined and my_total_stickers >= dynamic_limit %}bg-red-500 text-white animate-pulse{% else %}bg-[#111] text-white{% endif %}" id="topbar-quota">{{ my_total_stickers if my_total_stickers is defined else 0 }}/{{ dynamic_limit }}</span>
             </div>
 
 
@@ -994,32 +982,28 @@
 
 
 <div class="dropdown dropdown-end hidden md:flex ml-1">
-                <div tabindex="0" role="button" class="nav-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom hover:bg-indigo-50 hover:text-indigo-500 transition-colors select-none" data-tip="我的记忆夹页">
-                    <i class="fas fa-bookmark text-indigo-400 pointer-events-none"></i>
-                </div>
-                
-                <div tabindex="0" class="dropdown-content z-[120] mt-4 w-[340px] flex flex-col drop-shadow-2xl relative">
-                    
-                    <div class="absolute -top-1.5 right-[1.1rem] w-4 h-4 bg-white/95 dark:bg-base-200/95 border-t border-l border-black/10 dark:border-white/10 transform rotate-45 z-10 rounded-tl-sm backdrop-blur-xl"></div>
-                    
-                    <div class="glass-dropdown-content overflow-hidden border border-black/5 dark:border-white/5 relative z-20 flex flex-col">
-                        <div class="p-4 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-base-200/50 backdrop-blur-xl">
-                            <h3 class="font-black text-sm flex items-center gap-2 text-base-content"><i class="fas fa-bookmark text-indigo-500"></i> 记忆夹页</h3>
-                            <label class="cursor-pointer label p-0 gap-2 tooltip tooltip-left" data-tip="是否在文章中显示学友的书签">
-                                <span class="label-text text-[10px] font-bold text-base-content/70">看学友</span> 
-                                <input type="checkbox" id="toggle-others-bm" class="toggle toggle-primary toggle-xs" checked onchange="app.bookmarks.toggleOthers(this.checked)" />
-                            </label>
-                        </div>
-                        <div id="bookmark-dropdown-list" class="max-h-[60vh] overflow-y-auto custom-scroll p-3 space-y-3 bg-base-100/40">
-                            <div class="py-10 text-center opacity-50 flex flex-col items-center gap-3">
-                                <span class="loading loading-spinner loading-md text-indigo-500"></span>
-                                <span class="font-bold text-xs">正在整理夹页...</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+    <div tabindex="0" role="button" class="nav-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom hover:text-primary transition-colors select-none" data-tip="我的记忆夹页">
+        <i class="fas fa-bookmark opacity-80 pointer-events-none"></i>
+    </div>
+    
+    <ul tabindex="0" class="dropdown-content z-[120] menu p-2 mt-2 top-[calc(100%+0.5rem)] w-72 glass-dropdown-content max-h-[60vh] overflow-y-auto custom-scroll flex-nowrap overflow-x-hidden">
+        
+        <div class="flex flex-row justify-between items-center px-3 py-2 mb-2 border-b border-base-200/50">
+            <span class="text-xs font-bold opacity-50">我的记忆夹页</span>
+            <label class="cursor-pointer flex items-center gap-1.5 tooltip tooltip-left m-0" data-tip="是否展示学友公开的书签">
+                <span class="text-[10px] opacity-50 font-bold">看学友</span>
+                <input type="checkbox" id="toggle-others-bm" class="toggle toggle-primary toggle-xs" checked onchange="app.bookmarks.toggleOthers(this.checked)" />
+            </label>
+        </div>
+        
+        <div id="bookmark-dropdown-list" class="flex flex-col w-full gap-0.5">
+            <li class="py-6 text-center opacity-50 flex flex-col items-center gap-2">
+                <span class="loading loading-spinner loading-xs text-primary"></span>
+                <span class="font-bold text-[10px]">载入中...</span>
+            </li>
+        </div>
+    </ul>
+</div>
 
             <a href="{{ url_for('online_users') }}" class="nav-btn px-2 tooltip tooltip-bottom border-transparent shadow-none" data-tip="在线用户">
 
@@ -3628,48 +3612,50 @@ toast: {
                 renderList(bms) {
                     const list = document.getElementById('bookmark-dropdown-list');
                     if (bms.length === 0) {
-                        list.innerHTML = `<div class="py-12 text-center text-base-content/40 flex flex-col items-center gap-3"><i class="fas fa-box-open text-4xl opacity-20"></i><div><p class="font-black text-sm text-base-content/60">你的书签盒还是空的</p><p class="text-[10px] mt-1 font-medium">多阅读、多专注，就有机会获得</p></div></div>`;
+                        list.innerHTML = `<li class="px-4 py-8 text-[10px] text-center text-base-content/40 font-bold">书签盒为空，请多加专注和阅读以获取。</li>`;
                         return;
                     }
                     
                     list.innerHTML = bms.map(b => {
-                        const bgClass = {'common': 'from-stone-200 to-stone-300', 'rare': 'from-blue-400 to-blue-500', 'epic': 'from-fuchsia-400 to-purple-500', 'legendary': 'from-amber-400 to-orange-500'}[b.rarity] || 'from-stone-200 to-stone-300';
-                        
                         const iconHtml = b.icon.startsWith('http') || b.icon.startsWith('/') 
-                            ? `<img src="${b.icon}" class="w-8 h-8 object-contain drop-shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform origin-center">`
-                            : `<span class="text-3xl leading-none drop-shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform inline-block origin-center">${b.icon}</span>`;
+                            ? `<img src="${b.icon}" class="w-4 h-4 object-contain">`
+                            : `<span class="text-sm leading-none">${b.icon}</span>`;
 
                         if (b.is_placed) {
+                            // 已夹入的书签列表项
                             return `
-                                <div onclick="document.activeElement.blur(); window.location.href='${b.target_url}#${b.target_block_id}'" class="group flex items-center gap-3.5 p-3.5 rounded-[1.25rem] bg-white dark:bg-base-200 border border-stone-200 dark:border-stone-700 shadow-sm hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10 cursor-pointer transition-all relative overflow-hidden">
-                                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b ${bgClass}"></div>
-                                    <div class="w-12 h-12 shrink-0 bg-stone-50 dark:bg-base-300 rounded-xl flex items-center justify-center border border-black/5 group-hover:bg-white dark:group-hover:bg-base-100 transition-colors">
-                                        ${iconHtml}
-                                    </div>
-                                    <div class="flex-1 min-w-0 flex flex-col justify-center">
-                                        <div class="flex justify-between items-center mb-1">
-                                            <h4 class="text-xs font-bold text-indigo-500 truncate pr-2 flex items-center gap-1.5"><i class="fas fa-link text-[10px] opacity-70"></i>${b.target_title}</h4>
-                                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-base-200 text-base-content/50 shrink-0">已夹入</span>
+                                <li>
+                                    <div class="nav-menu-item flex items-start gap-2.5 w-full py-2 hover:bg-base-content/5 relative group cursor-default">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0 mt-1.5"></div>
+                                        <div class="flex-1 min-w-0 cursor-pointer pr-8" onclick="document.activeElement.blur(); window.location.href='${b.target_url}#${b.target_block_id}'">
+                                            <div class="flex items-center gap-1.5 mb-0.5">
+                                                <div class="flex-shrink-0 w-5 h-5 rounded bg-base-200 flex items-center justify-center border border-black/5 shadow-inner">
+                                                    ${iconHtml}
+                                                </div>
+                                                <span class="text-[11px] font-bold text-base-content truncate flex-1 hover:text-primary transition-colors" title="${b.target_title}">${b.target_title}</span>
+                                            </div>
+                                            <p class="text-[10px] text-base-content/50 line-clamp-1 italic pl-6" title="${b.target_snippet}">${b.target_snippet}</p>
                                         </div>
-                                        <p class="text-xs font-medium text-base-content/70 leading-snug line-clamp-2 italic">"${b.target_snippet}"</p>
-                                    </div>
-                                </div>`;
-                        } else {
-                            return `
-                                <div class="group flex items-center gap-3.5 p-3.5 rounded-[1.25rem] bg-stone-50/50 dark:bg-base-300/30 border-2 border-dashed border-stone-200 dark:border-stone-700 hover:bg-white dark:hover:bg-base-200 hover:border-indigo-200 hover:shadow-lg transition-all relative overflow-hidden">
-                                    <div class="w-12 h-12 shrink-0 bg-white dark:bg-base-100 rounded-xl shadow-sm flex items-center justify-center border border-black/5">
-                                        ${iconHtml}
-                                    </div>
-                                    <div class="flex-1 min-w-0 flex flex-col justify-center">
-                                        <h4 class="text-sm font-extrabold text-base-content tracking-tight truncate">${b.name}</h4>
-                                        <p class="text-[10px] text-base-content/40 font-bold uppercase tracking-wider mt-0.5">全新未使用 · 闲置</p>
-                                    </div>
-                                    <div class="shrink-0 pl-1">
-                                        <button onclick="document.activeElement.blur(); app.bookmarks.startPlacing(${b.id})" class="w-9 h-9 rounded-full bg-emerald-50 text-emerald-500 hover:bg-emerald-500 hover:text-white border border-emerald-100 flex items-center justify-center text-sm shadow-sm transition-all hover:scale-110 cursor-crosshair tooltip tooltip-left" data-tip="点击夹入本页">
-                                            <i class="fas fa-plus"></i>
+                                        <button onclick="app.bookmarks.removePlacing(${b.id}, event)" class="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 btn btn-xs btn-ghost text-error bg-error/10 hover:bg-error hover:text-white min-h-0 h-6 px-2 shadow-sm transition-all" title="取下书签">
+                                            取下
                                         </button>
                                     </div>
-                                </div>`;
+                                </li>`;
+                        } else {
+                            // 未使用的闲置书签列表项
+                            return `
+                                <li>
+                                    <div class="nav-menu-item flex items-center justify-between w-full py-2 group hover:bg-base-content/5 cursor-default">
+                                        <div class="flex items-center gap-2.5 min-w-0">
+                                            <div class="w-1.5 h-1.5 rounded-full bg-primary opacity-60 shrink-0"></div>
+                                            <div class="flex-shrink-0 w-5 h-5 rounded bg-base-100 flex items-center justify-center border border-black/5 shadow-sm">
+                                                ${iconHtml}
+                                            </div>
+                                            <span class="text-xs font-bold text-base-content truncate">${b.name}</span>
+                                        </div>
+                                        <button onclick="document.activeElement.blur(); app.bookmarks.startPlacing(${b.id})" class="btn btn-xs btn-primary min-h-0 h-6 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 shadow-sm font-medium">夹入</button>
+                                    </div>
+                                </li>`;
                         }
                     }).join('');
                 },
@@ -3727,6 +3713,25 @@ toast: {
                             this.loadPageBookmarks();
                         } else {
                             if(app.toast) app.toast.show('夹入失败：' + res.error, 'error');
+                        }
+                    });
+                },
+                
+                // 取下书签逻辑
+                removePlacing(ubId, event) {
+                    if (event) event.stopPropagation(); // 阻止点击事件穿透触发页面跳转
+                    
+                    fetch('/api/bookmarks/unplace', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ user_bookmark_id: ubId })
+                    }).then(r => r.json()).then(res => {
+                        if (res.success) {
+                            if(app.toast) app.toast.show('🔖 书签已取下，恢复为闲置状态', 'success');
+                            this.preloadMyBookmarks(); // 重新加载下拉框数据
+                            this.loadPageBookmarks();  // 刷新当前页面上的书签渲染
+                        } else {
+                            if(app.toast) app.toast.show('取下失败：' + res.error, 'error');
                         }
                     });
                 },

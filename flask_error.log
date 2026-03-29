@@ -3474,3 +3474,4 @@ Traceback (most recent call last):
        ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
 jinja2.exceptions.UndefinedError: 'get_global_sticker_limit' is undefined
 
+2026-03-20 08:20:44,014 - ERROR - Error: Directory migrations already exists and is not empty

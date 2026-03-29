@@ -128,6 +128,11 @@
 
         {% endif %}
 
+        /* 明暗主题图标自动切换 */
+        .theme-icon-dark { display: none; }
+        .theme-icon-light { display: inline-block; }
+        html.dark .theme-icon-dark { display: inline-block; }
+        html.dark .theme-icon-light { display: none; }
 
 
         ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -573,6 +578,7 @@
 
                 <a href="{{ url_for('bulletin_view') }}" class="nav-pill-item {{ 'active' if current_app == 'bulletin' else '' }}"><i class="fas fa-thumbtack"></i> 任务栏</a>
                 <a href="{{ url_for('announcements_view') }}" class="nav-pill-item {{ 'active' if current_app == 'announcements' else '' }}"><i class="fas fa-bullhorn"></i> 公告栏</a>
+                <a href="{{ url_for('cyber_radio') }}" target="_blank" class="nav-pill-item tooltip tooltip-bottom" data-tip="在新标签页打开，无缝后台播放"><i class="fas fa-headphones-alt"></i> 赛博频段</a>
 
             {% else %}
 
@@ -913,6 +919,11 @@
     <li><a href="{{ url_for('manage_users') }}" class="nav-menu-item"><i class="fas fa-users-cog w-4 text-center"></i> 用户</a></li>
     <li><a href="{{ url_for('manage_badges') }}" class="nav-menu-item"><i class="fas fa-medal w-4 text-center"></i> 徽章</a></li>
     <li><a href="{{ url_for('manage_bookmarks') }}" class="nav-menu-item"><i class="fas fa-bookmark w-4 text-center text-indigo-500"></i> 书签图鉴</a></li>
+    <li>
+        <a href="{{ url_for('manage_vinyls') }}" class="nav-menu-item">
+            <i class="fas fa-record-vinyl w-4 text-center text-purple-500"></i> 唱片压制厂
+        </a>
+    </li>
     <li><a href="{{ url_for('create_wiki') }}" class="nav-menu-item"><i class="fas fa-plus-square w-4 text-center"></i> 新建 Wiki</a></li>
 </ul>
 
@@ -1004,6 +1015,10 @@
         </div>
     </ul>
 </div>
+            <button onclick="toggleTheme()" class="nav-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom hover:text-primary transition-colors select-none" data-tip="切换明暗主题">
+                <i class="fas fa-moon theme-icon-light opacity-80 pointer-events-none"></i>
+                <i class="fas fa-sun theme-icon-dark opacity-80 pointer-events-none"></i>
+            </button>
 
             <a href="{{ url_for('online_users') }}" class="nav-btn px-2 tooltip tooltip-bottom border-transparent shadow-none" data-tip="在线用户">
 
@@ -4096,6 +4111,31 @@ toast: {
             {% endif %}
 
         });
+        
+        // ==========================================
+        // 💡 明暗主题切换引擎
+        // ==========================================
+        window.toggleTheme = function() {
+            const html = document.documentElement;
+            const isDark = html.classList.contains('dark');
+            const isBookMode = window.location.pathname.startsWith('/book');
+            
+            // 这里的 lightTheme 保持与你 head 中初始化时一致
+            const lightTheme = isBookMode ? 'winter' : 'cupcake'; 
+            const darkTheme = 'business';
+
+            if (isDark) {
+                // 切换到明亮模式
+                html.classList.remove('dark');
+                html.setAttribute('data-theme', lightTheme);
+                localStorage.setItem('theme', 'light');
+            } else {
+                // 切换到暗黑模式
+                html.classList.add('dark');
+                html.setAttribute('data-theme', darkTheme);
+                localStorage.setItem('theme', 'dark');
+            }
+        };
 
         document.addEventListener('DOMContentLoaded', () => { app.init(); });
 

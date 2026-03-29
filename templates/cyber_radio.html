@@ -1,189 +1,189 @@
-{% extends "base.html" %}
-{% block title %}SYS_RADIO // 内部波段监听室{% endblock %}
+    {% extends "base.html" %}
+    {% block title %}SYS_RADIO // 内部波段监听室{% endblock %}
 
-{% block extra_css %}
-<style>
-    body { background-color: #050505 !important; color: #eee; }
-    
-    .radio-grid-bg {
-        background-image: 
-            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-        background-size: 20px 20px;
-    }
-
-    .vinyl-card {
-        background: #111; border: 2px solid #333; transition: all 0.2s;
-        box-shadow: 4px 4px 0 #000;
-    }
-    .vinyl-card:hover:not(.locked) { border-color: #ea580c; transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #ea580c; cursor: pointer; }
-    
-    .locked { opacity: 0.5; filter: grayscale(100%); cursor: not-allowed; }
-
-    .record-disc {
-        width: 100px; height: 100px; border-radius: 50%; border: 4px solid #222;
-        background: #000; position: relative; overflow: hidden;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 15px rgba(0,0,0,0.5);
-    }
-    .record-cover { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
-    
-    .record-hole {
-        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        width: 12px; height: 12px; background: #111; border-radius: 50%; border: 1px solid #333; z-index: 10;
-    }
-
-    /* 旋转动画 */
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-    .playing .record-disc { animation: spin 4s linear infinite; }
-    
-    /* 音频波形跳动模拟 */
-    .visualizer { display: flex; gap: 2px; height: 20px; align-items: flex-end; opacity: 0; }
-    .playing .visualizer { opacity: 1; }
-    .bar { width: 4px; background: #ea580c; animation: bounce 0.5s ease-in-out infinite alternate; }
-    .bar:nth-child(1) { animation-delay: 0.1s; }
-    .bar:nth-child(2) { animation-delay: 0.3s; }
-    .bar:nth-child(3) { animation-delay: 0s; }
-    .bar:nth-child(4) { animation-delay: 0.2s; }
-    .bar:nth-child(5) { animation-delay: 0.4s; }
-    @keyframes bounce { 0% { height: 4px; } 100% { height: 100%; } }
-
-    /* 播放器主面板 */
-    .master-player {
-        background: #0a0a0a; border: 2px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-        border-top: 4px solid #ea580c;
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="w-full min-h-[calc(100vh-4rem)] pt-6 pb-20 radio-grid-bg">
-    <div class="max-w-[1200px] mx-auto px-4 relative z-10 flex flex-col md:flex-row gap-8">
+    {% block extra_css %}
+    <style>
+        body { background-color: #050505 !important; color: #eee; }
         
-        <div class="w-full md:w-[350px] shrink-0 sticky top-24 h-max">
-            <div class="master-player p-6 flex flex-col items-center text-center">
-                <div class="w-full flex justify-between items-center mb-6 border-b border-[#333] pb-2">
-                    <span class="text-[9px] font-mono text-[#ea580c] tracking-widest uppercase">● LIVE BROADCAST</span>
-                    <span class="text-[9px] font-mono text-[#666]">INF_LOOP_MODE</span>
-                </div>
+        .radio-grid-bg {
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
 
-                <div id="master-disc" class="record-disc !w-48 !h-48 !border-8 !border-[#222] mb-6 shadow-2xl transition-all duration-500">
-                    <img id="master-cover" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="record-cover">
-                    <div class="record-hole !w-4 !h-4 !bg-[#050505]"></div>
-                </div>
+        .vinyl-card {
+            background: #111; border: 2px solid #333; transition: all 0.2s;
+            box-shadow: 4px 4px 0 #000;
+        }
+        .vinyl-card:hover:not(.locked) { border-color: #ea580c; transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #ea580c; cursor: pointer; }
+        
+        .locked { opacity: 0.5; filter: grayscale(100%); cursor: not-allowed; }
 
-                <h2 id="master-title" class="text-xl font-black text-white uppercase tracking-wider mb-2">AWAITING SIGNAL...</h2>
-                <p class="text-[10px] font-mono text-[#666] mb-8">NO TAPE INSERTED</p>
+        .record-disc {
+            width: 100px; height: 100px; border-radius: 50%; border: 4px solid #222;
+            background: #000; position: relative; overflow: hidden;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 15px rgba(0,0,0,0.5);
+        }
+        .record-cover { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+        
+        .record-hole {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 12px; height: 12px; background: #111; border-radius: 50%; border: 1px solid #333; z-index: 10;
+        }
 
-                <audio id="sys-audio" loop></audio>
+        /* 旋转动画 */
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .playing .record-disc { animation: spin 4s linear infinite; }
+        
+        /* 音频波形跳动模拟 */
+        .visualizer { display: flex; gap: 2px; height: 20px; align-items: flex-end; opacity: 0; }
+        .playing .visualizer { opacity: 1; }
+        .bar { width: 4px; background: #ea580c; animation: bounce 0.5s ease-in-out infinite alternate; }
+        .bar:nth-child(1) { animation-delay: 0.1s; }
+        .bar:nth-child(2) { animation-delay: 0.3s; }
+        .bar:nth-child(3) { animation-delay: 0s; }
+        .bar:nth-child(4) { animation-delay: 0.2s; }
+        .bar:nth-child(5) { animation-delay: 0.4s; }
+        @keyframes bounce { 0% { height: 4px; } 100% { height: 100%; } }
 
-                <div class="w-full bg-[#111] p-4 border border-[#333] flex justify-between items-center">
-                    <button id="btn-play" class="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center hover:bg-[#ea580c] hover:text-white transition-colors cursor-not-allowed opacity-50" disabled>
-                        <i class="fas fa-play text-xl ml-1" id="play-icon"></i>
-                    </button>
-                    
-                    <div id="master-vis" class="visualizer flex-1 justify-center px-4">
-                        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                    </div>
+        /* 播放器主面板 */
+        .master-player {
+            background: #0a0a0a; border: 2px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border-top: 4px solid #ea580c;
+        }
+    </style>
+    {% endblock %}
 
-                    <div class="text-[10px] font-mono text-[#888] font-bold">
-                        VOL <br><span class="text-white">100%</span>
-                    </div>
-                </div>
-            </div>
+    {% block content %}
+    <div class="w-full min-h-[calc(100vh-4rem)] pt-6 pb-20 radio-grid-bg">
+        <div class="max-w-[1200px] mx-auto px-4 relative z-10 flex flex-col md:flex-row gap-8">
             
-            <div class="mt-4 p-4 border border-[#333] bg-[#111] text-[10px] font-mono text-[#888] uppercase leading-relaxed">
-                > 提示：保持此标签页在后台打开，系统会为您无缝循环注入专注频段。切换本站其他页面不会中断此信道。
-            </div>
-        </div>
+            <div class="w-full md:w-[350px] shrink-0 sticky top-24 h-max">
+                <div class="master-player p-6 flex flex-col items-center text-center">
+                    <div class="w-full flex justify-between items-center mb-6 border-b border-[#333] pb-2">
+                        <span class="text-[9px] font-mono text-[#ea580c] tracking-widest uppercase">● LIVE BROADCAST</span>
+                        <span class="text-[9px] font-mono text-[#666]">INF_LOOP_MODE</span>
+                    </div>
 
-        <div class="flex-1">
-            <h3 class="text-2xl font-black uppercase text-white mb-2 tracking-tight">DATA RECORDS // 频段磁带库</h3>
-            <p class="text-[#888] text-xs font-mono mb-8">> 达成特定系统参数，即可解密并挂载限量频段。</p>
+                    <div id="master-disc" class="record-disc !w-48 !h-48 !border-8 !border-[#222] mb-6 shadow-2xl transition-all duration-500">
+                        <img id="master-cover" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="record-cover">
+                        <div class="record-hole !w-4 !h-4 !bg-[#050505]"></div>
+                    </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {% for v in all_vinyls %}
-                    {% set is_earned = v.id in earned_v_ids %}
-                    
-                    <div class="vinyl-card flex p-4 gap-4 items-center relative {{ '' if is_earned else 'locked' }}"
-                         {% if is_earned %} onclick="loadTape('{{ v.name|escape }}', '{{ v.cover_url }}', '{{ v.audio_url }}', this)" {% endif %}>
+                    <h2 id="master-title" class="text-xl font-black text-white uppercase tracking-wider mb-2">AWAITING SIGNAL...</h2>
+                    <p class="text-[10px] font-mono text-[#666] mb-8">NO TAPE INSERTED</p>
+
+                    <audio id="sys-audio" loop></audio>
+
+                    <div class="w-full bg-[#111] p-4 border border-[#333] flex justify-between items-center">
+                        <button id="btn-play" class="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center hover:bg-[#ea580c] hover:text-white transition-colors cursor-not-allowed opacity-50" disabled>
+                            <i class="fas fa-play text-xl ml-1" id="play-icon"></i>
+                        </button>
                         
-                        <div class="record-disc shrink-0">
-                            <img src="{{ v.cover_url }}" class="record-cover">
-                            <div class="record-hole"></div>
+                        <div id="master-vis" class="visualizer flex-1 justify-center px-4">
+                            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
                         </div>
-                        
-                        <div class="flex-1 min-w-0">
-                            <h4 class="text-sm font-black text-white uppercase truncate mb-1" title="{{ v.name }}">{{ v.name }}</h4>
-                            {% if is_earned %}
-                                <span class="bg-[#ea580c] text-black text-[9px] font-black px-2 py-0.5 uppercase tracking-widest inline-block mb-2">UNLOCKED</span>
-                                <div class="visualizer h-3">
-                                    <div class="bar w-[2px]"></div><div class="bar w-[2px]"></div><div class="bar w-[2px]"></div>
-                                </div>
-                            {% else %}
-                                <div class="mt-1 border-t border-[#333] pt-2">
-                                    <p class="text-[9px] text-[#888] font-mono mb-0.5">{{ condition_map.get(v.condition_type) }}</p>
-                                    <p class="text-xs font-black text-[#555] font-mono">{{ v.condition_value }}</p>
-                                </div>
-                            {% endif %}
+
+                        <div class="text-[10px] font-mono text-[#888] font-bold">
+                            VOL <br><span class="text-white">100%</span>
                         </div>
                     </div>
-                {% endfor %}
+                </div>
+                
+                <div class="mt-4 p-4 border border-[#333] bg-[#111] text-[10px] font-mono text-[#888] uppercase leading-relaxed">
+                    > 提示：保持此标签页在后台打开，系统会为您无缝循环注入专注频段。切换本站其他页面不会中断此信道。
+                </div>
+            </div>
+
+            <div class="flex-1">
+                <h3 class="text-2xl font-black uppercase text-white mb-2 tracking-tight">DATA RECORDS // 频段磁带库</h3>
+                <p class="text-[#888] text-xs font-mono mb-8">> 达成特定系统参数，即可解密并挂载限量频段。</p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {% for v in all_vinyls %}
+                        {% set is_earned = v.id in earned_v_ids %}
+                        
+                        <div class="vinyl-card flex p-4 gap-4 items-center relative {{ '' if is_earned else 'locked' }}"
+                            {% if is_earned %} onclick="loadTape('{{ v.name|escape }}', '{{ v.cover_url }}', '{{ v.audio_url }}', this)" {% endif %}>
+                            
+                            <div class="record-disc shrink-0">
+                                <img src="{{ v.cover_url }}" class="record-cover">
+                                <div class="record-hole"></div>
+                            </div>
+                            
+                            <div class="flex-1 min-w-0">
+                                <h4 class="text-sm font-black text-white uppercase truncate mb-1" title="{{ v.name }}">{{ v.name }}</h4>
+                                {% if is_earned %}
+                                    <span class="bg-[#ea580c] text-black text-[9px] font-black px-2 py-0.5 uppercase tracking-widest inline-block mb-2">UNLOCKED</span>
+                                    <div class="visualizer h-3">
+                                        <div class="bar w-[2px]"></div><div class="bar w-[2px]"></div><div class="bar w-[2px]"></div>
+                                    </div>
+                                {% else %}
+                                    <div class="mt-1 border-t border-[#333] pt-2">
+                                        <p class="text-[9px] text-[#888] font-mono mb-0.5">{{ condition_map.get(v.condition_type) }}</p>
+                                        <p class="text-xs font-black text-[#555] font-mono">{{ v.condition_value }}</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+    {% endblock %}
 
-{% block scripts %}
-<script>
-    const audioEl = document.getElementById('sys-audio');
-    const playBtn = document.getElementById('btn-play');
-    const playIcon = document.getElementById('play-icon');
-    const masterTitle = document.getElementById('master-title');
-    const masterCover = document.getElementById('master-cover');
-    const masterDisc = document.getElementById('master-disc');
-    const masterVis = document.getElementById('master-vis');
-    
-    let currentCard = null;
+    {% block scripts %}
+    <script>
+        const audioEl = document.getElementById('sys-audio');
+        const playBtn = document.getElementById('btn-play');
+        const playIcon = document.getElementById('play-icon');
+        const masterTitle = document.getElementById('master-title');
+        const masterCover = document.getElementById('master-cover');
+        const masterDisc = document.getElementById('master-disc');
+        const masterVis = document.getElementById('master-vis');
+        
+        let currentCard = null;
 
-    // 加载磁带数据到主播放台
-    window.loadTape = function(title, cover, url, cardEl) {
-        // 重置旧的动画状态
-        if(currentCard) {
-            currentCard.classList.remove('playing');
-        }
-        
-        masterTitle.innerText = title;
-        masterCover.src = cover;
-        audioEl.src = url;
-        currentCard = cardEl;
-        
-        playBtn.disabled = false;
-        playBtn.classList.remove('cursor-not-allowed', 'opacity-50');
-        
-        // 加载完毕直接触发播放
-        togglePlay(true);
-    };
+        // 加载磁带数据到主播放台
+        window.loadTape = function(title, cover, url, cardEl) {
+            // 重置旧的动画状态
+            if(currentCard) {
+                currentCard.classList.remove('playing');
+            }
+            
+            masterTitle.innerText = title;
+            masterCover.src = cover;
+            audioEl.src = url;
+            currentCard = cardEl;
+            
+            playBtn.disabled = false;
+            playBtn.classList.remove('cursor-not-allowed', 'opacity-50');
+            
+            // 加载完毕直接触发播放
+            togglePlay(true);
+        };
 
-    // 播放/暂停控制
-    function togglePlay(forcePlay = false) {
-        if (audioEl.paused || forcePlay) {
-            audioEl.play().then(() => {
-                playIcon.className = "fas fa-pause text-xl";
-                masterDisc.parentElement.classList.add('playing');
-                if(currentCard) currentCard.classList.add('playing');
-            }).catch(e => {
-                console.log("Auto-play prevented by browser, waiting for user click.");
+        // 播放/暂停控制
+        function togglePlay(forcePlay = false) {
+            if (audioEl.paused || forcePlay) {
+                audioEl.play().then(() => {
+                    playIcon.className = "fas fa-pause text-xl";
+                    masterDisc.parentElement.classList.add('playing');
+                    if(currentCard) currentCard.classList.add('playing');
+                }).catch(e => {
+                    console.log("Auto-play prevented by browser, waiting for user click.");
+                    playIcon.className = "fas fa-play text-xl ml-1";
+                });
+            } else {
+                audioEl.pause();
                 playIcon.className = "fas fa-play text-xl ml-1";
-            });
-        } else {
-            audioEl.pause();
-            playIcon.className = "fas fa-play text-xl ml-1";
-            masterDisc.parentElement.classList.remove('playing');
-            if(currentCard) currentCard.classList.remove('playing');
+                masterDisc.parentElement.classList.remove('playing');
+                if(currentCard) currentCard.classList.remove('playing');
+            }
         }
-    }
 
-    playBtn.addEventListener('click', () => togglePlay());
-</script>
-{% endblock %}
+        playBtn.addEventListener('click', () => togglePlay());
+    </script>
+    {% endblock %}

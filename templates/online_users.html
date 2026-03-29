@@ -14,6 +14,7 @@
     }
 
     .grid-border { border-color: rgba(0,0,0,0.15); }
+    .dark .grid-border { border-color: rgba(255,255,255,0.15); }
     .scrollbar-hide::-webkit-scrollbar { display: none; }
 
     /* ==========================================
@@ -26,132 +27,147 @@
             linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
         background-size: 30px 30px;
     }
-    .texture-lines-h {
-        background-image: repeating-linear-gradient(to bottom, transparent, transparent 4px, rgba(0,0,0,0.05) 4px, rgba(0,0,0,0.05) 6px);
+    .dark .blueprint-bg {
+        background-color: #0a0a0a;
+        background-image: 
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
     }
-    .texture-lines-v {
-        background-image: repeating-linear-gradient(to right, transparent, transparent 4px, rgba(0,0,0,0.05) 4px, rgba(0,0,0,0.05) 6px);
-    }
-    .texture-diagonal {
-        background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 7px);
-    }
-    .texture-dots {
-        background-image: radial-gradient(rgba(0,0,0,0.1) 1px, transparent 1px);
-        background-size: 10px 10px;
-    }
-    .texture-grid-small {
-        background-image: linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
-        background-size: 10px 10px;
-    }
+
+    /* 横向扫面线 */
+    .texture-lines-h { background-image: repeating-linear-gradient(to bottom, transparent, transparent 4px, rgba(0,0,0,0.05) 4px, rgba(0,0,0,0.05) 6px); }
+    .dark .texture-lines-h { background-image: repeating-linear-gradient(to bottom, transparent, transparent 4px, rgba(255,255,255,0.03) 4px, rgba(255,255,255,0.03) 6px); }
+    
+    /* 纵向栅格 */
+    .texture-lines-v { background-image: repeating-linear-gradient(to right, transparent, transparent 4px, rgba(0,0,0,0.05) 4px, rgba(0,0,0,0.05) 6px); }
+    .dark .texture-lines-v { background-image: repeating-linear-gradient(to right, transparent, transparent 4px, rgba(255,255,255,0.03) 4px, rgba(255,255,255,0.03) 6px); }
+    
+    /* 警示斜纹 */
+    .texture-diagonal { background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 7px); }
+    .dark .texture-diagonal { background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.03) 5px, rgba(255,255,255,0.03) 7px); }
+    
+    /* 波点列阵 */
+    .texture-dots { background-image: radial-gradient(rgba(0,0,0,0.1) 1px, transparent 1px); background-size: 10px 10px; }
+    .dark .texture-dots { background-image: radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px); }
+    
+    /* 微型方格 */
+    .texture-grid-small { background-image: linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px); background-size: 10px 10px; }
+    .dark .texture-grid-small { background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); }
 
     /* ==========================================
-       地图建筑区块 (Map Zones)
+       地图建筑区块 (Map Zones - 10 Block Grid)
        ========================================== */
     .map-container {
-        position: relative;
-        width: 100%;
-        height: 75vh;
-        min-height: 650px;
-        border: 2px solid #111;
-        box-shadow: 12px 12px 0px rgba(0,0,0,1);
-        overflow: hidden;
+        position: relative; width: 100%; height: 75vh; min-height: 650px;
+        border: 2px solid #111; box-shadow: 12px 12px 0px rgba(0,0,0,1); overflow: hidden;
     }
+    .dark .map-container { border-color: #444; box-shadow: 12px 12px 0px #000; }
 
     .map-zone {
-        position: absolute;
-        border: 2px solid #111;
-        box-shadow: 6px 6px 0 #111;
+        position: absolute; border: 2px solid #111; box-shadow: 6px 6px 0 #111;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         transition: all 0.3s;
     }
     .map-zone:hover { box-shadow: 8px 8px 0 #111; transform: translate(-2px, -2px); }
+    .dark .map-zone { border-color: #333; box-shadow: 6px 6px 0 #000; }
+    .dark .map-zone:hover { box-shadow: 8px 8px 0 #000; }
     
     .zone-label {
         background: #111; color: #fff; font-family: monospace; font-weight: 900;
-        font-size: 11px; text-transform: uppercase; padding: 4px 10px; letter-spacing: 0.1em;
+        font-size: 10px; text-transform: uppercase; padding: 4px 10px; letter-spacing: 0.1em;
         position: absolute; top: -14px; left: 16px; border: 2px solid #111; z-index: 10;
         box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
     }
+    .dark .zone-label { background: #222; color: #eee; border-color: #444; }
     
-    .zone-icon { font-size: 5rem; opacity: 0.05; pointer-events: none; }
+    .zone-icon { font-size: 3.5rem; opacity: 0.1; pointer-events: none; }
+    .dark .zone-icon { opacity: 0.05; }
 
-    /* 坐标布阵 */
-    #zone-inventory { top: 8%; left: 5%; width: 22%; height: 26%; background-color: #ecfccb; }
-    #zone-leaderboard { top: 40%; left: 5%; width: 22%; height: 35%; background-color: #e0f2fe; }
-    #zone-square { top: 8%; left: 30%; width: 38%; height: 42%; background-color: #fff; }
-    #zone-bulletin { top: 55%; left: 30%; width: 38%; height: 35%; background-color: #ffe4e6; }
-    #zone-book { top: 12%; left: 71%; width: 24%; height: 45%; background-color: #fef3c7; }
-    #zone-logs { top: 62%; left: 71%; width: 24%; height: 28%; background-color: #f3e8ff; }
+    /* --- 精密计算的10宫格坐标 (防止任何重叠) --- */
+    /* 第一列 (X: 2% -> 22%) */
+    #zone-profile     { top: 4%;  left: 2%; width: 20%; height: 25%; background-color: #fff; }
+    #zone-inventory   { top: 31%; left: 2%; width: 20%; height: 30%; background-color: #ecfccb; }
+    #zone-leaderboard { top: 63%; left: 2%; width: 20%; height: 33%; background-color: #e0f2fe; }
+    
+    /* 第二列 (X: 24% -> 44%) */
+    #zone-workshop    { top: 4%;  left: 24%; width: 20%; height: 25%; background-color: #fef08a; }
+    #zone-calendar    { top: 31%; left: 24%; width: 20%; height: 65%; background-color: #ffedd5; }
+    
+    /* 第三列 (X: 46% -> 76%) */
+    #zone-server      { top: 4%;  left: 46%; width: 30%; height: 15%; background-color: #e2e8f0; }
+    #zone-square      { top: 21%; left: 46%; width: 30%; height: 40%; background-color: #fff; }
+    #zone-bulletin    { top: 63%; left: 46%; width: 30%; height: 33%; background-color: #ffe4e6; }
+    
+    /* 第四列 (X: 78% -> 98%) */
+    #zone-logs        { top: 4%;  left: 78%; width: 20%; height: 25%; background-color: #f3e8ff; }
+    #zone-book        { top: 31%; left: 78%; width: 20%; height: 65%; background-color: #fef3c7; }
 
-    #zone-wandering { display: none; } /* 兜底隐藏区 */
+    /* Dark Mode 建筑背景色映射 */
+    .dark #zone-profile     { background-color: #111; }
+    .dark #zone-inventory   { background-color: #1a2e05; }
+    .dark #zone-leaderboard { background-color: #0c4a6e; }
+    .dark #zone-workshop    { background-color: #422006; }
+    .dark #zone-calendar    { background-color: #451a03; }
+    .dark #zone-server      { background-color: #0f172a; }
+    .dark #zone-square      { background-color: #111; }
+    .dark #zone-bulletin    { background-color: #4c0519; }
+    .dark #zone-logs        { background-color: #3b0764; }
+    .dark #zone-book        { background-color: #422006; }
 
     /* ==========================================
        实体节点 (User Avatars on Map)
        ========================================== */
     .map-user-node {
-        position: absolute;
-        width: 34px; height: 34px;
-        border: 2px solid #111;
-        background: #fff; color: #111;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 900; font-size: 16px;
-        box-shadow: 3px 3px 0 #111;
-        cursor: crosshair;
-        z-index: 50;
-        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: absolute; width: 34px; height: 34px; border: 2px solid #111;
+        background: #fff; color: #111; display: flex; align-items: center; justify-content: center;
+        font-weight: 900; font-size: 16px; box-shadow: 3px 3px 0 #111;
+        cursor: crosshair; z-index: 50; transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         animation: float 3s ease-in-out infinite alternate;
     }
     .map-user-node:hover {
-        transform: scale(1.25) translateY(-5px) !important;
-        z-index: 100;
-        box-shadow: 6px 6px 0 #111;
-        background: #111; color: #fff;
+        transform: scale(1.25) translateY(-5px) !important; z-index: 100;
+        box-shadow: 6px 6px 0 #111; background: #111; color: #fff;
     }
+    .dark .map-user-node { border-color: #555; background: #111; color: #eee; box-shadow: 3px 3px 0 #000; }
+    .dark .map-user-node:hover { background: #eee; color: #111; box-shadow: 6px 6px 0 #000; }
     
-    @keyframes float {
-        0% { transform: translateY(0); }
-        100% { transform: translateY(-5px); }
-    }
+    @keyframes float { 0% { transform: translateY(0); } 100% { transform: translateY(-5px); } }
 
     /* 状态指示器 */
-    .node-status {
-        position: absolute; top: -5px; right: -5px; width: 12px; height: 12px;
-        border: 2px solid #111;
-    }
+    .node-status { position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; border: 2px solid #111; }
+    .dark .node-status { border-color: #000; }
     .status-pomo-work { background: #ef4444; animation: pulse 1s infinite; }
     .status-pomo-rest { background: #10b981; }
     .status-idle { background: #3b82f6; }
 
     /* ==========================================
-       终端悬浮信息卡 (Terminal Tooltip) - 右侧徽章版
+       终端悬浮信息卡 (Terminal Tooltip)
        ========================================== */
     .map-tooltip {
         position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%) translateY(10px);
         width: max-content; min-width: 220px; max-width: 300px;
         background: #fff; border: 2px solid #111; box-shadow: 6px 6px 0 #111;
         padding: 0; opacity: 0; visibility: hidden; pointer-events: none; z-index: 200;
-        transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-        display: flex; flex-direction: column;
+        transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column;
     }
-    .map-user-node:hover .map-tooltip {
-        opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
-    }
+    .map-user-node:hover .map-tooltip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+    .dark .map-tooltip { background: #111; border-color: #444; box-shadow: 6px 6px 0 #000; }
     
     .tooltip-header {
         background: #111; color: #fff; padding: 8px 12px; font-weight: 900; font-family: monospace; font-size: 12px;
         display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111;
     }
+    .dark .tooltip-header { background: #000; border-bottom-color: #444; color: #eee;}
     
-    /* 中部主体：左右 Flex 布局 + 底部粗虚线 */
     .tooltip-body {
-        padding: 16px 12px; background: #fafafa;
-        display: flex; align-items: center; justify-content: space-between;
-        border-bottom: 2px dashed #111;
+        padding: 16px 12px; background: #fafafa; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px dashed #111;
     }
+    .dark .tooltip-body { background: #111; border-bottom-color: #444; }
     
     .tooltip-footer {
         background: #fff; padding: 8px 12px; font-size: 10px; font-family: monospace; color: #555; text-transform: uppercase; font-weight: bold;
     }
+    .dark .tooltip-footer { background: #111; color: #888; }
 </style>
 
 <script id="users-data" type="application/json">
@@ -182,12 +198,12 @@
 
 {% block content %}
 <div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
-    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
+    <div class="max-w-[1600px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
 
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b grid-border pb-6 mb-8">
             <div>
                 <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2">SYSTEM RADAR // 在线雷达图</span>
-                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase flex items-center gap-4">
+                <h1 class="text-4xl md:text-5xl font-light text-stone-900 dark:text-stone-100 tracking-tight leading-none uppercase flex items-center gap-4">
                     全网节点监测
                 </h1>
                 <p class="text-[10px] text-stone-400 font-mono tracking-widest mt-4 uppercase">
@@ -196,45 +212,65 @@
             </div>
             
             <div class="mt-6 md:mt-0 w-full md:w-auto text-right flex flex-col items-end">
-                <button onclick="location.reload()" class="btn-brutal-outline w-full md:w-auto py-2 text-[10px]">
+                <button onclick="location.reload()" class="btn-brutal-outline w-full md:w-auto py-2 text-[10px] dark:bg-[#111] dark:text-[#eee] dark:border-[#444]">
                     <i class="fas fa-satellite-dish mr-2 animate-pulse text-emerald-500"></i> REFRESH RADAR
                 </button>
-                <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest border-2 border-[#111] bg-white px-3 py-1.5 mt-3 shadow-[2px_2px_0_#111]">
-                    活跃探针: <span class="font-black text-[#111] text-sm ml-1">{{ users|length }}</span> UNITS
+                <div class="text-[10px] font-mono text-stone-500 uppercase tracking-widest border-2 border-[#111] dark:border-[#444] bg-white dark:bg-[#111] px-3 py-1.5 mt-3 shadow-[2px_2px_0_#111] dark:shadow-[2px_2px_0_#000]">
+                    活跃探针: <span class="font-black text-[#111] dark:text-[#eee] text-sm ml-1">{{ users|length }}</span> UNITS
                 </div>
             </div>
         </div>
 
         <div class="map-container blueprint-bg" id="radar-map">
             
-            <div class="map-zone texture-dots" id="zone-inventory">
+            <div class="map-zone" id="zone-profile">
+                <div class="zone-label">个人数据中心</div>
+                <i class="fas fa-id-card zone-icon"></i>
+            </div>
+            
+            <div class="map-zone texture-grid-small" id="zone-inventory">
                 <div class="zone-label">库存资产库</div>
                 <i class="fas fa-box-open zone-icon"></i>
             </div>
             
             <div class="map-zone texture-diagonal" id="zone-leaderboard">
-                <div class="zone-label">巅峰竞技场</div>
+                <div class="zone-label">巅峰榜单</div>
                 <i class="fas fa-trophy zone-icon"></i>
             </div>
-            
-            <div class="map-zone texture-lines-h" id="zone-square">
-                <div class="zone-label">Wiki 数据枢纽</div>
-                <i class="fas fa-globe zone-icon"></i>
+
+            <div class="map-zone texture-dots" id="zone-workshop">
+                <div class="zone-label">编辑工坊</div>
+                <i class="fas fa-tools zone-icon"></i>
             </div>
             
+            <div class="map-zone texture-lines-h" id="zone-calendar">
+                <div class="zone-label">项目时间表</div>
+                <i class="fas fa-calendar-alt zone-icon"></i>
+            </div>
+
+            <div class="map-zone texture-lines-v" id="zone-server">
+                <div class="zone-label">数据节点：主路由</div>
+                <i class="fas fa-server zone-icon"></i>
+            </div>
+
+            <div class="map-zone" id="zone-square">
+                <div class="zone-label">Wiki 广场</div>
+                <i class="fas fa-globe zone-icon"></i>
+            </div>
+
             <div class="map-zone texture-grid-small" id="zone-bulletin">
-                <div class="zone-label">指令分发中心</div>
+                <div class="zone-label">任务大厅</div>
                 <i class="fas fa-thumbtack zone-icon"></i>
             </div>
 
-            <div class="map-zone texture-lines-v" id="zone-book">
-                <div class="zone-label">私人数据档案馆</div>
-                <i class="fas fa-book zone-icon"></i>
+            <div class="map-zone texture-diagonal" id="zone-logs">
+                <div class="zone-label">系统广播站</div>
+                <i class="fas fa-broadcast-tower zone-icon"></i>
             </div>
 
-            <div class="map-zone texture-diagonal" id="zone-logs">
-                <div class="zone-label">系统日志站</div>
-                <i class="fas fa-broadcast-tower zone-icon"></i>
+            <div class="map-zone texture-lines-h" id="zone-book">
+                <div class="zone-label">私人藏书馆</div>
+                <i class="fas fa-book zone-icon"></i>
             </div>
 
         </div>
@@ -255,35 +291,57 @@
         try { users = JSON.parse(dataEl.textContent); } 
         catch(e) { console.error("Parse error:", e); return; }
 
-        // 2. 映射路由 -> 建筑区域
+        // 2. 精确的 10 宫格路由映射表 (必须与 CSS 中 #zone-xxx 的 left/right/top/bottom 一致)
         const zonesBounds = {
-            'inventory':   { left: 5, right: 27, top: 8, bottom: 34 },
-            'leaderboard': { left: 5, right: 27, top: 40, bottom: 75 },
-            'square':      { left: 30, right: 68, top: 8, bottom: 50 },
-            'bulletin':    { left: 30, right: 68, top: 55, bottom: 90 },
-            'book':        { left: 71, right: 95, top: 12, bottom: 57 },
-            'logs':        { left: 71, right: 95, top: 62, bottom: 90 },
-            'wandering':   { left: 40, right: 60, top: 40, bottom: 60 }
+            'profile':     { left: 2,  right: 22, top: 4,  bottom: 29 },
+            'inventory':   { left: 2,  right: 22, top: 31, bottom: 61 },
+            'leaderboard': { left: 2,  right: 22, top: 63, bottom: 96 },
+            
+            'workshop':    { left: 24, right: 44, top: 4,  bottom: 29 },
+            'calendar':    { left: 24, right: 44, top: 31, bottom: 96 },
+            
+            'server':      { left: 46, right: 76, top: 4,  bottom: 19 },
+            'square':      { left: 46, right: 76, top: 21, bottom: 61 },
+            'bulletin':    { left: 46, right: 76, top: 63, bottom: 96 },
+            
+            'logs':        { left: 78, right: 98, top: 4,  bottom: 29 },
+            'book':        { left: 78, right: 98, top: 31, bottom: 96 }
         };
 
+        // 智能路径路由识别
         function determineZone(path) {
             if (!path || path === '/') return 'square';
-            if (path.includes('/book')) return 'book';
-            if (path.includes('/leaderboard')) return 'leaderboard';
-            if (path.includes('/bulletin') || path.includes('/manage_assignments') || path.includes('/assignment')) return 'bulletin';
+            
+            // Col 1
+            if (path.includes('/user/')) return 'profile';
             if (path.includes('/sticker') || path.includes('/badges') || path.includes('/bookmarks')) return 'inventory';
-            if (path.includes('/announcements') || path.includes('/online_users')) return 'logs';
+            if (path.includes('/leaderboard')) return 'leaderboard';
+            
+            // Col 2
+            if (path.includes('/edit') || path.includes('/new')) return 'workshop';
+            if (path.includes('/book/calendar')) return 'calendar';
+            
+            // Col 3
+            if (path.includes('/admin')) return 'server';
+            if (path.includes('/bulletin') || path.includes('/assignment')) return 'bulletin';
             if (path.includes('/wikis')) return 'square';
-            return 'wandering';
+            
+            // Col 4
+            if (path.includes('/announcements') || path.includes('/online_users')) return 'logs';
+            if (path.includes('/book')) return 'book';
+            
+            return 'square'; // Default fallback
         }
 
-        // 3. 随机分布算法
+        // 3. 随机分布算法：在指定区块范围内随机撒点
         function getRandomPosition(bounds) {
-            const tolerance = 4; 
+            const tolerance = 3; // 边界容差百分比，防止贴纸出界
             const width = bounds.right - bounds.left - tolerance * 2;
             const height = bounds.bottom - bounds.top - tolerance * 2;
+            
             const randomX = bounds.left + tolerance + (Math.random() * width);
             const randomY = bounds.top + tolerance + (Math.random() * height); 
+            
             return { x: randomX, y: randomY };
         }
 
@@ -307,24 +365,23 @@
                 if (remainMs > 0) {
                     const minutes = Math.ceil(remainMs / (1000 * 60));
                     const icon = u.pomo_state === 'WORK' ? '<i class="fas fa-fire text-red-500"></i>' : '<i class="fas fa-coffee text-emerald-500"></i>';
-                    pomoText = `<div class="mt-2 text-[10px] font-mono text-[#111] font-black">${icon} REMAINING: ${minutes}M</div>`;
+                    pomoText = `<div class="mt-2 text-[10px] font-mono text-[#111] dark:text-[#eee] font-black">${icon} REMAINING: ${minutes}M</div>`;
                 }
             }
 
-            // 💡 重点改造：徽章贴纸 HTML 结构，右侧独立模块
+            // 徽章贴纸 HTML 结构，右侧独立模块
             let badgeHtml = '';
             if (u.badge) {
                 const badgeIcon = u.badge.is_image 
                     ? `<img src="${u.badge.icon}" class="w-7 h-7 object-contain">` 
-                    : `<span class="text-2xl leading-none text-[#111]">${u.badge.icon}</span>`;
+                    : `<span class="text-2xl leading-none text-[#111] dark:text-[#eee]">${u.badge.icon}</span>`;
                     
-                // 采用 rotate 稍微倾斜的设计，营造“盖章/贴纸”的物理质感
                 badgeHtml = `
                     <div class="flex flex-col items-center ml-4 shrink-0 relative group/ttbadge cursor-help">
-                        <div class="w-10 h-10 flex items-center justify-center bg-white border-2 border-[#111] shadow-[2px_2px_0_#111] rotate-6 transition-transform group-hover/ttbadge:rotate-0">
+                        <div class="w-10 h-10 flex items-center justify-center bg-white dark:bg-[#111] border-2 border-[#111] dark:border-[#555] shadow-[2px_2px_0_#111] dark:shadow-[2px_2px_0_#000] rotate-6 transition-transform group-hover/ttbadge:rotate-0">
                             ${badgeIcon}
                         </div>
-                        <div class="absolute top-full mt-2 right-0 bg-[#111] text-white text-[9px] font-bold px-2 py-1 whitespace-nowrap opacity-0 group-hover/ttbadge:opacity-100 transition-opacity z-10 pointer-events-none border border-[#111]">
+                        <div class="absolute top-full mt-2 right-0 bg-[#111] dark:bg-[#eee] text-white dark:text-[#111] text-[9px] font-bold px-2 py-1 whitespace-nowrap opacity-0 group-hover/ttbadge:opacity-100 transition-opacity z-10 pointer-events-none border border-[#111] dark:border-[#eee]">
                             ${u.badge.name}
                         </div>
                     </div>
@@ -345,13 +402,13 @@
                 <div class="map-tooltip">
                     <div class="tooltip-header">
                         <span class="truncate max-w-[140px]">${u.real_name}</span>
-                        <span class="text-[10px] text-[#aaa]">@${u.username}</span>
+                        <span class="text-[9px] text-[#aaa]">@${u.username}</span>
                     </div>
                     
                     <div class="tooltip-body">
                         <div class="flex-1 min-w-0 pr-2">
                             <p class="font-mono text-[#888] text-[9px] uppercase mb-1">> CURRENT OP_CODE</p>
-                            <p class="text-sm font-black text-[#111] truncate">${u.action || 'INACTIVE // 节点休眠'}</p>
+                            <p class="text-sm font-black text-[#111] dark:text-[#eee] truncate">${u.action || 'INACTIVE // 节点休眠'}</p>
                             ${pomoText}
                         </div>
                         ${badgeHtml}

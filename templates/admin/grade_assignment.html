@@ -19,52 +19,294 @@
 
     /* 横线纹理背景 */
     .stripe-pattern {
-        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px);
+        background-image: repeating-linear-gradient(
+            to bottom,
+            transparent,
+            transparent 3px,
+            rgba(0,0,0,0.05) 3px,
+            rgba(0,0,0,0.05) 4px
+        );
     }
 
     /* 隐藏滚动条并自定义 */
     .scrollbar-hide::-webkit-scrollbar { display: none; }
-    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
-    .custom-scroll::-webkit-scrollbar-track { background: transparent; border-left: 1px solid rgba(0,0,0,0.1); }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #111; }
-    .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--theme-primary); }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track {
+        background: transparent;
+        border-left: 1px solid rgba(0,0,0,0.08);
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+        background: #111;
+        border-radius: 999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background: var(--theme-primary, #333);
+    }
 
     /* 极简按钮 */
     .btn-brutal {
-        background: #111; color: #fff; border-radius: 2px; font-size: 11px; font-weight: 800; text-transform: uppercase;
-        padding: 0.6rem 1.2rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center; border: 1px solid #111;
-        letter-spacing: 0.05em; cursor: pointer;
+        background: #111;
+        color: #fff;
+        border-radius: 2px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        padding: 0.6rem 1.2rem;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #111;
+        letter-spacing: 0.05em;
+        cursor: pointer;
     }
-    .btn-brutal:hover { background: var(--theme-primary); border-color: var(--theme-primary); color: #fff; }
+    .btn-brutal:hover {
+        background: var(--theme-primary, #333);
+        border-color: var(--theme-primary, #333);
+        color: #fff;
+    }
     
     .btn-brutal-outline {
-        background: #fff; color: #111; border: 1px solid #111; border-radius: 2px; font-size: 11px; font-weight: 800; text-transform: uppercase;
-        padding: 0.6rem 1.2rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-center;
-        letter-spacing: 0.05em; cursor: pointer;
+        background: #fff;
+        color: #111;
+        border: 1px solid #111;
+        border-radius: 2px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        padding: 0.6rem 1.2rem;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        letter-spacing: 0.05em;
+        cursor: pointer;
     }
-    .btn-brutal-outline:hover { background: #111; color: #fff; }
+    .btn-brutal-outline:hover {
+        background: #111;
+        color: #fff;
+    }
 
     /* 左侧列表项 */
     .student-item {
-        border-bottom: 1px solid rgba(0,0,0,0.1); cursor: pointer; transition: background-color 0.2s;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: background-color 0.2s;
     }
-    .student-item:hover { background-color: #fafafa; }
-    .student-item.active { background-color: #111; color: #fff; border-color: #111; }
-    .student-item.active * { color: #fff !important; }
+    .student-item:hover {
+        background-color: #fafafa;
+    }
+    .student-item.active {
+        background-color: #111;
+        color: #fff;
+        border-color: #111;
+    }
+    .student-item.active * {
+        color: #fff !important;
+    }
 
     /* 右侧输入终端 */
     .terminal-input {
-        background: #fff; border: 1px solid rgba(0,0,0,0.2); border-radius: 2px; font-family: monospace; font-size: 13px;
-        transition: border-color 0.2s, box-shadow 0.2s; padding: 0.5rem 1rem;
+        background: #fff;
+        border: 1px solid rgba(0,0,0,0.2);
+        border-radius: 2px;
+        font-family: monospace;
+        font-size: 13px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        padding: 0.5rem 1rem;
     }
-    .terminal-input:focus { border-color: #111; box-shadow: 2px 2px 0px rgba(0,0,0,1); outline: none; }
+    .terminal-input:focus {
+        border-color: #111;
+        box-shadow: 2px 2px 0px rgba(0,0,0,1);
+        outline: none;
+    }
 
-    /* 重置 Prose 内容区域 */
-    .prose { max-width: 100%; color: #333; }
-    .prose h1, .prose h2, .prose h3 { font-weight: 800; color: #111; margin-top: 1.5rem; margin-bottom: 0.75rem; letter-spacing: -0.02em; }
-    .prose p { margin-bottom: 1rem; line-height: 1.6; font-size: 0.95rem; }
-    .prose pre { background-color: #111; color: #eee; border-radius: 2px; padding: 1rem; border: 1px solid #333; }
-    .prose code { color: #111; background-color: #f0f0f0; padding: 0.2rem 0.4rem; border-radius: 2px; font-size: 0.85em; font-family: monospace; }
+    /* ==========================================
+       Markdown / Prose 内容优化
+       ========================================== */
+    .prose {
+        max-width: 100%;
+        color: #333;
+        font-size: 15px;
+    }
+
+    .prose h1,
+    .prose h2,
+    .prose h3,
+    .prose h4 {
+        font-weight: 800;
+        color: #111;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+    }
+
+    .prose h1 { font-size: 1.8rem; }
+    .prose h2 { font-size: 1.45rem; }
+    .prose h3 { font-size: 1.2rem; }
+    .prose h4 { font-size: 1rem; }
+
+    .prose p {
+        margin-bottom: 1rem;
+        line-height: 1.75;
+        font-size: 0.98rem;
+        color: #2b2b2b;
+    }
+
+    .prose ul,
+    .prose ol {
+        margin: 1rem 0 1.25rem 1.25rem;
+        padding-left: 1rem;
+        line-height: 1.75;
+    }
+
+    .prose li {
+        margin-bottom: 0.45rem;
+    }
+
+    .prose blockquote {
+        margin: 1.25rem 0;
+        padding: 0.9rem 1rem;
+        border-left: 4px solid #111;
+        background: #f7f7f7;
+        color: #444;
+    }
+
+    .prose hr {
+        border: none;
+        border-top: 1px solid rgba(0,0,0,0.12);
+        margin: 2rem 0;
+    }
+
+    .prose a {
+        color: #111;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    .prose img {
+        max-width: 100%;
+        border: 1px solid rgba(0,0,0,0.12);
+        border-radius: 4px;
+        display: block;
+        margin: 1rem auto;
+    }
+
+    /* 表格优化 */
+    .prose table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.25rem 0;
+        display: block;
+        overflow-x: auto;
+    }
+
+    .prose thead {
+        background: #111;
+        color: #fff;
+    }
+
+    .prose th,
+    .prose td {
+        border: 1px solid rgba(0,0,0,0.12);
+        padding: 0.75rem 0.9rem;
+        text-align: left;
+        white-space: nowrap;
+        font-size: 0.92rem;
+    }
+
+    /* 行内代码 */
+    .prose :not(pre) > code {
+        color: #c7254e;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        padding: 0.18rem 0.42rem;
+        border-radius: 6px;
+        font-size: 0.87em;
+        font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+        word-break: break-word;
+    }
+
+    /* 代码块容器 */
+    .prose pre {
+        background: linear-gradient(180deg, #151515 0%, #101010 100%);
+        color: #eaeaea;
+        border-radius: 12px;
+        padding: 1.1rem 1.2rem;
+        border: 1px solid #2a2a2a;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+        margin: 1.25rem 0 1.5rem;
+        overflow-x: auto;
+        overflow-y: hidden;
+        position: relative;
+        line-height: 1.7;
+        font-size: 0.9rem;
+        tab-size: 4;
+        -moz-tab-size: 4;
+        -o-tab-size: 4;
+        scrollbar-width: thin;
+        scrollbar-color: #666 #161616;
+    }
+
+    .prose pre::-webkit-scrollbar {
+        height: 10px;
+    }
+
+    .prose pre::-webkit-scrollbar-track {
+        background: #161616;
+        border-radius: 999px;
+    }
+
+    .prose pre::-webkit-scrollbar-thumb {
+        background: #555;
+        border-radius: 999px;
+        border: 2px solid #161616;
+    }
+
+    .prose pre::-webkit-scrollbar-thumb:hover {
+        background: #777;
+    }
+
+    /* 代码块内的 code 重置，避免套娃背景 */
+    .prose pre code {
+        display: block;
+        background: transparent !important;
+        color: inherit !important;
+        padding: 0;
+        margin: 0;
+        border: none !important;
+        border-radius: 0;
+        font-size: inherit;
+        line-height: inherit;
+        font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+        white-space: pre;
+        word-break: normal;
+        overflow-wrap: normal;
+    }
+
+    /* 可选：如果 markdown 渲染器会给代码块加 language-xxx class，则显示更整洁 */
+    .prose pre[class*="language-"] {
+        padding-top: 1.25rem;
+    }
+
+    /* 选中文本效果 */
+    .prose pre code::selection,
+    .prose pre::selection {
+        background: rgba(255,255,255,0.18);
+    }
+
+    /* 深色代码块中的强调元素兼容 */
+    .prose pre .hljs,
+    .prose pre .token {
+        background: transparent;
+    }
+
+    /* 防止 markdown 内容撑破布局 */
+    #contentArea {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
 </style>
 {% endblock %}
 
@@ -104,7 +346,7 @@
                 </div>
                 
                 <div id="studentList" class="flex-1 overflow-y-auto custom-scroll">
-                    </div>
+                </div>
             </div>
 
             <div class="flex-1 flex flex-col relative bg-white overflow-hidden z-0">
@@ -118,7 +360,7 @@
 
                 <div class="flex-1 overflow-y-auto p-8 custom-scroll relative">
                     <div id="contentArea" class="prose max-w-4xl mx-auto">
-                        </div>
+                    </div>
                 </div>
 
                 <div class="border-t grid-border p-6 bg-[#fafafa] shrink-0 z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
@@ -132,7 +374,7 @@
                                 <div class="flex flex-col gap-2">
                                     <label class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">STARS EARNED</label>
                                     <div class="flex items-center gap-1" id="starRatingContainer">
-                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <div class="flex flex-col gap-2 w-32">
@@ -165,17 +407,14 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // 接收后端传来的 JSON 数据
     const submissions = {{ submissions_json | tojson | safe }};
     const maxStars = {{ assignment.star_level }};
     let currentSelectedId = null;
 
-    // 渲染左侧列表 (Brutalist 风格)
     function renderList(filterClass = 'all') {
         const listContainer = document.getElementById('studentList');
         listContainer.innerHTML = '';
@@ -185,11 +424,10 @@
 
             const isPending = sub.status === 'pending';
             const isSelected = sub.id === currentSelectedId;
-            
-            // 样式切换：选中时纯黑底白字，未选中时白底黑字
             const activeClass = isSelected ? 'active' : '';
-            const indicatorHtml = isPending 
-                ? `<span class="bg-amber-400 text-black text-[8px] font-bold px-1.5 py-0.5 uppercase tracking-wider animate-pulse">PENDING</span>` 
+
+            const indicatorHtml = isPending
+                ? `<span class="bg-amber-400 text-black text-[8px] font-bold px-1.5 py-0.5 uppercase tracking-wider animate-pulse">PENDING</span>`
                 : `<span class="bg-emerald-500 text-white text-[8px] font-bold px-1.5 py-0.5 uppercase tracking-wider">GRADED</span>`;
 
             const itemHtml = `
@@ -208,25 +446,20 @@
         });
     }
 
-    // 处理筛选
     function filterStudents() {
         const selectedClass = document.getElementById('classFilter').value;
         renderList(selectedClass);
     }
 
-    // 选中某个作业
     function selectSubmission(id) {
         currentSelectedId = id;
         const sub = submissions.find(s => s.id === id);
         if (!sub) return;
 
-        // 重新渲染左侧列表（为了更新选中黑块高亮）
         filterStudents();
 
-        // 隐藏空状态遮罩
         document.getElementById('emptyState').classList.add('hidden');
 
-        // 填充右侧正文区 (极简标题头)
         document.getElementById('contentArea').innerHTML = `
             <div class="mb-8 pb-4 border-b-2 border-[#111] flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
@@ -234,7 +467,11 @@
                     <h1 class="text-3xl font-black text-stone-900 m-0 leading-none uppercase">${sub.real_name}</h1>
                 </div>
                 <div class="text-right">
-                    ${sub.status === 'graded' ? `<div class="text-3xl font-light text-emerald-600 leading-none">${sub.grade}</div><div class="text-[9px] font-bold text-emerald-600/70 uppercase tracking-widest mt-1">CURRENT GRADE</div>` : `<div class="text-[10px] font-bold text-amber-500 uppercase tracking-widest border border-amber-500 px-2 py-1">AWAITING EVALUATION</div>`}
+                    ${
+                        sub.status === 'graded'
+                        ? `<div class="text-3xl font-light text-emerald-600 leading-none">${sub.grade}</div><div class="text-[9px] font-bold text-emerald-600/70 uppercase tracking-widest mt-1">CURRENT GRADE</div>`
+                        : `<div class="text-[10px] font-bold text-amber-500 uppercase tracking-widest border border-amber-500 px-2 py-1">AWAITING EVALUATION</div>`
+                    }
                 </div>
             </div>
             
@@ -248,20 +485,15 @@
             </div>
         `;
 
-        // 填充底部终端表单
         document.getElementById('form_sub_id').value = sub.id;
         document.getElementById('form_grade').value = sub.grade || 'A';
         document.getElementById('form_feedback').value = sub.feedback || '';
 
-        // 动态生成星级评价按钮 (纯粹的 HTML Radio，没有外部样式库污染)
-const starContainer = document.getElementById('starRatingContainer');
+        const starContainer = document.getElementById('starRatingContainer');
         starContainer.innerHTML = '';
+
         for (let i = 1; i <= maxStars; i++) {
-            
-            // 💡 修复 1：判断逻辑改变。只有当作业是“已批改”状态时，才去回显星星；否则默认全空。
             let checkedAttr = (sub.status === 'graded' && i === sub.stars_earned) ? 'checked' : '';
-            
-            // 💡 修复 2：在 <input> 标签里加上了 required 属性！防手滑防忘点！
             starContainer.innerHTML += `
                 <label class="cursor-pointer relative flex items-center justify-center w-8 h-8">
                     <input type="radio" name="stars_earned" value="${i}" ${checkedAttr} required class="peer sr-only" />
@@ -273,7 +505,6 @@ const starContainer = document.getElementById('starRatingContainer');
         }
     }
 
-    // 页面加载完毕后初始化列表
     document.addEventListener('DOMContentLoaded', () => {
         renderList();
     });

@@ -607,6 +607,11 @@ class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     content_md = db.Column(db.Text, default="")
+    
+    # 👇 新增这两个字段
+    is_scrapbook = db.Column(db.Boolean, default=False) # 区分是传统 MD 笔记还是手账
+    scrapbook_data = db.Column(db.JSON, nullable=True)  # 存储手账画布的所有坐标与内容
+    
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     is_featured = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=now_utc8)
@@ -3514,28 +3519,60 @@ def edit_note(note_id):
         abort(403)
         
     if request.method == "POST":
-        n.title = request.form.get("title", "").strip()
-        n.content_md = request.form.get("content_md", "")
-        tags_str = request.form.get("tags", "")
-        
-        # Update tags
-        n.tags = process_tags(tags_str)
-        
-        # Update settings
-        n.comment_enabled = request.form.get("comment_enabled") == "on"
-        
-        # 仅管理员可以设置精选
-        if current_user.is_admin:
-            n.is_featured = request.form.get("is_featured") == "on"
+        # ==========================================
+        # 💡 新增：手账模式 (JSON 数据提交)
+        # ==========================================
+        if request.is_json:
+            data = request.json
+            n.title = data.get("title", n.title).strip()
             
-        db.session.commit()
-        
-        # Check badges for note owner (if admin featured it)
-        owner = User.query.get(n.user_id)
-        if owner:
-            check_and_award_badges(owner)
+            # 只要包含 scrapbook_data，就锁定为手账模式
+            if "scrapbook_data" in data:
+                n.is_scrapbook = True
+                n.scrapbook_data = data.get("scrapbook_data")
+            else:
+                n.is_scrapbook = False
+                n.content_md = data.get("content_md", n.content_md)
+                
+            db.session.commit()
             
-        return redirect(url_for("view_note", note_id=n.id))
+            # 发奖判定
+            owner = User.query.get(n.user_id)
+            if owner:
+                check_and_award_badges(owner)
+                
+            return jsonify({"success": True})
+            
+        # ==========================================
+        # 💡 传统模式：普通 Markdown 表单提交
+        # ==========================================
+        else:
+            n.title = request.form.get("title", "").strip()
+            n.content_md = request.form.get("content_md", "")
+            tags_str = request.form.get("tags", "")
+            
+            # 如果通过传统 Markdown 编辑器保存，强制切回普通模式
+            n.is_scrapbook = False
+            
+            # Update tags
+            n.tags = process_tags(tags_str)
+            
+            # Update settings
+            n.comment_enabled = request.form.get("comment_enabled") == "on"
+            
+            # 仅管理员可以设置精选
+            if current_user.is_admin:
+                n.is_featured = request.form.get("is_featured") == "on"
+                
+            db.session.commit()
+            
+            # Check badges for note owner (if admin featured it)
+            owner = User.query.get(n.user_id)
+            if owner:
+                check_and_award_badges(owner)
+                
+            return redirect(url_for("view_note", note_id=n.id))
+            
     return render_template("book/edit_note.html", note=n)
 
 @app.route("/book/notes/<int:note_id>/comment", methods=["POST"])
@@ -4698,6 +4735,18 @@ def upgrade_db():
                     conn.execute(db.text("ALTER TABLE badge ADD COLUMN target_id INTEGER"))
                     conn.commit()
         
+        if 'note' in inspector.get_table_names():
+            note_columns = [c['name'] for c in inspector.get_columns('note')]
+            with db.engine.connect() as conn:
+                needs_commit = False
+                if 'is_scrapbook' not in note_columns:
+                    conn.execute(db.text("ALTER TABLE note ADD COLUMN is_scrapbook BOOLEAN DEFAULT 0"))
+                    needs_commit = True
+                if 'scrapbook_data' not in note_columns:
+                    conn.execute(db.text("ALTER TABLE note ADD COLUMN scrapbook_data JSON"))
+                    needs_commit = True
+                if needs_commit:
+                    conn.commit()
                 
 
 @app.route('/service/wiki/pages')

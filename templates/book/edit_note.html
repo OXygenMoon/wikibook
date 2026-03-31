@@ -1,238 +1,543 @@
 {% extends "base.html" %}
-
-{% block title %}编辑笔记 - {{ note.title }}{% endblock %}
+{% block title %}手账编辑 - WikiBook{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/github.min.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/easymde.min.css') }}">
-
 <style>
-    /* 与新建笔记保持一致的 EasyMDE 外观与布局 */
-    .EasyMDEContainer {
-        display: flex;
-        flex-direction: column;
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        height: calc(100vh - 320px);
-        min-height: 400px;
-    }
+    /* 模式切换器 */
+    .mode-switch-btn { transition: all 0.3s ease; color: #888; border-radius: 8px; }
+    .mode-switch-btn.active { background: white; color: #4f46e5; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .dark .mode-switch-btn.active { background: #2a2a2a; color: #818cf8; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-    .EasyMDEContainer.fullscreen {
-        height: 100vh !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        z-index: 99999 !important;
-        border-radius: 0 !important;
-        border: none !important;
+    /* 手账画布基础样式 */
+    #scrapbook-wrapper {
+        width: 100%; height: 75vh; min-height: 650px; position: relative;
+        background-color: #fcfbf9; border-radius: 16px; overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.08), inset 0 0 40px rgba(0,0,0,0.02);
     }
-
-    .editor-toolbar {
-        flex-shrink: 0;
-        border: none !important;
-        border-bottom: 1px solid #e5e7eb !important;
-        background-color: #f9fafb;
-        border-radius: 0.5rem 0.5rem 0 0;
-        padding: 0.5rem !important;
-        white-space: nowrap;
-        overflow-x: auto;
-        display: flex;
-        align-items: center;
-        gap: 6px;
+    .dark #scrapbook-wrapper { 
+        background-color: #1a1a1a; border-color: rgba(255,255,255,0.05); 
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5), inset 0 0 40px rgba(0,0,0,0.2); 
     }
-    .EasyMDEContainer.fullscreen .editor-toolbar { border-radius: 0; }
-    .editor-toolbar::-webkit-scrollbar { height: 0; }
-
-    .CodeMirror {
-        flex-grow: 1;
-        height: auto !important;
-        border: none !important;
-        border-radius: 0 0 0.5rem 0.5rem;
-        font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-        font-size: 15px;
-        line-height: 1.7;
-        background: #fff;
-        padding: 10px;
-    }
-    .CodeMirror-scroll { min-height: 100% !important; }
-
-/* 预览区样式 (已修复高度与滚动) */
-    .editor-preview-side {
-        border: none !important;
-        border-left: 1px solid #e5e7eb !important;
-        background-color: #fafaf9;
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        top: 61px !important; /* 适配当前页面的工具栏高度 */
-        height: calc(100% - 61px) !important; /* 💡 严格限制高度，防止溢出 */
-        overflow-y: auto !important; /* 💡 强制内部出现滚动条 */
-        z-index: 50;
-    }
-
-    /* 分屏布局控制 (左右各50%) */
-    .EasyMDEContainer.sided--no-fullscreen {
-        position: relative; /* 确保预览区绝对定位的参考系正确 */
-    }
-    .EasyMDEContainer.sided--no-fullscreen .CodeMirror { 
-        width: 50% !important; 
-        height: calc(100% - 61px) !important; /* 💡 左侧代码区继承相同限制 */
-        max-height: none !important;
-    }
-    .EasyMDEContainer.sided--no-fullscreen .editor-preview-side {
-        width: 50% !important;
-        display: block !important;
-    }
-    .editor-preview-side p { margin: 0.5em 0; }
-
-    /* ========================================== */
-    /* 💡 强行拍平左侧源码区的富文本效果，还原纯代码视觉 */
-    /* ========================================== */
     
-    /* 1. 取消各级标题的字体放大和加粗 */
-    .EasyMDEContainer .CodeMirror .cm-header-1,
-    .EasyMDEContainer .CodeMirror .cm-header-2,
-    .EasyMDEContainer .CodeMirror .cm-header-3,
-    .EasyMDEContainer .CodeMirror .cm-header-4,
-    .EasyMDEContainer .CodeMirror .cm-header-5,
-    .EasyMDEContainer .CodeMirror .cm-header-6 {
-        font-size: 1em !important; 
-        font-weight: normal !important;
-        line-height: inherit !important;
+    .scrapbook-paper {
+        background-image: radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px);
+        background-size: 24px 24px; background-position: center;
+    }
+    .dark .scrapbook-paper { background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px); }
+
+    .book-spine {
+        position: absolute; top: 0; bottom: 0; left: 50%; width: 60px;
+        transform: translateX(-50%); pointer-events: none; z-index: 0;
+        background: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.01) 20%, rgba(0,0,0,0.06) 45%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.02) 60%, transparent 100%);
+    }
+    .dark .book-spine { background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.01) 20%, rgba(255,255,255,0.04) 45%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 60%, transparent 100%); }
+
+    /* ==========================================
+       画布内的元素及专属控件
+       ========================================== */
+    .sb-element {
+        position: absolute; transform-origin: center center;
+        cursor: grab; user-select: none; z-index: 10;
+    }
+    .sb-element:active { cursor: grabbing; }
+    
+    .sb-element.selected::before {
+        content: ''; position: absolute; inset: -8px; 
+        border: 2px dashed rgba(99, 102, 241, 0.6); border-radius: 8px; pointer-events: none; z-index: -1;
     }
 
-    /* 2. 取消粗体的物理加粗效果（只保留高亮颜色即可） */
-    .EasyMDEContainer .CodeMirror .cm-formatting-strong,
-    .EasyMDEContainer .CodeMirror .cm-strong {
-        font-weight: normal !important;
+    /* 💡 核心升级：元素正下方的微型控制台 */
+    .sb-controls {
+        position: absolute; bottom: -50px; left: 50%; transform: translateX(-50%);
+        display: none; align-items: center; gap: 4px;
+        background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+        border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 4px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 50;
+        pointer-events: auto; /* 允许点击控制台按钮 */
     }
+    .dark .sb-controls { background: rgba(30,30,30,0.95); border-color: rgba(255,255,255,0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+    .sb-element.selected .sb-controls { display: flex; }
 
-    /* 3. 取消斜体的物理倾斜效果 */
-    .EasyMDEContainer .CodeMirror .cm-formatting-em,
-    .EasyMDEContainer .CodeMirror .cm-em {
-        font-style: normal !important;
+    .sb-ctrl-btn {
+        width: 28px; height: 28px; border-radius: 6px; border: none;
+        background: transparent; color: #555; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.2s;
     }
+    .sb-ctrl-btn:not(:disabled):hover { background: #f0f0f0; color: #4f46e5; }
+    .dark .sb-ctrl-btn { color: #aaa; }
+    .dark .sb-ctrl-btn:not(:disabled):hover { background: #333; color: #818cf8; }
+    .sb-ctrl-btn.danger:not(:disabled):hover { background: #fee2e2; color: #ef4444; }
+    .dark .sb-ctrl-btn.danger:not(:disabled):hover { background: rgba(239,68,68,0.2); color: #ef4444; }
+
+    /* 文字块样式 (支持拉伸换行) */
+    .sb-text-content {
+        min-width: 120px; min-height: 40px; padding: 8px 12px;
+        background: transparent; border-radius: 4px;
+        font-family: 'Inter', sans-serif; font-weight: 600; color: #333; font-size: 16px;
+        outline: none; white-space: pre-wrap; overflow-wrap: break-word; line-height: 1.5;
+        transition: background 0.2s;
+        resize: both; overflow: auto; /* 开启右下角自由拖拽宽高 */
+    }
+    .dark .sb-text-content { color: #e5e5e5; }
+    
+    .sb-text-content::-webkit-scrollbar { width: 6px; height: 6px; }
+    .sb-text-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+    .dark .sb-text-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+    
+    .sb-text-content:focus { background: rgba(255,255,255,0.9); box-shadow: 0 4px 15px rgba(0,0,0,0.08); cursor: text; }
+    .dark .sb-text-content:focus { background: rgba(0,0,0,0.7); }
+
+    /* 底部全局工具栏 */
+    .floating-toolbar {
+        background: rgba(255,255,255,0.85); backdrop-filter: blur(12px);
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 0 1px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.5);
+    }
+    .dark .floating-toolbar { background: rgba(30,30,30,0.85); border-color: rgba(255,255,255,0.05); }
+
+    /* 贴纸库抽屉 */
+    #sticker-inventory {
+        position: absolute; right: 0; top: 0; bottom: 0; width: 300px;
+        background: rgba(255,255,255,0.95); backdrop-filter: blur(20px);
+        border-left: 1px solid rgba(0,0,0,0.05); transform: translateX(100%);
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 100;
+        box-shadow: -20px 0 40px rgba(0,0,0,0.05);
+    }
+    .dark #sticker-inventory { background: rgba(20,20,20,0.95); border-color: rgba(255,255,255,0.05); }
+    #sticker-inventory.open { transform: translateX(0); }
 </style>
+
+<script id="init-scrapbook-data" type="application/json">
+    {{ note.scrapbook_data | tojson | safe if note.scrapbook_data else '[]' }}
+</script>
 {% endblock %}
 
 {% block content %}
-
-<div class="max-w-5xl mx-auto">
-    <div class="flex items-center gap-2 text-sm text-base-content/60 mb-6">
-        <a href="{{ url_for('book_index') }}" class="hover:text-primary">我的笔记</a>
-        <span>/</span>
-        <a href="{{ url_for('view_note', note_id=note.id) }}" class="hover:text-primary truncate max-w-[200px]">{{ note.title }}</a>
-        <span>/</span>
-        <span class="text-base-content/80">编辑</span>
+<div class="max-w-6xl mx-auto pt-4 pb-20 relative z-10">
+    
+    <div class="flex flex-col md:flex-row justify-between items-end pb-4 mb-6 gap-4">
+        <div class="w-full md:w-1/2">
+            <span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest block mb-1">Scrapbook Node</span>
+            <input type="text" id="note-title" value="{{ note.title }}" class="w-full bg-transparent text-3xl font-black text-stone-800 dark:text-white border-none outline-none p-0 focus:ring-0 placeholder-stone-300 transition-colors" placeholder="为你的手账起个名字...">
+        </div>
+        
+        <div class="flex items-center gap-4 bg-stone-100/50 dark:bg-base-200/50 p-1.5 rounded-2xl border border-stone-200 dark:border-white/5">
+            <div class="flex bg-stone-200/50 dark:bg-base-300 p-1 rounded-xl">
+                <button onclick="switchMode('md')" id="btn-mode-md" class="mode-switch-btn px-4 py-1.5 text-xs font-bold {{ '' if note.is_scrapbook else 'active' }}">纯文本</button>
+                <button onclick="switchMode('scrapbook')" id="btn-mode-sb" class="mode-switch-btn px-4 py-1.5 text-xs font-bold {{ 'active' if note.is_scrapbook else '' }}">自由手账</button>
+            </div>
+            
+            <button onclick="saveNote()" class="btn bg-indigo-500 hover:bg-indigo-600 text-white border-none shadow-lg shadow-indigo-500/30 rounded-xl px-6 min-h-0 h-9 font-bold">
+                保存修改 <i class="fas fa-check ml-1"></i>
+            </button>
+        </div>
     </div>
 
-    <div class="card bg-base-100 shadow-xl border border-base-200 overflow-hidden">
-        <div class="card-body p-0">
-            <form method="post" class="flex flex-col h-[calc(100vh-12rem)]">
-                <div class="p-6 border-b border-base-200 bg-base-100 space-y-4">
-                    <input type="text" name="title" value="{{ note.title }}" placeholder="输入笔记标题..." class="input input-ghost text-2xl font-bold w-full focus:bg-transparent px-0 placeholder:text-base-content/30" required />
-                    <input type="text" name="tags" value="{{ note.tags | map(attribute='name') | join(', ') }}" placeholder="标签 (用逗号分隔)" class="input input-sm input-ghost w-full focus:bg-transparent px-0 placeholder:text-base-content/30" />
-                    
-                    <div class="form-control w-full max-w-xs">
-                        <label class="label cursor-pointer justify-start gap-4 p-0">
-                          <span class="label-text text-base-content/60">允许评论</span> 
-                          <input type="checkbox" name="comment_enabled" class="toggle toggle-xs toggle-primary" {% if note.comment_enabled %}checked{% endif %} />
-                        </label>
-                    </div>
+    <div id="editor-md" class="{{ 'hidden' if note.is_scrapbook else '' }} bg-white dark:bg-base-200 rounded-2xl shadow-sm border border-stone-100 dark:border-white/5">
+        <textarea id="content_md" class="hidden">{{ note.content_md }}</textarea>
+    </div>
+
+    <div id="editor-sb" class="{{ '' if note.is_scrapbook else 'hidden' }} relative">
+        <div id="scrapbook-wrapper" class="scrapbook-paper">
+            <div class="book-spine"></div>
+            <div id="scrapbook-canvas" class="absolute inset-0 w-full h-full relative"></div>
+            
+            <div id="sticker-inventory" class="flex flex-col">
+                <div class="p-5 border-b border-stone-100 dark:border-white/5 flex justify-between items-center">
+                    <span class="font-black text-sm text-stone-800 dark:text-white">我的贴纸库</span>
+                    <button onclick="toggleInventory()" class="btn btn-circle btn-xs btn-ghost text-stone-400 hover:text-stone-800"><i class="fas fa-chevron-right"></i></button>
                 </div>
-                
-                <div class="flex-1 overflow-hidden relative bg-base-100">
-                    <textarea id="markdown-editor" name="content_md" class="hidden">{{ note.content_md }}</textarea>
+                <div class="flex-1 overflow-y-auto p-5 grid grid-cols-3 gap-4 custom-scroll">
+                    {% for ub in current_user.earned_badges %}
+                        <div onclick="addSticker('{{ ub.badge.icon|badge_icon_url if ub.badge.icon|is_image_icon else ub.badge.icon }}', {{ 'true' if ub.badge.icon|is_image_icon else 'false' }})" 
+                             class="w-16 h-16 rounded-2xl bg-white dark:bg-base-200 shadow-sm border border-stone-100 dark:border-white/5 hover:shadow-md hover:border-indigo-300 cursor-pointer flex items-center justify-center transition-all hover:scale-110" title="{{ ub.badge.name }}">
+                            {% if ub.badge.icon|is_image_icon %}
+                                <img src="{{ ub.badge.icon|badge_icon_url }}" class="w-10 h-10 object-contain drop-shadow-sm">
+                            {% else %}
+                                <span class="text-3xl leading-none drop-shadow-sm">{{ ub.badge.icon }}</span>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="col-span-3 text-center py-10 text-stone-400 text-xs">库存空空如也，多去完成任务收集吧！</div>
+                    {% endfor %}
                 </div>
-                
-                <div class="p-4 border-t border-base-200 bg-base-100 flex justify-between items-center z-10">
-                    <a href="{{ url_for('view_note', note_id=note.id) }}" class="btn btn-ghost">取消</a>
-                    <button type="submit" class="btn btn-primary px-8">保存更改</button>
-                </div>
-            </form>
+            </div>
         </div>
+
+        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 floating-toolbar rounded-full px-2 py-1 z-50">
+            <button onclick="addText()" class="btn btn-ghost btn-sm rounded-full text-stone-600 dark:text-stone-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 font-bold px-4">
+                <i class="fas fa-font mr-1.5 opacity-70"></i> 文本
+            </button>
+            <div class="w-px h-5 bg-stone-200 dark:bg-stone-700 mx-1"></div>
+            <button onclick="toggleInventory()" class="btn btn-ghost btn-sm rounded-full text-stone-600 dark:text-stone-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 font-bold px-4">
+                <i class="fas fa-shapes text-indigo-500 mr-1.5"></i> 贴纸
+            </button>
+        </div>
+
+        <p class="text-center text-xs text-stone-400 mt-4 font-medium tracking-wide">💡 单击选中，拖拽移动 | 文本可双击打字、右下角拉伸 | 控制台可精确缩放与旋转</p>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/vendor/polyfill.min.js') }}"></script>
-<script id="MathJax-script" async src="{{ url_for('static', filename='js/vendor/tex-mml-chtml.js') }}"></script>
-<script src="{{ url_for('static', filename='js/vendor/highlight.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/vendor/easymde.min.js') }}"></script>
-
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        if (window.hljs) hljs.highlightAll();
+    let easyMDE = null;
+    let isScrapbookMode = {{ 'true' if note.is_scrapbook else 'false' }};
+    
+    let elements = [];
+    let selectedId = null;
+    let dragTarget = null;
+    let offsetX = 0, offsetY = 0;
+    
+    const canvas = document.getElementById('scrapbook-canvas');
+
+    // 💡 固定的 5 个缩放档位
+    const ALLOWED_SCALES = [0.5, 0.75, 1.0, 1.25, 1.5];
+
+    document.addEventListener("DOMContentLoaded", () => {
+        easyMDE = new EasyMDE({ 
+            element: document.getElementById("content_md"),
+            spellChecker: false, status: false,
+            toolbar: ["bold", "italic", "heading", "|", "quote", "code", "unordered-list", "ordered-list", "|", "link", "image", "|", "preview"]
+        });
+
+        try {
+            const dataStr = document.getElementById('init-scrapbook-data').textContent;
+            elements = JSON.parse(dataStr) || [];
+            elements.forEach(e => { 
+                if(!e.scale) e.scale = 1.0; 
+                if(!e.rotation) e.rotation = 0;
+            });
+            renderCanvas();
+        } catch(e) { console.error("Scrapbook data parse error", e); }
     });
 
-    const easyMDE = new EasyMDE({
-        element: document.getElementById('markdown-editor'),
-        spellChecker: false,
-        sideBySideFullscreen: false,
-        syncSideBySidePreviewScroll: false,
-        status: ["lines", "words", "cursor"],
-        toolbar: [
-            "bold", "italic", "strikethrough", "heading", "|",
-            "quote", "unordered-list", "ordered-list", "|",
-            "link", "image", "upload-image", "code", "|",
-            "preview", "side-by-side", "fullscreen", "|",
-            "guide"
-        ],
-        uploadImage: true,
-        imageUploadEndpoint: "{{ url_for('upload_file') }}",
-        imagePathAbsolute: true,
-        imageCSRFToken: "",
-        imageMaxSize: 1024 * 1024 * 16,
-        imageAccept: "image/png, image/jpeg, image/gif, image/webp",
-        imageTexts: {
-            sbInit: "上传图片",
-            sbOnDragEnter: "松开上传",
-            sbOnDragLeave: "取消",
-            sbProgress: "上传中...",
-            sbOnUploaded: "成功",
-            sizeUnits: "b,kb,mb"
-        },
-        errorCallback: (msg) => alert("上传失败: " + msg),
-        
-        // 💡 修复 1: 正确使用内置解析器并处理代码高亮与公式
-        previewRender: function(plainText, preview) {
-            // 使用 EasyMDE 绑定的解析方法（通常是 marked）
-            setTimeout(() => {
-                // 如果需要，这里可以替换为你后端的 mistune API
-                // 暂时先让代码高亮和数学公式跑起来
-                if (window.hljs) preview.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
-                if (typeof MathJax !== 'undefined') MathJax.typesetPromise([preview]);
-            }, 0);
+    window.switchMode = function(mode) {
+        const btnMd = document.getElementById('btn-mode-md');
+        const btnSb = document.getElementById('btn-mode-sb');
+        const viewMd = document.getElementById('editor-md');
+        const viewSb = document.getElementById('editor-sb');
+
+        if (mode === 'md') {
+            isScrapbookMode = false;
+            btnMd.classList.add('active'); btnSb.classList.remove('active');
+            viewMd.classList.remove('hidden'); viewSb.classList.add('hidden');
+        } else {
+            isScrapbookMode = true;
+            btnSb.classList.add('active'); btnMd.classList.remove('active');
+            viewSb.classList.remove('hidden'); viewMd.classList.add('hidden');
+            renderCanvas();
+        }
+    };
+
+    // ==========================================
+    // 全局重绘引擎 (仅在添加/删除对象时调用)
+    // ==========================================
+    function renderCanvas() {
+        canvas.innerHTML = ''; 
+        elements.forEach(el => {
+            const node = document.createElement('div');
+            node.className = `sb-element ${selectedId === el.id ? 'selected' : ''}`;
+            node.dataset.id = el.id;
             
-            // 必须返回 HTML 字符串，EasyMDE 会把它塞进 preview 容器
-            // (注意：this.parent.markdown() 内部实际上调用了 marked.parse)
-            return this.parent.markdown(plainText); 
-        },
+            // 确保缩放比例被归一化到我们设定的5个档位中
+            if (!ALLOWED_SCALES.includes(el.scale)) {
+                el.scale = ALLOWED_SCALES.reduce((prev, curr) => Math.abs(curr - (el.scale||1)) < Math.abs(prev - (el.scale||1)) ? curr : prev);
+            }
+
+            node.style.left = `${el.x}%`;
+            node.style.top = `${el.y}%`;
+            node.style.zIndex = el.z || 10;
+            node.style.transform = `translate(-50%, -50%) rotate(${el.rotation || 0}deg) scale(${el.scale})`;
+
+            // ==========================================
+            // 💡 注入专属控制台 (DOM结构)
+            // ==========================================
+            const controls = document.createElement('div');
+            controls.className = 'sb-controls';
+            // 反向抵消父元素的缩放，防止组件变形
+            controls.style.transform = `translateX(-50%) scale(${1 / el.scale})`;
+            
+            controls.onmousedown = (e) => e.stopPropagation();
+            controls.ontouchstart = (e) => e.stopPropagation();
+
+            // 缩小 (-)
+            const btnScaleDown = document.createElement('button');
+            btnScaleDown.className = 'sb-ctrl-btn'; btnScaleDown.innerHTML = '<i class="fas fa-minus"></i>';
+            btnScaleDown.disabled = el.scale <= ALLOWED_SCALES[0];
+            btnScaleDown.style.opacity = btnScaleDown.disabled ? '0.3' : '1';
+            btnScaleDown.onclick = () => {
+                let idx = ALLOWED_SCALES.indexOf(el.scale);
+                if(idx > 0) updateObject(el.id, 'scale', ALLOWED_SCALES[idx - 1]);
+            };
+
+            // 数字显示
+            const scaleText = document.createElement('span');
+            scaleText.className = 'text-[10px] font-bold font-mono w-10 text-center text-[#111] dark:text-[#eee] cursor-default';
+            scaleText.innerText = `${Math.round(el.scale * 100)}%`;
+
+            // 放大 (+)
+            const btnScaleUp = document.createElement('button');
+            btnScaleUp.className = 'sb-ctrl-btn'; btnScaleUp.innerHTML = '<i class="fas fa-plus"></i>';
+            btnScaleUp.disabled = el.scale >= ALLOWED_SCALES[ALLOWED_SCALES.length - 1];
+            btnScaleUp.style.opacity = btnScaleUp.disabled ? '0.3' : '1';
+            btnScaleUp.onclick = () => {
+                let idx = ALLOWED_SCALES.indexOf(el.scale);
+                if(idx < ALLOWED_SCALES.length - 1) updateObject(el.id, 'scale', ALLOWED_SCALES[idx + 1]);
+            };
+
+            const divider1 = document.createElement('div'); divider1.className = 'w-px h-4 bg-[#ccc] dark:bg-[#444] mx-0.5';
+
+            // 左转
+            const btnRotLeft = document.createElement('button');
+            btnRotLeft.className = 'sb-ctrl-btn'; btnRotLeft.innerHTML = '<i class="fas fa-undo"></i>';
+            btnRotLeft.onclick = () => updateObject(el.id, 'rotation', -15);
+
+            // 右转
+            const btnRotRight = document.createElement('button');
+            btnRotRight.className = 'sb-ctrl-btn'; btnRotRight.innerHTML = '<i class="fas fa-redo"></i>';
+            btnRotRight.onclick = () => updateObject(el.id, 'rotation', 15);
+
+            const divider2 = document.createElement('div'); divider2.className = 'w-px h-4 bg-[#ccc] dark:bg-[#444] mx-0.5';
+
+            // 删除
+            const btnDel = document.createElement('button');
+            btnDel.className = 'sb-ctrl-btn danger'; btnDel.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            btnDel.onclick = () => deleteElement(el.id);
+
+            controls.appendChild(btnScaleDown); controls.appendChild(scaleText); controls.appendChild(btnScaleUp);
+            controls.appendChild(divider1);
+            controls.appendChild(btnRotLeft); controls.appendChild(btnRotRight);
+            controls.appendChild(divider2);
+            controls.appendChild(btnDel);
+            node.appendChild(controls);
+
+
+            // ==========================================
+            // 渲染对象主体
+            // ==========================================
+            if (el.type === 'text') {
+                const textDiv = document.createElement('div');
+                textDiv.className = 'sb-text-content';
+                textDiv.innerText = el.content || '请输入文字...';
+                if (el.width) textDiv.style.width = el.width;
+                if (el.height) textDiv.style.height = el.height;
+                
+                textDiv.contentEditable = false; 
+                textDiv.style.userSelect = 'none'; // 默认静止，防手抖
+                
+                textDiv.oninput = () => { el.content = textDiv.innerText; };
+                textDiv.onmouseup = () => {
+                    if(textDiv.style.width) el.width = textDiv.style.width;
+                    if(textDiv.style.height) el.height = textDiv.style.height;
+                };
+
+                // 💡 核心修复：双击完美触发编辑
+                node.ondblclick = (e) => {
+                    e.stopPropagation();
+                    textDiv.contentEditable = true;
+                    textDiv.style.userSelect = 'text'; 
+                    textDiv.style.cursor = 'text';
+                    textDiv.focus();
+                    
+                    // 光标跳至最后
+                    const range = document.createRange();
+                    range.selectNodeContents(textDiv);
+                    range.collapse(false);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                };
+                
+                textDiv.onblur = () => {
+                    textDiv.contentEditable = false;
+                    textDiv.style.userSelect = 'none';
+                    textDiv.style.cursor = 'inherit';
+                };
+                node.appendChild(textDiv);
+            } 
+            else if (el.type === 'sticker') {
+                if (el.is_image) {
+                    const img = document.createElement('img');
+                    img.src = el.icon;
+                    img.className = 'w-24 h-24 object-contain pointer-events-none drop-shadow-md';
+                    node.appendChild(img);
+                } else {
+                    const span = document.createElement('span');
+                    span.innerText = el.icon;
+                    span.className = 'text-[4rem] pointer-events-none drop-shadow-md leading-none block';
+                    node.appendChild(span);
+                }
+            }
+
+            node.onmousedown = (e) => startDrag(e, el.id);
+            node.ontouchstart = (e) => startDrag(e.touches[0], el.id);
+            canvas.appendChild(node);
+        });
+    }
+
+    // ==========================================
+    // 动作执行器
+    // ==========================================
+    function updateObject(id, prop, val) {
+        const el = elements.find(e => e.id === id);
+        if (!el) return;
+        
+        if (prop === 'scale') {
+            el.scale = val;
+        } else if (prop === 'rotation') {
+            el.rotation = (el.rotation || 0) + val;
+        }
+        
+        // 我们需要重新渲染该节点，以更新控制台里按钮的状态（变灰或可用）
+        renderCanvas();
+    }
+
+    // ==========================================
+    // 添加与删除
+    // ==========================================
+    window.addText = function() {
+        const id = 'txt_' + Date.now();
+        elements.push({ id: id, type: 'text', content: '双击可编辑...', x: 50, y: 50, rotation: 0, scale: 1.0, z: getNextZ() });
+        selectedId = id; 
+        renderCanvas();
+    };
+
+    window.addSticker = function(iconUrl, isImage) {
+        const id = 'stk_' + Date.now();
+        elements.push({ id: id, type: 'sticker', icon: iconUrl, is_image: isImage, x: 50, y: 50, rotation: Math.floor(Math.random() * 20) - 10, scale: 1.0, z: getNextZ() });
+        selectedId = id; 
+        renderCanvas();
+        toggleInventory(); 
+    };
+
+    function deleteElement(id) {
+        elements = elements.filter(e => e.id !== id);
+        if (selectedId === id) selectedId = null;
+        renderCanvas();
+    }
+
+    function getNextZ() {
+        return elements.length > 0 ? Math.max(...elements.map(e => e.z || 0)) + 1 : 10;
+    }
+
+    window.toggleInventory = function() {
+        document.getElementById('sticker-inventory').classList.toggle('open');
+    };
+
+    // ==========================================
+    // 💡 智能拖拽系统 (不毁坏 DOM，保护光标)
+    // ==========================================
+    
+    // 仅用于选中元素（不高消耗重绘DOM）
+    function selectElement(id) {
+        selectedId = id;
+        document.querySelectorAll('.sb-element').forEach(el => {
+            if (el.dataset.id === id) el.classList.add('selected');
+            else el.classList.remove('selected');
+        });
+    }
+
+    function startDrag(e, id) {
+        const target = e.target || e.srcElement;
+        
+        // 防呆拦截：正在打字时不允许拖位移
+        if (target.contentEditable === 'true') return; 
+
+        // 防呆拦截：按到了右下角的 resize 拉伸区域时，由浏览器接管拉伸功能，停止位移
+        let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        
+        if (target.classList.contains('sb-text-content')) {
+            const rect = target.getBoundingClientRect();
+            if (clientX > rect.right - 25 && clientY > rect.bottom - 25) {
+                selectElement(id);
+                return; 
+            }
+        }
+        
+        // 激活状态与 Z轴置顶
+        selectElement(id);
+        dragTarget = elements.find(el => el.id === id);
+        dragTarget.z = getNextZ(); 
+        
+        const elNode = document.querySelector(`.sb-element[data-id="${id}"]`);
+        elNode.style.zIndex = dragTarget.z;
+        
+        const elRect = elNode.getBoundingClientRect();
+        offsetX = clientX - elRect.left - elRect.width / 2;
+        offsetY = clientY - elRect.top - elRect.height / 2;
+    }
+
+    function onDrag(e) {
+        if (!dragTarget) return;
+        const rect = canvas.getBoundingClientRect();
+        
+        let pxX = e.clientX - rect.left - offsetX;
+        let pxY = e.clientY - rect.top - offsetY;
+        pxX = Math.max(0, Math.min(pxX, rect.width));
+        pxY = Math.max(0, Math.min(pxY, rect.height));
+
+        dragTarget.x = (pxX / rect.width) * 100;
+        dragTarget.y = (pxY / rect.height) * 100;
+
+        const elNode = document.querySelector(`.sb-element[data-id="${dragTarget.id}"]`);
+        if (elNode) {
+            elNode.style.left = `${dragTarget.x}%`;
+            elNode.style.top = `${dragTarget.y}%`;
+        }
+    }
+
+    function stopDrag() { dragTarget = null; }
+
+    canvas.onmousedown = (e) => {
+        // 点到空白处，清空选中状态
+        if (e.target === canvas || e.target.classList.contains('book-spine')) {
+            selectElement(null);
+        }
+    };
+
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchmove', (e) => onDrag(e.touches[0]), {passive: false});
+    document.addEventListener('touchend', stopDrag);
+
+    document.addEventListener('keydown', (e) => {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+            if (document.activeElement.tagName !== 'INPUT' && document.activeElement.contentEditable !== 'true') {
+                deleteElement(selectedId);
+            }
+        }
     });
 
-    // 💡 修复 2: 在延迟打开分屏时，给预览面板加上排版样式！
-    setTimeout(function() {
-        if (!easyMDE.isSideBySideActive()) {
-            easyMDE.toggleSideBySide();
+    window.saveNote = function() {
+        const title = document.getElementById('note-title').value.trim();
+        if (!title) {
+            if(app && app.toast) app.toast.show('标题不能为空', 'warning');
+            return;
         }
-        if (easyMDE.codemirror) easyMDE.codemirror.refresh();
-        
-        // 为侧边预览框注入全局的 Markdown 排版样式（与正式页面一致）
-        const previewElement = document.querySelector('.editor-preview-side');
-        if (previewElement) {
-            // 添加你在正式阅读页使用的类，例如 markdown-body 或 prose
-            previewElement.classList.add('markdown-body', 'prose', 'prose-stone', 'max-w-none', 'p-6');
-        }
-    }, 200);
 
-    setTimeout(function() {
-        if (!easyMDE.isSideBySideActive()) {
-            easyMDE.toggleSideBySide();
+        const payload = { title: title };
+        if (isScrapbookMode) {
+            if(document.activeElement.contentEditable === 'true') document.activeElement.blur();
+            payload.scrapbook_data = elements;
+        } else {
+            payload.content_md = easyMDE.value();
         }
-        if (easyMDE.codemirror) easyMDE.codemirror.refresh();
-    }, 200);
+
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                if(app && app.toast) app.toast.show('✅ 手账保存成功', 'success');
+                setTimeout(() => window.location.href = '/book/notes/{{ note.id }}', 800);
+            }
+        }).catch(err => {
+            if(app && app.toast) app.toast.show('保存失败，请检查网络', 'error');
+        });
+    };
 </script>
 {% endblock %}

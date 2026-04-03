@@ -6611,6 +6611,7 @@ def manage_vinyls():
     }
     return render_template('admin/manage_vinyls.html', vinyls=vinyls, condition_map=condition_map)
 
+
 @app.route('/admin/vinyls/<int:v_id>/delete', methods=['POST'])
 @login_required
 def delete_vinyl(v_id):

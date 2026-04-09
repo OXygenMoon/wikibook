@@ -172,22 +172,64 @@
 
 
         /* ---------------------------------------------------- */
-
-        /* --- 全开放式悬浮导航岛 (Floating Islands) --- */
-
+        /* --- 自适应玻璃导航壳层 (Responsive Nav Shell) --- */
         /* ---------------------------------------------------- */
-
-        
-
         .top-logo-area { position: absolute; top: 1.5rem; left: 2.5rem; z-index: 50; }
 
+        .top-nav-shell {
+            position: fixed;
+            top: 1.1rem;
+            left: 1rem;
+            right: 1rem;
+            z-index: 100;
+            pointer-events: none;
+        }
 
+        .top-nav-layout {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.65rem 0.9rem;
+        }
 
-        .top-left-island { position: fixed; top: 1.25rem; left: 1.5rem; z-index: 100; display: flex; gap: 0.5rem; align-items: center; pointer-events: none; }
+        .top-nav-left,
+        .top-nav-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+            pointer-events: auto;
+        }
 
-        .top-right-island { position: fixed; top: 1.25rem; right: 1.5rem; z-index: 100; display: flex; gap: 0.5rem; align-items: center; pointer-events: none; }
+        .top-nav-left {
+            flex: 1 1 46rem;
+        }
 
-        .top-left-island > *, .top-right-island > * { pointer-events: auto; }
+        .top-nav-right {
+            flex: 1 1 20rem;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            row-gap: 0.5rem;
+        }
+
+        @media (max-width: 1399px) {
+            .top-nav-shell {
+                top: 0.95rem;
+                left: 0.85rem;
+                right: 0.85rem;
+            }
+
+            .top-nav-left,
+            .top-nav-right {
+                flex-basis: 100%;
+            }
+
+            .top-nav-right {
+                justify-content: flex-start;
+                padding-left: 0.2rem;
+            }
+        }
 
 
 
@@ -215,9 +257,9 @@
 
         .dark .nav-btn {
 
-            background: rgba(40, 40, 40, 0.4) !important; border-color: rgba(255, 255, 255, 0.15) !important;
+            background: rgba(17, 17, 17, 0.74) !important; border-color: rgba(255, 255, 255, 0.16) !important;
 
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15) !important; color: hsl(var(--bc) / 0.95);
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.62), inset 0 1px 1px rgba(255, 255, 255, 0.08) !important; color: #ececec;
 
         }
 
@@ -231,7 +273,7 @@
 
         }
 
-        .dark .nav-btn:hover, .dark .dropdown.dropdown-open > .nav-btn { background: rgba(60, 60, 60, 0.5) !important; }
+        .dark .nav-btn:hover, .dark .dropdown.dropdown-open > .nav-btn { background: rgba(28, 28, 28, 0.92) !important; border-color: rgba(234, 88, 12, 0.45) !important; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(234, 88, 12, 0.16) !important; }
 
 
 
@@ -244,16 +286,19 @@
             border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.9);
 
             border-radius: 9999px; padding: 0.2rem; display: flex; align-items: center; gap: 0.15rem; height: 2.25rem;
+            width: fit-content; min-width: 0;
+            max-width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none;
 
         }
+        .nav-pill-group::-webkit-scrollbar { display: none; }
 
-        .dark .nav-pill-group { background: rgba(40, 40, 40, 0.4); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15); }
+        .dark .nav-pill-group { background: rgba(14, 14, 14, 0.8); border-color: rgba(255, 255, 255, 0.16); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.05); }
 
-        .nav-pill-item { padding: 0.3rem 0.8rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; color: hsl(var(--bc) / 0.7); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; display: flex; align-items: center; gap: 0.35rem; height: 100%; position: relative; z-index: 1; }
+        .nav-pill-item { padding: 0.3rem 0.8rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; color: hsl(var(--bc) / 0.7); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; display: flex; align-items: center; gap: 0.35rem; height: 100%; position: relative; z-index: 1; flex: 0 0 auto; white-space: nowrap; }
 
         .nav-pill-item:hover { color: hsl(var(--bc)); background: rgba(0, 0, 0, 0.04); }
 
-        .dark .nav-pill-item:hover { background: rgba(255, 255, 255, 0.08); }
+        .dark .nav-pill-item:hover { background: rgba(234, 88, 12, 0.16); color: #f6f6f6; }
 
         .nav-pill-item.active { background: var(--theme-primary); color: white; box-shadow: 0 4px 12px -2px var(--theme-primary); text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
 
@@ -273,7 +318,7 @@
 
         }
 
-        .dark .nav-mode-toggle { background: rgba(40, 40, 40, 0.4); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15); }
+        .dark .nav-mode-toggle { background: rgba(14, 14, 14, 0.82); border-color: rgba(255, 255, 255, 0.16); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.62), inset 0 1px 1px rgba(255, 255, 255, 0.05); }
 
         .nav-mode-option { padding: 0 0.75rem; height: 100%; display: flex; align-items: center; font-size: 0.75rem; font-weight: 800; z-index: 10; transition: color 0.3s; color: hsl(var(--bc) / 0.65); border-radius: 9999px; }
 
@@ -297,11 +342,11 @@
 
         }
 
-        .dark .user-nav-dropdown { background: rgba(40, 40, 40, 0.4); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15); }
+        .dark .user-nav-dropdown { background: rgba(14, 14, 14, 0.82); border-color: rgba(255, 255, 255, 0.16); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.62), inset 0 1px 1px rgba(255, 255, 255, 0.05); }
 
         .user-nav-dropdown:hover { transform: translateY(-2px) scale(1.02); background: rgba(255, 255, 255, 0.5); box-shadow: 0 12px 40px -4px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(255, 255, 255, 1); }
 
-        .dark .user-nav-dropdown:hover { background: rgba(60, 60, 60, 0.5); }
+        .dark .user-nav-dropdown:hover { background: rgba(24, 24, 24, 0.94); border-color: rgba(234, 88, 12, 0.45); }
 
         .nav-avatar-circle { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.75rem; color: white; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 5px rgba(0,0,0,0.15); }
 
@@ -319,7 +364,7 @@
 
         }
 
-        .dark .glass-dropdown-content { background: rgba(40, 40, 40, 0.65); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.12); }
+        .dark .glass-dropdown-content { background: rgba(14, 14, 14, 0.92); border-color: rgba(255, 255, 255, 0.16); box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.72), inset 0 1px 1px rgba(255, 255, 255, 0.08); }
 
         
 
@@ -555,19 +600,37 @@
             --material-radius-md: 1rem;
             --material-radius-lg: 1.25rem;
             --material-radius-xl: 1.5rem;
+            --cyber-bg: #050505;
+            --cyber-surface: #0a0a0a;
+            --cyber-panel: #111111;
+            --cyber-border: #333333;
+            --cyber-text: #eeeeee;
+            --cyber-muted: #888888;
+            --cyber-grid: rgba(255, 255, 255, 0.03);
         }
 
         :root.dark {
-            --material-surface: rgba(28, 32, 40, 0.86);
-            --material-outline: rgba(255, 255, 255, 0.16);
-            --material-elevation-1: 0 10px 26px rgba(0, 0, 0, 0.4);
-            --material-elevation-2: 0 16px 36px rgba(0, 0, 0, 0.5);
+            --material-surface: rgba(17, 17, 17, 0.9);
+            --material-outline: rgba(255, 255, 255, 0.15);
+            --material-elevation-1: 0 10px 30px rgba(0, 0, 0, 0.65);
+            --material-elevation-2: 0 16px 42px rgba(0, 0, 0, 0.78);
         }
 
         body {
             background-image:
                 radial-gradient(1200px 700px at -10% -15%, rgba(234, 88, 12, 0.1), transparent 60%),
                 radial-gradient(900px 500px at 120% 0%, rgba(99, 102, 241, 0.08), transparent 58%);
+            background-attachment: fixed;
+        }
+
+        html.dark body {
+            color: var(--cyber-text) !important;
+            background-color: var(--cyber-bg) !important;
+            background-image:
+                linear-gradient(var(--cyber-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--cyber-grid) 1px, transparent 1px),
+                radial-gradient(1200px 700px at -10% -15%, rgba(234, 88, 12, 0.12), transparent 62%) !important;
+            background-size: 20px 20px, 20px 20px, cover;
             background-attachment: fixed;
         }
 
@@ -589,6 +652,31 @@
             border-radius: var(--material-radius-lg) !important;
             box-shadow: var(--material-elevation-1) !important;
             border-color: var(--material-outline) !important;
+        }
+
+        html.dark .card,
+        html.dark .modal-box,
+        html.dark .glass-dropdown-content,
+        html.dark .dropdown-content,
+        html.dark .menu,
+        html.dark .brutal-card,
+        html.dark .brutal-card-static,
+        html.dark .task-card-brutal,
+        html.dark .vinyl-card,
+        html.dark .report-receipt,
+        html.dark .announcement-item,
+        html.dark .wiki-drag-item,
+        html.dark .map-zone,
+        html.dark .sticker-tooltip,
+        html.dark .sticker-fab,
+        html.dark #sticker-drawer,
+        html.dark #sticker-drawer-header,
+        html.dark #instantSearchResults,
+        html.dark main > div[class*="bg-white/60"] {
+            background: rgba(17, 17, 17, 0.88) !important;
+            border-color: var(--cyber-border) !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.74) !important;
+            color: var(--cyber-text);
         }
 
         .card:hover,
@@ -658,6 +746,21 @@
             box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
         }
 
+        html.dark .input,
+        html.dark .select,
+        html.dark .textarea,
+        html.dark .file-input {
+            background: rgba(10, 10, 10, 0.95) !important;
+            border-color: var(--cyber-border) !important;
+            color: var(--cyber-text) !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        html.dark .input::placeholder,
+        html.dark .textarea::placeholder {
+            color: var(--cyber-muted);
+        }
+
         .input:focus,
         .select:focus,
         .textarea:focus,
@@ -673,13 +776,23 @@
         #instantSearchResults {
             border-radius: var(--material-radius-xl) !important;
         }
+
+        html.dark .report-receipt,
+        html.dark .receipt-stat-box,
+        html.dark .receipt-exp-area {
+            background: rgba(17, 17, 17, 0.92) !important;
+            border-color: var(--cyber-border) !important;
+            color: var(--cyber-text) !important;
+        }
     </style>
 
 </head>
 
-<body class="bg-base-200/40 text-base-content font-sans antialiased min-h-screen relative flex flex-col overflow-x-hidden pt-12 md:pt-16">
+<body class="bg-base-200/40 text-base-content font-sans antialiased min-h-screen relative flex flex-col overflow-x-hidden pt-12 md:pt-24 xl:pt-16">
 
-    <div class="top-left-island hidden md:flex {% if not is_book_mode %}{% endif %} transition-all duration-300">
+    <div class="top-nav-shell hidden md:block">
+        <div class="top-nav-layout">
+            <div class="top-nav-left transition-all duration-300">
 
         <div class="nav-mode-toggle mr-1" onclick="window.location.href='{{ url_for('index') if is_book_mode else url_for('book_index') }}'">
 
@@ -721,11 +834,9 @@
 
         </div>
 
-    </div>
+            </div>
 
-
-
-    <div class="top-right-island hidden md:flex">
+            <div class="top-nav-right">
 
         
 
@@ -1312,6 +1423,8 @@
 
         {% endif %}
 
+    </div>
+        </div>
     </div>
 
 

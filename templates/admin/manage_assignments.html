@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/easymde.min.css') }}">
 <style>
     .EasyMDEContainer { background: white; border-radius: 1rem; overflow: hidden; }
+    html.dark .EasyMDEContainer { background: #1a1a1a; }
 </style>
 {% endblock %}
 
@@ -14,25 +15,25 @@
     <div class="flex items-center gap-3 mb-8">
         <div class="w-1.5 h-8 bg-amber-600 rounded-full"></div>
         <div>
-            <h2 class="text-3xl font-black text-stone-800">设计与分发委托</h2>
-            <p class="text-stone-500 font-bold text-sm uppercase tracking-widest mt-1">Quest Distribution Center</p>
+            <h2 class="text-3xl font-black text-stone-800 dark:text-stone-100">设计与分发委托</h2>
+            <p class="text-stone-500 dark:text-stone-400 font-bold text-sm uppercase tracking-widest mt-1">Quest Distribution Center</p>
         </div>
     </div>
 
-    <div class="card bg-base-100 shadow-xl shadow-stone-200/50 border border-stone-200 mb-10 overflow-hidden">
-        <div class="p-6 bg-stone-50 border-b border-stone-200">
-            <h3 class="font-black text-lg text-stone-700 flex items-center gap-2"><i class="fas fa-pen-nib text-amber-600"></i> 起草新委托</h3>
+    <div class="card bg-base-100 shadow-xl shadow-stone-200/50 dark:shadow-none border border-stone-200 dark:border-white/10 mb-10 overflow-hidden">
+        <div class="p-6 bg-stone-50 dark:bg-base-200 border-b border-stone-200 dark:border-white/10">
+            <h3 class="font-black text-lg text-stone-700 dark:text-stone-200 flex items-center gap-2"><i class="fas fa-pen-nib text-amber-600"></i> 起草新委托</h3>
         </div>
         <div class="card-body">
             <form method="post" class="flex flex-col gap-5">
                 <div class="form-control">
-                    <label class="label font-bold text-stone-600">委托标题</label>
+                    <label class="label font-bold text-stone-600 dark:text-stone-300">委托标题</label>
                     <input type="text" name="title" class="input input-bordered focus:border-amber-500 font-bold text-lg" placeholder="例如：完成《Python基础》第一章练习" required>
                 </div>
 
                 <div class="form-control">
-    <label class="label font-bold text-stone-600">任务难度 / 悬赏星级</label>
-    <div class="rating rating-md gap-2 bg-stone-50 p-3 rounded-xl border border-stone-200 w-fit">
+    <label class="label font-bold text-stone-600 dark:text-stone-300">任务难度 / 悬赏星级</label>
+    <div class="rating rating-md gap-2 bg-stone-50 dark:bg-base-200 p-3 rounded-xl border border-stone-200 dark:border-white/10 w-fit">
         <input type="radio" name="star_level" value="1" class="mask mask-star-2 bg-amber-400" checked />
         <input type="radio" name="star_level" value="2" class="mask mask-star-2 bg-amber-400" />
         <input type="radio" name="star_level" value="3" class="mask mask-star-2 bg-amber-400" />
@@ -41,10 +42,10 @@
     </div>
 </div>
                 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-2 border-amber-500/20 p-4 rounded-2xl bg-amber-50/30">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-2 border-amber-500/20 p-4 rounded-2xl bg-amber-50/30 dark:bg-amber-900/10">
                     <div class="form-control">
-                        <label class="label font-bold text-stone-600">发送对象 (Target)</label>
-                        <select id="target_type_select" name="target_type" class="select select-bordered border-2 focus:border-amber-500 w-full font-bold text-stone-600" onchange="toggleTargetValue()">
+                        <label class="label font-bold text-stone-600 dark:text-stone-300">发送对象 (Target)</label>
+                        <select id="target_type_select" name="target_type" class="select select-bordered border-2 focus:border-amber-500 w-full font-bold text-stone-600 dark:text-stone-300" onchange="toggleTargetValue()">
                             <option value="all" selected>🌐 全员发布 (所有人可见)</option>
                             <option value="class">🏫 指定班级</option>
                             <option value="group">👥 指定小组</option>
@@ -53,11 +54,11 @@
                     </div>
                     
                     <div class="form-control">
-                        <label class="label font-bold text-stone-600">
-                            指定对象范围 <span id="target_hint" class="text-stone-400 font-normal text-xs ml-2">(已选全员，无需指定)</span>
+                        <label class="label font-bold text-stone-600 dark:text-stone-300">
+                            指定对象范围 <span id="target_hint" class="text-stone-400 dark:text-stone-500 font-normal text-xs ml-2">(已选全员，无需指定)</span>
                         </label>
                         
-                        <input type="text" id="target_all" class="input input-bordered bg-stone-100 text-stone-400 cursor-not-allowed" value="全系统生效" disabled>
+                        <input type="text" id="target_all" class="input input-bordered bg-stone-100 dark:bg-base-300 text-stone-400 dark:text-stone-500 cursor-not-allowed" value="全系统生效" disabled>
                         
                         <select id="target_class" class="select select-bordered border-2 focus:border-amber-500 w-full hidden">
                             <option value="" disabled selected>请选择班级...</option>
@@ -87,12 +88,12 @@
                 </div>
 
                 <div class="form-control">
-                    <label class="label font-bold text-stone-600">截止日期 (可选)</label>
+                    <label class="label font-bold text-stone-600 dark:text-stone-300">截止日期 (可选)</label>
                     <input type="datetime-local" name="deadline" class="input input-bordered focus:border-amber-500 w-full md:w-1/3">
                 </div>
 
                 <div class="form-control mt-2">
-                    <label class="label font-bold text-stone-600">任务要求 / 描述</label>
+                    <label class="label font-bold text-stone-600 dark:text-stone-300">任务要求 / 描述</label>
                     <textarea id="md-editor" name="content_md" class="hidden"></textarea>
                 </div>
 

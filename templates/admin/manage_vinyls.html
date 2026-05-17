@@ -8,16 +8,19 @@
     .terminal-input:focus { outline: none; box-shadow: 2px 2px 0 #111; }
     .btn-brutal { background: #111; color: #fff; padding: 0.5rem 1rem; border: 1px solid #111; font-weight: 900; cursor: pointer; text-transform: uppercase; }
     .btn-brutal:hover { background: #ea580c; border-color: #ea580c; }
+    html.dark .brutal-card { background: #1a1a1a; border-color: rgba(255,255,255,0.2); box-shadow: 4px 4px 0 rgba(255,255,255,0.16); }
+    html.dark .terminal-input { background: #131313; border-color: rgba(255,255,255,0.24); color: #e5e7eb; }
+    html.dark .terminal-input:focus { box-shadow: 0 0 0 2px rgba(255,255,255,0.12); }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-5xl mx-auto pt-10 pb-20 px-4">
-    <h1 class="text-3xl font-black uppercase tracking-widest mb-8 border-b-4 border-[#111] pb-2"><i class="fas fa-record-vinyl mr-2"></i> 赛博唱片压制厂</h1>
+    <h1 class="text-3xl font-black uppercase tracking-widest mb-8 border-b-4 border-[#111] dark:border-white/20 pb-2"><i class="fas fa-record-vinyl mr-2"></i> 赛博唱片压制厂</h1>
 
     <div class="brutal-card p-6 mb-10 bg-[#fafafa] stripe-pattern">
         <h3 class="font-black text-lg mb-4 uppercase">压制新频段 (New Vinyl)</h3>
-        <form method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 border border-[#111]">
+        <form method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white dark:bg-base-200 p-4 border border-[#111] dark:border-white/20">
             <div>
                 <label class="block text-[10px] font-black uppercase mb-1">频段代号 (Title)</label>
                 <input type="text" name="name" class="terminal-input" required placeholder="如：Rain in Cyberpunk City">
@@ -57,8 +60,8 @@
             <div class="w-24 h-24 rounded-full border-4 border-[#111] overflow-hidden mb-3 animate-spin-slow" style="animation: spin 10s linear infinite;">
                 <img src="{{ v.cover_url }}" class="w-full h-full object-cover">
             </div>
-            <h4 class="font-black text-[#111] text-center leading-tight mb-2">{{ v.name }}</h4>
-            <div class="text-[9px] font-mono bg-stone-200 text-[#111] px-2 py-1 uppercase">{{ condition_map.get(v.condition_type) }}: {{ v.condition_value }}</div>
+            <h4 class="font-black text-[#111] dark:text-stone-100 text-center leading-tight mb-2">{{ v.name }}</h4>
+            <div class="text-[9px] font-mono bg-stone-200 dark:bg-base-300 text-[#111] dark:text-stone-200 px-2 py-1 uppercase">{{ condition_map.get(v.condition_type) }}: {{ v.condition_value }}</div>
             <div class="mt-4 flex gap-2 w-full">
                 <audio controls src="{{ v.audio_url }}" class="h-8 w-full"></audio>
                 <form method="POST" action="{{ url_for('delete_vinyl', v_id=v.id) }}" onsubmit="return confirm('确定销毁这张唱片吗？')" class="m-0">

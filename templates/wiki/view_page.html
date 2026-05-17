@@ -9,6 +9,40 @@
 
 
 <style>
+    .wiki-view-page .wiki-glass-card {
+        box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.06);
+    }
+
+    html.dark .wiki-view-page .wiki-glass-card {
+        background-color: hsl(var(--b1) / 0.72) !important;
+        border-color: hsl(var(--bc) / 0.1) !important;
+        box-shadow: 0 24px 56px -28px rgba(0, 0, 0, 0.65);
+    }
+
+    html.dark .wiki-view-page .wiki-contributor-pill {
+        background-color: hsl(var(--b2) / 0.65) !important;
+        border-color: hsl(var(--bc) / 0.12) !important;
+    }
+
+    html.dark .wiki-view-page .wiki-contributor-avatar {
+        background-color: hsl(var(--b3)) !important;
+        color: hsl(var(--bc) / 0.78) !important;
+        border-color: hsl(var(--bc) / 0.14) !important;
+    }
+
+    html.dark .wiki-view-page .wiki-action-btn:hover {
+        background-color: hsl(var(--b2) / 0.9) !important;
+    }
+
+    html.dark .wiki-view-page .wiki-muted-text {
+        color: hsl(var(--bc) / 0.68) !important;
+    }
+
+    html.dark #grading_empty_state,
+    html.dark #my_notes_selector .text-center.opacity-50.italic {
+        color: hsl(var(--bc) / 0.62) !important;
+    }
+
     /* 侧边栏 TOC 专用样式 */
     .toc-link {
         display: block; padding: 0.35rem 0.5rem 0.35rem 0.75rem;
@@ -192,11 +226,11 @@
     </div>
 </div>
 
-<div id="split-container" class="flex transition-all duration-500 ease-in-out relative w-full mx-auto max-w-5xl">
+<div id="split-container" class="wiki-view-page flex transition-all duration-500 ease-in-out relative w-full mx-auto max-w-5xl">
     
     <div id="wiki-main-content" class="flex-1 min-w-0 transition-all duration-500">
         
-        <div class="card bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-white/60 dark:border-white/5 rounded-[2rem] mb-6">
+        <div class="card wiki-glass-card bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-white/60 dark:border-white/5 rounded-[2rem] mb-6">
             <div class="card-body p-4 sm:p-5 flex-row items-center justify-between gap-4">
                 
                 <div class="flex-1 min-w-0 group relative flex items-center gap-3">
@@ -211,7 +245,7 @@
                     </div>
                 </div>
 
-                <div class="hidden sm:flex items-center gap-3 px-3 py-1.5 bg-stone-50 dark:bg-base-200/50 rounded-full border border-black/5 dark:border-white/5 cursor-pointer hover:bg-stone-100 dark:hover:bg-base-200 hover:shadow-sm transition-all" onclick="window.location.href='{{ url_for('wiki_contributors', wiki_id=wiki.id) }}'">
+                <div class="wiki-contributor-pill hidden sm:flex items-center gap-3 px-3 py-1.5 bg-stone-50 dark:bg-base-200/50 rounded-full border border-black/5 dark:border-white/5 cursor-pointer hover:bg-stone-100 dark:hover:bg-base-200 hover:shadow-sm transition-all" onclick="window.location.href='{{ url_for('wiki_contributors', wiki_id=wiki.id) }}'">
                     <div class="text-[11px] font-semibold text-base-content/50 tracking-widest uppercase flex items-center gap-1 pl-1">
                         <i class="fas fa-users text-[10px]"></i> 贡献者
                     </div>
@@ -223,7 +257,7 @@
                         {% endif %}
                         {% for c in contributors[:3] %}
                             {% if c[0] and c[0].id != wiki.created_by_id %}
-                            <div class="w-7 h-7 rounded-full bg-white dark:bg-stone-700 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-none flex items-center justify-center text-[11px] font-bold ring-2 ring-stone-50 dark:ring-base-200 shadow-sm" title="贡献者: {{ c[0].username }}">
+                            <div class="wiki-contributor-avatar w-7 h-7 rounded-full bg-white dark:bg-stone-700 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-none flex items-center justify-center text-[11px] font-bold ring-2 ring-stone-50 dark:ring-base-200 shadow-sm" title="贡献者: {{ c[0].username }}">
                                 <span class="leading-none">{{ c[0].username[0]|upper }}</span>
                             </div>
                             {% endif %}
@@ -242,7 +276,7 @@
             </div>
         </div>
 
-        <div class="card bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-white/60 dark:border-white/5 min-h-[75vh] rounded-[2rem] relative">
+        <div class="card wiki-glass-card bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-white/60 dark:border-white/5 min-h-[75vh] rounded-[2rem] relative">
             
             {% if page %}
             <div class="absolute top-4 right-4 md:top-6 md:right-6 flex items-center bg-base-200/50 p-1.5 rounded-xl border border-base-300/50 shadow-sm overflow-x-auto scrollbar-hide z-20 backdrop-blur-md">
@@ -269,32 +303,32 @@
 
                 <div class="w-px h-4 bg-base-content/20 mx-1"></div>
 
-                <button id="width-toggle-btn" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-base-content/70 hover:text-primary border-none transition-all rounded-lg hidden lg:flex items-center justify-center gap-1.5 w-[90px] h-8 px-0" title="切换宽屏/窄屏">
+                <button id="width-toggle-btn" class="wiki-action-btn btn btn-sm btn-ghost hover:bg-base-100/70 dark:hover:bg-base-200 text-base-content/70 hover:text-primary border-none transition-all rounded-lg hidden lg:flex items-center justify-center gap-1.5 w-[90px] h-8 px-0" title="切换宽屏/窄屏">
                     <i class="fas fa-expand text-[11px]"></i>
                     <span class="text-xs font-medium" id="width-toggle-text">宽屏模式</span>
                 </button>
                 
-                <button id="toggle-split-btn" onclick="toggleSplitScreen()" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-base-content/70 hover:text-primary border-none transition-all rounded-lg hidden lg:flex items-center justify-center gap-1.5 w-[90px] h-8 px-0" title="开启/关闭分屏笔记">
+                <button id="toggle-split-btn" onclick="toggleSplitScreen()" class="wiki-action-btn btn btn-sm btn-ghost hover:bg-base-100/70 dark:hover:bg-base-200 text-base-content/70 hover:text-primary border-none transition-all rounded-lg hidden lg:flex items-center justify-center gap-1.5 w-[90px] h-8 px-0" title="开启/关闭分屏笔记">
                     <i class="fas fa-columns text-[11px]"></i>
                     <span class="text-xs font-medium">分屏笔记</span>
                 </button>
 
                 <div class="w-px h-4 bg-base-content/20 mx-1 hidden lg:block"></div>
 
-                <button onclick="convert_wiki_page()" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-base-content/70 hover:text-primary border-none transition-all rounded-lg flex items-center justify-center gap-1.5 w-[76px] h-8 px-0" title="转换为我的笔记">
+                <button onclick="convert_wiki_page()" class="wiki-action-btn btn btn-sm btn-ghost hover:bg-base-100/70 dark:hover:bg-base-200 text-base-content/70 hover:text-primary border-none transition-all rounded-lg flex items-center justify-center gap-1.5 w-[76px] h-8 px-0" title="转换为我的笔记">
                     <i class="fas fa-exchange-alt text-[11px]"></i>
                     <span class="text-xs font-medium">转存</span>
                 </button>
 
                 {% if can_edit %}
                     <div class="w-px h-4 bg-base-content/20 mx-1"></div>
-                    <a href="{{ url_for('edit_page', wiki_id=wiki.id, slug=page.slug) }}" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-base-content/70 hover:text-primary border-none transition-all rounded-lg flex items-center justify-center gap-1.5 w-[76px] h-8 px-0">
+                    <a href="{{ url_for('edit_page', wiki_id=wiki.id, slug=page.slug) }}" class="wiki-action-btn btn btn-sm btn-ghost hover:bg-base-100/70 dark:hover:bg-base-200 text-base-content/70 hover:text-primary border-none transition-all rounded-lg flex items-center justify-center gap-1.5 w-[76px] h-8 px-0">
                         <i class="fas fa-edit text-[11px]"></i>
                         <span class="text-xs font-medium">编辑</span>
                     </a>
 
                     <div class="w-px h-4 bg-base-content/20 mx-1"></div>
-                    <a href="{{ url_for('page_history', wiki_id=wiki.id, slug=page.slug) }}" class="btn btn-sm btn-ghost hover:bg-white dark:hover:bg-base-100 text-base-content/70 hover:text-primary border-none transition-all rounded-lg flex items-center justify-center gap-1.5 w-[76px] h-8 px-0">
+                    <a href="{{ url_for('page_history', wiki_id=wiki.id, slug=page.slug) }}" class="wiki-action-btn btn btn-sm btn-ghost hover:bg-base-100/70 dark:hover:bg-base-200 text-base-content/70 hover:text-primary border-none transition-all rounded-lg flex items-center justify-center gap-1.5 w-[76px] h-8 px-0">
                         <i class="fas fa-history text-[11px]"></i>
                         <span class="text-xs font-medium">历史</span>
                     </a>
@@ -344,10 +378,10 @@
                                 <span class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                                     <i class="fas fa-comment-alt text-sm"></i>
                                 </span>
-                                探讨与交流 <span class="text-base-content/40 font-mono text-base font-medium">({{ page.comments|length }})</span>
+                                探讨与交流 <span class="text-base-content/40 font-mono text-base font-medium">({{ visible_comments|length }})</span>
                             </h3>
                             <div class="space-y-6 mb-10">
-                                {% for comment in page.comments %}
+                                {% for comment in visible_comments %}
                                 <div class="flex gap-4 group">
                                     <div class="flex-shrink-0 w-10 h-10 bg-stone-100 dark:bg-base-200 border border-stone-200 dark:border-base-300 text-stone-600 dark:text-stone-300 rounded-full flex items-center justify-center font-bold shadow-sm">
                                         <span class="leading-none">{{ comment.user.username[0] | upper }}</span>
@@ -356,6 +390,11 @@
                                         <div class="flex items-center gap-2 mb-2">
                                             <span class="font-bold text-sm text-base-content">{{ comment.user.username }}</span>
                                             <span class="text-[10px] text-base-content/40 font-mono">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                            {% if comment.is_approved %}
+                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">已通过</span>
+                                            {% else %}
+                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-stone-200 text-stone-600 dark:bg-base-300 dark:text-base-content/60">待审核</span>
+                                            {% endif %}
                                         </div>
                                         <div class="text-sm text-base-content/80 whitespace-pre-wrap leading-relaxed">{{ comment.content }}</div>
                                         {% if current_user.is_admin or current_user.id == comment.user_id %}
@@ -396,7 +435,7 @@
                         </div>
                         <div class="max-w-md">
                           <h1 class="text-4xl font-black text-stone-800 dark:text-stone-100 mb-4 tracking-tight">欢迎来到 Wiki</h1>
-                          <p class="text-lg font-medium text-stone-500 mb-8">{{ wiki.title }}</p>
+                          <p class="wiki-muted-text text-lg font-medium text-stone-500 mb-8">{{ wiki.title }}</p>
                           {% if can_edit %}
                           <a href="{{ url_for('new_page', wiki_id=wiki.id) }}" class="btn btn-primary btn-lg rounded-full shadow-lg shadow-primary/30 hover:-translate-y-1 transition-all group">
                               <i class="fas fa-plus group-hover:rotate-90 transition-transform duration-300"></i> 创建第一页
@@ -415,7 +454,7 @@
     </div>
 
     <div id="book-side-panel" class="w-0 opacity-0 transition-all duration-500 ease-in-out flex-shrink-0 lg:block hidden sticky top-20 h-[calc(100vh-6rem)] z-40">
-        <div class="w-[420px] xl:w-[480px] p-6 pb-8 h-full flex flex-col bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl rounded-[2rem] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] border border-white/60 dark:border-white/5">
+        <div class="wiki-glass-card w-[420px] xl:w-[480px] p-6 pb-8 h-full flex flex-col bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl rounded-[2rem] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] border border-white/60 dark:border-white/5">
             
             <div class="flex items-center justify-between mb-5">
                 <div class="flex items-center gap-2.5 text-base-content font-black text-xl tracking-tight">
@@ -493,7 +532,7 @@
 <dialog id="grading_modal" class="modal bg-black/60 backdrop-blur-md">
     <div class="modal-box w-11/12 max-w-7xl h-[90vh] p-0 overflow-hidden rounded-[2.5rem] flex flex-col border border-white/20 shadow-2xl">
         
-        <div class="px-8 py-6 border-b border-stone-100 flex flex-col md:flex-row justify-between items-center bg-white dark:bg-base-200 gap-4">
+        <div class="px-8 py-6 border-b border-stone-100 dark:border-white/10 flex flex-col md:flex-row justify-between items-center bg-white dark:bg-base-200 gap-4">
             <div>
                 <h3 class="text-2xl font-black text-stone-800 dark:text-white" id="grading_task_title">批阅矩阵</h3>
                 <div class="flex items-center gap-3 mt-1">
@@ -521,13 +560,13 @@
             </div>
 
 <div id="split_view" class="hidden h-full flex overflow-hidden">
-    <div class="w-64 border-r border-stone-100 dark:border-white/5 overflow-y-auto bg-stone-50 dark:bg-base-300/30 p-4 custom-scroll">
+    <div class="w-64 border-r border-stone-100 dark:border-white/10 overflow-y-auto bg-stone-50 dark:bg-base-300/30 p-4 custom-scroll">
         <div class="space-y-1.5" id="side_student_list"></div>
     </div>
 
     <div class="flex-1 flex flex-col bg-white dark:bg-base-100 overflow-hidden relative">
         
-        <div id="grading_empty_state" class="flex-1 flex flex-col items-center justify-center text-stone-300">
+        <div id="grading_empty_state" class="flex-1 flex flex-col items-center justify-center text-stone-300 dark:text-base-content/50">
             <i class="fas fa-mouse-pointer text-5xl mb-4"></i>
             <p class="font-bold">请在左侧选择学生</p>
         </div>
@@ -785,7 +824,7 @@ builtins.input = custom_input
                     pyodideInstance.setStdout({ batched: (msg) => outputDiv.innerHTML += formatOutput(msg) });
                     pyodideInstance.setStderr({ batched: (msg) => outputDiv.innerHTML += formatOutput(msg, true) });
                     await pyodideInstance.runPythonAsync(code);
-                    if(outputDiv.innerHTML.trim() === '') outputDiv.innerHTML = '<span class="text-stone-500 italic"># 代码执行成功，无任何打印输出。</span>';
+                    if(outputDiv.innerHTML.trim() === '') outputDiv.innerHTML = '<span class="text-stone-300 italic"># 代码执行成功，无任何打印输出。</span>';
                 } catch (err) {
                     if(outputDiv.innerHTML.includes('正在初始化')) outputDiv.innerHTML = '';
                     outputDiv.innerHTML += formatOutput(err.toString(), true);
@@ -992,7 +1031,7 @@ window.toggleSplitScreen = function() {
         
         if (toggleBtn) {
             toggleBtn.classList.add('bg-base-300/50', 'shadow-inner');
-            toggleBtn.classList.remove('hover:bg-white', 'dark:hover:bg-base-100');
+            toggleBtn.classList.remove('hover:bg-base-100/70', 'dark:hover:bg-base-200');
             toggleBtn.innerHTML = '<i class="fas fa-times text-[11px] text-error"></i><span class="text-xs font-medium text-error">关闭分屏</span>';
             toggleBtn.setAttribute('title', '关闭分屏笔记');
         }
@@ -1032,7 +1071,7 @@ window.toggleSplitScreen = function() {
         
         if (toggleBtn) {
             toggleBtn.classList.remove('bg-base-300/50', 'shadow-inner');
-            toggleBtn.classList.add('hover:bg-white', 'dark:hover:bg-base-100');
+            toggleBtn.classList.add('hover:bg-base-100/70', 'dark:hover:bg-base-200');
             toggleBtn.innerHTML = '<i class="fas fa-columns text-[11px]"></i><span class="text-xs font-medium">分屏笔记</span>';
             toggleBtn.setAttribute('title', '开启分屏笔记');
         }
@@ -1213,7 +1252,7 @@ app.assignments = {
                         <span class="text-xl">📄</span>
                         <span class="font-bold text-stone-700 dark:text-stone-200">${window.myNotesData[id].title}</span>
                     </div>
-                    <i class="fas fa-arrow-right text-stone-300 group-hover:text-primary transition-all"></i>
+                    <i class="fas fa-arrow-right text-stone-300 dark:text-stone-500 group-hover:text-primary transition-all"></i>
                 </div>
             `).join('');
         }
@@ -1275,8 +1314,8 @@ app.assignments = {
         const submitted = this.filteredData.filter(s => s.status !== 'unsubmitted').length;
         const graded = this.filteredData.filter(s => s.status === 'graded').length;
         document.getElementById('stats_summary').innerHTML = `
-            <span class="badge badge-ghost border-none bg-stone-100 text-[10px] font-bold uppercase">Total: ${total}</span>
-            <span class="badge badge-ghost border-none bg-amber-100 text-amber-600 text-[10px] font-bold">Pending: ${submitted - graded}</span>
+            <span class="badge badge-ghost border-none bg-stone-100 dark:bg-base-300 text-[10px] font-bold uppercase">Total: ${total}</span>
+            <span class="badge badge-ghost border-none bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300 text-[10px] font-bold">Pending: ${submitted - graded}</span>
         `;
     },
 
@@ -1317,7 +1356,7 @@ app.assignments = {
         const dotMap = { unsubmitted: 'bg-stone-200', pending: 'bg-amber-400 animate-pulse', graded: 'bg-emerald-500' };
         container.innerHTML = this.filteredData.map(s => `
             <div id="side-stu-${s.user_id}" onclick="app.assignments.loadSubmission(${s.user_id})" 
-                 class="p-2.5 rounded-xl hover:bg-white dark:hover:bg-base-200 cursor-pointer flex items-center gap-3 transition-all ${s.user_id === this.currentStudentId ? 'bg-white shadow-sm' : ''}">
+                 class="p-2.5 rounded-xl hover:bg-base-100/80 dark:hover:bg-base-200 cursor-pointer flex items-center gap-3 transition-all ${s.user_id === this.currentStudentId ? 'bg-base-100 dark:bg-base-200 shadow-sm' : ''}">
                 <div class="w-2 h-2 rounded-full ${dotMap[s.status]}"></div>
                 <p class="text-xs font-bold text-stone-700 dark:text-stone-200 truncate">${s.real_name}</p>
             </div>
@@ -1327,8 +1366,8 @@ app.assignments = {
     loadSubmission(studentId) {
     this.currentStudentId = studentId;
     // 视觉反馈：处理侧边栏选中状态
-    document.querySelectorAll('#side_student_list > div').forEach(d => d.classList.remove('bg-white', 'shadow-sm', 'dark:bg-base-200'));
-    document.getElementById(`side-stu-${studentId}`)?.classList.add('bg-white', 'shadow-sm', 'dark:bg-base-200');
+    document.querySelectorAll('#side_student_list > div').forEach(d => d.classList.remove('bg-base-100', 'dark:bg-base-200', 'shadow-sm'));
+    document.getElementById(`side-stu-${studentId}`)?.classList.add('bg-base-100', 'dark:bg-base-200', 'shadow-sm');
 
     // 💡 确保显示内容区，隐藏空状态
     const contentArea = document.getElementById('grading_content_area');

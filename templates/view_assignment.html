@@ -80,11 +80,72 @@
     .editor-toolbar { border: none !important; border-bottom: 1px solid rgba(0,0,0,0.1) !important; background: #fafafa !important; border-radius: 2px 2px 0 0 !important; opacity: 0.8; transition: opacity 0.2s; }
     .editor-toolbar:hover { opacity: 1; }
     .CodeMirror { border: none !important; font-family: monospace; font-size: 14px; background: transparent !important; }
+
+    html.dark body {
+        background-color: #0f0f0f !important;
+        color: #e5e7eb;
+    }
+    html.dark .assignment-view-page .bg-white,
+    html.dark .assignment-view-page [class*="bg-[#fafafa]"],
+    html.dark .assignment-view-page .bg-white\/90 {
+        background: #1a1a1a !important;
+        color: #e5e7eb !important;
+    }
+    html.dark .assignment-view-page .grid-border,
+    html.dark .assignment-view-page .border-stone-200,
+    html.dark .assignment-view-page .border-stone-300 {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+    html.dark .assignment-view-page .text-stone-900,
+    html.dark .assignment-view-page .text-stone-800 {
+        color: #f3f4f6 !important;
+    }
+    html.dark .assignment-view-page .text-stone-500,
+    html.dark .assignment-view-page .text-stone-400,
+    html.dark .assignment-view-page .text-stone-300 {
+        color: #a3a3a3 !important;
+    }
+    html.dark .assignment-view-page .btn-brutal-outline {
+        color: #e5e7eb;
+        border-color: rgba(255, 255, 255, 0.26);
+    }
+    html.dark .assignment-view-page .btn-brutal-outline:hover {
+        background: #2a2a2a;
+    }
+    html.dark .assignment-view-page .EasyMDEContainer {
+        background: #151515;
+        border-color: rgba(255, 255, 255, 0.24) !important;
+    }
+    html.dark .assignment-view-page .editor-toolbar {
+        background: #202020 !important;
+        border-bottom-color: rgba(255, 255, 255, 0.18) !important;
+    }
+    html.dark .assignment-view-page .prose,
+    html.dark .assignment-view-page .prose p,
+    html.dark .assignment-view-page .prose li {
+        color: #d4d4d4;
+    }
+    html.dark .assignment-view-page .prose h1,
+    html.dark .assignment-view-page .prose h2,
+    html.dark .assignment-view-page .prose h3 {
+        color: #f3f4f6;
+        border-color: rgba(255, 255, 255, 0.22);
+    }
+    html.dark .assignment-view-page .prose blockquote {
+        background: #181818;
+        color: #cfcfcf;
+        border-left-color: #a3a3a3;
+    }
+    html.dark .assignment-view-page .prose code:not(pre code) {
+        background-color: rgba(239, 68, 68, 0.18);
+        border-color: rgba(239, 68, 68, 0.35);
+        color: #fca5a5;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+<div class="assignment-view-page w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
     <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
 
         <div class="flex items-center gap-3 mb-8">

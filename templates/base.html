@@ -133,6 +133,8 @@
         .theme-icon-light { display: inline-block; }
         html.dark .theme-icon-dark { display: inline-block; }
         html.dark .theme-icon-light { display: none; }
+        .theme-icon-light { color: #f59e0b; }
+        .theme-icon-dark { color: #60a5fa; }
 
 
         ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -679,6 +681,39 @@
             color: var(--cyber-text);
         }
 
+        html.dark #user-menu-btn {
+            background: rgba(24, 30, 38, 0.92) !important;
+            border-color: rgba(255, 255, 255, 0.14) !important;
+        }
+        html.dark #user-menu-btn .user-name {
+            color: #f1f5f9 !important;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.08);
+        }
+        html.dark #user-badge-card {
+            background: rgba(24, 29, 37, 0.96) !important;
+            border-color: rgba(255, 255, 255, 0.14) !important;
+        }
+        html.dark #user-action-menu {
+            background: rgba(20, 25, 32, 0.96) !important;
+            border-color: rgba(255, 255, 255, 0.14) !important;
+        }
+        html.dark #user-action-menu .user-menu-meta {
+            color: #cbd5e1 !important;
+            border-color: rgba(255, 255, 255, 0.12) !important;
+        }
+        html.dark #user-action-menu .user-menu-meta > span:first-child {
+            color: #94a3b8 !important;
+        }
+        html.dark #user-action-menu a {
+            color: #e2e8f0 !important;
+        }
+        html.dark #user-action-menu a i {
+            color: #94a3b8 !important;
+        }
+        html.dark #user-action-menu a:hover {
+            background: rgba(255, 255, 255, 0.06) !important;
+        }
+
         .card:hover,
         .brutal-card:hover,
         .brutal-card-static:hover,
@@ -1156,6 +1191,7 @@
     
     <li><a href="{{ url_for('manage_sticker_walls') }}" class="nav-menu-item"><i class="fas fa-border-all w-4 text-center"></i> 贴纸墙</a></li>
     <li><a href="{{ url_for('manage_announcements') }}" class="nav-menu-item"><i class="fas fa-bullhorn w-4 text-center"></i> 通知</a></li>
+    <li><a href="{{ url_for('manage_comments') }}" class="nav-menu-item"><i class="fas fa-comment-dots w-4 text-center text-emerald-600"></i> 评论审核</a></li>
     <li><a href="{{ url_for('manage_users') }}" class="nav-menu-item"><i class="fas fa-users-cog w-4 text-center"></i> 用户</a></li>
     <li><a href="{{ url_for('manage_badges') }}" class="nav-menu-item"><i class="fas fa-medal w-4 text-center"></i> 徽章</a></li>
     <li><a href="{{ url_for('manage_bookmarks') }}" class="nav-menu-item"><i class="fas fa-bookmark w-4 text-center text-indigo-500"></i> 书签图鉴</a></li>
@@ -1255,9 +1291,9 @@
         </div>
     </ul>
 </div>
-            <button onclick="toggleTheme()" class="nav-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom hover:text-primary transition-colors select-none" data-tip="切换明暗主题">
-                <i class="fas fa-moon theme-icon-light opacity-80 pointer-events-none"></i>
-                <i class="fas fa-sun theme-icon-dark opacity-80 pointer-events-none"></i>
+            <button id="theme-toggle-btn" onclick="toggleTheme()" class="nav-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom hover:text-primary transition-colors select-none" data-tip="切换到夜间主题" aria-label="切换主题">
+                <i class="fas fa-sun theme-icon-light opacity-90 pointer-events-none"></i>
+                <i class="fas fa-moon theme-icon-dark opacity-90 pointer-events-none"></i>
             </button>
 
             <a href="{{ url_for('online_users') }}" class="nav-btn px-2 tooltip tooltip-bottom border-transparent shadow-none" data-tip="在线用户">
@@ -1300,7 +1336,7 @@
 
                     </div>
 
-                    <span class="text-sm font-extrabold text-stone-800 dark:text-stone-200 max-w-[80px] truncate pointer-events-none">{{ current_user.username }}</span>
+                    <span class="user-name text-sm font-extrabold text-stone-800 dark:text-stone-200 max-w-[80px] truncate pointer-events-none">{{ current_user.username }}</span>
 
                 </button>
 
@@ -1362,7 +1398,7 @@
 
                     <div id="user-action-menu" class="hidden bg-white/95 dark:bg-base-200/95 backdrop-blur-xl border border-black/5 dark:border-white/5 shadow-2xl p-2 relative z-0 pt-4 rounded-b-[1.5rem] rounded-t-xl transition-all duration-300 transform -translate-y-2 opacity-0 {% if current_user.selected_badge %}mt-[-10px]{% else %}mt-2 rounded-t-[1.5rem]{% endif %}">
 
-                        <div class="px-3 py-2 text-xs font-bold border-b border-black/5 dark:border-white/5 mb-1.5 flex justify-between items-center text-stone-500">
+                        <div class="user-menu-meta px-3 py-2 text-xs font-bold border-b border-black/5 dark:border-white/5 mb-1.5 flex justify-between items-center text-stone-500">
 
                             <span>今日学习</span>
 
@@ -1548,6 +1584,7 @@
                                         <li><a href="{{ url_for('manage_sticker_walls') }}" class="py-2.5 rounded-lg"><i class="fas fa-border-all w-4 text-center"></i> 贴纸墙</a></li>
 
                                         <li><a href="{{ url_for('manage_announcements') }}" class="py-2.5 rounded-lg"><i class="fas fa-bullhorn w-4 text-center"></i> 系统通知</a></li>
+                                        <li><a href="{{ url_for('manage_comments') }}" class="py-2.5 rounded-lg"><i class="fas fa-comment-dots w-4 text-center text-emerald-600"></i> 评论审核</a></li>
 
                                         <li><a href="{{ url_for('manage_users') }}" class="py-2.5 rounded-lg"><i class="fas fa-users-cog w-4 text-center"></i> 用户管理</a></li>
 
@@ -4357,6 +4394,14 @@ toast: {
         // ==========================================
         // 💡 明暗主题切换引擎
         // ==========================================
+        function syncThemeToggleUI() {
+            const btn = document.getElementById('theme-toggle-btn');
+            if (!btn) return;
+            const isDark = document.documentElement.classList.contains('dark');
+            btn.setAttribute('data-tip', isDark ? '切换到日间主题' : '切换到夜间主题');
+            btn.setAttribute('aria-label', isDark ? '切换到日间主题' : '切换到夜间主题');
+        }
+
         window.toggleTheme = function() {
             const html = document.documentElement;
             const isDark = html.classList.contains('dark');
@@ -4377,9 +4422,14 @@ toast: {
                 html.setAttribute('data-theme', darkTheme);
                 localStorage.setItem('theme', 'dark');
             }
+
+            syncThemeToggleUI();
         };
 
-        document.addEventListener('DOMContentLoaded', () => { app.init(); });
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+            syncThemeToggleUI();
+        });
 
     </script>
 

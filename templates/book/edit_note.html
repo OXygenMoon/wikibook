@@ -146,7 +146,7 @@
             <div id="sticker-inventory" class="flex flex-col">
                 <div class="p-5 border-b border-stone-100 dark:border-white/5 flex justify-between items-center">
                     <span class="font-black text-sm text-stone-800 dark:text-white">我的贴纸库</span>
-                    <button onclick="toggleInventory()" class="btn btn-circle btn-xs btn-ghost text-stone-400 hover:text-stone-800"><i class="fas fa-chevron-right"></i></button>
+                    <button onclick="toggleInventory()" class="btn btn-circle btn-xs btn-ghost text-stone-400 dark:text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"><i class="fas fa-chevron-right"></i></button>
                 </div>
                 <div class="flex-1 overflow-y-auto p-5 grid grid-cols-3 gap-4 custom-scroll">
                     {% for ub in current_user.earned_badges %}
@@ -159,7 +159,7 @@
                             {% endif %}
                         </div>
                     {% else %}
-                        <div class="col-span-3 text-center py-10 text-stone-400 text-xs">库存空空如也，多去完成任务收集吧！</div>
+                        <div class="col-span-3 text-center py-10 text-stone-400 dark:text-stone-500 text-xs">库存空空如也，多去完成任务收集吧！</div>
                     {% endfor %}
                 </div>
             </div>
@@ -175,7 +175,7 @@
             </button>
         </div>
 
-        <p class="text-center text-xs text-stone-400 mt-4 font-medium tracking-wide">💡 单击选中，拖拽移动 | 文本可双击打字、右下角拉伸 | 控制台可精确缩放与旋转</p>
+        <p class="text-center text-xs text-stone-400 dark:text-stone-500 mt-4 font-medium tracking-wide">💡 单击选中，拖拽移动 | 文本可双击打字、右下角拉伸 | 控制台可精确缩放与旋转</p>
     </div>
 </div>
 {% endblock %}

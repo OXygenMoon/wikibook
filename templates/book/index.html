@@ -69,17 +69,166 @@
     
     /* 弹窗粗犷阴影 */
     .modal-brutal { box-shadow: 12px 12px 0px rgba(0,0,0,1); border: 2px solid #111; }
+
+    html.dark .book-index-page .grid-border { border-color: rgba(255,255,255,0.12); }
+
+    html.dark .book-index-page .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(255,255,255,0.06) 3px, rgba(255,255,255,0.06) 4px);
+    }
+
+    html.dark .book-index-page .custom-scroll::-webkit-scrollbar-track {
+        border-left-color: rgba(255,255,255,0.1);
+    }
+
+    html.dark .book-index-page .custom-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.24);
+    }
+
+    html.dark .book-index-page .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.42);
+    }
+
+    html.dark .book-search-shell {
+        background: rgba(14,14,14,0.92);
+        border-color: rgba(255,255,255,0.14);
+    }
+
+    html.dark .book-search-shell:focus-within {
+        border-color: rgba(249,115,22,0.75);
+        box-shadow: 0 0 0 1px rgba(249,115,22,0.45), 0 10px 26px rgba(0,0,0,0.45);
+    }
+
+    html.dark .book-search-shell .fa-terminal {
+        color: #9ca3af !important;
+    }
+
+    html.dark .book-search-shell:focus-within .fa-terminal {
+        color: #e5e7eb !important;
+    }
+
+    html.dark #quickInput {
+        color: #f3f4f6;
+    }
+
+    html.dark #quickInput::placeholder {
+        color: #6b7280;
+    }
+
+    html.dark .book-search-divider {
+        background: rgba(255,255,255,0.16) !important;
+    }
+
+    html.dark .book-search-results {
+        background: rgba(12,12,12,0.98) !important;
+        border-color: rgba(255,255,255,0.16) !important;
+        box-shadow: 0 14px 28px rgba(0,0,0,0.6) !important;
+    }
+
+    html.dark .book-search-result-item {
+        border-color: rgba(255,255,255,0.08) !important;
+    }
+
+    html.dark .book-search-result-item:hover {
+        background: rgba(255,255,255,0.06) !important;
+    }
+
+    html.dark .book-search-icon-my {
+        background: #f97316 !important;
+        color: #fff !important;
+    }
+
+    html.dark .book-search-icon-shared {
+        background: rgba(255,255,255,0.12) !important;
+        color: #d1d5db !important;
+    }
+
+    html.dark .brutal-card {
+        background: rgba(16,16,16,0.92) !important;
+        border-color: rgba(255,255,255,0.14) !important;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.36);
+    }
+
+    html.dark .brutal-card:hover {
+        border-color: rgba(249,115,22,0.75) !important;
+        box-shadow: 0 14px 28px rgba(0,0,0,0.5), 0 0 0 1px rgba(249,115,22,0.3);
+    }
+
+    html.dark .book-note-title-chip {
+        background: rgba(255,255,255,0.1) !important;
+    }
+
+    html.dark .book-note-snippet {
+        background: rgba(255,255,255,0.06) !important;
+        border-color: rgba(255,255,255,0.12) !important;
+    }
+
+    html.dark .book-note-fade {
+        background: linear-gradient(to top, rgba(22,22,22,1), rgba(22,22,22,0));
+    }
+
+    html.dark .tab-active {
+        background: #f97316;
+        border-color: #f97316;
+        color: #fff;
+    }
+
+    html.dark .tab-inactive {
+        background: rgba(18,18,18,0.9);
+        color: #d1d5db;
+        border-color: rgba(255,255,255,0.14);
+    }
+
+    html.dark .tab-inactive:hover {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+    }
+
+    html.dark .book-modal-box {
+        background: rgba(14,14,14,0.96) !important;
+        border-color: rgba(255,255,255,0.2) !important;
+        box-shadow: 0 16px 34px rgba(0,0,0,0.65) !important;
+    }
+
+    html.dark .book-modal-head,
+    html.dark .book-modal-body {
+        background: rgba(18,18,18,0.96) !important;
+    }
+
+    html.dark .book-modal-timeline {
+        background: rgba(255,255,255,0.12) !important;
+    }
+
+    html.dark .book-index-page .bg-stone-200 {
+        background: rgba(255,255,255,0.1) !important;
+    }
+
+    html.dark .book-index-page .bg-stone-100 {
+        background: rgba(255,255,255,0.08) !important;
+    }
+
+    html.dark .book-index-page .text-stone-900,
+    html.dark .book-index-page .text-stone-800,
+    html.dark .book-index-page .text-stone-700 {
+        color: #f3f4f6 !important;
+    }
+
+    html.dark .book-index-page .text-stone-600,
+    html.dark .book-index-page .text-stone-500,
+    html.dark .book-index-page .text-stone-400,
+    html.dark .book-index-page .text-stone-300 {
+        color: #9ca3af !important;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20 book-index-page">
     <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
 
         <div class="mb-10 flex flex-col gap-4">
             <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block">DATA RETRIEVAL TERMINAL</span>
             
-            <div id="searchContainer" class="w-full relative group search-minimal flex items-center p-1">
+            <div id="searchContainer" class="w-full relative group search-minimal book-search-shell flex items-center p-1">
                 <i class="fas fa-terminal absolute left-4 text-stone-400 group-focus-within:text-stone-900 transition-colors text-sm z-20"></i>
                 <input type="text" id="quickInput" name="q" value="{{ q }}" 
                     oninput="handleSearchInput(this.value)"
@@ -90,13 +239,13 @@
                     <button type="button" onclick="doSearch()" class="btn-brutal-outline px-4 py-2 border-none hover:bg-stone-100">
                         <i class="fas fa-search"></i>
                     </button>
-                    <div class="w-px h-6 bg-stone-200 mx-1"></div>
+                    <div class="w-px h-6 bg-stone-200 mx-1 book-search-divider"></div>
                     <button type="button" onclick="quickCreate()" class="btn-brutal bg-[#111] hover:bg-primary px-6 py-2 shadow-none">
                         <i class="fas fa-plus text-[10px] mr-2"></i> 写入档案
                     </button>
                 </div>
 
-                <div id="instantSearchResults" class="absolute top-full left-0 right-0 mt-2 bg-white rounded-sm border border-[#111] shadow-[4px_4px_0_#111] hidden overflow-hidden transition-all text-left z-[100] max-h-[400px] overflow-y-auto custom-scroll">
+                <div id="instantSearchResults" class="absolute top-full left-0 right-0 mt-2 bg-white rounded-sm border border-[#111] shadow-[4px_4px_0_#111] hidden overflow-hidden transition-all text-left z-[100] max-h-[400px] overflow-y-auto custom-scroll book-search-results">
                 </div>
             </div>
         </div>
@@ -135,13 +284,13 @@
                                 <i class="fas fa-arrow-right text-[10px] text-stone-300 -rotate-45 group-hover:rotate-0 group-hover:text-[#111] transition-transform"></i>
                             </div>
 
-                            <h3 class="font-bold text-lg text-stone-900 mb-2 line-clamp-1 bg-white inline-block w-fit">{{ note.title }}</h3>
+                            <h3 class="font-bold text-lg text-stone-900 mb-2 line-clamp-1 bg-white inline-block w-fit book-note-title-chip">{{ note.title }}</h3>
                             
-                            <div class="flex-1 bg-white p-3 border grid-border overflow-hidden mt-1 relative">
+                            <div class="flex-1 bg-white p-3 border grid-border overflow-hidden mt-1 relative book-note-snippet">
                                 <p class="text-stone-500 text-[11px] font-mono line-clamp-4 leading-relaxed">
                                     {{ note.content_md | striptags }}
                                 </p>
-                                <div class="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent"></div>
+                                <div class="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent book-note-fade"></div>
                             </div>
                         </div>
                         {% endfor %}
@@ -176,11 +325,11 @@
 
                             <h3 class="font-bold text-lg text-stone-900 mb-2 line-clamp-1">{{ note.title }}</h3>
                             
-                            <div class="flex-1 bg-white p-3 border grid-border overflow-hidden mt-1 relative">
+                            <div class="flex-1 bg-white p-3 border grid-border overflow-hidden mt-1 relative book-note-snippet">
                                 <p class="text-stone-500 text-[11px] font-mono line-clamp-4 leading-relaxed">
                                     {{ note.content_md | striptags }}
                                 </p>
-                                <div class="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent"></div>
+                                <div class="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-white to-transparent book-note-fade"></div>
                             </div>
                         </div>
                         {% endfor %}
@@ -238,9 +387,9 @@
 </div>
 
 <dialog id="note_preview_modal" class="modal bg-stone-900/60 backdrop-blur-sm z-[200]">
-    <div class="modal-box w-11/12 max-w-3xl bg-white rounded-sm p-0 modal-brutal overflow-hidden flex flex-col max-h-[85vh]">
+    <div class="modal-box w-11/12 max-w-3xl bg-white rounded-sm p-0 modal-brutal book-modal-box overflow-hidden flex flex-col max-h-[85vh]">
         
-        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern flex justify-between items-start shrink-0">
+        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern book-modal-head flex justify-between items-start shrink-0">
             <div class="flex flex-col gap-2">
                 <span class="text-[9px] font-mono text-stone-500 tracking-widest uppercase bg-white border grid-border px-2 py-1 w-fit" id="modal_date"></span>
                 <h2 id="modal_title" class="text-2xl font-black text-stone-900 leading-tight bg-white inline-block w-fit px-1"></h2>
@@ -258,8 +407,8 @@
             </div>
         </div>
         
-        <div class="flex-1 overflow-y-auto custom-scroll p-8 bg-white relative">
-            <div class="absolute left-4 top-8 bottom-8 w-px bg-stone-200"></div>
+        <div class="flex-1 overflow-y-auto custom-scroll p-8 bg-white book-modal-body relative">
+            <div class="absolute left-4 top-8 bottom-8 w-px bg-stone-200 book-modal-timeline"></div>
             <div id="modal_content" class="text-stone-700 text-sm leading-loose whitespace-pre-wrap font-mono pl-6">
             </div>
         </div>
@@ -294,8 +443,8 @@ function handleSearchInput(val) {
             
             if (data.results && data.results.length > 0) {
                 resultsDiv.innerHTML = data.results.map(item => `
-                    <a href="/book/notes/${item.id}" class="flex items-start gap-4 p-4 hover:bg-[#fafafa] border-b border-stone-100 last:border-0 transition-colors cursor-pointer group">
-                        <div class="w-8 h-8 rounded-sm ${item.type === 'my' ? 'bg-[#111] text-white' : 'bg-stone-200 text-stone-600'} flex items-center justify-center font-bold text-xs shrink-0">
+                    <a href="/book/notes/${item.id}" class="flex items-start gap-4 p-4 hover:bg-[#fafafa] border-b border-stone-100 last:border-0 transition-colors cursor-pointer group book-search-result-item">
+                        <div class="w-8 h-8 rounded-sm ${item.type === 'my' ? 'bg-[#111] text-white book-search-icon-my' : 'bg-stone-200 text-stone-600 book-search-icon-shared'} flex items-center justify-center font-bold text-xs shrink-0">
                             <i class="fas ${item.type === 'my' ? 'fa-file-alt' : 'fa-link'}"></i>
                         </div>
                         <div class="flex-1 min-w-0 pt-0.5">

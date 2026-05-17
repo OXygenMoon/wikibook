@@ -40,11 +40,76 @@
     /* 任务卡片悬浮特效 */
     .task-card-brutal { transition: background-color 0.2s ease, filter 0.2s ease; }
     .task-card-brutal:hover { background-color: #fafafa; }
+
+    html.dark .bulletin-page .grid-border { border-color: rgba(255,255,255,0.12); }
+
+    html.dark .bulletin-shell {
+        background: rgba(14,14,14,0.92) !important;
+        border-color: rgba(255,255,255,0.12) !important;
+        box-shadow: 0 16px 36px rgba(0,0,0,0.42) !important;
+    }
+
+    html.dark .bulletin-shell-header {
+        background: rgba(18,18,18,0.95) !important;
+    }
+
+    .bulletin-board-surface {
+        background: #fff;
+    }
+
+    html.dark .bulletin-board-surface,
+    html.dark #bulletin-stickers {
+        background: rgba(12,12,12,0.96) !important;
+    }
+
+    html.dark .task-card-brutal:hover {
+        background-color: rgba(255,255,255,0.05);
+    }
+
+    html.dark .bulletin-page .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(255,255,255,0.06) 3px, rgba(255,255,255,0.06) 4px);
+    }
+
+    html.dark .bulletin-page .text-stone-900,
+    html.dark .bulletin-page .text-stone-800 {
+        color: #f3f4f6 !important;
+    }
+
+    html.dark .bulletin-page .text-stone-500,
+    html.dark .bulletin-page .text-stone-400,
+    html.dark .bulletin-page .text-stone-300 {
+        color: #9ca3af !important;
+    }
+
+    html.dark .bulletin-page .border-stone-300 {
+        border-color: rgba(255,255,255,0.2) !important;
+    }
+
+    html.dark .bulletin-page .text-\[\#111\] {
+        color: #f3f4f6 !important;
+    }
+
+    html.dark .bulletin-page .bg-\[\#fafafa\] {
+        background: rgba(18,18,18,0.95) !important;
+    }
+
+    html.dark .bulletin-page .bg-\[\#111\] {
+        background: #f97316 !important;
+    }
+
+    html.dark .bulletin-page .group-hover\:bg-\[\#111\]:hover {
+        background: #f97316 !important;
+        border-color: #f97316 !important;
+    }
+
+    html.dark .bulletin-page .group-hover\:border-\[\#111\]:hover {
+        border-color: #f97316 !important;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20 bulletin-page">
     <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
         
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 border-b grid-border pb-6">
@@ -68,9 +133,9 @@
             </div>
         </div>
 
-        <div class="bg-white border grid-border shadow-[0_20px_50px_rgba(0,0,0,0.03)] rounded-sm min-h-[600px] relative flex flex-col overflow-hidden">
+        <div class="bg-white border grid-border shadow-[0_20px_50px_rgba(0,0,0,0.03)] rounded-sm min-h-[600px] relative flex flex-col overflow-hidden bulletin-shell">
             
-            <div class="h-12 border-b grid-border px-6 flex items-center justify-between bg-[#fafafa] shrink-0">
+            <div class="h-12 border-b grid-border px-6 flex items-center justify-between bg-[#fafafa] shrink-0 bulletin-shell-header">
                 <div class="flex items-center gap-3">
                     <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                     <span class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">LIVE SYNC ACTIVE</span>
@@ -80,7 +145,7 @@
                 </div>
             </div>
 
-            <div id="bulletin-stickers" class="flex-1 w-full relative">
+            <div id="bulletin-stickers" class="flex-1 w-full relative bulletin-board-surface">
                 <div class="absolute inset-0 flex flex-col items-center justify-center py-32 opacity-30 stripe-pattern">
                     <span class="loading loading-spinner loading-lg mb-4 text-[#111]"></span>
                     <p class="font-mono text-[10px] font-bold uppercase tracking-widest text-[#111]">Fetching Data Feed...</p>
@@ -127,7 +192,7 @@
                 
                 // 2. 空状态渲染 (Brutalist Style)
                 if (boardItems.length === 0) {
-                    board.className = "flex-1 w-full flex items-center justify-center bg-[#fafafa]";
+                    board.className = "flex-1 w-full flex items-center justify-center bg-[#fafafa] bulletin-board-surface";
                     board.innerHTML = `
                         <div class="text-center">
                             <i class="fas fa-inbox text-4xl text-stone-300 mb-4"></i>
@@ -138,7 +203,7 @@
                 }
 
                 // 3. 注入网格布局类
-                board.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 bg-white";
+                board.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 bg-white bulletin-board-surface";
                 
                 // 4. 渲染极简数据卡片
                 board.innerHTML = boardItems.map((q, idx) => {

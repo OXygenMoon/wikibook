@@ -95,6 +95,76 @@
         transition: all 0.2s; box-shadow: 4px 4px 0px rgba(0,0,0,1) !important;
     }
     .sticker-fab:hover { transform: translate(-2px, -2px) !important; box-shadow: 6px 6px 0px rgba(0,0,0,1) !important; background: #111 !important; color: #fff !important; }
+
+    html.dark body {
+        background-color: #101010 !important;
+        color: #e5e7eb;
+    }
+    html.dark #profile-sticker-header {
+        background-color: #171717 !important;
+    }
+    html.dark #profile-sticker-header .drop-hint {
+        background-color: rgba(17, 17, 17, 0.9) !important;
+        color: #e5e7eb !important;
+        border-color: rgba(255, 255, 255, 0.35) !important;
+    }
+    html.dark .profile-page .brutal-card,
+    html.dark .profile-page .brutal-card-static,
+    html.dark .profile-page .bg-white,
+    html.dark .profile-page [class*="bg-[#fafafa]"] {
+        background: #1a1a1a !important;
+        color: #e5e7eb !important;
+    }
+    html.dark .profile-page .grid-border,
+    html.dark .profile-page .border-stone-200,
+    html.dark .profile-page .divide-stone-200,
+    html.dark .profile-page .border-\[\#111\] {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+    html.dark .profile-page .text-stone-900,
+    html.dark .profile-page .text-stone-800 {
+        color: #f3f4f6 !important;
+    }
+    html.dark .profile-page .text-stone-500,
+    html.dark .profile-page .text-stone-400 {
+        color: #a3a3a3 !important;
+    }
+    html.dark .profile-page .shadow-\[2px_2px_0_\#111\],
+    html.dark .profile-page .shadow-\[4px_4px_0_rgba\(0\,0\,0\,0\.2\)\],
+    html.dark .profile-page .shadow-\[4px_4px_0_\#111\] {
+        box-shadow: 2px 2px 0 rgba(255, 255, 255, 0.16) !important;
+    }
+    html.dark #sticker-drawer {
+        background: #181818 !important;
+        border-color: rgba(255, 255, 255, 0.24) !important;
+    }
+    html.dark #sticker-drawer-header,
+    html.dark #sticker-drawer .bg-white,
+    html.dark #sticker-drawer [class*="bg-[#fafafa]"] {
+        background: #1f1f1f !important;
+        color: #e5e7eb !important;
+    }
+    html.dark #sticker-drawer .text-stone-900,
+    html.dark #sticker-drawer .text-stone-800,
+    html.dark #sticker-drawer .text-stone-500,
+    html.dark #sticker-drawer .text-stone-400 {
+        color: #d4d4d4 !important;
+    }
+    html.dark .sticker-fab {
+        background: #1f1f1f !important;
+        color: #f3f4f6 !important;
+        border-color: rgba(255, 255, 255, 0.24) !important;
+        box-shadow: 2px 2px 0 rgba(255, 255, 255, 0.16) !important;
+    }
+    html.dark .btn-brutal-outline {
+        background: #1a1a1a;
+        color: #e5e7eb;
+        border-color: rgba(255, 255, 255, 0.3);
+        box-shadow: 2px 2px 0 rgba(255, 255, 255, 0.16);
+    }
+    html.dark .btn-brutal-outline:hover {
+        background: #2a2a2a;
+    }
 </style>
 {% endblock %}
 
@@ -115,7 +185,7 @@
     <div class="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-black/5 to-transparent z-10 pointer-events-none"></div>
 </div>
 
-<div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-40 animate-fade-in -mt-16 lg:-mt-24">
+<div class="profile-page max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-40 animate-fade-in -mt-16 lg:-mt-24">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
         <aside class="lg:col-span-3 flex flex-col gap-6">

@@ -46,11 +46,133 @@
     .prose img { border-radius: 2px; border: 1px solid rgba(0,0,0,0.1); }
     .prose a { color: #111; text-decoration: underline; text-underline-offset: 2px; font-weight: bold; }
     .prose a:hover { background: #111; color: #fff; }
+
+    html.dark .announcements-page .grid-border { border-color: rgba(255,255,255,0.12); }
+
+    html.dark .announcements-page .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(255,255,255,0.06) 3px, rgba(255,255,255,0.06) 4px);
+    }
+
+    html.dark .announcements-page .custom-scroll::-webkit-scrollbar-track {
+        border-left-color: rgba(255,255,255,0.1);
+    }
+
+    html.dark .announcements-page .custom-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.25);
+    }
+
+    html.dark .announcements-page .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.42);
+    }
+
+    html.dark .ann-shell,
+    html.dark .ann-sidebar,
+    html.dark .ann-detail,
+    html.dark .ann-empty-state {
+        background: rgba(14,14,14,0.92) !important;
+        border-color: rgba(255,255,255,0.12) !important;
+        box-shadow: 0 16px 36px rgba(0,0,0,0.42) !important;
+    }
+
+    html.dark .ann-sidebar-head,
+    html.dark .ann-detail-head,
+    html.dark .ann-placeholder,
+    html.dark .ann-empty-icon-wrap {
+        background: rgba(18,18,18,0.95) !important;
+    }
+
+    html.dark .announcement-item {
+        border-bottom-color: rgba(255,255,255,0.08);
+    }
+
+    html.dark .announcement-item:hover {
+        background-color: rgba(255,255,255,0.05);
+    }
+
+    html.dark .announcement-item.active {
+        background: rgba(249,115,22,0.18);
+        border-color: rgba(249,115,22,0.6);
+    }
+
+    html.dark .announcement-item.active * {
+        color: #fff !important;
+    }
+
+    html.dark .ann-node-status {
+        background: rgba(255,255,255,0.1) !important;
+        color: #e5e7eb !important;
+    }
+
+    html.dark .ann-id-pill {
+        background: rgba(255,255,255,0.1) !important;
+        color: #cbd5e1 !important;
+    }
+
+    html.dark .ann-official-badge {
+        background: #f97316 !important;
+    }
+
+    html.dark .ann-prose-wrap {
+        background: rgba(12,12,12,0.96);
+    }
+
+    html.dark .announcements-page .text-stone-900,
+    html.dark .announcements-page .text-stone-800 {
+        color: #f3f4f6 !important;
+    }
+
+    html.dark .announcements-page .text-stone-600,
+    html.dark .announcements-page .text-stone-500,
+    html.dark .announcements-page .text-stone-400,
+    html.dark .announcements-page .text-stone-300 {
+        color: #9ca3af !important;
+    }
+
+    html.dark .announcements-page .bg-stone-100 {
+        background: rgba(255,255,255,0.08) !important;
+    }
+
+    html.dark .announcements-page .bg-stone-200 {
+        background: rgba(255,255,255,0.1) !important;
+    }
+
+    html.dark .announcements-page .text-black {
+        color: #fff !important;
+    }
+
+    html.dark .announcements-page .prose {
+        color: #d1d5db;
+    }
+
+    html.dark .announcements-page .prose h1,
+    html.dark .announcements-page .prose h2,
+    html.dark .announcements-page .prose h3 {
+        color: #f3f4f6;
+    }
+
+    html.dark .announcements-page .prose code {
+        color: #f3f4f6;
+        background: rgba(255,255,255,0.1);
+    }
+
+    html.dark .announcements-page .prose pre {
+        background: rgba(5,5,5,0.95);
+        border-color: rgba(255,255,255,0.14);
+    }
+
+    html.dark .announcements-page .prose a {
+        color: #f3f4f6;
+    }
+
+    html.dark .announcements-page .prose a:hover {
+        background: #f97316;
+        color: #fff;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="w-full h-screen max-h-screen pt-4 pb-4 overflow-hidden flex flex-col">
+<div class="w-full h-screen max-h-screen pt-4 pb-4 overflow-hidden flex flex-col announcements-page">
     <div class="max-w-[1400px] w-full mx-auto px-4 lg:px-8 h-full flex flex-col gap-4 relative z-10">
 
         <div class="flex items-center justify-between border-b grid-border pb-4 shrink-0">
@@ -61,7 +183,7 @@
                 </h1>
                 <div class="flex gap-2 mt-3">
                     <span class="text-[10px] font-mono bg-[#111] text-white px-2 py-0.5 tracking-widest">协议状态：在线</span>
-                    <span class="text-[10px] font-mono bg-stone-200 text-stone-600 px-2 py-0.5 tracking-widest">接收节点：正常</span>
+                    <span class="text-[10px] font-mono bg-stone-200 text-stone-600 px-2 py-0.5 tracking-widest ann-node-status">接收节点：正常</span>
                 </div>
             </div>
             
@@ -72,11 +194,11 @@
         </div>
 
         {% if announcements %}
-        <div class="flex flex-col md:flex-row gap-0 bg-white border grid-border shadow-[0_10px_30px_rgba(0,0,0,0.05)] rounded-sm overflow-hidden flex-1 min-h-0">
+        <div class="flex flex-col md:flex-row gap-0 bg-white border grid-border shadow-[0_10px_30px_rgba(0,0,0,0.05)] rounded-sm overflow-hidden flex-1 min-h-0 ann-shell">
             
-            <div class="w-full md:w-[320px] xl:w-[360px] flex flex-col border-b md:border-b-0 md:border-r grid-border bg-white shrink-0 z-10">
+            <div class="w-full md:w-[320px] xl:w-[360px] flex flex-col border-b md:border-b-0 md:border-r grid-border bg-white shrink-0 z-10 ann-sidebar">
                 
-                <div class="p-4 border-b grid-border bg-[#fafafa] stripe-pattern shrink-0 flex items-center gap-2">
+                <div class="p-4 border-b grid-border bg-[#fafafa] stripe-pattern shrink-0 flex items-center gap-2 ann-sidebar-head">
                     <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                     <label class="text-[10px] font-bold text-stone-500 uppercase tracking-widest block">通告列阵</label>
                 </div>
@@ -99,7 +221,7 @@
                             <span class="text-[10px] text-stone-500 font-mono tracking-wider">
                                 {{ ann.created_at.strftime('%Y.%m.%d / %H:%M') }}
                             </span>
-                            <span class="text-[9px] font-bold px-1.5 py-0.5 tracking-widest uppercase {% if selected_ann and ann.id == selected_ann.id %}bg-white text-black{% else %}bg-stone-100 text-stone-400{% endif %}">
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 tracking-widest uppercase ann-id-pill {% if selected_ann and ann.id == selected_ann.id %}bg-white text-black{% else %}bg-stone-100 text-stone-400{% endif %}">
                                 ID:{{ '%03d' % ann.id }}
                             </span>
                         </div>
@@ -108,12 +230,12 @@
                 </div>
             </div>
 
-            <div class="flex-1 flex flex-col relative bg-white overflow-hidden z-0">
+            <div class="flex-1 flex flex-col relative bg-white overflow-hidden z-0 ann-detail">
                 
                 {% if selected_ann %}
-                <div class="p-8 md:p-12 pb-6 border-b grid-border bg-[#fafafa] stripe-pattern shrink-0">
+                <div class="p-8 md:p-12 pb-6 border-b grid-border bg-[#fafafa] stripe-pattern shrink-0 ann-detail-head">
                     <div class="flex items-center gap-3 mb-4">
-                        <span class="text-[10px] font-bold bg-[#111] text-white px-2 py-1 tracking-widest">
+                        <span class="text-[10px] font-bold bg-[#111] text-white px-2 py-1 tracking-widest ann-official-badge">
                             <i class="fas fa-check-circle text-[9px] mr-1"></i> 官方通讯
                         </span>
                         <span class="text-[10px] font-mono text-stone-500 tracking-wider">
@@ -125,7 +247,7 @@
                     </h2>
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-8 md:p-12 custom-scroll relative bg-white">
+                <div class="flex-1 overflow-y-auto p-8 md:p-12 custom-scroll relative bg-white ann-prose-wrap">
                     <div class="prose max-w-4xl mx-auto">
                         {{ selected_ann.html | safe }}
                     </div>
@@ -137,7 +259,7 @@
                 </div>
 
                 {% else %}
-                <div class="absolute inset-0 bg-[#fafafa] flex flex-col items-center justify-center z-20 stripe-pattern">
+                <div class="absolute inset-0 bg-[#fafafa] flex flex-col items-center justify-center z-20 stripe-pattern ann-placeholder">
                     <div class="w-16 h-16 border-2 border-stone-300 flex items-center justify-center text-stone-300 mb-4 animate-pulse">
                         <i class="fas fa-satellite-dish text-2xl"></i>
                     </div>
@@ -150,8 +272,8 @@
         </div>
         
         {% else %}
-        <div class="flex-1 flex flex-col items-center justify-center bg-white border border-dashed grid-border rounded-sm">
-            <div class="w-20 h-20 bg-[#fafafa] border grid-border flex items-center justify-center mb-6">
+        <div class="flex-1 flex flex-col items-center justify-center bg-white border border-dashed grid-border rounded-sm ann-empty-state">
+            <div class="w-20 h-20 bg-[#fafafa] border grid-border flex items-center justify-center mb-6 ann-empty-icon-wrap">
                 <i class="fas fa-ban text-3xl text-stone-300"></i>
             </div>
             <h3 class="text-xl font-light text-stone-800 tracking-widest uppercase mb-2">频率静默</h3>

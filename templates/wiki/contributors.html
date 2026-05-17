@@ -7,12 +7,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-stone-50/50 p-4 md:p-8">
+<div class="min-h-screen bg-stone-50/50 dark:bg-base-200/30 p-4 md:p-8">
     <div class="max-w-5xl mx-auto space-y-8">
         
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex items-center gap-4">
-                <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-circle btn-ghost btn-sm text-base-content/80 hover:bg-stone-200 hover:text-base-content transition-colors">
+                <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-circle btn-ghost btn-sm text-base-content/80 hover:bg-stone-200 dark:hover:bg-base-300 hover:text-base-content transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 </a>
                 <div>
@@ -65,7 +65,7 @@
                             <p class="text-base-content/80 text-xs font-semibold">总编辑次数</p>
                             <p class="text-3xl font-black text-base-content mt-1">{{ contributors|map(attribute='edit_count')|sum }}</p>
                         </div>
-                        <div class="p-3 bg-stone-50 rounded-xl text-base-content/50">
+                        <div class="p-3 bg-stone-50 dark:bg-base-300/60 rounded-xl text-base-content/50">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                         </div>
                     </div>
@@ -74,9 +74,9 @@
         </div>
 
         <div class="bg-base-100 rounded-3xl shadow-xl border border-base-300 overflow-hidden">
-            <div class="p-6 border-b border-base-300 flex justify-between items-center bg-stone-50/30">
+            <div class="p-6 border-b border-base-300 flex justify-between items-center bg-stone-50/30 dark:bg-base-200/40">
                 <h3 class="font-bold text-lg text-base-content">贡献排行</h3>
-                <span class="text-xs text-base-content/50 font-mono bg-stone-100 px-2 py-1 rounded">TOP {{ contributors|length }}</span>
+                <span class="text-xs text-base-content/50 font-mono bg-stone-100 dark:bg-base-300 px-2 py-1 rounded">TOP {{ contributors|length }}</span>
             </div>
             
             <div class="overflow-x-auto">
@@ -92,7 +92,7 @@
                     <tbody>
                         {% set total_edits = contributors|map(attribute='edit_count')|sum %}
                         {% for c in contributors %}
-                        <tr class="hover:bg-stone-50 transition-colors group border-base-300">
+                        <tr class="hover:bg-stone-50 dark:hover:bg-base-200/50 transition-colors group border-base-300">
                             <td class="text-center font-bold text-lg">
                                 {% if loop.index == 1 %}
                                     <div class="mx-auto w-8 h-8 grid place-items-center bg-yellow-100 text-yellow-600 rounded-full">🥇</div>
@@ -108,7 +108,7 @@
                             <td class="pl-6">
                                 <div class="flex items-center gap-4">
                                     <div class="avatar placeholder">
-                                        <div class="mask mask-squircle w-10 h-10 bg-gradient-to-br from-stone-200 to-stone-300 text-base-content/80 font-bold shadow-sm group-hover:scale-105 transition-transform">
+                                        <div class="mask mask-squircle w-10 h-10 bg-gradient-to-br from-stone-200 to-stone-300 dark:from-stone-700 dark:to-stone-800 text-base-content/80 dark:text-stone-200 font-bold shadow-sm group-hover:scale-105 transition-transform">
                                             <span>{{ c[0].username[0]|upper if c[0] and c[0].username else '?' }}</span>
                                         </div>
                                     </div>
@@ -144,7 +144,7 @@
                                         </progress>
                                     </div>
                                 {% else %}
-                                    <span class="text-stone-300">-</span>
+                                    <span class="text-stone-300 dark:text-stone-600">-</span>
                                 {% endif %}
                             </td>
                         </tr>

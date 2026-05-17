@@ -118,12 +118,208 @@
         color: inherit !important;
     }
 
+    html.dark .book-calendar-page .grid-border { border-color: rgba(255,255,255,0.12); }
+
+    html.dark .book-calendar-page .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(255,255,255,0.06) 3px, rgba(255,255,255,0.06) 4px);
+    }
+
+    html.dark .book-calendar-page .custom-scroll::-webkit-scrollbar-track {
+        border-left-color: rgba(255,255,255,0.1);
+    }
+
+    html.dark .book-calendar-page .custom-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.24);
+    }
+
+    html.dark .book-calendar-page .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.42);
+    }
+
+    html.dark .terminal-input {
+        background: rgba(14,14,14,0.92);
+        border-color: rgba(255,255,255,0.2);
+        color: #f3f4f6;
+    }
+
+    html.dark .terminal-input::placeholder {
+        color: #6b7280;
+    }
+
+    html.dark .terminal-input:focus {
+        border-color: rgba(249,115,22,0.75);
+        box-shadow: 0 0 0 1px rgba(249,115,22,0.48), 0 10px 22px rgba(0,0,0,0.5);
+    }
+
+    html.dark .calendar-filter-select {
+        background: rgba(12,12,12,0.96) !important;
+        border-color: rgba(255,255,255,0.2) !important;
+        color: #f3f4f6 !important;
+    }
+
+    html.dark .calendar-shell,
+    html.dark .calendar-snapshot-modal,
+    html.dark .calendar-create-modal {
+        background: rgba(14,14,14,0.94) !important;
+        border-color: rgba(255,255,255,0.16) !important;
+        box-shadow: 0 14px 32px rgba(0,0,0,0.55) !important;
+    }
+
+    html.dark .calendar-snapshot-head,
+    html.dark .calendar-snapshot-body,
+    html.dark .calendar-snapshot-foot,
+    html.dark .calendar-create-head,
+    html.dark .calendar-create-body,
+    html.dark .calendar-create-foot,
+    html.dark .calendar-snapshot-content,
+    html.dark .create-date-chip {
+        background: rgba(18,18,18,0.96) !important;
+    }
+
+    html.dark .book-calendar-page .bg-stone-900\/60 {
+        background: rgba(2,2,2,0.72) !important;
+    }
+
+    html.dark .book-calendar-page .text-stone-900,
+    html.dark .book-calendar-page .text-stone-800,
+    html.dark .book-calendar-page .text-stone-700 {
+        color: #f3f4f6 !important;
+    }
+
+    html.dark .book-calendar-page .text-stone-600,
+    html.dark .book-calendar-page .text-stone-500,
+    html.dark .book-calendar-page .text-stone-400,
+    html.dark .book-calendar-page .text-stone-300 {
+        color: #9ca3af !important;
+    }
+
+    html.dark .book-calendar-page .bg-white {
+        background: rgba(18,18,18,0.96) !important;
+    }
+
+    html.dark .book-calendar-page .bg-\[\#fafafa\] {
+        background: rgba(18,18,18,0.96) !important;
+    }
+
+    html.dark .book-calendar-page .bg-\[\#111\] {
+        background: #f97316 !important;
+    }
+
+    html.dark .btn-brutal {
+        background: #f97316;
+        border-color: #f97316;
+        box-shadow: 4px 4px 0 #f97316;
+    }
+
+    html.dark .btn-brutal:hover {
+        background: #fb923c;
+        border-color: #fb923c;
+        box-shadow: 6px 6px 0 #fb923c;
+    }
+
+    html.dark .btn-brutal-outline {
+        background: rgba(18,18,18,0.95);
+        color: #e5e7eb;
+        border-color: rgba(255,255,255,0.22);
+        box-shadow: 4px 4px 0 rgba(255,255,255,0.14);
+    }
+
+    html.dark .btn-brutal-outline:hover {
+        background: rgba(249,115,22,0.18);
+        border-color: rgba(249,115,22,0.75);
+        color: #fff;
+        box-shadow: 6px 6px 0 rgba(249,115,22,0.35);
+    }
+
+    html.dark .book-calendar-page .fc {
+        --fc-border-color: rgba(255,255,255,0.12);
+        --fc-page-bg-color: transparent;
+        --fc-neutral-bg-color: rgba(255,255,255,0.03);
+        --fc-list-event-hover-bg-color: rgba(255,255,255,0.06);
+        --fc-button-bg-color: rgba(18,18,18,0.95);
+        --fc-button-border-color: rgba(255,255,255,0.2);
+        --fc-button-text-color: #e5e7eb;
+        --fc-button-hover-bg-color: rgba(255,255,255,0.08);
+        --fc-button-hover-border-color: rgba(255,255,255,0.26);
+        --fc-button-active-bg-color: #f97316;
+        --fc-button-active-border-color: #f97316;
+        --fc-today-bg-color: rgba(249,115,22,0.08);
+    }
+
+    html.dark .book-calendar-page .fc-toolbar-title {
+        color: #f3f4f6;
+    }
+
+    html.dark .book-calendar-page .fc-button {
+        background-color: rgba(18,18,18,0.95) !important;
+        color: #e5e7eb !important;
+        border-color: rgba(255,255,255,0.2) !important;
+        box-shadow: 3px 3px 0 rgba(255,255,255,0.12) !important;
+    }
+
+    html.dark .book-calendar-page .fc-button:hover {
+        background-color: rgba(255,255,255,0.08) !important;
+        color: #fff !important;
+        box-shadow: 4px 4px 0 rgba(255,255,255,0.16) !important;
+    }
+
+    html.dark .book-calendar-page .fc-button:active,
+    html.dark .book-calendar-page .fc-button.fc-button-active {
+        background-color: #f97316 !important;
+        border-color: #f97316 !important;
+        color: #fff !important;
+        box-shadow: 0 0 0 transparent !important;
+    }
+
+    html.dark .book-calendar-page .fc-col-header-cell {
+        background: rgba(18,18,18,0.96);
+        color: #9ca3af;
+    }
+
+    html.dark .book-calendar-page .fc-daygrid-day {
+        background: rgba(14,14,14,0.86);
+    }
+
+    html.dark .book-calendar-page .fc-daygrid-day:hover {
+        background-color: rgba(255,255,255,0.05);
+    }
+
+    html.dark .book-calendar-page .fc-daygrid-day-number {
+        color: #d1d5db;
+    }
+
+    html.dark .book-calendar-page .fc-theme-standard td,
+    html.dark .book-calendar-page .fc-theme-standard th,
+    html.dark .book-calendar-page .fc-scrollgrid,
+    html.dark .book-calendar-page .fc-scrollgrid-section > td {
+        border-color: rgba(255,255,255,0.12) !important;
+    }
+
+    html.dark .book-calendar-page .fc-list,
+    html.dark .book-calendar-page .fc-list-table,
+    html.dark .book-calendar-page .fc-list-day > * {
+        background: rgba(16,16,16,0.94) !important;
+        color: #e5e7eb !important;
+        border-color: rgba(255,255,255,0.12) !important;
+    }
+
+    html.dark .book-calendar-page .fc-list-event-title a,
+    html.dark .book-calendar-page .fc-list-event-time {
+        color: #e5e7eb !important;
+    }
+
+    html.dark .snap-untagged {
+        border-color: rgba(255,255,255,0.24) !important;
+        color: #9ca3af !important;
+        background: rgba(255,255,255,0.08) !important;
+    }
+
 
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20 book-calendar-page">
     <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10 flex flex-col gap-6">
 
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b grid-border pb-6">
@@ -139,13 +335,13 @@
             
             <div class="mt-6 md:mt-0 w-full md:w-auto">
                 <label class="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1 block">NODE FILTER // 标签过滤</label>
-                <select id="tag-filter" class="terminal-input w-full md:w-48 h-10 font-bold uppercase tracking-wider">
+                <select id="tag-filter" class="terminal-input calendar-filter-select w-full md:w-48 h-10 font-bold uppercase tracking-wider">
                     <option value="">ALL TAGS // 全局</option>
                     </select>
             </div>
         </div>
 
-        <div class="bg-white border border-[#111] shadow-[8px_8px_0_#111] p-4 md:p-8 rounded-sm relative z-0">
+        <div class="bg-white border border-[#111] shadow-[8px_8px_0_#111] p-4 md:p-8 rounded-sm relative z-0 calendar-shell">
             <div id='calendar'></div>
         </div>
         
@@ -153,9 +349,9 @@
 </div>
 
 <dialog id="note_snapshot_modal" class="modal bg-stone-900/60 backdrop-blur-sm z-[200]">
-    <div class="modal-box w-11/12 max-w-2xl bg-white rounded-sm p-0 modal-brutal overflow-hidden flex flex-col max-h-[85vh]">
+    <div class="modal-box w-11/12 max-w-2xl bg-white rounded-sm p-0 modal-brutal calendar-snapshot-modal overflow-hidden flex flex-col max-h-[85vh]">
         
-        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern flex justify-between items-start shrink-0">
+        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern calendar-snapshot-head flex justify-between items-start shrink-0">
             <div class="flex flex-col gap-2">
                 <span class="text-[9px] font-mono text-stone-500 tracking-widest uppercase bg-white border grid-border px-2 py-1 w-fit" id="snap-date">TIMESTAMP: --</span>
                 <h2 id="snap-title" class="text-2xl font-black text-stone-900 leading-tight bg-white inline-block w-fit px-1 uppercase">NODE TITLE</h2>
@@ -165,17 +361,17 @@
             </form>
         </div>
         
-        <div class="flex-1 overflow-y-auto custom-scroll p-6 md:p-8 bg-white relative flex flex-col gap-6">
+        <div class="flex-1 overflow-y-auto custom-scroll p-6 md:p-8 bg-white calendar-snapshot-body relative flex flex-col gap-6">
             <div id="snap-tags" class="flex flex-wrap gap-2">
                 </div>
             
-            <div class="bg-[#fafafa] border grid-border p-6 font-mono text-stone-600 text-sm leading-relaxed min-h-[150px] relative">
+            <div class="bg-[#fafafa] border grid-border p-6 font-mono text-stone-600 text-sm leading-relaxed min-h-[150px] relative calendar-snapshot-content">
                 <div class="absolute top-0 left-0 w-1 h-full bg-[#111]"></div>
                 <div id="snap-content"></div>
             </div>
         </div>
         
-        <div class="border-t-2 border-[#111] p-6 bg-white flex justify-end shrink-0">
+        <div class="border-t-2 border-[#111] p-6 bg-white calendar-snapshot-foot flex justify-end shrink-0">
             <a id="view-full-note" href="#" class="btn-brutal">
                 DECRYPT FULL RECORD <i class="fas fa-arrow-right ml-2"></i>
             </a>
@@ -187,9 +383,9 @@
 </dialog>
 
 <dialog id="quick_create_modal" class="modal bg-stone-900/60 backdrop-blur-sm z-[200]">
-    <div class="modal-box w-11/12 max-w-lg bg-white rounded-sm p-0 modal-brutal overflow-hidden flex flex-col">
+    <div class="modal-box w-11/12 max-w-lg bg-white rounded-sm p-0 modal-brutal calendar-create-modal overflow-hidden flex flex-col">
         
-        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern flex justify-between items-center shrink-0">
+        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern calendar-create-head flex justify-between items-center shrink-0">
             <h3 class="text-xl font-black text-stone-900 uppercase tracking-widest bg-white inline-block px-2">
                 <i class="fas fa-terminal mr-2"></i> INITIALIZE NODE
             </h3>
@@ -198,10 +394,10 @@
             </form>
         </div>
         
-        <div class="p-6 md:p-8 bg-white flex flex-col gap-5">
+        <div class="p-6 md:p-8 bg-white calendar-create-body flex flex-col gap-5">
             <div class="flex flex-col gap-1.5">
                 <label class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">TIMESTAMP // 时间戳</label>
-                <div id="create-date-display" class="font-mono font-bold text-stone-800 bg-[#fafafa] border grid-border px-3 py-2 w-fit"></div>
+                <div id="create-date-display" class="font-mono font-bold text-stone-800 bg-[#fafafa] border grid-border px-3 py-2 w-fit create-date-chip"></div>
                 <input type="hidden" id="create-date-input">
             </div>
             
@@ -216,7 +412,7 @@
             </div>
         </div>
         
-        <div class="border-t-2 border-[#111] p-6 bg-white flex justify-end gap-4 shrink-0 bg-[#fafafa]">
+        <div class="border-t-2 border-[#111] p-6 bg-white flex justify-end gap-4 shrink-0 bg-[#fafafa] calendar-create-foot">
             <form method="dialog"><button class="btn-brutal-outline">ABORT</button></form>
             <button type="button" id="execute-create-btn" class="btn-brutal" onclick="submitQuickNote()">
                 EXECUTE <i class="fas fa-bolt ml-2 text-yellow-400"></i>
@@ -279,6 +475,8 @@
 eventDidMount: function(info) {
                 // 颜色高亮逻辑
                 const tags = info.event.extendedProps.tags;
+                const isDark = document.documentElement.classList.contains('dark');
+                const defaultBorderColor = isDark ? 'rgba(255,255,255,0.35)' : '#111';
                 let textColor = '#111'; // 默认文字颜色
                 
                 if (tags && tags.length > 0) {
@@ -291,12 +489,12 @@ eventDidMount: function(info) {
                     textColor = getTextColor(bgColor); // 根据背景算文字颜色
                     
                     info.el.style.backgroundColor = bgColor;
-                    info.el.style.borderColor = '#111'; // 永远保持黑框
+                    info.el.style.borderColor = defaultBorderColor;
                 } else {
-                    // 没有标签的默认样式：白底黑框黑字
-                    info.el.style.backgroundColor = '#fff';
-                    info.el.style.borderColor = '#111';
-                    textColor = '#111';
+                    // 没有标签的默认样式：暗色主题下降低亮度以避免白块刺眼
+                    info.el.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : '#fff';
+                    info.el.style.borderColor = defaultBorderColor;
+                    textColor = isDark ? '#e5e7eb' : '#111';
                 }
                 
                 // 💡 核心修复：同时设置 color 和 CSS变量，彻底压制 FullCalendar 的默认白字
@@ -363,6 +561,9 @@ eventDidMount: function(info) {
     function showSnapshot(event) {
         const modal = document.getElementById('note_snapshot_modal');
         const props = event.extendedProps;
+        const isDark = document.documentElement.classList.contains('dark');
+        const frameColor = isDark ? 'rgba(255,255,255,0.35)' : '#111';
+        const shadowColor = isDark ? 'rgba(0,0,0,0.55)' : '#111';
 
         document.getElementById('view-full-note').href = `/book/notes/${event.id}`;
         document.getElementById('snap-date').textContent = `TIMESTAMP: ${props.created_at || 'UNKNOWN'}`;
@@ -374,10 +575,10 @@ eventDidMount: function(info) {
             tagsContainer.innerHTML = props.tags.map(tag => {
                 const color = tagColorMap.get(tag) || '#111';
                 const textColor = getTextColor(color);
-                return `<span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border border-[#111]" style="background-color: ${color}; color: ${textColor}; box-shadow: 2px 2px 0 #111;">${tag}</span>`;
+                return `<span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest" style="background-color: ${color}; color: ${textColor}; border: 1px solid ${frameColor}; box-shadow: 2px 2px 0 ${shadowColor};">${tag}</span>`;
             }).join('');
         } else {
-            tagsContainer.innerHTML = `<span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border border-stone-300 text-stone-400">UNTAGGED</span>`;
+            tagsContainer.innerHTML = `<span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border border-stone-300 text-stone-400 snap-untagged">UNTAGGED</span>`;
         }
 
         // 内容

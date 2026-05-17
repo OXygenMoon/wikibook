@@ -168,6 +168,20 @@
         background: #fff; padding: 8px 12px; font-size: 10px; font-family: monospace; color: #555; text-transform: uppercase; font-weight: bold;
     }
     .dark .tooltip-footer { background: #111; color: #888; }
+
+    .radar-title {
+        letter-spacing: 0.02em;
+    }
+    .dark .radar-title {
+        color: #f5f7fb !important;
+        text-shadow: 0 0 14px rgba(255, 255, 255, 0.12);
+    }
+    .dark .radar-kicker {
+        color: #cbd5e1 !important;
+    }
+    .dark .radar-subline {
+        color: #94a3b8 !important;
+    }
 </style>
 
 <script id="users-data" type="application/json">
@@ -202,11 +216,11 @@
 
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b grid-border pb-6 mb-8">
             <div>
-                <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2">SYSTEM RADAR // 在线雷达图</span>
-                <h1 class="text-4xl md:text-5xl font-light text-stone-900 dark:text-stone-100 tracking-tight leading-none uppercase flex items-center gap-4">
+                <span class="radar-kicker text-[9px] text-stone-400 dark:text-stone-500 uppercase tracking-widest font-bold block mb-2">SYSTEM RADAR // 在线雷达图</span>
+                <h1 class="radar-title text-4xl md:text-5xl font-light text-stone-900 dark:text-stone-100 tracking-tight leading-none uppercase flex items-center gap-4">
                     全网节点监测
                 </h1>
-                <p class="text-[10px] text-stone-400 font-mono tracking-widest mt-4 uppercase">
+                <p class="radar-subline text-[10px] text-stone-400 dark:text-stone-500 font-mono tracking-widest mt-4 uppercase">
                     > 实时探测并定位当前活跃在系统内的物理用户
                 </p>
             </div>

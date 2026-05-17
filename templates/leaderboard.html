@@ -63,12 +63,141 @@
         background: #fff; border-top: 1px solid rgba(0,0,0,0.1);
         box-shadow: 0 -10px 20px rgba(0,0,0,0.02);
     }
+
+    html.dark .leaderboard-page .grid-border { border-color: rgba(255, 255, 255, 0.12); }
+
+    html.dark .leaderboard-page .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(255,255,255,0.06) 3px, rgba(255,255,255,0.06) 4px);
+    }
+
+    html.dark .leaderboard-page .custom-scroll::-webkit-scrollbar-track {
+        border-left-color: rgba(255, 255, 255, 0.1);
+    }
+
+    html.dark .leaderboard-page .custom-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.25);
+    }
+
+    html.dark .leaderboard-page .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.4);
+    }
+
+    html.dark .lb-shell,
+    html.dark .lb-sidebar,
+    html.dark .lb-panel,
+    html.dark .my-stats-bar {
+        background: rgba(14, 14, 14, 0.92) !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42) !important;
+    }
+
+    html.dark .lb-panel-header {
+        background: rgba(18, 18, 18, 0.95) !important;
+    }
+
+    html.dark .lb-table-wrap {
+        background: rgba(16, 16, 16, 0.92);
+    }
+
+    html.dark .lb-period-switch {
+        background: rgba(15, 15, 15, 0.86) !important;
+    }
+
+    html.dark .lb-period-btn {
+        color: #d1d5db !important;
+    }
+
+    html.dark .lb-period-btn:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: #f3f4f6 !important;
+    }
+
+    .lb-period-btn-active {
+        background: #111;
+        color: #fff;
+    }
+
+    html.dark .lb-period-btn-active {
+        background: #f97316 !important;
+        color: #fff !important;
+    }
+
+    html.dark .list-item-brutal {
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+        background: transparent;
+    }
+
+    html.dark .list-item-brutal:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    html.dark .list-item-brutal.active {
+        background: rgba(249, 115, 22, 0.18);
+        border-color: rgba(249, 115, 22, 0.6);
+    }
+
+    html.dark .list-item-brutal.active * {
+        color: #fff !important;
+    }
+
+    html.dark .brutal-table th {
+        color: #9ca3af;
+        border-bottom-color: rgba(255, 255, 255, 0.12);
+        background: rgba(18, 18, 18, 0.95);
+    }
+
+    html.dark .brutal-table td {
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+
+    html.dark .brutal-table tr:hover td {
+        background-color: rgba(255, 255, 255, 0.06);
+    }
+
+    html.dark .rank-1 td { background-color: rgba(245, 158, 11, 0.16) !important; }
+    html.dark .rank-2 td { background-color: rgba(148, 163, 184, 0.16) !important; }
+    html.dark .rank-3 td { background-color: rgba(217, 119, 6, 0.14) !important; }
+
+    html.dark .rank-number { color: #e5e7eb; }
+    html.dark .rank-1 .rank-number { color: #fbbf24; }
+    html.dark .rank-2 .rank-number { color: #cbd5e1; }
+    html.dark .rank-3 .rank-number { color: #fb923c; }
+
+    html.dark .lb-class-pill {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        color: #cbd5e1 !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+    }
+
+    html.dark .lb-empty-row {
+        background: rgba(14, 14, 14, 0.92) !important;
+    }
+
+    html.dark .leaderboard-page .text-stone-900,
+    html.dark .leaderboard-page .text-stone-800 {
+        color: #f3f4f6 !important;
+    }
+
+    html.dark .leaderboard-page .text-stone-500,
+    html.dark .leaderboard-page .text-stone-400,
+    html.dark .leaderboard-page .text-stone-300 {
+        color: #9ca3af !important;
+    }
+
+    html.dark .lb-cta {
+        background: #f97316 !important;
+        color: #fff !important;
+    }
+
+    html.dark .lb-cta:hover {
+        background: #fb923c !important;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<div class="w-full min-h-screen pt-4 pb-20">
+<div class="w-full min-h-screen pt-4 pb-20 leaderboard-page">
     <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12">
 
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 border-b grid-border pb-6">
@@ -79,21 +208,21 @@
                 </h1>
             </div>
             
-            <div class="flex border grid-border p-1 bg-white mt-6 md:mt-0">
+            <div class="flex border grid-border p-1 bg-white mt-6 md:mt-0 lb-period-switch">
                 <a href="{{ url_for('leaderboard', metric=metric, period='weekly') }}" 
-                   class="px-6 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors {% if period == 'weekly' %}bg-[#111] text-white{% else %}text-stone-500 hover:bg-stone-50{% endif %}">
+                   class="px-6 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors lb-period-btn {% if period == 'weekly' %}lb-period-btn-active{% else %}text-stone-500 hover:bg-stone-50{% endif %}">
                    This Week
                 </a>
                 <a href="{{ url_for('leaderboard', metric=metric, period='all') }}" 
-                   class="px-6 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors {% if period == 'all' %}bg-[#111] text-white{% else %}text-stone-500 hover:bg-stone-50{% endif %}">
+                   class="px-6 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors lb-period-btn {% if period == 'all' %}lb-period-btn-active{% else %}text-stone-500 hover:bg-stone-50{% endif %}">
                    All Time
                 </a>
             </div>
         </div>
 
-        <div class="flex flex-col lg:flex-row bg-white border grid-border shadow-[0_20px_50px_rgba(0,0,0,0.03)] rounded-sm overflow-hidden h-[calc(100vh-14rem)] min-h-[600px]">
+        <div class="flex flex-col lg:flex-row bg-white border grid-border shadow-[0_20px_50px_rgba(0,0,0,0.03)] rounded-sm overflow-hidden h-[calc(100vh-14rem)] min-h-[600px] lb-shell">
             
-            <div class="w-full lg:w-[280px] xl:w-[320px] flex flex-col border-b lg:border-b-0 lg:border-r grid-border bg-white z-10 shrink-0">
+            <div class="w-full lg:w-[280px] xl:w-[320px] flex flex-col border-b lg:border-b-0 lg:border-r grid-border bg-white z-10 shrink-0 lb-sidebar">
                 
                 <div class="h-24 md:h-32 border-b grid-border relative stripe-pattern p-6 flex flex-col justify-end">
                     <p class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">SELECT METRIC</p>
@@ -149,9 +278,9 @@
                 </div>
             </div>
 
-            <div class="flex-1 flex flex-col relative z-0 bg-[#fafafa]">
+            <div class="flex-1 flex flex-col relative z-0 bg-[#fafafa] lb-panel">
                 
-                <div class="h-16 border-b grid-border px-6 flex items-center justify-between bg-white shrink-0">
+                <div class="h-16 border-b grid-border px-6 flex items-center justify-between bg-white shrink-0 lb-panel-header">
                     <div class="flex items-center gap-4">
                         <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                         <span class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">LIVE DATA FEED</span>
@@ -161,7 +290,7 @@
                     </div>
                 </div>
 
-                <div class="flex-1 overflow-y-auto custom-scroll relative">
+                <div class="flex-1 overflow-y-auto custom-scroll relative lb-table-wrap">
                     <table class="brutal-table">
                         <thead>
                             <tr>
@@ -195,7 +324,7 @@
                                 
                                 <td class="hidden md:table-cell">
                                     {% if data.user.student_class %}
-                                        <span class="border border-stone-300 text-stone-500 text-[9px] font-bold px-2 py-1 uppercase tracking-widest bg-white">
+                                        <span class="border border-stone-300 text-stone-500 text-[9px] font-bold px-2 py-1 uppercase tracking-widest bg-white lb-class-pill">
                                             {{ data.user.student_class.name }}
                                         </span>
                                     {% else %}
@@ -216,7 +345,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="4" class="text-center py-32 bg-white">
+                                <td colspan="4" class="text-center py-32 bg-white lb-empty-row">
                                     <p class="font-bold text-stone-300 uppercase tracking-widest text-sm">NO DATA AVAILABLE IN THIS SECTOR</p>
                                 </td>
                             </tr>
@@ -255,15 +384,15 @@
 
                     <div class="hidden sm:block">
                         {% if metric == 'pomo' %}
-                        <button onclick="app.pomodoro.handleClick()" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors">
+                        <button onclick="app.pomodoro.handleClick()" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors lb-cta">
                             START FOCUS &rarr;
                         </button>
                         {% elif metric == 'duration' or metric == 'streak' %}
-                        <a href="{{ url_for('index') }}" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors">
+                        <a href="{{ url_for('index') }}" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors lb-cta">
                             READ WIKI &rarr;
                         </a>
                         {% elif metric == 'contribution' %}
-                        <a href="{{ url_for('new_note') }}" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors">
+                        <a href="{{ url_for('new_note') }}" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors lb-cta">
                             CREATE NOTE &rarr;
                         </a>
                         {% endif %}

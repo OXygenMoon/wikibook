@@ -148,15 +148,259 @@
     .toc-link:hover { color: #111; background-color: #fafafa; }
     .toc-link.active { color: #111; border-left-color: #111; background-color: #f0f0f0; }
     .toc-h1 { margin-left: 0; } .toc-h2 { margin-left: 1rem; } .toc-h3 { margin-left: 2rem; font-size: 10px; }
+
+    html.dark .book-view-page .grid-border { border-color: rgba(255,255,255,0.12); }
+
+    html.dark .book-view-page .stripe-pattern {
+        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(255,255,255,0.06) 3px, rgba(255,255,255,0.06) 4px);
+    }
+
+    html.dark .book-view-page .light-scroll::-webkit-scrollbar-track {
+        border-left-color: rgba(255,255,255,0.1);
+    }
+
+    html.dark .book-view-page .light-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.24);
+    }
+
+    html.dark .book-view-page .light-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.42);
+    }
+
+    html.dark .book-view-page .custom-scroll::-webkit-scrollbar-track {
+        background: rgba(255,255,255,0.02);
+        border-left-color: rgba(255,255,255,0.08);
+    }
+
+    html.dark .book-view-page .custom-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.2);
+    }
+
+    html.dark .book-view-page .custom-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.36);
+    }
+
+    html.dark .view-back-btn {
+        background: rgba(18,18,18,0.95) !important;
+        border-color: rgba(255,255,255,0.2) !important;
+        color: #d1d5db !important;
+    }
+
+    html.dark .view-back-btn:hover {
+        background: rgba(249,115,22,0.2) !important;
+        border-color: rgba(249,115,22,0.7) !important;
+        color: #fff !important;
+    }
+
+    html.dark .note-main-card,
+    html.dark .note-log-card,
+    html.dark .note-toc-card,
+    html.dark .note-share-card,
+    html.dark .note-delete-modal,
+    html.dark .note-share-modal {
+        background: rgba(14,14,14,0.94) !important;
+        border-color: rgba(255,255,255,0.14) !important;
+        box-shadow: 0 16px 34px rgba(0,0,0,0.52) !important;
+    }
+
+    html.dark .note-main-head,
+    html.dark .note-log-head,
+    html.dark .note-toc-head,
+    html.dark .note-delete-head,
+    html.dark .note-share-head,
+    html.dark .note-share-foot,
+    html.dark .note-share-list,
+    html.dark .note-delete-body,
+    html.dark .note-share-body,
+    html.dark .note-share-active,
+    html.dark .note-log-bubble,
+    html.dark .note-log-empty {
+        background: rgba(18,18,18,0.96) !important;
+    }
+
+    html.dark .note-main-body {
+        background: rgba(12,12,12,0.96) !important;
+    }
+
+    html.dark .note-main-timeline {
+        background: rgba(255,255,255,0.14) !important;
+    }
+
+    html.dark .note-meta-chip {
+        background: rgba(255,255,255,0.1) !important;
+        border-color: rgba(255,255,255,0.16) !important;
+    }
+
+    html.dark .note-meta-divider {
+        background: rgba(255,255,255,0.18) !important;
+    }
+
+    html.dark .terminal-input {
+        background: rgba(14,14,14,0.92);
+        border-color: rgba(255,255,255,0.2);
+        color: #f3f4f6;
+    }
+
+    html.dark .terminal-input::placeholder {
+        color: #6b7280;
+    }
+
+    html.dark .terminal-input:focus {
+        border-color: rgba(249,115,22,0.75);
+        box-shadow: 0 0 0 1px rgba(249,115,22,0.5), 0 10px 20px rgba(0,0,0,0.45);
+    }
+
+    html.dark .btn-brutal {
+        background: #f97316;
+        border-color: #f97316;
+        box-shadow: 2px 2px 0 #f97316;
+    }
+
+    html.dark .btn-brutal:hover {
+        box-shadow: 3px 3px 0 #fb923c;
+        background: #fb923c;
+        border-color: #fb923c;
+    }
+
+    html.dark .btn-brutal-outline {
+        background: rgba(18,18,18,0.95);
+        color: #e5e7eb;
+        border-color: rgba(255,255,255,0.22);
+        box-shadow: 2px 2px 0 rgba(255,255,255,0.12);
+    }
+
+    html.dark .btn-brutal-outline:hover {
+        background: rgba(249,115,22,0.18);
+        border-color: rgba(249,115,22,0.75);
+        color: #fff;
+        box-shadow: 3px 3px 0 rgba(249,115,22,0.35);
+    }
+
+    html.dark .btn-brutal-danger {
+        background: rgba(127,29,29,0.3);
+        color: #fca5a5;
+        border-color: rgba(248,113,113,0.75);
+        box-shadow: 2px 2px 0 rgba(248,113,113,0.45);
+    }
+
+    html.dark .btn-brutal-danger:hover {
+        background: rgba(239,68,68,0.8);
+        color: #fff;
+    }
+
+    html.dark .toc-link {
+        color: #9ca3af;
+    }
+
+    html.dark .toc-link:hover {
+        color: #f3f4f6;
+        background: rgba(255,255,255,0.06);
+    }
+
+    html.dark .toc-link.active {
+        color: #fff;
+        border-left-color: #f97316;
+        background: rgba(249,115,22,0.16);
+    }
+
+    html.dark .book-view-page .bg-\[\#111\] {
+        background: #f97316 !important;
+    }
+
+    html.dark .book-view-page .text-\[\#111\]\/5 {
+        color: rgba(255,255,255,0.08) !important;
+    }
+
+    html.dark .book-view-page .text-stone-900,
+    html.dark .book-view-page .text-stone-800,
+    html.dark .book-view-page .text-stone-700 {
+        color: #f3f4f6 !important;
+    }
+
+    html.dark .book-view-page .text-stone-600,
+    html.dark .book-view-page .text-stone-500,
+    html.dark .book-view-page .text-stone-400,
+    html.dark .book-view-page .text-stone-300 {
+        color: #9ca3af !important;
+    }
+
+    html.dark .book-view-page .bg-white {
+        background: rgba(18,18,18,0.96) !important;
+    }
+
+    html.dark .book-view-page .bg-\[\#fafafa\] {
+        background: rgba(18,18,18,0.96) !important;
+    }
+
+    html.dark .book-view-page .bg-\[\#fff0f0\] {
+        background: rgba(127,29,29,0.24) !important;
+    }
+
+    html.dark .book-view-page .bg-stone-900\/60 {
+        background: rgba(2,2,2,0.72) !important;
+    }
+
+    html.dark .book-view-page .prose {
+        color: #d1d5db;
+    }
+
+    html.dark .book-view-page .prose h1,
+    html.dark .book-view-page .prose h2,
+    html.dark .book-view-page .prose h3 {
+        color: #f3f4f6;
+    }
+
+    html.dark .book-view-page .prose h1 {
+        border-bottom-color: rgba(255,255,255,0.28);
+    }
+
+    html.dark .book-view-page .prose li {
+        color: #d1d5db;
+    }
+
+    html.dark .book-view-page .prose code:not(pre code) {
+        color: #fde68a;
+        background-color: rgba(234,179,8,0.16);
+        border-color: rgba(234,179,8,0.35);
+    }
+
+    html.dark .book-view-page .prose blockquote {
+        border-left-color: #f97316;
+        color: #d1d5db;
+        background: rgba(255,255,255,0.04);
+    }
+
+    html.dark .book-view-page .prose th {
+        background: rgba(255,255,255,0.1);
+        color: #f3f4f6;
+        border-color: rgba(255,255,255,0.2);
+    }
+
+    html.dark .book-view-page .prose td {
+        border-color: rgba(255,255,255,0.12);
+    }
+
+    html.dark .book-view-page .prose tr:nth-child(even) {
+        background-color: rgba(255,255,255,0.04);
+    }
+
+    html.dark .book-view-page .prose a {
+        color: #f3f4f6;
+    }
+
+    html.dark .book-view-page .prose a:hover {
+        background: #f97316;
+        color: #fff;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20">
+<div class="w-full min-h-[calc(100vh-4rem)] pt-4 pb-20 book-view-page">
     <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 relative z-10">
 
         <div class="flex items-center gap-3 mb-8">
-            <a href="{{ url_for('book_index') }}" class="w-8 h-8 flex items-center justify-center border grid-border bg-white hover:bg-[#111] hover:text-white transition-colors text-stone-400">
+            <a href="{{ url_for('book_index') }}" class="w-8 h-8 flex items-center justify-center border grid-border bg-white hover:bg-[#111] hover:text-white transition-colors text-stone-400 view-back-btn">
                 <i class="fas fa-arrow-left text-xs"></i>
             </a>
             <div class="flex flex-col min-w-0">
@@ -168,8 +412,8 @@
         <div class="flex flex-col lg:flex-row gap-8">
             <div class="flex-1 min-w-0 flex flex-col gap-8">
                 
-                <div class="brutal-card flex flex-col bg-white">
-                    <div class="p-8 md:p-10 border-b grid-border bg-[#fafafa] stripe-pattern flex flex-col gap-6 shrink-0 relative">
+                <div class="brutal-card flex flex-col bg-white note-main-card">
+                    <div class="p-8 md:p-10 border-b grid-border bg-[#fafafa] stripe-pattern note-main-head flex flex-col gap-6 shrink-0 relative">
                         
                         <div class="flex flex-col md:flex-row justify-between items-start gap-4">
                             <h1 class="text-3xl md:text-4xl font-light text-stone-900 tracking-tight leading-[1.1] uppercase">
@@ -189,14 +433,14 @@
                         </div>
 
                         <div class="flex flex-wrap items-center gap-3 text-[10px] font-mono font-bold text-stone-500 uppercase tracking-widest">
-                            <span class="bg-white border grid-border px-2 py-1 shadow-sm flex items-center gap-1.5 text-stone-800">
+                            <span class="bg-white border grid-border px-2 py-1 shadow-sm flex items-center gap-1.5 text-stone-800 note-meta-chip">
                                 <i class="fas fa-user-circle text-stone-400"></i> {{ note.user.username }}
                             </span>
-                            <span class="bg-white border grid-border px-2 py-1 shadow-sm flex items-center gap-1.5">
+                            <span class="bg-white border grid-border px-2 py-1 shadow-sm flex items-center gap-1.5 note-meta-chip">
                                 <i class="fas fa-clock text-stone-400"></i> {{ note.updated_at.strftime('%Y.%m.%d / %H:%M') }}
                             </span>
                             {% if note.tags %}
-                                <div class="w-px h-4 bg-stone-300 mx-1"></div>
+                                <div class="w-px h-4 bg-stone-300 mx-1 note-meta-divider"></div>
                                 {% for tag in note.tags %}
                                 <span class="bg-[#111] text-white px-2 py-1">{{ tag.name }}</span>
                                 {% endfor %}
@@ -204,8 +448,8 @@
                         </div>
                     </div>
                     
-                    <div class="p-8 md:p-12 prose max-w-4xl mx-auto w-full relative">
-                        <div class="absolute left-8 md:left-12 top-12 bottom-12 w-px bg-stone-200"></div>
+                    <div class="p-8 md:p-12 prose max-w-4xl mx-auto w-full relative note-main-body">
+                        <div class="absolute left-8 md:left-12 top-12 bottom-12 w-px bg-stone-200 note-main-timeline"></div>
                         <div class="pl-6">
                             {{ html | safe }}
                         </div>
@@ -213,17 +457,17 @@
                 </div>
 
                 {% if note.comment_enabled %}
-                <div class="bg-white border grid-border rounded-sm shadow-[0_10px_30px_rgba(0,0,0,0.03)] flex flex-col">
-                    <div class="p-6 border-b grid-border flex items-center gap-3 bg-[#fafafa]">
+                <div class="bg-white border grid-border rounded-sm shadow-[0_10px_30px_rgba(0,0,0,0.03)] flex flex-col note-log-card">
+                    <div class="p-6 border-b grid-border flex items-center gap-3 bg-[#fafafa] note-log-head">
                         <span class="text-[10px] font-bold bg-[#111] text-white px-2 py-1 tracking-widest">
                             <i class="fas fa-comment-alt text-[9px] mr-1"></i> LOG
                         </span>
-                        <h3 class="text-sm font-bold text-stone-800 uppercase tracking-widest">交流日志 [{{ note.comments|length }}]</h3>
+                        <h3 class="text-sm font-bold text-stone-800 uppercase tracking-widest">交流日志 [{{ visible_comments|length }}]</h3>
                     </div>
                     
                     <div class="p-6 md:p-8 flex flex-col gap-6">
                         <div class="space-y-6">
-                            {% for comment in note.comments %}
+                            {% for comment in visible_comments %}
                             <div class="flex gap-4 group">
                                 <div class="w-10 h-10 bg-[#111] text-white flex items-center justify-center font-bold text-xs shrink-0 rounded-sm">
                                     {{ comment.user.username[0] | upper }}
@@ -232,6 +476,11 @@
                                     <div class="flex items-center gap-3 mb-1.5">
                                         <span class="font-bold text-xs text-stone-800 uppercase tracking-wide">{{ comment.user.username }}</span>
                                         <span class="text-[9px] text-stone-400 font-mono">TIMESTAMP: {{ comment.created_at.strftime('%Y.%m.%d %H:%M') }}</span>
+                                        {% if comment.is_approved %}
+                                        <span class="px-2 py-0.5 text-[9px] font-bold rounded-sm bg-emerald-100 text-emerald-700">已通过</span>
+                                        {% else %}
+                                        <span class="px-2 py-0.5 text-[9px] font-bold rounded-sm bg-stone-200 text-stone-600">待审核</span>
+                                        {% endif %}
                                         
                                         {% if current_user.is_admin or current_user.id == comment.user_id or is_owner %}
                                         <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post" class="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
@@ -241,14 +490,14 @@
                                         </form>
                                         {% endif %}
                                     </div>
-                                    <div class="bg-[#fafafa] border grid-border p-4 text-sm text-stone-700 whitespace-pre-wrap font-mono leading-relaxed relative">
+                                    <div class="bg-[#fafafa] border grid-border p-4 text-sm text-stone-700 whitespace-pre-wrap font-mono leading-relaxed relative note-log-bubble">
                                         <div class="absolute left-0 top-0 w-1 h-full bg-stone-300 group-hover:bg-[#111] transition-colors"></div>
                                         {{ comment.content }}
                                     </div>
                                 </div>
                             </div>
                             {% else %}
-                            <div class="text-center py-10 bg-[#fafafa] border border-dashed grid-border text-stone-400">
+                            <div class="text-center py-10 bg-[#fafafa] border border-dashed grid-border text-stone-400 note-log-empty">
                                 <p class="text-[10px] font-bold uppercase tracking-widest font-mono">COMMUNICATION LOG EMPTY // 暂无通讯记录</p>
                             </div>
                             {% endfor %}
@@ -259,7 +508,7 @@
                                 {{ current_user.username[0] | upper }}
                             </div>
                             <div class="flex-1 flex flex-col sm:flex-row gap-3">
-                                <textarea name="content" class="terminal-input h-14 resize-none w-full" placeholder="输入日志内容 (Input log data...)" required></textarea>
+                                <textarea name="content" class="terminal-input note-log-input h-14 resize-none w-full" placeholder="输入日志内容 (Input log data...)" required></textarea>
                                 <button type="submit" class="btn-brutal h-14 px-8 shrink-0">
                                     TRANSMIT <i class="fas fa-paper-plane ml-2"></i>
                                 </button>
@@ -272,8 +521,8 @@
 
             <div class="w-full lg:w-[320px] flex-shrink-0 flex flex-col gap-6 lg:sticky lg:top-6 lg:h-max">
                 
-                <div class="bg-white border grid-border rounded-sm shadow-sm flex flex-col">
-                    <div class="p-4 border-b grid-border bg-[#fafafa] flex items-center gap-2">
+                <div class="bg-white border grid-border rounded-sm shadow-sm flex flex-col note-toc-card">
+                    <div class="p-4 border-b grid-border bg-[#fafafa] flex items-center gap-2 note-toc-head">
                         <i class="fas fa-network-wired text-stone-400 text-xs"></i>
                         <h3 class="font-bold text-[10px] text-stone-500 uppercase tracking-widest">DATA STRUCTURE // 档案结构</h3>
                     </div>
@@ -284,7 +533,7 @@
                 </div>
 
                 {% if is_owner %}
-                <div class="bg-white border border-[#111] shadow-[4px_4px_0_#111] rounded-sm flex flex-col relative overflow-hidden group">
+                <div class="bg-white border border-[#111] shadow-[4px_4px_0_#111] rounded-sm flex flex-col relative overflow-hidden group note-share-card">
                     <div class="absolute -right-4 -top-4 text-[#111]/5 text-6xl group-hover:rotate-12 transition-transform"><i class="fas fa-share-alt"></i></div>
                     
                     <div class="p-5 flex flex-col gap-4 relative z-10">
@@ -292,11 +541,11 @@
                         <p class="text-[9px] font-bold text-stone-400 font-mono tracking-widest uppercase mb-2">配置档案的数据分发目标</p>
                         
                         {% if note.shares %}
-                        <div class="bg-[#fafafa] border grid-border p-3 flex flex-col gap-2">
+                        <div class="bg-[#fafafa] border grid-border p-3 flex flex-col gap-2 note-share-active">
                             <div class="text-[9px] font-bold text-stone-500 uppercase tracking-widest">ACTIVE NODES // 已连接节点：</div>
                             <div class="flex flex-wrap gap-1.5">
                                 {% for share in note.shares %}
-                                <div class="bg-white border grid-border px-1.5 py-0.5 flex items-center gap-1.5">
+                                <div class="bg-white border grid-border px-1.5 py-0.5 flex items-center gap-1.5 note-share-node">
                                     <div class="w-3 h-3 bg-[#111] text-white flex items-center justify-center text-[7px] font-bold rounded-sm">{{ share.user.username[0]|upper }}</div>
                                     <span class="text-[10px] font-mono text-stone-800">{{ share.user.username }}</span>
                                 </div>
@@ -318,12 +567,12 @@
 </div>
 
 <dialog id="delete_modal" class="modal bg-stone-900/60 backdrop-blur-sm z-[200]">
-    <div class="modal-box w-11/12 max-w-md bg-white rounded-sm p-0 modal-brutal overflow-hidden">
-        <div class="border-b-2 border-red-500 p-6 bg-[#fff0f0] stripe-pattern flex items-center gap-3">
+    <div class="modal-box w-11/12 max-w-md bg-white rounded-sm p-0 modal-brutal note-delete-modal overflow-hidden">
+        <div class="border-b-2 border-red-500 p-6 bg-[#fff0f0] stripe-pattern note-delete-head flex items-center gap-3">
             <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
             <h3 class="font-black text-red-600 uppercase tracking-widest text-lg">CRITICAL WARNING</h3>
         </div>
-        <div class="p-6 md:p-8 bg-white">
+        <div class="p-6 md:p-8 bg-white note-delete-body">
             <p class="text-sm text-stone-700 font-mono leading-relaxed mb-8">
                 指令确认：您正在尝试销毁核心数据节点。<br><br>
                 > 此操作具有不可逆转的破坏性。<br>
@@ -341,23 +590,23 @@
 </dialog>
 
 <dialog id="share_modal" class="modal bg-stone-900/60 backdrop-blur-sm z-[200]">
-    <div class="modal-box w-11/12 max-w-lg bg-white rounded-sm p-0 modal-brutal overflow-hidden">
-        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern flex justify-between items-center">
+    <div class="modal-box w-11/12 max-w-lg bg-white rounded-sm p-0 modal-brutal note-share-modal overflow-hidden">
+        <div class="border-b-2 border-[#111] p-6 bg-[#fafafa] stripe-pattern note-share-head flex justify-between items-center">
             <h3 class="text-xl font-black text-stone-900 uppercase tracking-widest flex items-center gap-2">
                 <i class="fas fa-network-wired"></i> DATA DISTRIBUTION
             </h3>
             <form method="dialog" class="m-0">
-                <button class="w-8 h-8 border border-[#111] bg-white hover:bg-[#111] hover:text-white transition-colors flex items-center justify-center font-bold shadow-[2px_2px_0_#111] active:translate-y-1 active:translate-x-1 active:shadow-none">✕</button>
+                <button class="w-8 h-8 border border-[#111] bg-white hover:bg-[#111] hover:text-white transition-colors flex items-center justify-center font-bold shadow-[2px_2px_0_#111] active:translate-y-1 active:translate-x-1 active:shadow-none note-share-close-btn">✕</button>
             </form>
         </div>
         
         <form action="{{ url_for('share_note', note_id=note.id) }}" method="post" class="flex flex-col">
-            <div class="p-6 md:p-8 bg-white">
+            <div class="p-6 md:p-8 bg-white note-share-body">
                 <p class="text-[10px] text-stone-500 font-mono tracking-widest uppercase mb-4">> SELECT TARGET NODES FOR SYNCHRONIZATION</p>
                 
-                <div class="max-h-60 overflow-y-auto light-scroll border grid-border bg-[#fafafa]">
+                <div class="max-h-60 overflow-y-auto light-scroll border grid-border bg-[#fafafa] note-share-list">
                     {% for user in all_users %}
-                    <label class="cursor-pointer px-4 py-3 flex items-center justify-between hover:bg-white border-b grid-border last:border-0 transition-colors group">
+                    <label class="cursor-pointer px-4 py-3 flex items-center justify-between hover:bg-white border-b grid-border last:border-0 transition-colors group note-share-list-item">
                         <div class="flex items-center gap-3">
                             <div class="w-6 h-6 bg-[#111] text-white flex items-center justify-center font-bold text-[10px] rounded-sm shrink-0">
                                 {{ user.username[0] | upper }}
@@ -378,7 +627,7 @@
                 </div>
             </div>
             
-            <div class="border-t-2 border-[#111] p-6 bg-[#fafafa] flex justify-end gap-4 shrink-0">
+            <div class="border-t-2 border-[#111] p-6 bg-[#fafafa] note-share-foot flex justify-end gap-4 shrink-0">
                 <form method="dialog"><button type="button" onclick="document.getElementById('share_modal').close()" class="btn-brutal-outline">ABORT</button></form>
                 <button type="submit" class="btn-brutal">EXECUTE SYNC <i class="fas fa-bolt ml-2 text-yellow-400"></i></button>
             </div>

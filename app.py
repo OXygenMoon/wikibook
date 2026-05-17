@@ -655,6 +655,9 @@ class Comment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=now_utc8)
+    is_approved = db.Column(db.Boolean, default=False, nullable=False)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    approved_by_id = db.Column(db.Integer, nullable=True)
     
     # Polymorphic-like association (nullable FKs)
     note_id = db.Column(db.Integer, db.ForeignKey("note.id"), nullable=True)
@@ -790,6 +793,20 @@ def can_view_wiki(wiki_id):
         
     return w.is_visible_to(current_user)
 
+def get_visible_comments(note_id=None, wiki_page_id=None):
+    query = Comment.query
+    if note_id is not None:
+        query = query.filter(Comment.note_id == note_id)
+    if wiki_page_id is not None:
+        query = query.filter(Comment.wiki_page_id == wiki_page_id)
+
+    if not current_user.is_admin:
+        query = query.filter(
+            db.or_(Comment.is_approved.is_(True), Comment.user_id == current_user.id)
+        )
+
+    return query.order_by(Comment.created_at.desc()).all()
+
 def format_badge_condition(badge):
     """Format badge condition into human-readable Chinese string"""
     if badge.custom_condition_text:
@@ -901,7 +918,10 @@ def backup_wiki(wiki_id):
                 {
                     "user_id": c.user_id,
                     "content": c.content,
-                    "created_at": c.created_at.isoformat() if c.created_at else None
+                    "created_at": c.created_at.isoformat() if c.created_at else None,
+                    "is_approved": c.is_approved,
+                    "approved_at": c.approved_at.isoformat() if c.approved_at else None,
+                    "approved_by_id": c.approved_by_id
                 } for c in p.comments
             ],
             "history": [
@@ -1308,6 +1328,7 @@ def wiki_detail(wiki_id):
     my_recent_notes = []
     if current_user.is_authenticated:
         my_recent_notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.updated_at.desc()).limit(15).all()
+    visible_comments = get_visible_comments(wiki_page_id=first_page.id) if first_page else []
 
     return render_template("wiki/view_page.html", 
                            wiki=w, 
@@ -1319,7 +1340,8 @@ def wiki_detail(wiki_id):
                            is_subscribed=is_subscribed, 
                            is_home=True, 
                            contributors=contributors,
-                           my_recent_notes=my_recent_notes)
+                           my_recent_notes=my_recent_notes,
+                           visible_comments=visible_comments)
 
 import json
 
@@ -1651,16 +1673,21 @@ def comment_wiki_page(wiki_id, slug):
     
     content = request.form.get("content", "").strip()
     if content:
-        c = Comment(content=content, user_id=current_user.id, wiki_page_id=p.id)
+        c = Comment(
+            content=content,
+            user_id=current_user.id,
+            wiki_page_id=p.id,
+            is_approved=False
+        )
         db.session.add(c)
         db.session.commit()
         
         # Check badges
         check_and_award_badges(current_user)
         
-        flash("评论已发表")
+        flash("评论已提交，等待管理员审核通过后会展示给其他用户。", "info")
     else:
-        flash("评论内容不能为空")
+        flash("评论内容不能为空", "warning")
         
     return redirect(url_for("view_page", wiki_id=wiki_id, slug=slug))
 
@@ -1986,6 +2013,60 @@ def manage_users():
     users = User.query.order_by(User.created_at.desc()).all()
     classes = Class.query.order_by(Class.name).all()
     return render_template("admin/manage_users.html", users=users, classes=classes)
+
+@app.route("/admin/comments")
+@login_required
+def manage_comments():
+    if not current_user.is_admin:
+        abort(403)
+
+    status = request.args.get("status", "pending")
+    query = Comment.query.order_by(Comment.created_at.desc())
+
+    if status == "approved":
+        query = query.filter(Comment.is_approved.is_(True))
+    elif status == "pending":
+        query = query.filter(Comment.is_approved.is_(False))
+    elif status != "all":
+        status = "pending"
+        query = query.filter(Comment.is_approved.is_(False))
+
+    comments = query.all()
+    counts = {
+        "all": Comment.query.count(),
+        "approved": Comment.query.filter(Comment.is_approved.is_(True)).count(),
+        "pending": Comment.query.filter(Comment.is_approved.is_(False)).count(),
+    }
+    return render_template("admin/manage_comments.html", comments=comments, status=status, counts=counts)
+
+@app.route("/admin/comments/<int:comment_id>/moderate", methods=["POST"])
+@login_required
+def moderate_comment(comment_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    c = Comment.query.get_or_404(comment_id)
+    action = request.form.get("action", "").strip()
+
+    if action == "approve":
+        c.is_approved = True
+        c.approved_at = now_utc8()
+        c.approved_by_id = current_user.id
+        flash("评论已通过审核", "success")
+    elif action == "pending":
+        c.is_approved = False
+        c.approved_at = None
+        c.approved_by_id = None
+        flash("评论已打回待审核状态", "warning")
+    else:
+        flash("无效的审核操作", "error")
+        return redirect(request.referrer or url_for("manage_comments"))
+
+    db.session.commit()
+    next_url = request.form.get("next", "").strip()
+    if not next_url.startswith("/"):
+        next_url = request.referrer or url_for("manage_comments")
+    return redirect(next_url)
 
 @app.route("/admin/classes", methods=["GET", "POST"])
 @login_required
@@ -3500,8 +3581,16 @@ def view_note(note_id):
         
     html = markdown(n.content_md or "")
     all_users = User.query.filter(User.id != current_user.id).all() if is_owner or current_user.is_admin else []
-    
-    return render_template("book/view_note.html", note=n, html=html, is_owner=is_owner, all_users=all_users)
+    visible_comments = get_visible_comments(note_id=n.id)
+
+    return render_template(
+        "book/view_note.html",
+        note=n,
+        html=html,
+        is_owner=is_owner,
+        all_users=all_users,
+        visible_comments=visible_comments
+    )
 
 @app.route("/book/notes/<int:note_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -3589,16 +3678,21 @@ def comment_note(note_id):
         
     content = request.form.get("content", "").strip()
     if content:
-        c = Comment(content=content, user_id=current_user.id, note_id=n.id)
+        c = Comment(
+            content=content,
+            user_id=current_user.id,
+            note_id=n.id,
+            is_approved=False
+        )
         db.session.add(c)
         db.session.commit()
         
         # Check badges
         check_and_award_badges(current_user)
         
-        flash("评论已发表")
+        flash("评论已提交，等待管理员审核通过后会展示给其他用户。", "info")
     else:
-        flash("评论内容不能为空")
+        flash("评论内容不能为空", "warning")
         
     return redirect(url_for("view_note", note_id=n.id))
 
@@ -4747,6 +4841,34 @@ def upgrade_db():
                     needs_commit = True
                 if needs_commit:
                     conn.commit()
+
+        if 'comment' in inspector.get_table_names():
+            comment_columns = [c['name'] for c in inspector.get_columns('comment')]
+            with db.engine.connect() as conn:
+                needs_commit = False
+                added_is_approved = False
+
+                if 'is_approved' not in comment_columns:
+                    conn.execute(db.text("ALTER TABLE comment ADD COLUMN is_approved BOOLEAN DEFAULT 0"))
+                    added_is_approved = True
+                    needs_commit = True
+
+                if 'approved_at' not in comment_columns:
+                    conn.execute(db.text("ALTER TABLE comment ADD COLUMN approved_at DATETIME"))
+                    needs_commit = True
+
+                if 'approved_by_id' not in comment_columns:
+                    conn.execute(db.text("ALTER TABLE comment ADD COLUMN approved_by_id INTEGER"))
+                    needs_commit = True
+
+                # 新增审核功能时，历史评论默认全部进入待审核
+                if added_is_approved:
+                    conn.execute(db.text("UPDATE comment SET is_approved = 0 WHERE is_approved IS NULL"))
+                    conn.execute(db.text("UPDATE comment SET approved_at = NULL"))
+                    conn.execute(db.text("UPDATE comment SET approved_by_id = NULL"))
+
+                if needs_commit:
+                    conn.commit()
                 
 
 @app.route('/service/wiki/pages')
@@ -4892,6 +5014,7 @@ def view_page(wiki_id, slug):
     my_recent_notes = []
     if current_user.is_authenticated:
         my_recent_notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.updated_at.desc()).limit(15).all()
+    visible_comments = get_visible_comments(wiki_page_id=p.id)
 
     return render_template("wiki/view_page.html", 
                            wiki=w, 
@@ -4902,7 +5025,8 @@ def view_page(wiki_id, slug):
                            can_edit=can_edit_wiki(wiki_id), 
                            is_subscribed=is_subscribed, 
                            contributors=contributors, 
-                           my_recent_notes=my_recent_notes)
+                           my_recent_notes=my_recent_notes,
+                           visible_comments=visible_comments)
 
 # ==========================================
 # ✨ 全员贴纸墙 (Global Sticker Wall) 模型与路由

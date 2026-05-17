@@ -225,6 +225,48 @@
         stroke-linecap: round; 
         transition: stroke-dasharray 1s ease-out; /* 使用 transition 代替 animation 以便动态更新 */
     }
+
+    html.dark #achievement-book-container {
+        background: #0f1115 !important;
+    }
+    html.dark #achievement-book-container .badge-list-item {
+        background: #1a1f27;
+        border-color: rgba(255, 255, 255, 0.14);
+        color: #e5e7eb;
+    }
+    html.dark #achievement-book-container .badge-list-item.locked {
+        background: #171b22;
+    }
+    html.dark #achievement-book-container .badge-icon-wrapper {
+        background: #11161d;
+        border-color: rgba(255, 255, 255, 0.16);
+    }
+    html.dark #achievement-book-container .sticker-hero-container {
+        background: radial-gradient(circle at center, #151b24 0%, #11161d 70%);
+    }
+    html.dark #achievement-book-container .sticker-info-section {
+        background: #1a1f27;
+    }
+    html.dark #achievement-book-container .meta-grid {
+        border-top-color: rgba(255, 255, 255, 0.14);
+    }
+    html.dark #achievement-book-container .meta-label {
+        color: #a3a3a3;
+    }
+    html.dark #achievement-book-container .meta-value {
+        color: #f3f4f6;
+    }
+    html.dark #achievement-book-container .close-btn-round {
+        background: rgba(17, 22, 29, 0.8);
+        color: #d1d5db;
+        border-color: rgba(255, 255, 255, 0.16);
+    }
+    html.dark #achievement-book-container .close-btn-round:hover {
+        background: #1f2732;
+    }
+    html.dark #achievement-book-container .circle-bg {
+        stroke: #334155;
+    }
 </style>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 {% endblock %}

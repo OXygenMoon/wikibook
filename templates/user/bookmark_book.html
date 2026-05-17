@@ -75,6 +75,25 @@
     .circle-bg { fill: none; stroke: #e0e7ff; stroke-width: 3.8; } 
     .circle { fill: none; stroke-width: 2.8; stroke-linecap: round; transition: stroke-dasharray 1s ease-out; }
     .animate-card { animation: fadeInUp 0.5s ease-out forwards; opacity: 0; }
+
+    html.dark #bookmark-book-container {
+        background: #0f1116 !important;
+    }
+    html.dark #bookmark-book-container .bookmark-list-item {
+        background: #1a1f28;
+        border-color: rgba(255, 255, 255, 0.14);
+        color: #e5e7eb;
+    }
+    html.dark #bookmark-book-container .bookmark-list-item.locked {
+        background: #171b22;
+    }
+    html.dark #bookmark-book-container .icon-wrapper {
+        background: #11161d;
+        border-color: rgba(255, 255, 255, 0.16);
+    }
+    html.dark #bookmark-book-container .circle-bg {
+        stroke: #334155;
+    }
 </style>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 {% endblock %}

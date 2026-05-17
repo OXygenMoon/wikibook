@@ -38,6 +38,37 @@
     .custom-scroll::-webkit-scrollbar-track { background: transparent; }
     .custom-scroll::-webkit-scrollbar-thumb { background: hsl(var(--bc) / 0.1); border-radius: 10px; }
     .custom-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--bc) / 0.2); }
+
+    .badges-admin-root {
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.78);
+        border-radius: 2rem;
+        padding: 1.25rem;
+    }
+    html.dark .badges-admin-root {
+        background: rgba(17, 21, 27, 0.92);
+        border-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+    }
+    html.dark .badges-main-card {
+        background: rgba(24, 29, 37, 0.94) !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    html.dark #award_modal .modal-box {
+        background: #171b22;
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    html.dark #award_modal .award-header {
+        background: #1e2430;
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    html.dark #award_modal .award-body {
+        background: #171b22;
+    }
+    html.dark #award_modal .award-footer {
+        background: #1e2430;
+        border-color: rgba(255, 255, 255, 0.12);
+    }
 </style>
 {% endblock %}
 
@@ -54,7 +85,7 @@
 {% endfor %}
 {% set unique_categories = all_categories|unique|list|sort %}
 
-<div class="w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-8 pb-12 animate-fade-in">
+<div class="badges-admin-root w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-8 pb-12 animate-fade-in">
     
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-2">
         <div>
@@ -104,7 +135,7 @@
         </div>
     </div>
 
-    <div class="card bg-white/95 dark:bg-base-200/90 border border-black/5 dark:border-white/5 shadow-xl rounded-[2rem] overflow-hidden">
+    <div class="badges-main-card card bg-white/95 dark:bg-base-200/90 border border-black/5 dark:border-white/5 shadow-xl rounded-[2rem] overflow-hidden">
         <div class="card-body p-6 lg:p-10">
             
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-base-200/60 mb-6">
@@ -321,16 +352,16 @@
 
 <dialog id="award_modal" class="modal bg-black/50 backdrop-blur-sm">
   <div class="modal-box w-11/12 max-w-xl h-[650px] flex flex-col rounded-[2.5rem] p-0 shadow-2xl border border-base-200 overflow-hidden">
-    <div class="px-6 py-5 bg-stone-50 border-b border-base-200 flex justify-between items-center">
+    <div class="award-header px-6 py-5 bg-stone-50 dark:bg-base-200 border-b border-base-200 dark:border-white/10 flex justify-between items-center">
         <h3 class="font-black text-xl flex items-center gap-2"><i class="fas fa-gift text-primary"></i> 派发徽章: <span id="award_badge_name" class="text-primary"></span></h3>
-        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost bg-white/50">✕</button></form>
+        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost bg-white/50 dark:bg-base-300/60">✕</button></form>
     </div>
-    <div class="p-6 flex flex-col flex-1 overflow-hidden bg-white">
-        <input type="text" id="user_search" class="input input-bordered w-full mb-4 rounded-xl bg-stone-50" placeholder="搜索用户(输入姓名或账号)..." onkeyup="filterUsers()">
+    <div class="award-body p-6 flex flex-col flex-1 overflow-hidden bg-white dark:bg-base-100">
+        <input type="text" id="user_search" class="input input-bordered w-full mb-4 rounded-xl bg-stone-50 dark:bg-base-300 dark:border-white/10" placeholder="搜索用户(输入姓名或账号)..." onkeyup="filterUsers()">
         <div class="flex-1 overflow-y-auto custom-scroll space-y-1.5" id="user_list_container">
              </div>
     </div>
-    <div class="p-6 border-t border-base-200 flex justify-between items-center bg-stone-50">
+    <div class="award-footer p-6 border-t border-base-200 dark:border-white/10 flex justify-between items-center bg-stone-50 dark:bg-base-200">
         <span class="text-xs font-bold opacity-50">已选 <span id="selected_count" class="text-primary text-lg">0</span> 人</span>
         <button class="btn btn-primary px-8 rounded-xl font-bold shadow-lg shadow-primary/30" onclick="submitAward()">确认派发</button>
     </div>
@@ -422,20 +453,20 @@ function renderUserList(searchTerm) {
     renderData.forEach(u => {
         const isChecked = currentEarnedIds.includes(u.id) ? 'checked' : '';
         html += `
-            <label class="label cursor-pointer justify-start gap-4 p-3 rounded-xl border border-stone-100 hover:border-primary/30 hover:bg-primary/5 transition-colors">
+            <label class="label cursor-pointer justify-start gap-4 p-3 rounded-xl border border-stone-100 dark:border-white/10 hover:border-primary/30 hover:bg-primary/5 transition-colors">
                 <input type="checkbox" class="checkbox checkbox-sm checkbox-primary" value="${u.id}" ${isChecked} onchange="handleCheckChange(this, ${u.id})" />
                 <div class="flex flex-col">
-                    <span class="font-bold text-sm text-stone-800">${u.username}</span>
-                    <span class="text-[10px] text-stone-400">${u.email || '无邮箱'}</span>
+                    <span class="font-bold text-sm text-stone-800 dark:text-stone-100">${u.username}</span>
+                    <span class="text-[10px] text-stone-400 dark:text-stone-500">${u.email || '无邮箱'}</span>
                 </div>
             </label>
         `;
     });
     
     if(filteredUsers.length > maxRender) {
-        html += `<div class="p-4 text-center text-xs text-stone-400 font-bold">已隐藏部分结果，请使用上方搜索框精确查找...</div>`;
+        html += `<div class="p-4 text-center text-xs text-stone-400 dark:text-stone-500 font-bold">已隐藏部分结果，请使用上方搜索框精确查找...</div>`;
     } else if (filteredUsers.length === 0) {
-        html += `<div class="p-10 text-center text-sm text-stone-400 font-bold">没有找到匹配的村民。</div>`;
+        html += `<div class="p-10 text-center text-sm text-stone-400 dark:text-stone-500 font-bold">没有找到匹配的村民。</div>`;
     }
     
     container.innerHTML = html;

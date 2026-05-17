@@ -37,6 +37,15 @@
     .EasyMDEContainer { background: #fff; border-radius: 2px; overflow: hidden; border: 1px solid #111 !important; box-shadow: 4px 4px 0 #111; }
     .editor-toolbar { border-bottom: 1px solid #111 !important; background: #fafafa; padding: 10px; }
     .CodeMirror { min-height: 300px; font-family: monospace; font-size: 14px;}
+
+    html.dark body { background-color: #0f0f0f !important; color: #e5e7eb; }
+    html.dark .brutal-card { background: #1a1a1a; border-color: rgba(255,255,255,0.2); box-shadow: 6px 6px 0 rgba(255,255,255,0.16); }
+    html.dark .btn-brutal-outline { background: #1a1a1a; color: #e5e7eb; border-color: rgba(255,255,255,0.26); box-shadow: 2px 2px 0 rgba(255,255,255,0.16); }
+    html.dark .btn-brutal-outline:hover { background: #2a2a2a; }
+    html.dark .terminal-input { background: #131313; color: #e5e7eb; border-color: rgba(255,255,255,0.24); }
+    html.dark .terminal-input:focus { border-color: rgba(255,255,255,0.48); box-shadow: 0 0 0 2px rgba(255,255,255,0.14); }
+    html.dark .EasyMDEContainer { background: #151515; border-color: rgba(255,255,255,0.24) !important; box-shadow: none; }
+    html.dark .editor-toolbar { background: #202020; border-bottom-color: rgba(255,255,255,0.18) !important; }
 </style>
 {% endblock %}
 
@@ -45,12 +54,12 @@
     <div class="max-w-[1000px] mx-auto px-4 md:px-8 relative z-10">
 
         <div class="flex items-center gap-3 mb-8">
-            <a href="{{ url_for('global_grading_hub') }}" class="w-8 h-8 flex items-center justify-center border grid-border bg-white hover:bg-[#111] hover:text-white transition-colors text-stone-400">
+            <a href="{{ url_for('global_grading_hub') }}" class="w-8 h-8 flex items-center justify-center border grid-border bg-white dark:bg-base-200 hover:bg-[#111] hover:text-white transition-colors text-stone-400 dark:text-stone-500">
                 <i class="fas fa-arrow-left text-xs"></i>
             </a>
             <div class="flex flex-col">
-                <span class="text-[9px] font-bold text-stone-400 uppercase tracking-widest">RETURN TO // 返回至</span>
-                <span class="text-xs font-black text-stone-800 uppercase tracking-wider">批阅大厅</span>
+                <span class="text-[9px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest">RETURN TO // 返回至</span>
+                <span class="text-xs font-black text-stone-800 dark:text-stone-100 uppercase tracking-wider">批阅大厅</span>
             </div>
         </div>
 
@@ -63,18 +72,18 @@
             <form method="post" class="p-8 md:p-12 flex flex-col gap-6">
                 <div class="flex flex-col md:flex-row gap-6">
                     <div class="flex-1 flex flex-col gap-2">
-                        <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">PAYLOAD IDENTIFIER // 任务标题 <span class="text-red-500">*</span></label>
+                        <label class="text-[10px] font-bold text-[#555] dark:text-stone-400 uppercase tracking-widest">PAYLOAD IDENTIFIER // 任务标题 <span class="text-red-500">*</span></label>
                         <input type="text" name="title" value="{{ assign.title }}" required class="terminal-input font-bold text-lg" placeholder="例如：第三周核心作业">
                     </div>
                     <div class="w-full md:w-32 flex flex-col gap-2">
-                        <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">DIFFICULTY // 难度星级</label>
-                        <input type="number" name="star_level" value="{{ assign.star_level }}" min="1" max="5" required class="terminal-input font-bold text-lg text-center bg-yellow-50">
+                        <label class="text-[10px] font-bold text-[#555] dark:text-stone-400 uppercase tracking-widest">DIFFICULTY // 难度星级</label>
+                        <input type="number" name="star_level" value="{{ assign.star_level }}" min="1" max="5" required class="terminal-input font-bold text-lg text-center bg-yellow-50 dark:bg-amber-900/20">
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-[#fafafa] border border-dashed border-[#ccc]">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-[#fafafa] dark:bg-base-200/40 border border-dashed border-[#ccc] dark:border-white/20">
                     <div class="flex flex-col gap-2">
-                        <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">TARGET RANGE // 分发范围</label>
+                        <label class="text-[10px] font-bold text-[#555] dark:text-stone-400 uppercase tracking-widest">TARGET RANGE // 分发范围</label>
                         <select name="target_type" id="target_type" class="terminal-input cursor-pointer" onchange="toggleTargetValue()">
                             <option value="all" {% if assign.target_type == 'all' %}selected{% endif %}>GLOBAL // 全体用户</option>
                             <option value="class" {% if assign.target_type == 'class' %}selected{% endif %}>CLASS // 指定班级</option>
@@ -84,23 +93,23 @@
                     </div>
 
                     <div class="flex flex-col gap-2">
-                        <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">TARGET PARAM // 具体目标</label>
+                        <label class="text-[10px] font-bold text-[#555] dark:text-stone-400 uppercase tracking-widest">TARGET PARAM // 具体目标</label>
                         <input type="text" name="target_value" id="target_value" value="{{ assign.target_value or '' }}" class="terminal-input" placeholder="输入班级名/组名/ID..." {% if assign.target_type == 'all' %}disabled style="opacity:0.5"{% endif %}>
                     </div>
 
                     <div class="flex flex-col gap-2">
-                        <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">DEADLINE // 终止期限</label>
-                        <input type="datetime-local" name="deadline" value="{{ assign.deadline.strftime('%Y-%m-%dT%H:%M') if assign.deadline else '' }}" class="terminal-input cursor-pointer font-mono text-sm text-stone-600">
+                        <label class="text-[10px] font-bold text-[#555] dark:text-stone-400 uppercase tracking-widest">DEADLINE // 终止期限</label>
+                        <input type="datetime-local" name="deadline" value="{{ assign.deadline.strftime('%Y-%m-%dT%H:%M') if assign.deadline else '' }}" class="terminal-input cursor-pointer font-mono text-sm text-stone-600 dark:text-stone-300">
                     </div>
                 </div>
 
                 <div class="flex flex-col gap-2 mt-4">
-                    <label class="text-[10px] font-bold text-[#555] uppercase tracking-widest">OPERATION BRIEF // 任务详情 (MD)</label>
+                    <label class="text-[10px] font-bold text-[#555] dark:text-stone-400 uppercase tracking-widest">OPERATION BRIEF // 任务详情 (MD)</label>
                     <textarea id="md-editor" name="content_md">{{ assign.content_md }}</textarea>
                 </div>
 
                 <div class="border-t-2 border-[#111] pt-6 mt-4 flex justify-between items-center">
-                    <span class="text-[10px] font-mono text-[#888] uppercase tracking-widest">SYS_WARN: 修改将立即生效于所有节点。</span>
+                    <span class="text-[10px] font-mono text-[#888] dark:text-stone-500 uppercase tracking-widest">SYS_WARN: 修改将立即生效于所有节点。</span>
                     <div class="flex gap-4">
                         <a href="{{ url_for('global_grading_hub') }}" class="btn-brutal-outline px-8 py-3">ABORT</a>
                         <button type="submit" class="btn-brutal px-8 py-3 bg-yellow-400 text-black border-yellow-500 hover:bg-yellow-500 shadow-none">

@@ -60,8 +60,8 @@
     }
     
     /* 极简背景样式：更锐利的工程图纸感 */
-    .wall-wrapper.bg-dots { background-image: radial-gradient(#111 1px, transparent 1px); background-size: 40px 40px; opacity: 0.8; }
-    .dark .wall-wrapper.bg-dots { background-image: radial-gradient(#fff 1px, transparent 1px); opacity: 0.2; }
+    .wall-wrapper.bg-dots { background-image: radial-gradient(rgba(17,17,17,0.22) 1px, transparent 1px); background-size: 40px 40px; }
+    .dark .wall-wrapper.bg-dots { background-image: radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px); }
     
     .wall-wrapper.bg-grid { background-image: linear-gradient(rgba(0,0,0,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.08) 1px, transparent 1px); background-size: 40px 40px; }
     .dark .wall-wrapper.bg-grid { background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); }
@@ -72,6 +72,20 @@
     .wall-wrapper.bg-empty { background-image: none; }
 
     #sticker-canvas { position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: auto; overflow: hidden; }
+    #sticker-canvas .sticker-item img,
+    #sticker-canvas .sticker-item .sticker-text {
+        transition: filter 0.2s ease;
+    }
+
+    html.dark #sticker-canvas .sticker-item img,
+    html.dark #sticker-canvas .sticker-item .sticker-text {
+        filter: brightness(1.14) saturate(1.12) contrast(1.06) drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+    }
+
+    html.dark #sticker-canvas .sticker-item:hover img,
+    html.dark #sticker-canvas .sticker-item:hover .sticker-text {
+        filter: brightness(1.2) saturate(1.16) contrast(1.08) drop-shadow(0 8px 14px rgba(0,0,0,0.45));
+    }
 
     /* 强制隐藏缩放点，仅允许拖拽和旋转 */
     .wall-wrapper .sticker-handle-scale-tl,
@@ -124,41 +138,96 @@
     .drawer-peek {
         transform: translateY(calc(100% - 64px)) !important;
     }
+
+    html.dark .wall-header-label {
+        color: #cbd5e1 !important;
+    }
+
+    .wall-title-main {
+        font-weight: 500;
+        letter-spacing: -0.02em;
+    }
+
+    html.dark .wall-title-main {
+        color: #f8fafc !important;
+        text-shadow: 0 1px 0 rgba(0,0,0,0.4), 0 0 18px rgba(255,255,255,0.08);
+    }
+
+    .wall-count-pill {
+        border-radius: 0.45rem;
+    }
+
+    html.dark .wall-count-pill {
+        background: rgba(255,255,255,0.1) !important;
+        color: #e5e7eb !important;
+        border-color: rgba(255,255,255,0.16) !important;
+    }
+
+    html.dark .wall-desc-text {
+        color: #cbd5e1 !important;
+    }
+
+    html.dark .wall-quota-box,
+    html.dark .wall-nav-box {
+        background: rgba(17,17,17,0.86) !important;
+        border-color: rgba(255,255,255,0.14) !important;
+    }
+
+    html.dark .wall-quota-label {
+        color: #cbd5e1 !important;
+    }
+
+    html.dark #quota-badge:not(.text-red-500) {
+        color: #f3f4f6 !important;
+    }
+
+    html.dark .wall-nav-btn {
+        color: #d1d5db !important;
+    }
+
+    html.dark .wall-nav-btn:hover {
+        background: rgba(255,255,255,0.08) !important;
+        color: #f8fafc !important;
+    }
+
+    html.dark .wall-nav-divider {
+        background: rgba(255,255,255,0.14) !important;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="w-full min-h-screen pt-4 pb-20">
+<div class="w-full min-h-screen pt-4 pb-20 sticker-wall-page">
     <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 flex flex-col gap-6 relative z-40">
         
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b grid-border pb-6 bg-transparent relative overflow-hidden group">
             
             <div class="relative z-10 flex-1 min-w-0">
-                <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2">INTERACTIVE BOARD</span>
-                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase flex items-center gap-4 fade-text-transition" id="wall-name-container">
+                <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2 wall-header-label">INTERACTIVE BOARD</span>
+                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase flex items-center gap-4 fade-text-transition wall-title-main" id="wall-name-container">
                     <span id="wall-name-display" class="truncate">{{ walls[0].name if walls else 'STICKER WALL' }}</span>
-                    <span class="font-mono font-bold text-sm bg-stone-100 text-stone-500 px-3 py-1 border grid-border align-middle -translate-y-1">
+                    <span class="font-mono font-bold text-sm bg-stone-100 text-stone-500 px-3 py-1 border grid-border align-middle -translate-y-1 wall-count-pill">
                         <i class="fas fa-shapes text-[10px] mr-1"></i> <span id="wall-count-display">0</span>
                     </span>
                 </h1>
-                <p class="text-xs text-stone-500 mt-4 font-medium hidden md:block fade-text-transition truncate uppercase tracking-widest" id="wall-desc-display">
+                <p class="text-xs text-stone-500 mt-4 font-medium hidden md:block fade-text-transition truncate uppercase tracking-widest wall-desc-text" id="wall-desc-display">
                     {{ walls[0].description if walls else 'No active wall available' }}
                 </p>
             </div>
             
             <div class="flex flex-wrap items-center gap-4 relative z-10 shrink-0 mt-6 md:mt-0">
-                <div class="bg-white px-4 py-2 border grid-border flex items-center gap-3 tooltip tooltip-left" data-tip="每完成一次派发任务，额度上限 +1">
-                    <span class="text-[10px] font-bold text-stone-400 tracking-widest uppercase">QUOTA</span>
+                <div class="bg-white px-4 py-2 border grid-border flex items-center gap-3 tooltip tooltip-left wall-quota-box" data-tip="每完成一次派发任务，额度上限 +1">
+                    <span class="text-[10px] font-bold text-stone-400 tracking-widest uppercase wall-quota-label">QUOTA</span>
                     <div class="font-black font-mono text-base {{ 'text-red-500 animate-pulse' if my_total_stickers >= max_stickers_limit else 'text-stone-800' }}" id="quota-badge">
                         <span id="quota-display">{{ my_total_stickers }}</span><span class="opacity-40 text-xs">/{{ max_stickers_limit }}</span>
                     </div>
                 </div>
                 
                 {% if walls|length > 1 %}
-                <div class="flex items-center bg-white border grid-border p-1">
-                    <button onclick="switchWall(-1)" class="w-8 h-8 flex items-center justify-center hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition-colors" title="Previous Wall"><i class="fas fa-chevron-left text-xs"></i></button>
-                    <div class="w-px h-4 bg-stone-200 mx-1"></div>
-                    <button onclick="switchWall(1)" class="w-8 h-8 flex items-center justify-center hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition-colors" title="Next Wall"><i class="fas fa-chevron-right text-xs"></i></button>
+                <div class="flex items-center bg-white border grid-border p-1 wall-nav-box">
+                    <button onclick="switchWall(-1)" class="w-8 h-8 flex items-center justify-center hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition-colors wall-nav-btn" title="Previous Wall"><i class="fas fa-chevron-left text-xs"></i></button>
+                    <div class="w-px h-4 bg-stone-200 mx-1 wall-nav-divider"></div>
+                    <button onclick="switchWall(1)" class="w-8 h-8 flex items-center justify-center hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition-colors wall-nav-btn" title="Next Wall"><i class="fas fa-chevron-right text-xs"></i></button>
                 </div>
                 {% endif %}
             </div>

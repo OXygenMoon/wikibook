@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}评论审核{% endblock %}
+
+{% block extra_css %}
+<style>
+    .comments-audit-root .glass-panel {
+        background: rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+    }
+
+    .comments-audit-root .filter-shell {
+        background: rgba(226, 232, 240, 0.6);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .comments-audit-root .filter-pill {
+        color: rgba(15, 23, 42, 0.6);
+    }
+
+    .comments-audit-root .filter-pill:hover {
+        background: rgba(148, 163, 184, 0.2);
+        color: rgba(15, 23, 42, 0.85);
+    }
+
+    .comments-audit-root .filter-pill.active {
+        background: rgba(255, 255, 255, 0.95);
+        color: #ea580c;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    }
+
+    .comments-audit-root .status-muted {
+        background: #e7e5e4;
+        color: #57534e;
+    }
+
+    .comments-audit-root .status-pass {
+        background: #d1fae5;
+        color: #047857;
+    }
+
+    .comments-audit-root .comment-content {
+        background: rgba(248, 250, 252, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    html.dark .comments-audit-root .glass-panel {
+        background: rgba(15, 23, 42, 0.78) !important;
+        border-color: rgba(148, 163, 184, 0.22) !important;
+        box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
+    }
+
+    html.dark .comments-audit-root .filter-shell {
+        background: rgba(30, 41, 59, 0.75) !important;
+        border-color: rgba(148, 163, 184, 0.26) !important;
+    }
+
+    html.dark .comments-audit-root .filter-pill {
+        color: rgba(226, 232, 240, 0.72) !important;
+    }
+
+    html.dark .comments-audit-root .filter-pill:hover {
+        background: rgba(71, 85, 105, 0.4) !important;
+        color: rgba(241, 245, 249, 0.95) !important;
+    }
+
+    html.dark .comments-audit-root .filter-pill.active {
+        background: rgba(248, 250, 252, 0.95) !important;
+        color: #ea580c !important;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35) !important;
+    }
+
+    html.dark .comments-audit-root .status-muted {
+        background: rgba(100, 116, 139, 0.35) !important;
+        color: rgba(226, 232, 240, 0.85) !important;
+    }
+
+    html.dark .comments-audit-root .status-pass {
+        background: rgba(16, 185, 129, 0.22) !important;
+        color: #6ee7b7 !important;
+    }
+
+    html.dark .comments-audit-root .comment-content {
+        background: rgba(51, 65, 85, 0.34) !important;
+        border-color: rgba(148, 163, 184, 0.26) !important;
+        color: rgba(241, 245, 249, 0.9) !important;
+    }
+
+    html.dark .comments-audit-root .muted-text {
+        color: rgba(203, 213, 225, 0.72) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="comments-audit-root w-full max-w-[98%] 2xl:max-w-7xl mx-auto flex flex-col gap-6 pb-12 mt-2">
+    <div class="glass-panel flex flex-col md:flex-row justify-between items-start md:items-center gap-5 backdrop-blur-xl p-6 md:px-8 rounded-3xl relative overflow-hidden">
+        <div class="absolute -right-12 -top-12 w-44 h-44 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="relative z-10">
+            <h1 class="text-2xl md:text-3xl font-black text-stone-800 dark:text-stone-100 flex items-center gap-3 tracking-tight">
+                <i class="fas fa-comment-dots text-emerald-600"></i> 评论审核中心
+            </h1>
+            <p class="muted-text text-sm text-base-content/60 mt-1.5 font-medium ml-1">审核学生在 Wiki 与 Book 页面发布的评论，只有通过后才会对所有用户展示。</p>
+        </div>
+        <div class="relative z-10 flex items-center gap-2 text-xs font-bold">
+            <span class="badge status-muted border-none px-3 py-3">待审核 {{ counts.pending }}</span>
+            <span class="badge status-pass border-none px-3 py-3">已通过 {{ counts.approved }}</span>
+            <span class="badge bg-base-200 text-base-content/70 border-none px-3 py-3">总计 {{ counts.all }}</span>
+        </div>
+    </div>
+
+    <div class="filter-shell flex items-center p-1.5 rounded-2xl w-full md:w-fit shadow-inner overflow-x-auto">
+        <a href="{{ url_for('manage_comments', status='pending') }}" class="filter-pill flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap {% if status == 'pending' %}active{% endif %}">
+            <i class="fas fa-hourglass-half"></i> 待审核
+        </a>
+        <a href="{{ url_for('manage_comments', status='approved') }}" class="filter-pill flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap {% if status == 'approved' %}active{% endif %}">
+            <i class="fas fa-check-circle"></i> 已通过
+        </a>
+        <a href="{{ url_for('manage_comments', status='all') }}" class="filter-pill flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap {% if status == 'all' %}active{% endif %}">
+            <i class="fas fa-layer-group"></i> 全部
+        </a>
+    </div>
+
+    <div class="flex flex-col gap-4">
+        {% for comment in comments %}
+        <div class="glass-panel backdrop-blur-2xl rounded-2xl p-5">
+            <div class="flex flex-col md:flex-row md:items-start gap-4">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2.5 flex-wrap mb-2">
+                        <span class="font-bold text-base-content">{{ comment.user.username }}</span>
+                        <span class="muted-text text-xs font-mono text-base-content/40">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% if comment.is_approved %}
+                        <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold status-pass">已通过</span>
+                        {% else %}
+                        <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold status-muted">待审核</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="comment-content text-sm text-base-content/85 whitespace-pre-wrap leading-relaxed rounded-xl p-4">
+                        {{ comment.content }}
+                    </div>
+
+                    <div class="muted-text mt-3 text-xs text-base-content/60">
+                        {% if comment.wiki_page %}
+                        <span class="font-semibold">来源：</span>
+                        <a href="{{ url_for('view_page', wiki_id=comment.wiki_page.wiki_id, slug=comment.wiki_page.slug) }}" class="link link-hover text-primary">
+                            Wiki / {{ comment.wiki_page.wiki.title }} / {{ comment.wiki_page.title }}
+                        </a>
+                        {% elif comment.note %}
+                        <span class="font-semibold">来源：</span>
+                        <a href="{{ url_for('view_note', note_id=comment.note.id) }}" class="link link-hover text-primary">
+                            Book / {{ comment.note.title }}
+                        </a>
+                        {% else %}
+                        <span class="text-base-content/40">来源页面已不存在</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="flex md:flex-col gap-2 md:w-32">
+                    {% if not comment.is_approved %}
+                    <form action="{{ url_for('moderate_comment', comment_id=comment.id) }}" method="post" class="w-full">
+                        <input type="hidden" name="action" value="approve">
+                        <input type="hidden" name="next" value="{{ request.full_path }}">
+                        <button type="submit" class="btn btn-sm w-full bg-emerald-600 hover:bg-emerald-700 text-white border-none">
+                            通过
+                        </button>
+                    </form>
+                    {% else %}
+                    <form action="{{ url_for('moderate_comment', comment_id=comment.id) }}" method="post" class="w-full">
+                        <input type="hidden" name="action" value="pending">
+                        <input type="hidden" name="next" value="{{ request.full_path }}">
+                        <button type="submit" class="btn btn-sm w-full bg-stone-500 hover:bg-stone-600 text-white border-none">
+                            打回
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="post" class="w-full" onsubmit="return confirm('确定删除这条评论吗？');">
+                        <button type="submit" class="btn btn-sm btn-outline btn-error w-full">删除</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="glass-panel text-center py-16 border border-dashed border-base-300 rounded-2xl text-base-content/40">
+            <i class="fas fa-comment-slash text-4xl mb-3"></i>
+            <p class="font-bold">当前筛选下没有评论记录</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -4,1132 +4,480 @@
 
 {% block extra_css %}
 <style>
-    /* ==========================================
-       Wiki 广场首页：Instax 极简产品展示风格
-       保留原有 Jinja2 变量、url_for 路由、搜索接口，仅重构页面排版与 UI
-       ========================================== */
-
     :root {
-        --ix-bg: #e7e7e7;
-        --ix-page: #f7f7f7;
-        --ix-panel: #fbfbfb;
-        --ix-line: rgba(0, 0, 0, 0.10);
-        --ix-line-strong: rgba(0, 0, 0, 0.22);
-        --ix-text: #111;
-        --ix-muted: #9b9b9b;
-        --ix-faint: #dddddd;
-        --ix-soft: #f0f0f0;
-        --ix-black: #050505;
-        --ix-shadow: 0 28px 80px rgba(0, 0, 0, 0.08);
-        --ix-side: 72px;
-        --ix-menu: 190px;
-        --ix-right: 260px;
-    }
-
-    body {
-        background: var(--ix-bg) !important;
-        color: var(--ix-text);
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        --square-bg: #f5f7fb;
+        --square-panel: #ffffff;
+        --square-soft: #f9fafb;
+        --square-text: #172033;
+        --square-muted: #687386;
+        --square-line: #dfe5ee;
+        --square-strong: #c8d1df;
+        --square-blue: #2563eb;
+        --square-teal: #0f766e;
+        --square-amber: #d97706;
+        --square-shadow: 0 18px 48px rgba(21, 31, 48, 0.08);
     }
 
     .wiki-square-page {
-        min-height: 100vh;
-        padding: 18px;
-        background:
-            radial-gradient(circle at 60% 40%, rgba(255, 255, 255, 0.65), transparent 38rem),
-            linear-gradient(180deg, #e5e5e5 0%, #dedede 100%);
+        min-height: calc(100vh - 8rem);
+        padding: 28px;
+        background: var(--square-bg);
+        color: var(--square-text);
     }
 
-    .ix-shell {
-        min-height: calc(100vh - 36px);
-        display: grid;
-        grid-template-columns: var(--ix-side) var(--ix-menu) minmax(0, 1fr) var(--ix-right) 58px;
-        background: var(--ix-page);
-        border: 1px solid var(--ix-line);
-        box-shadow: var(--ix-shadow);
-        overflow: hidden;
+    .wiki-surface {
+        border: 1px solid var(--square-line);
+        border-radius: 8px;
+        background: var(--square-panel);
     }
 
-    .ix-brand-rail {
-        position: relative;
-        border-right: 1px solid var(--ix-line);
-        background: #f9f9f9;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: space-between;
-        padding: 24px 0 28px;
+    .wiki-muted {
+        color: var(--square-muted);
     }
 
-    .ix-logo-vertical {
-        writing-mode: vertical-rl;
-        transform: rotate(180deg);
-        font-size: 28px;
-        line-height: 1;
-        font-weight: 950;
-        letter-spacing: -0.08em;
-        color: #111;
+    .wiki-accent {
+        color: var(--square-teal);
     }
 
-    .ix-logo-vertical span {
-        font-weight: 350;
-    }
-
-    .ix-rail-actions {
-        display: grid;
-        gap: 12px;
-    }
-
-    .ix-round-btn {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
+    .wiki-button {
+        min-height: 42px;
+        border-radius: 8px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: #fff;
-        border: 1px solid var(--ix-line);
-        color: #777;
-        transition: all 0.2s ease;
+        gap: 9px;
+        padding: 0 15px;
+        font-size: 14px;
+        font-weight: 800;
+        transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
     }
 
-    .ix-round-btn:hover {
-        color: #111;
-        border-color: rgba(0, 0, 0, 0.22);
+    .wiki-button:hover,
+    .wiki-card:hover {
         transform: translateY(-2px);
+        border-color: var(--square-strong);
+        box-shadow: var(--square-shadow);
     }
 
-    .ix-rail-bottom {
-        writing-mode: vertical-rl;
-        transform: rotate(180deg);
-        font-size: 14px;
-        font-weight: 950;
-        letter-spacing: -0.04em;
-        color: #111;
-        text-transform: uppercase;
-    }
-
-    .ix-menu-panel {
-        position: relative;
-        border-right: 1px solid var(--ix-line);
-        background: #f4f4f4;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .ix-category-head {
-        height: 122px;
-        padding: 22px 18px;
-        border-bottom: 1px solid var(--ix-line);
-        text-align: right;
-    }
-
-    .ix-category-head a {
-        color: #111;
-        font-size: 14px;
-        font-weight: 900;
-        text-decoration: underline;
-        text-underline-offset: 4px;
-    }
-
-    .ix-category-list {
-        margin-top: 8px;
-        display: grid;
-        gap: 3px;
-        color: #b1b1b1;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-
-    .ix-menu-links {
-        margin-top: auto;
-        padding: 0 18px 26px;
-        color: #c0c0c0;
-    }
-
-    .ix-menu-links ul {
-        display: grid;
-        gap: 7px;
-        font-size: 11px;
-        font-weight: 700;
-    }
-
-    .ix-help-box {
-        min-height: 178px;
-        border-top: 1px solid var(--ix-line);
-        background: #fff;
-        padding: 16px 18px;
-    }
-
-    .ix-help-box h4 {
-        font-size: 12px;
-        font-weight: 950;
-        color: #111;
-        display: flex;
-        justify-content: space-between;
-    }
-
-    .ix-help-box p {
-        margin-top: 12px;
-        color: #b5b5b5;
-        font-size: 11px;
-        line-height: 1.6;
-        font-weight: 700;
-    }
-
-    .ix-main {
-        min-width: 0;
-        display: grid;
-        grid-template-rows: 78px 74px minmax(0, 1fr);
-        background: #f6f6f6;
-    }
-
-    .ix-topbar {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto auto;
-        align-items: center;
-        gap: 28px;
-        padding: 0 26px;
-        border-bottom: 1px solid var(--ix-line);
-        color: #a5a5a5;
-        font-size: 11px;
-        font-weight: 700;
-    }
-
-    .ix-topbar a {
-        color: #111;
-        font-size: 12px;
-        font-weight: 800;
-        text-decoration: underline;
-        text-underline-offset: 3px;
-    }
-
-    .ix-titlebar {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        border-bottom: 1px solid var(--ix-line-strong);
-    }
-
-    .ix-title-wrap {
-        padding: 0 26px;
-        min-width: 0;
-    }
-
-    .ix-product-title {
-        display: flex;
-        align-items: baseline;
-        gap: 12px;
-        min-width: 0;
-        color: #111;
-    }
-
-    .ix-product-title .thin {
-        font-size: clamp(34px, 4vw, 58px);
-        font-weight: 250;
-        letter-spacing: -0.075em;
-        line-height: 1;
-    }
-
-    .ix-product-title .bold {
-        font-size: clamp(34px, 4vw, 58px);
-        font-weight: 950;
-        letter-spacing: -0.085em;
-        line-height: 1;
-        max-width: 46vw;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .ix-product-title .color-name {
-        color: #aaa;
-        font-size: 13px;
-        font-weight: 800;
-        letter-spacing: -0.03em;
-        white-space: nowrap;
-    }
-
-    .ix-title-actions {
-        height: 100%;
-        min-width: 270px;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        border-left: 1px solid var(--ix-line);
-    }
-
-    .ix-title-actions a,
-    .ix-title-actions button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        color: #9e9e9e;
-        font-size: 12px;
-        font-weight: 800;
-        border-left: 1px solid var(--ix-line);
-        transition: all 0.2s ease;
-    }
-
-    .ix-title-actions a:first-child {
-        border-left: 0;
-    }
-
-    .ix-title-actions a:hover,
-    .ix-title-actions button:hover {
-        color: #111;
-        background: #fff;
-    }
-
-    .ix-stage {
-        position: relative;
-        min-height: 560px;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 300px;
-        overflow: hidden;
-    }
-
-    .ix-hero-zone {
-        position: relative;
-        padding: 42px 40px;
-        background:
-            radial-gradient(circle at 50% 52%, rgba(0, 0, 0, 0.06), transparent 13rem),
-            linear-gradient(180deg, #f7f7f7 0%, #f4f4f4 100%);
-        cursor: pointer;
-    }
-
-    .ix-hero-zone::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background-image:
-            linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px);
-        background-size: 56px 56px;
-        opacity: 0.45;
-        pointer-events: none;
-    }
-
-    .ix-desc-block {
-        position: relative;
-        z-index: 3;
-        max-width: 320px;
-    }
-
-    .ix-down {
-        font-size: 34px;
-        font-weight: 200;
-        line-height: 1;
-        color: #111;
-        margin-bottom: 16px;
-    }
-
-    .ix-desc-block p {
-        color: #9f9f9f;
-        font-size: 12px;
-        line-height: 1.65;
-        font-weight: 700;
-    }
-
-    .ix-visual-book {
-        position: absolute;
-        left: 50%;
-        top: 52%;
-        width: min(46vw, 470px);
-        height: min(44vw, 430px);
-        transform: translate(-50%, -50%) rotate(-8deg);
-        z-index: 2;
-        transition: transform 0.55s ease;
-    }
-
-    .ix-hero-zone:hover .ix-visual-book {
-        transform: translate(-50%, -54%) rotate(-4deg) scale(1.035);
-    }
-
-    .ix-book-shadow {
-        position: absolute;
-        left: 15%;
-        right: 8%;
-        bottom: 10%;
-        height: 36px;
-        border-radius: 999px;
-        background: rgba(0, 0, 0, 0.14);
-        filter: blur(18px);
-        transform: rotate(8deg);
-    }
-
-    .ix-book-pages {
-        position: absolute;
-        left: 68%;
-        top: 15%;
-        width: 44px;
-        height: 270px;
-        border-radius: 0 16px 16px 0;
-        background: repeating-linear-gradient(to right, #ffffff 0 4px, #dcdcdc 4px 5px);
-        box-shadow: 16px 20px 45px rgba(0, 0, 0, 0.08);
-        transform: skewY(5deg);
-    }
-
-    .ix-book-cover {
-        position: absolute;
-        left: 20%;
-        top: 8%;
-        width: 54%;
-        height: 72%;
-        border-radius: 22px 32px 32px 22px;
-        background:
-            linear-gradient(90deg, rgba(255,255,255,.55), rgba(255,255,255,.08) 18%, transparent 45%),
-            linear-gradient(145deg, var(--wiki-color, #4f46e5), #202020 118%);
-        border: 1px solid rgba(0,0,0,.10);
-        box-shadow:
-            inset 14px 0 22px rgba(255,255,255,.24),
-            inset -20px 0 34px rgba(0,0,0,.20),
-            0 40px 90px rgba(0,0,0,.15);
-        transform: perspective(900px) rotateY(-15deg);
-    }
-
-    .ix-book-cover::before {
-        content: "";
-        position: absolute;
-        left: 20px;
-        top: 20px;
-        bottom: 20px;
-        width: 5px;
-        border-radius: 999px;
-        background: rgba(255,255,255,.36);
-    }
-
-    .ix-book-cover::after {
-        content: "WIKI";
-        position: absolute;
-        left: 42px;
-        right: 24px;
-        bottom: 30px;
-        color: rgba(255,255,255,.78);
-        font-size: clamp(42px, 5vw, 78px);
-        line-height: .82;
-        font-weight: 950;
-        letter-spacing: -0.11em;
-    }
-
-    .ix-photo-slip {
-        position: absolute;
-        left: 43%;
-        top: -2%;
-        width: 120px;
-        height: 155px;
-        background: #fff;
-        border: 1px solid rgba(0,0,0,.08);
-        transform: rotate(12deg);
-        box-shadow: 0 20px 45px rgba(0,0,0,.12);
-    }
-
-    .ix-photo-slip::before {
-        content: "";
-        position: absolute;
-        inset: 12px 12px 34px;
-        background:
-            linear-gradient(135deg, rgba(255,255,255,.28), transparent 45%),
-            linear-gradient(145deg, var(--wiki-color, #4f46e5), #111);
-    }
-
-    .ix-float-note {
-        position: absolute;
-        right: 28px;
-        bottom: 74px;
-        z-index: 3;
-        max-width: 260px;
-        text-align: right;
-        color: #b7b7b7;
-        font-size: 11px;
-        line-height: 1.7;
-        font-weight: 700;
-    }
-
-    .ix-float-note strong {
-        display: block;
-        color: #8e8e8e;
-        font-weight: 900;
-    }
-
-    .ix-side-info {
-        border-left: 1px solid var(--ix-line);
-        background: #f5f5f5;
-        display: grid;
-        grid-template-rows: 170px 1fr 82px;
-    }
-
-    .ix-info-video {
-        padding: 18px;
-        border-bottom: 1px solid var(--ix-line);
-    }
-
-    .ix-info-video h4 {
-        max-width: 170px;
-        color: #111;
-        font-size: 13px;
-        line-height: 1.15;
-        font-weight: 900;
-        text-decoration: underline;
-        text-underline-offset: 3px;
-    }
-
-    .ix-video-thumb {
-        margin-top: 18px;
-        height: 78px;
-        position: relative;
-        overflow: hidden;
-        background:
-            linear-gradient(135deg, rgba(255,255,255,.35), rgba(255,255,255,0)),
-            linear-gradient(145deg, var(--wiki-color, #4f46e5), #111);
-    }
-
-    .ix-video-thumb::after {
-        content: "";
-        position: absolute;
-        right: 24px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 0;
-        height: 0;
-        border-left: 30px solid rgba(255,255,255,.75);
-        border-top: 20px solid transparent;
-        border-bottom: 20px solid transparent;
-    }
-
-    .ix-counter {
-        position: relative;
-        padding: 28px 18px;
-        overflow: hidden;
-        border-bottom: 1px solid var(--ix-line);
-    }
-
-    .ix-counter small {
-        color: #b0b0b0;
-        font-size: 10px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: .06em;
-    }
-
-    .ix-counter .prev {
-        margin-top: 6px;
-        color: #111;
-        font-size: 58px;
-        line-height: .9;
-        font-weight: 250;
-        letter-spacing: -0.08em;
-    }
-
-    .ix-counter .now {
-        position: absolute;
-        right: 10px;
-        bottom: 10px;
+    .wiki-button.primary {
+        border: 1px solid #111827;
+        background: #111827;
         color: #fff;
-        font-size: 120px;
-        line-height: .78;
-        font-weight: 250;
-        letter-spacing: -0.1em;
-        text-shadow: 0 0 1px rgba(0,0,0,.03);
     }
 
-    .ix-info-bottom {
-        padding: 18px;
-        color: #b5b5b5;
-        font-size: 11px;
-        font-weight: 800;
-    }
-
-    .ix-action-rail {
-        border-left: 1px solid var(--ix-line);
-        background: #fbfbfb;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: space-between;
-        padding: 18px 0;
-    }
-
-    .ix-kebab {
+    .wiki-button.ghost {
         width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: #050505;
-        color: #fff;
+        padding: 0;
+        border: 1px solid var(--square-line);
+        background: var(--square-panel);
+        color: var(--square-muted);
     }
 
-    .ix-arrow-back {
-        color: #111;
-        font-size: 18px;
-    }
-
-    .ix-socials {
+    .wiki-search {
+        position: relative;
         display: grid;
-        gap: 12px;
+        grid-template-columns: 42px minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: 6px;
+        min-height: 58px;
+        padding: 7px;
     }
 
-    .ix-socials a {
+    .wiki-search input,
+    .wiki-filter select {
+        width: 100%;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--square-text);
+        font-weight: 800;
+    }
+
+    .wiki-search input {
+        height: 42px;
+        font-size: 15px;
+    }
+
+    .wiki-filter {
+        min-height: 58px;
+        min-width: 176px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+    }
+
+    .wiki-cover {
+        width: 150px;
+        aspect-ratio: 4 / 5;
+        border-radius: 8px;
+        background:
+            linear-gradient(135deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 38%),
+            linear-gradient(160deg, var(--wiki-color, var(--square-blue)), #172033);
+        box-shadow: 0 20px 36px rgba(21, 31, 48, 0.18);
+        color: #fff;
+        display: flex;
+        align-items: flex-end;
+        padding: 16px;
+        font-size: 42px;
+        line-height: 1;
+        font-weight: 900;
+    }
+
+    .wiki-dot {
         width: 34px;
         height: 34px;
-        border-radius: 50%;
-        border: 1px solid var(--ix-line);
-        background: #fff;
-        color: #777;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        transition: all .2s ease;
-    }
-
-    .ix-socials a:hover {
-        color: #111;
-        transform: translateY(-2px);
-    }
-
-    .ix-shelf {
-        grid-column: 3 / 5;
-        border-top: 1px solid var(--ix-line-strong);
-        background: #efefef;
-    }
-
-    .ix-shelf-head {
-        height: 78px;
-        display: grid;
-        grid-template-columns: 1fr 320px 160px;
-        align-items: center;
-        border-bottom: 1px solid var(--ix-line);
-    }
-
-    .ix-shelf-title {
-        padding: 0 24px;
-        color: #111;
-        font-size: 28px;
-        font-weight: 250;
-        letter-spacing: -0.08em;
-    }
-
-    .ix-select,
-    .ix-compare {
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-left: 1px solid var(--ix-line);
-        color: #888;
-        font-size: 12px;
-        font-weight: 900;
-    }
-
-    .ix-shelf-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(220px, 1fr));
-        border-left: 1px solid var(--ix-line);
-    }
-
-    .ix-wiki-tile {
-        position: relative;
-        min-height: 270px;
-        padding: 18px;
-        border-right: 1px solid var(--ix-line);
-        border-bottom: 1px solid var(--ix-line);
-        background: #f6f6f6;
-        overflow: hidden;
-        cursor: pointer;
-        transition: background .2s ease;
-    }
-
-    .ix-wiki-tile:hover {
-        background: #fff;
-    }
-
-    .ix-tile-top {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        position: relative;
-        z-index: 2;
-    }
-
-    .ix-chip {
-        display: inline-flex;
-        align-items: center;
-        height: 34px;
-        padding: 0 16px;
-        background: #fff;
-        border: 1px solid var(--ix-line);
-        color: #777;
-        font-size: 11px;
-        font-weight: 900;
-    }
-
-    .ix-add {
-        color: #aaa;
-        font-size: 11px;
-        font-weight: 900;
-        white-space: nowrap;
-    }
-
-    .ix-tile-title {
-        position: absolute;
-        right: 16px;
-        top: 64px;
-        z-index: 3;
-        max-width: 72%;
-        color: #111;
-        text-align: right;
-        font-size: 28px;
-        line-height: .95;
-        font-weight: 250;
-        letter-spacing: -0.08em;
-    }
-
-    .ix-tile-title strong {
-        font-weight: 950;
-    }
-
-    .ix-tile-book {
-        position: absolute;
-        left: 50%;
-        top: 55%;
-        width: 130px;
-        height: 160px;
-        transform: translate(-50%, -50%) rotate(var(--tile-rot, -6deg));
-        transition: transform .28s ease;
-    }
-
-    .ix-wiki-tile:hover .ix-tile-book {
-        transform: translate(-50%, -55%) rotate(0deg) scale(1.05);
-    }
-
-    .ix-tile-book::before {
-        content: "";
-        position: absolute;
-        left: 18px;
-        top: 6px;
-        width: 82px;
-        height: 122px;
-        border-radius: 12px 18px 18px 12px;
+        border-radius: 8px;
+        flex: 0 0 auto;
         background:
-            linear-gradient(90deg, rgba(255,255,255,.45), transparent 24%),
-            linear-gradient(145deg, var(--tile-color, #bbb), #222 125%);
-        box-shadow: 0 26px 42px rgba(0,0,0,.13);
+            linear-gradient(135deg, rgba(255, 255, 255, 0.35), transparent),
+            var(--wiki-color, var(--square-blue));
     }
 
-    .ix-tile-book::after {
-        content: "";
-        position: absolute;
-        left: 96px;
-        top: 14px;
-        width: 18px;
-        height: 106px;
-        border-radius: 0 10px 10px 0;
-        background: repeating-linear-gradient(to right, #fff 0 3px, #ddd 3px 4px);
+    .wiki-card {
+        min-height: 214px;
+        display: grid;
+        align-content: space-between;
+        transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
     }
 
-    .ix-tile-foot {
+    .wiki-card p {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .featured-side {
+        border-left: 1px solid var(--square-line);
+        padding-left: 20px;
+    }
+
+    .featured-metric {
+        border-bottom: 1px solid var(--square-line);
+        padding-bottom: 12px;
+    }
+
+    .instant-results {
         position: absolute;
-        left: 18px;
-        right: 18px;
-        bottom: 18px;
-        display: flex;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        z-index: 80;
+        max-height: 420px;
+        overflow: auto;
+        box-shadow: var(--square-shadow);
+    }
+
+    .instant-row {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 38px minmax(0, 1fr);
+        gap: 12px;
         align-items: center;
-        justify-content: space-between;
-        color: #8f8f8f;
-        font-size: 11px;
-        font-weight: 900;
+        padding: 12px;
+        border-bottom: 1px solid var(--square-line);
+        color: var(--square-text);
+        text-align: left;
     }
 
-    .ix-empty,
-    .ix-query-panel {
-        grid-column: 3 / 5;
-        min-height: 520px;
-        padding: 48px;
-        background: #f6f6f6;
-        border-top: 1px solid var(--ix-line-strong);
+    .instant-row:last-child {
+        border-bottom: 0;
     }
 
-    .ix-empty h2,
-    .ix-query-title {
-        color: #111;
-        font-size: clamp(48px, 7vw, 110px);
-        line-height: .86;
-        font-weight: 250;
-        letter-spacing: -0.11em;
+    .instant-row:hover {
+        background: var(--square-soft);
     }
 
-    .ix-empty p {
-        margin-top: 22px;
-        max-width: 380px;
-        color: #999;
-        font-size: 13px;
-        line-height: 1.7;
-        font-weight: 750;
-    }
-
-    .ix-btn-dark {
-        margin-top: 28px;
+    .instant-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
         display: inline-flex;
         align-items: center;
-        gap: 12px;
-        background: #111;
+        justify-content: center;
+        background: #111827;
         color: #fff;
-        border-radius: 999px;
-        padding: 14px 22px;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 900;
-        transition: transform .2s ease;
     }
 
-    .ix-btn-dark:hover { transform: translateY(-2px); }
-
-    .ix-query-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 24px;
-        margin-bottom: 30px;
+    .instant-icon.page {
+        background: #fff7ed;
+        color: var(--square-amber);
     }
 
-    .ix-query-count {
-        flex-shrink: 0;
-        padding: 12px 16px;
-        border: 1px solid var(--ix-line);
-        color: #777;
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        background: #fff;
+    .single-line {
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    html.dark body {
-        background: #151515 !important;
+    html.dark .wiki-square-page {
+        background: #0f1115;
+        color: #f4f7fb;
     }
 
-    html.dark .wiki-square-page { background: #181818; }
-    html.dark .ix-shell,
-    html.dark .ix-main,
-    html.dark .ix-hero-zone,
-    html.dark .ix-menu-panel,
-    html.dark .ix-brand-rail,
-    html.dark .ix-action-rail,
-    html.dark .ix-side-info,
-    html.dark .ix-shelf,
-    html.dark .ix-empty,
-    html.dark .ix-query-panel { background: #111; }
-    html.dark .ix-topbar,
-    html.dark .ix-category-list,
-    html.dark .ix-menu-links,
-    html.dark .ix-desc-block p,
-    html.dark .ix-float-note,
-    html.dark .ix-info-bottom { color: #777; }
-    html.dark .ix-product-title,
-    html.dark .ix-product-title .thin,
-    html.dark .ix-product-title .bold,
-    html.dark .ix-logo-vertical,
-    html.dark .ix-rail-bottom,
-    html.dark .ix-category-head a,
-    html.dark .ix-shelf-title,
-    html.dark .ix-empty h2,
-    html.dark .ix-query-title { color: #f5f5f5; }
-    html.dark .ix-wiki-tile { background: #151515; }
-    html.dark .ix-wiki-tile:hover { background: #1c1c1c; }
-    html.dark .ix-tile-title { color: #f5f5f5; }
-    html.dark .ix-help-box,
-    html.dark .ix-round-btn,
-    html.dark .ix-chip,
-    html.dark .ix-query-count { background: #1b1b1b; color: #aaa; }
-
-    @media (max-width: 1280px) {
-        .ix-shell {
-            grid-template-columns: var(--ix-side) 150px minmax(0, 1fr) 220px 52px;
-        }
-        .ix-stage { grid-template-columns: minmax(0, 1fr) 240px; }
-        .ix-shelf-grid { grid-template-columns: repeat(3, minmax(210px, 1fr)); }
+    html.dark .wiki-surface,
+    html.dark .instant-results {
+        background: #171b22;
+        border-color: #2b3442;
     }
 
-    @media (max-width: 1024px) {
-        .wiki-square-page { padding: 10px; }
-        .ix-shell {
-            min-height: calc(100vh - 20px);
-            grid-template-columns: 58px minmax(0, 1fr) 48px;
-        }
-        .ix-menu-panel,
-        .ix-side-info { display: none; }
-        .ix-main { grid-column: 2; }
-        .ix-action-rail { grid-column: 3; }
-        .ix-shelf,
-        .ix-empty,
-        .ix-query-panel { grid-column: 2 / 4; }
-        .ix-stage { grid-template-columns: minmax(0, 1fr); }
-        .ix-title-actions { display: none; }
-        .ix-visual-book { width: min(70vw, 430px); height: min(60vw, 390px); }
-        .ix-shelf-grid { grid-template-columns: repeat(2, minmax(210px, 1fr)); }
+    html.dark .wiki-muted,
+    html.dark .wiki-card p {
+        color: #9aa6b7;
+    }
+
+    html.dark .wiki-search input,
+    html.dark .wiki-filter select,
+    html.dark .instant-row {
+        color: #f4f7fb;
+    }
+
+    html.dark .instant-row:hover {
+        background: #12161d;
     }
 
     @media (max-width: 720px) {
-        .wiki-square-page { padding: 0; }
-        .ix-shell {
-            min-height: 100vh;
-            grid-template-columns: 1fr;
+        .wiki-square-page {
+            padding: 16px;
         }
-        .ix-brand-rail,
-        .ix-action-rail { display: none; }
-        .ix-main { grid-column: 1; grid-template-rows: 58px auto minmax(0, 1fr); }
-        .ix-topbar { padding: 0 16px; grid-template-columns: 1fr auto; }
-        .ix-topbar a:last-child { display: none; }
-        .ix-titlebar { min-height: 90px; }
-        .ix-product-title { flex-wrap: wrap; gap: 6px 10px; }
-        .ix-product-title .thin,
-        .ix-product-title .bold { font-size: 40px; }
-        .ix-stage { min-height: 560px; }
-        .ix-hero-zone { padding: 28px 18px; }
-        .ix-desc-block { max-width: 260px; }
-        .ix-float-note { display: none; }
-        .ix-visual-book { width: 86vw; height: 420px; top: 60%; }
-        .ix-shelf,
-        .ix-empty,
-        .ix-query-panel { grid-column: 1; }
-        .ix-shelf-head { grid-template-columns: 1fr; height: auto; }
-        .ix-select,
-        .ix-compare { display: none; }
-        .ix-shelf-title { padding: 22px 18px; }
-        .ix-shelf-grid { grid-template-columns: 1fr; }
+
+        .wiki-search {
+            grid-template-columns: 38px minmax(0, 1fr) auto;
+        }
+
+        .wiki-search .clear-search,
+        .wiki-search .search-label {
+            display: none;
+        }
+
+        .wiki-cover {
+            width: 128px;
+        }
+
+        .featured-side {
+            border-left: 0;
+            border-top: 1px solid var(--square-line);
+            padding-left: 0;
+            padding-top: 16px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block raw_content %}
+{% set total_pages = namespace(value=0) %}
+{% for wiki_item in wikis %}
+    {% set total_pages.value = total_pages.value + (wiki_item.pages|length) %}
+{% endfor %}
+{% set featured = wikis[0] if wikis else none %}
+{% set card_wikis = wikis if q else wikis[1:] %}
 
 <div class="wiki-square-page">
-    <div class="ix-shell">
-        <aside class="ix-brand-rail">
-            <a href="{{ url_for('index') }}" class="ix-logo-vertical">wiki<span>square</span></a>
-            <div class="ix-rail-actions">
-                <button class="ix-round-btn" type="button" onclick="document.getElementById('wikiQuickInput')?.focus()" title="搜索"><i class="fas fa-search"></i></button>
-                <a class="ix-round-btn" href="{{ url_for('create_wiki') }}" title="创建 Wiki"><i class="fas fa-pen"></i></a>
-                <a class="ix-round-btn" href="{{ url_for('index') }}" title="首页"><i class="fas fa-bars"></i></a>
-            </div>
-            <div class="ix-rail-bottom">Knowledge</div>
-        </aside>
-
-        <aside class="ix-menu-panel">
-            <div class="ix-category-head">
-                <a href="{{ url_for('index') }}">Wikis ←</a>
-                <div class="ix-category-list">
-                    {% if wikis %}
-                        {% for w in wikis[:8] %}
-                            <span>{{ w.title }}</span>
-                        {% endfor %}
+    <div class="max-w-6xl mx-auto space-y-4">
+        <header class="grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
+            <div>
+                <p class="wiki-accent text-sm font-extrabold mb-2">Wiki Square</p>
+                <h1 class="text-4xl md:text-5xl font-black leading-none">
+                    {% if q %}搜索结果{% else %}Wiki 广场{% endif %}
+                </h1>
+                <p class="wiki-muted mt-3 max-w-2xl text-sm md:text-base leading-7">
+                    {% if q %}
+                        “{{ q }}” 找到 {{ wikis|length }} 个 Wiki{% if pages %}，{{ pages|length }} 个页面{% endif %}。
                     {% else %}
-                        <span>empty</span>
-                        <span>create</span>
-                        <span>wiki</span>
+                        精选知识库、页面入口和协作资料集中在这里。
                     {% endif %}
-                </div>
-            </div>
-
-            <div class="ix-menu-links">
-                <ul>
-                    <li>Projects</li>
-                    <li>Pages</li>
-                    <li>Members</li>
-                    <li>About</li>
-                    <li>Support</li>
-                </ul>
-            </div>
-
-            <div class="ix-help-box">
-                <h4>Help <i class="fas fa-angle-up"></i></h4>
-                <p>
-                    Contact us<br>
-                    Help with your wiki<br>
-                    Search pages and entries<br>
-                    Manage your knowledge base
                 </p>
             </div>
-        </aside>
+            <div class="flex items-center gap-2">
+                <a class="wiki-button ghost" href="{{ url_for('index') }}" title="返回广场" aria-label="返回广场">
+                    <i class="fas fa-compass"></i>
+                </a>
+                <a class="wiki-button primary" href="{{ url_for('create_wiki') }}">
+                    <i class="fas fa-plus"></i>
+                    <span>新建 Wiki</span>
+                </a>
+            </div>
+        </header>
 
-        <main class="ix-main">
-            <header class="ix-topbar">
-                <p>Warning! Tag-rich knowledge bases boost team productivity.</p>
-                <a href="{{ url_for('index') }}">Personal</a>
-                <a href="{{ url_for('create_wiki') }}">Create wiki</a>
-            </header>
+        <div class="grid gap-3 md:grid-cols-[1fr_auto]">
+            <div id="searchContainer" class="relative">
+                <form action="{{ url_for('index') }}" method="get" id="wikiSearchForm" class="wiki-search wiki-surface">
+                    <span class="wiki-muted flex items-center justify-center" aria-hidden="true"><i class="fas fa-search"></i></span>
+                    <input type="text" id="wikiQuickInput" name="q" value="{{ q or '' }}"
+                        oninput="handleWikiSearchInput(this.value)"
+                        placeholder="搜索 Wiki 或页面" autocomplete="off">
+                    {% if current_filter and not q %}
+                    <input type="hidden" name="visibility" value="{{ current_filter }}">
+                    {% endif %}
+                    {% if q %}
+                    <a class="wiki-button ghost clear-search" href="{{ url_for('index') }}" title="清空搜索" aria-label="清空搜索">
+                        <i class="fas fa-times"></i>
+                    </a>
+                    {% endif %}
+                    <button class="wiki-button primary" type="submit" title="搜索">
+                        <i class="fas fa-arrow-right"></i>
+                        <span class="search-label">搜索</span>
+                    </button>
+                </form>
+                <div id="wikiInstantSearchResults" class="instant-results wiki-surface hidden"></div>
+            </div>
 
             {% if not q %}
-                {% if wikis %}
-                    {% set main_w = wikis[0] %}
-                    {% set bg = main_w.bg_color or '#4f46e5' %}
-
-                    <section class="ix-titlebar">
-                        <div class="ix-title-wrap">
-                            <h1 class="ix-product-title">
-                                <span class="thin">Wiki</span>
-                                <span class="bold">{{ main_w.title }}</span>
-                                <span class="color-name">Knowledge Base</span>
-                            </h1>
-                        </div>
-                        <div class="ix-title-actions">
-                            <a href="{{ url_for('wiki_contributors', wiki_id=main_w.id) }}">Authors</a>
-                            <button type="button" onclick="document.getElementById('wikiQuickInput')?.focus()">Search →</button>
-                        </div>
-                    </section>
-
-                    <section class="ix-stage">
-                        <div class="ix-hero-zone" onclick="window.location.href='{{ url_for('wiki_detail', wiki_id=main_w.id) }}'" style="--wiki-color: {{ bg }};">
-                            <div class="ix-desc-block">
-                                <div class="ix-down">↓</div>
-                                <p>
-                                    {{ main_w.description or 'The clear, quiet and carefully organized wiki brings project records, teaching materials and team knowledge together.' }}
-                                </p>
-                            </div>
-
-                            <div class="ix-visual-book" aria-hidden="true">
-                                <div class="ix-book-shadow"></div>
-                                <div class="ix-photo-slip"></div>
-                                <div class="ix-book-pages"></div>
-                                <div class="ix-book-cover"></div>
-                            </div>
-
-                            <div class="ix-float-note">
-                                <strong>Which wiki is right for you?</strong>
-                                Take a quick look and open your favorite knowledge base.
-                            </div>
-                        </div>
-
-                        <aside class="ix-side-info" style="--wiki-color: {{ bg }};">
-                            <div class="ix-info-video">
-                                <h4>Featured knowledge installation.</h4>
-                                <div class="ix-video-thumb"></div>
-                            </div>
-
-                            <div class="ix-counter">
-                                <small>Previous</small>
-                                <div class="prev">{{ '%02d' % (wikis|length if wikis|length < 100 else 99) }}</div>
-                                <div class="now">01</div>
-                            </div>
-
-                            <div class="ix-info-bottom">
-                                Now even more ways to give structure to your knowledge.
-                            </div>
-                        </aside>
-                    </section>
-                {% else %}
-                    <section class="ix-titlebar">
-                        <div class="ix-title-wrap">
-                            <h1 class="ix-product-title">
-                                <span class="thin">Wiki</span>
-                                <span class="bold">Empty</span>
-                                <span class="color-name">No Data</span>
-                            </h1>
-                        </div>
-                    </section>
-                    <section class="ix-empty">
-                        <h2>System empty?</h2>
-                        <p>当前还没有创建知识库。你可以先初始化一个 Wiki，用于沉淀项目文档、教学资源或团队知识。</p>
-                        <a href="{{ url_for('create_wiki') }}" class="ix-btn-dark">Initialize Wiki <i class="fas fa-arrow-right"></i></a>
-                    </section>
-                {% endif %}
-            {% else %}
-                <section class="ix-titlebar">
-                    <div class="ix-title-wrap">
-                        <h1 class="ix-product-title">
-                            <span class="thin">Search</span>
-                            <span class="bold">{{ q }}</span>
-                            <span class="color-name">{{ wikis|length }} Matches</span>
-                        </h1>
-                    </div>
-                </section>
-                <section class="ix-query-panel">
-                    <div class="ix-query-head">
-                        <h2 class="ix-query-title">Search<br>results</h2>
-                        <span class="ix-query-count">{{ wikis|length }} Matches</span>
-                    </div>
-
-                    {% if wikis %}
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {% for w in wikis %}
-                            {% include 'partials/_wiki_card.html' ignore missing %}
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-16 bg-white border border-dashed border-black/10">
-                        <p class="font-bold text-sm text-stone-500 uppercase tracking-widest">0 RECORDS FOUND</p>
-                    </div>
+            <form action="{{ url_for('index') }}" method="get" class="wiki-filter wiki-surface">
+                <select name="visibility" aria-label="Wiki 筛选" onchange="this.form.submit()">
+                    <option value="all" {{ 'selected' if current_filter == 'all' else '' }}>全部精选</option>
+                    {% if current_user.is_authenticated %}
+                    <option value="my_class" {{ 'selected' if current_filter == 'my_class' else '' }}>我的班级</option>
+                    <option value="my_groups" {{ 'selected' if current_filter == 'my_groups' else '' }}>我的小组</option>
                     {% endif %}
-                </section>
+                    {% if current_user.is_authenticated and current_user.is_admin %}
+                        {% for class_item in all_classes %}
+                        <option value="class_{{ class_item.id }}" {{ 'selected' if current_filter == 'class_' ~ class_item.id else '' }}>{{ class_item.name }}</option>
+                        {% endfor %}
+                        {% for group_item in all_groups %}
+                        <option value="group_{{ group_item.id }}" {{ 'selected' if current_filter == 'group_' ~ group_item.id else '' }}>{{ group_item.name }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </form>
             {% endif %}
-        </main>
+        </div>
 
-        <aside class="ix-action-rail">
-            <button class="ix-kebab" type="button" onclick="document.getElementById('wikiQuickInput')?.focus()"><i class="fas fa-ellipsis-v"></i></button>
-            <a class="ix-arrow-back" href="{{ url_for('index') }}">←</a>
-            <div class="ix-socials">
-                <a href="{{ url_for('create_wiki') }}" title="创建"><i class="fas fa-plus"></i></a>
-                {% if wikis %}
-                    <a href="{{ url_for('wiki_detail', wiki_id=wikis[0].id) }}" title="精选"><i class="fas fa-book-open"></i></a>
-                    <a href="{{ url_for('wiki_contributors', wiki_id=wikis[0].id) }}" title="作者"><i class="fas fa-users"></i></a>
-                {% endif %}
+        <section class="grid gap-3 md:grid-cols-3" aria-label="广场统计">
+            <div class="wiki-surface p-4">
+                <strong class="block text-3xl leading-none">{{ wikis|length }}</strong>
+                <span class="wiki-muted mt-2 block text-sm font-extrabold">{% if q %}匹配 Wiki{% else %}精选 Wiki{% endif %}</span>
             </div>
-        </aside>
+            <div class="wiki-surface p-4">
+                <strong class="block text-3xl leading-none">{% if q %}{{ pages|length }}{% else %}{{ total_pages.value }}{% endif %}</strong>
+                <span class="wiki-muted mt-2 block text-sm font-extrabold">{% if q %}匹配页面{% else %}收录页面{% endif %}</span>
+            </div>
+            <div class="wiki-surface p-4">
+                <strong class="block text-3xl leading-none">
+                    {% if q %}{{ (wikis|length) + (pages|length) }}{% elif current_filter == 'all' %}All{% else %}<i class="fas fa-filter"></i>{% endif %}
+                </strong>
+                <span class="wiki-muted mt-2 block text-sm font-extrabold">{% if q %}全部结果{% else %}当前视图{% endif %}</span>
+            </div>
+        </section>
 
-        {% if not q and wikis and wikis|length > 1 %}
-        <section class="ix-shelf">
-            <div class="ix-shelf-head">
-                <h2 class="ix-shelf-title">Select</h2>
-                <div id="searchContainer" class="ix-select relative">
-                    <form action="{{ url_for('index') }}" method="get" id="wikiSearchForm" class="m-0 w-full px-4">
-                        <i class="fas fa-search absolute right-7 top-1/2 -translate-y-1/2 text-stone-500 text-xs z-20"></i>
-                        <input type="text" id="wikiQuickInput" name="q" value="{{ q or '' }}"
-                            oninput="handleWikiSearchInput(this.value)"
-                            class="w-full h-10 pr-8 bg-transparent border-none focus:outline-none focus:ring-0 text-xs font-bold text-stone-700 placeholder-stone-400"
-                            placeholder="Search your favorite wiki" autocomplete="off">
-                    </form>
-                    <div id="wikiInstantSearchResults" class="absolute top-full left-0 right-0 mt-1 bg-white shadow-xl border border-black/10 hidden overflow-y-auto max-h-[50vh] text-left z-[100]"></div>
+        {% if not q and featured %}
+        <article class="wiki-surface p-4 md:p-5 grid gap-5 lg:grid-cols-[1fr_260px]" style="--wiki-color: {{ featured.bg_color or '#2563eb' }};">
+            <div class="grid gap-5 sm:grid-cols-[150px_1fr] sm:items-center">
+                <a class="wiki-cover" href="{{ url_for('wiki_detail', wiki_id=featured.id) }}" aria-label="打开 {{ featured.title }}">
+                    {{ featured.title[:1]|upper }}
+                </a>
+                <div class="min-w-0">
+                    <p class="wiki-accent text-sm font-black mb-2">精选 Wiki</p>
+                    <h2 class="text-2xl md:text-3xl font-black leading-tight break-words">{{ featured.title }}</h2>
+                    <p class="wiki-muted mt-3 leading-7">{{ (featured.description or '暂无简介')|striptags|truncate(150) }}</p>
                 </div>
-                <a href="{{ url_for('create_wiki') }}" class="ix-compare">Create</a>
             </div>
+            <aside class="featured-side grid content-between gap-3">
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="featured-metric">
+                        <strong class="block text-2xl leading-none">{{ featured.pages|length }}</strong>
+                        <span class="wiki-muted mt-2 block text-xs font-extrabold">页面</span>
+                    </div>
+                    <div class="featured-metric">
+                        <strong class="block text-2xl leading-none">{{ wikis|length }}</strong>
+                        <span class="wiki-muted mt-2 block text-xs font-extrabold">精选</span>
+                    </div>
+                </div>
+                <div class="featured-metric">
+                    <strong class="single-line block text-lg font-black">{{ featured.created_by.username if featured.created_by else '未知' }}</strong>
+                    <span class="wiki-muted mt-2 block text-xs font-extrabold">创建者</span>
+                </div>
+                <a class="wiki-button primary w-full" href="{{ url_for('wiki_detail', wiki_id=featured.id) }}">
+                    <span>进入 Wiki</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </aside>
+        </article>
+        {% endif %}
 
-            <div class="ix-shelf-grid">
-                {% for w in wikis[1:] %}
-                <article class="ix-wiki-tile" style="--tile-color: {{ w.bg_color or '#cfcfcf' }}; --tile-rot: {{ loop.cycle('-7deg', '5deg', '-3deg', '8deg') }};" onclick="window.location.href='{{ url_for('wiki_detail', wiki_id=w.id) }}'">
-                    <div class="ix-tile-top">
-                        <span class="ix-chip">wiki base</span>
-                        <span class="ix-add">Add to shelf</span>
+        {% if card_wikis %}
+        <section class="space-y-3" aria-labelledby="wiki-list-title">
+            <div class="flex items-center justify-between gap-3">
+                <h2 id="wiki-list-title" class="text-xl font-black">{% if q %}匹配 Wiki{% else %}更多精选{% endif %}</h2>
+                <span class="wiki-muted text-sm font-extrabold">{{ card_wikis|length }} 个</span>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {% for w in card_wikis %}
+                <a class="wiki-card wiki-surface p-4 text-current" href="{{ url_for('wiki_detail', wiki_id=w.id) }}" style="--wiki-color: {{ w.bg_color or '#2563eb' }};">
+                    <div>
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <span class="wiki-dot" aria-hidden="true"></span>
+                            <span class="wiki-muted text-xs font-extrabold">
+                                {% if w.visibility == 'public' %}公开{% elif w.visibility == 'private' %}私有{% else %}限定{% endif %}
+                            </span>
+                        </div>
+                        <h3 class="text-xl font-black leading-snug break-words">{{ w.title }}</h3>
+                        <p class="wiki-muted mt-2 text-sm leading-6">{{ (w.description or '暂无简介')|striptags|truncate(110) }}</p>
                     </div>
-                    <h3 class="ix-tile-title"><strong>{{ w.title }}</strong></h3>
-                    <div class="ix-tile-book" aria-hidden="true"></div>
-                    <div class="ix-tile-foot">
-                        <span>Pages {{ w.pages|length }}</span>
-                        <span>{{ w.created_by.username }}</span>
+                    <div class="wiki-muted flex items-center justify-between gap-3 text-xs font-extrabold">
+                        <span class="single-line"><i class="fas fa-file-alt"></i> {{ w.pages|length }} 页</span>
+                        <span class="single-line">{{ w.created_by.username if w.created_by else '未知' }}</span>
                     </div>
-                </article>
+                </a>
                 {% endfor %}
             </div>
         </section>
-        {% else %}
-            <div id="searchContainer" class="hidden">
-                <form action="{{ url_for('index') }}" method="get" id="wikiSearchForm" class="m-0">
-                    <input type="text" id="wikiQuickInput" name="q" value="{{ q or '' }}" oninput="handleWikiSearchInput(this.value)" autocomplete="off">
-                </form>
-                <div id="wikiInstantSearchResults" class="hidden"></div>
+        {% endif %}
+
+        {% if q and pages %}
+        <section class="space-y-3" aria-labelledby="page-results-title">
+            <div class="flex items-center justify-between gap-3">
+                <h2 id="page-results-title" class="text-xl font-black">匹配页面</h2>
+                <span class="wiki-muted text-sm font-extrabold">{{ pages|length }} 个</span>
             </div>
+            <div class="grid gap-2">
+                {% for page in pages %}
+                <a class="wiki-surface p-3 grid gap-3 sm:grid-cols-[42px_1fr_auto] sm:items-center text-current" href="{{ url_for('view_page', wiki_id=page.wiki_id, slug=page.slug) }}">
+                    <span class="w-[42px] h-[42px] rounded-lg bg-orange-50 text-orange-600 hidden sm:flex items-center justify-center" aria-hidden="true">
+                        <i class="fas fa-file-alt"></i>
+                    </span>
+                    <span class="min-w-0">
+                        <strong class="single-line block font-black">{{ page.title }}</strong>
+                        <span class="single-line wiki-muted mt-1 block text-xs font-extrabold">{{ page.wiki.title }} · {{ page.updated_at.strftime('%Y-%m-%d') if page.updated_at else '未更新' }}</span>
+                    </span>
+                    <i class="fas fa-arrow-right hidden sm:block" aria-hidden="true"></i>
+                </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if not wikis and (not q or not pages) %}
+        <section class="wiki-surface p-8 min-h-[280px] grid place-items-center text-center">
+            <div>
+                <i class="fas fa-book-open wiki-muted text-3xl mb-4" aria-hidden="true"></i>
+                <h2 class="text-2xl font-black">{% if q %}没有找到匹配内容{% else %}还没有 Wiki{% endif %}</h2>
+                <p class="wiki-muted max-w-md mx-auto mt-3 leading-7">
+                    {% if q %}换个关键词，或者创建一个新的 Wiki。{% else %}创建第一个 Wiki，把文档、页面和协作资料放进来。{% endif %}
+                </p>
+                <div class="flex justify-center gap-2 mt-5">
+                    {% if q %}
+                    <a class="wiki-button ghost" href="{{ url_for('index') }}" title="返回广场" aria-label="返回广场">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    {% endif %}
+                    <a class="wiki-button primary" href="{{ url_for('create_wiki') }}">
+                        <i class="fas fa-plus"></i>
+                        <span>新建 Wiki</span>
+                    </a>
+                </div>
+            </div>
+        </section>
         {% endif %}
     </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // ==========================================
-    // 搜索逻辑：保留原接口 /api/wikis/search
-    // ==========================================
     let wikiSearchTimeout;
     let wikiSearchController;
 
@@ -1142,21 +490,46 @@
             .replace(/'/g, '&#039;');
     }
 
-    function handleWikiSearchInput(val) {
-        clearTimeout(wikiSearchTimeout);
-        const resultsDiv = document.getElementById('wikiInstantSearchResults');
-        if (!resultsDiv) return;
+    function instantRow(item) {
+        const title = escapeHtml(item.title);
+        const wikiTitle = escapeHtml(item.wiki_title);
+        const snippet = escapeHtml(item.snippet);
+        const isWiki = item.type === 'wiki';
+        const icon = isWiki
+            ? `<span class="instant-icon">${title ? title[0].toUpperCase() : '?'}</span>`
+            : `<span class="instant-icon page"><i class="fas fa-file-alt"></i></span>`;
+        const href = isWiki
+            ? `/wikis/${encodeURIComponent(item.id)}`
+            : `/wikis/${encodeURIComponent(item.wiki_id)}/pages/${encodeURIComponent(item.slug)}`;
+        const meta = isWiki ? 'Wiki' : wikiTitle;
+        const detail = snippet ? `<span class="single-line wiki-muted mt-1 block text-xs">${snippet}</span>` : '';
 
-        const keyword = val.trim();
+        return `<a href="${href}" class="instant-row">${icon}<span class="min-w-0"><strong class="single-line block text-sm font-black">${title}</strong><span class="single-line wiki-muted mt-1 block text-xs font-extrabold">${meta}</span>${detail}</span></a>`;
+    }
+
+    function setInstantMessage(iconClass, text, canSubmit) {
+        const results = document.getElementById('wikiInstantSearchResults');
+        if (!results) return;
+        const buttonType = canSubmit ? 'submit' : 'button';
+        const formAttr = canSubmit ? ' form="wikiSearchForm"' : '';
+        results.innerHTML = `<button class="instant-row" type="${buttonType}"${formAttr}><span class="instant-icon page"><i class="${iconClass}"></i></span><span class="min-w-0"><strong class="single-line block text-sm font-black">${text}</strong></span></button>`;
+        results.classList.remove('hidden');
+    }
+
+    function handleWikiSearchInput(value) {
+        clearTimeout(wikiSearchTimeout);
+        const results = document.getElementById('wikiInstantSearchResults');
+        if (!results) return;
+
+        const keyword = value.trim();
         if (!keyword) {
-            resultsDiv.classList.add('hidden');
-            resultsDiv.innerHTML = '';
+            results.classList.add('hidden');
+            results.innerHTML = '';
             if (wikiSearchController) wikiSearchController.abort();
             return;
         }
 
-        resultsDiv.innerHTML = `<div class="p-4 text-center text-[10px] uppercase font-black tracking-widest text-stone-400">SEARCHING...</div>`;
-        resultsDiv.classList.remove('hidden');
+        setInstantMessage('fas fa-circle-notch fa-spin', '搜索中', false);
 
         wikiSearchTimeout = setTimeout(async () => {
             try {
@@ -1172,38 +545,29 @@
                 const data = await response.json();
 
                 if (data.results && data.results.length > 0) {
-                    resultsDiv.innerHTML = data.results.map(item => {
-                        const safeTitle = escapeHtml(item.title);
-                        const safeSnippet = escapeHtml(item.snippet);
-                        const safeWikiTitle = escapeHtml(item.wiki_title);
-                        const titleInitial = safeTitle ? safeTitle[0].toUpperCase() : '?';
-
-                        const iconHtml = item.type === 'wiki'
-                            ? `<div class="w-7 h-7 bg-black text-white flex items-center justify-center font-black text-[10px] flex-shrink-0">${titleInitial}</div>`
-                            : `<div class="w-7 h-7 bg-stone-100 text-stone-500 flex items-center justify-center flex-shrink-0 text-[10px]"><i class="fas fa-file-alt"></i></div>`;
-
-                        const typeText = item.type === 'wiki' ? 'WIKI BASE' : `PAGE IN ${safeWikiTitle}`;
-                        const linkUrl = item.type === 'wiki' ? `/wikis/${encodeURIComponent(item.id)}` : `/wikis/${encodeURIComponent(item.wiki_id)}/pages/${encodeURIComponent(item.slug)}`;
-                        const snippetHtml = safeSnippet ? `<p class="text-[10px] text-stone-400 mt-1 line-clamp-1 break-all font-mono">${safeSnippet}</p>` : '';
-
-                        return `<a href="${linkUrl}" class="flex items-start gap-3 p-3 hover:bg-stone-50 border-b border-stone-100 last:border-0 transition-colors cursor-pointer group">${iconHtml}<div class="flex-1 min-w-0"><h4 class="font-bold text-xs text-stone-800 truncate group-hover:text-black transition-colors">${safeTitle}</h4><p class="text-[9px] text-stone-400 font-bold tracking-widest uppercase mt-0.5 truncate">${typeText}</p>${snippetHtml}</div></a>`;
-                    }).join('');
+                    results.innerHTML = data.results.map(instantRow).join('');
+                    results.classList.remove('hidden');
                 } else {
-                    resultsDiv.innerHTML = `<div class="p-4 text-center text-[10px] uppercase font-bold tracking-widest text-stone-400 cursor-pointer hover:bg-stone-50 transition-colors" onclick="document.getElementById('wikiSearchForm').submit()">NO EXACT MATCH. <span class="text-stone-800">PRESS ENTER</span> TO DEEP SEARCH</div>`;
+                    setInstantMessage('fas fa-search', '查看完整结果', true);
                 }
-            } catch (e) {
-                if (e.name === 'AbortError') return;
-                console.error(e);
-                resultsDiv.innerHTML = `<div class="p-4 text-center text-[10px] uppercase font-bold tracking-widest text-stone-400">SEARCH UNAVAILABLE</div>`;
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                console.error(error);
+                setInstantMessage('fas fa-exclamation', '搜索暂不可用', false);
             }
-        }, 280);
+        }, 220);
     }
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', (event) => {
         const container = document.getElementById('searchContainer');
-        const resultsDiv = document.getElementById('wikiInstantSearchResults');
-        if (container && resultsDiv && !container.contains(e.target)) {
-            resultsDiv.classList.add('hidden');
+        const results = document.getElementById('wikiInstantSearchResults');
+        if (container && results && !container.contains(event.target)) results.classList.add('hidden');
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            const results = document.getElementById('wikiInstantSearchResults');
+            if (results) results.classList.add('hidden');
         }
     });
 </script>

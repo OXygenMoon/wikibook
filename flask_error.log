@@ -9757,3 +9757,11 @@ sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
 2026-05-18 12:35:17,168 - INFO - 127.0.0.1 - - [18/May/2026 12:35:17] "GET /api/bookmarks/my HTTP/1.1" 200 -
 2026-05-18 12:35:17,217 - INFO - 127.0.0.1 - - [18/May/2026 12:35:17] "[33mGET /static/uploads/bookmarks/bookmark_1778570682.png HTTP/1.1[0m" 404 -
 2026-05-18 12:35:17,231 - INFO - 127.0.0.1 - - [18/May/2026 12:35:17] "POST /api/heartbeat HTTP/1.1" 200 -
+2026-05-18 18:36:19,632 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5010
+ * Running on http://198.18.0.1:5010
+2026-05-18 18:36:19,633 - INFO - [33mPress CTRL+C to quit[0m
+2026-05-18 18:36:19,654 - INFO -  * Restarting with watchdog (fsevents)
+2026-05-18 18:36:20,249 - WARNING -  * Debugger is active!
+2026-05-18 18:36:20,257 - INFO -  * Debugger PIN: 828-529-964

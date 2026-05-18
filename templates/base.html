@@ -1081,6 +1081,460 @@
             box-shadow: 0 16px 0 rgba(0, 0, 0, 0.16), 0 22px 42px rgba(0, 0, 0, 0.42) !important;
         }
 
+        /* 全模板 Animal UI 组件层。放在 navbar 恢复规则之前，避免覆盖顶部导航。 */
+        body.animal-ui-theme {
+            --ai-ui-surface: rgba(248, 248, 240, 0.94);
+            --ai-ui-surface-strong: #f8f8f0;
+            --ai-ui-surface-soft: rgba(247, 243, 223, 0.92);
+            --ai-ui-highlight: #fff1a8;
+            --ai-ui-border: #c4b89e;
+            --ai-ui-border-strong: #a89878;
+            --ai-ui-text: #725d42;
+            --ai-ui-muted: #9f927d;
+            --ai-ui-danger: #e56565;
+            --ai-ui-success: #6fba2c;
+            --ai-ui-info: #889df0;
+            --ai-ui-shadow-sm: 0 3px 0 #d4c9b4, 0 10px 20px rgba(61, 52, 40, 0.10);
+            --ai-ui-shadow-md: 0 5px 0 #d4c9b4, 0 18px 34px rgba(61, 52, 40, 0.14);
+        }
+
+        html.dark body.animal-ui-theme {
+            --ai-ui-surface: rgba(37, 42, 32, 0.94);
+            --ai-ui-surface-strong: #252a20;
+            --ai-ui-surface-soft: rgba(58, 51, 37, 0.92);
+            --ai-ui-highlight: #6f5f28;
+            --ai-ui-border: #5f674c;
+            --ai-ui-border-strong: #8f986f;
+            --ai-ui-text: #f7f3df;
+            --ai-ui-muted: #d4c9b4;
+            --ai-ui-shadow-sm: 0 3px 0 #3d4534, 0 12px 24px rgba(0, 0, 0, 0.30);
+            --ai-ui-shadow-md: 0 5px 0 #3d4534, 0 20px 38px rgba(0, 0, 0, 0.38);
+        }
+
+        body.animal-ui-theme .animal-main-shell {
+            color: var(--ai-ui-text);
+            font-family: var(--animal-font-family);
+        }
+
+        body.animal-ui-theme .animal-main-shell > div[class*="bg-white/60"] {
+            background: rgba(248, 248, 240, 0.88) !important;
+            border: 2px solid rgba(196, 184, 158, 0.72) !important;
+            box-shadow: var(--ai-ui-shadow-md) !important;
+        }
+
+        html.dark body.animal-ui-theme .animal-main-shell > div[class*="bg-white/60"] {
+            background: rgba(37, 42, 32, 0.88) !important;
+            border-color: rgba(95, 103, 76, 0.82) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(
+            .card,
+            .stats,
+            .stat,
+            .collapse,
+            .alert,
+            .modal-box,
+            .brutal-card,
+            .brutal-card-static,
+            .task-card-brutal,
+            .vinyl-card,
+            .report-receipt,
+            .announcement-item,
+            .wiki-drag-item,
+            .map-zone,
+            .wiki-glass-card,
+            .wiki-contributor-pill,
+            .book-search-shell,
+            .book-search-results,
+            .book-note-snippet,
+            .received-content-box,
+            .received-empty-state,
+            .badges-main-card,
+            .search-minimal,
+            .inventory-item-brutal,
+            .sticker-tooltip,
+            .sticker-drawer-panel,
+            #instantSearchResults,
+            #sticker-drawer,
+            #sticker-drawer-header,
+            #my_notes_selector,
+            .custom-mde-wrapper,
+            .EasyMDEContainer,
+            .CodeMirror,
+            .editor-toolbar
+        ) {
+            background: var(--ai-ui-surface) !important;
+            border: 2px solid var(--ai-ui-border) !important;
+            border-radius: 24px !important;
+            box-shadow: var(--ai-ui-shadow-sm) !important;
+            color: var(--ai-ui-text) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.card-body, .modal-box, .collapse-content) {
+            color: var(--ai-ui-text);
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(
+            .card:hover,
+            .brutal-card:hover,
+            .vinyl-card:hover,
+            .task-card-brutal:hover,
+            .announcement-item:hover,
+            .wiki-drag-item:hover,
+            .inventory-item-brutal:hover,
+            .map-zone:hover
+        ) {
+            transform: translateY(-2px) !important;
+            border-color: var(--ai-ui-border-strong) !important;
+            box-shadow: var(--ai-ui-shadow-md) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(
+            .bg-white,
+            .bg-white\/80,
+            .bg-white\/90,
+            .bg-white\/95,
+            .bg-base-100,
+            .bg-base-100\/80,
+            .bg-base-100\/90,
+            .bg-stone-50,
+            .bg-stone-50\/50,
+            .bg-stone-50\/80,
+            .bg-\[\#fafafa\]
+        ) {
+            background-color: var(--ai-ui-surface) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(
+            .bg-base-200,
+            .bg-base-200\/30,
+            .bg-base-200\/40,
+            .bg-base-200\/50,
+            .bg-stone-100,
+            .bg-stone-100\/50,
+            .bg-stone-200,
+            .bg-stone-200\/50,
+            .stripe-pattern
+        ) {
+            background: var(--ai-ui-surface-soft) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(
+            .border,
+            .border-base-200,
+            .border-base-200\/60,
+            .border-black\/5,
+            .border-white\/5,
+            .border-stone-100,
+            .border-stone-200,
+            .grid-border
+        ) {
+            border-color: var(--ai-ui-border) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(h1, h2, h3, h4, .card-title) {
+            color: var(--ai-ui-text) !important;
+            letter-spacing: 0;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(
+            .text-stone-900,
+            .text-stone-800,
+            .text-stone-700,
+            .text-slate-900,
+            .text-slate-800,
+            .text-base-content
+        ) {
+            color: var(--ai-ui-text) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(
+            .text-stone-600,
+            .text-stone-500,
+            .text-stone-400,
+            .text-slate-600,
+            .text-slate-500,
+            .text-base-content\/60,
+            .text-base-content\/50,
+            .wiki-muted-text
+        ) {
+            color: var(--ai-ui-muted) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.btn, .btn-brutal, .btn-brutal-outline, .btn-brutal-danger, button[type="submit"], a.btn) {
+            border: 2.5px solid var(--ai-ui-border) !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 3px 0 #d4c9b4 !important;
+            font-family: var(--animal-font-family);
+            font-weight: 900;
+            letter-spacing: 0;
+            text-transform: none;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+        }
+
+        html.dark body.animal-ui-theme .animal-main-shell :where(.btn, .btn-brutal, .btn-brutal-outline, .btn-brutal-danger, button[type="submit"], a.btn) {
+            box-shadow: 0 3px 0 #3d4534 !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.btn:hover, .btn-brutal:hover, .btn-brutal-outline:hover, .btn-brutal-danger:hover, button[type="submit"]:hover, a.btn:hover) {
+            transform: translateY(-2px) !important;
+            border-color: var(--ai-ui-border-strong) !important;
+            box-shadow: 0 5px 0 #c4b89e, 0 12px 24px rgba(61, 52, 40, 0.14) !important;
+        }
+
+        html.dark body.animal-ui-theme .animal-main-shell :where(.btn:hover, .btn-brutal:hover, .btn-brutal-outline:hover, .btn-brutal-danger:hover, button[type="submit"]:hover, a.btn:hover) {
+            box-shadow: 0 5px 0 #4d573e, 0 16px 28px rgba(0, 0, 0, 0.32) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.btn-primary, .btn-brutal, .tab-active, .filter-btn.bg-primary) {
+            background: var(--ai-sun) !important;
+            border-color: var(--ai-ui-border-strong) !important;
+            color: var(--ai-soil) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.btn-ghost, .btn-brutal-outline, .tab-inactive) {
+            background: var(--ai-ui-surface-soft) !important;
+            color: var(--ai-ui-text) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.btn-error, .btn-brutal-danger, .text-error) {
+            color: var(--ai-ui-danger) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.btn-success, .text-success) {
+            color: var(--ai-ui-success) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(
+            .input,
+            .select,
+            .textarea,
+            .file-input,
+            input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+            select,
+            textarea
+        ) {
+            background: var(--ai-ui-surface-soft) !important;
+            border: 2.5px solid var(--ai-ui-border) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 3px 0 #d4c9b4 !important;
+            color: var(--ai-ui-text) !important;
+            font-family: var(--animal-font-family);
+        }
+
+        html.dark body.animal-ui-theme .animal-main-shell :where(
+            .input,
+            .select,
+            .textarea,
+            .file-input,
+            input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+            select,
+            textarea
+        ) {
+            box-shadow: 0 3px 0 #3d4534 !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(
+            .input:focus,
+            .select:focus,
+            .textarea:focus,
+            .file-input:focus,
+            input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+            select:focus,
+            textarea:focus
+        ) {
+            border-color: var(--ai-sea) !important;
+            box-shadow: 0 3px 0 #d4c9b4, 0 0 0 4px rgba(25, 200, 185, 0.18) !important;
+            outline: none !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.label-text, .label-text-alt, label) {
+            color: var(--ai-ui-text) !important;
+            font-weight: 800;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.table) {
+            color: var(--ai-ui-text) !important;
+            border-collapse: separate;
+            border-spacing: 0 0.45rem;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.table thead tr, .table tbody tr) {
+            background: transparent !important;
+            border: 0 !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.table th) {
+            background: var(--ai-ui-highlight) !important;
+            border-top: 2px solid var(--ai-ui-border) !important;
+            border-bottom: 2px solid var(--ai-ui-border) !important;
+            color: var(--ai-ui-text) !important;
+            font-weight: 900;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.table th:first-child) {
+            border-left: 2px solid var(--ai-ui-border) !important;
+            border-radius: 18px 0 0 18px !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.table th:last-child) {
+            border-right: 2px solid var(--ai-ui-border) !important;
+            border-radius: 0 18px 18px 0 !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.table td) {
+            background: rgba(255, 248, 220, 0.45) !important;
+            border-top: 1px solid rgba(196, 184, 158, 0.42) !important;
+            border-bottom: 1px solid rgba(196, 184, 158, 0.42) !important;
+        }
+
+        html.dark body.animal-ui-theme .animal-main-shell :where(.table td) {
+            background: rgba(58, 51, 37, 0.45) !important;
+            border-color: rgba(95, 103, 76, 0.55) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.table tr:hover td) {
+            background: rgba(255, 241, 168, 0.68) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.badge) {
+            background: var(--ai-ui-highlight) !important;
+            border: 2px solid var(--ai-ui-border) !important;
+            border-radius: 9999px !important;
+            color: var(--ai-ui-text) !important;
+            box-shadow: 0 2px 0 #d4c9b4;
+            font-weight: 900;
+        }
+
+        html.dark body.animal-ui-theme .animal-main-shell :where(.badge) {
+            box-shadow: 0 2px 0 #3d4534;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.tabs, [role="tablist"], .join) {
+            background: var(--ai-ui-surface-soft) !important;
+            border: 2px solid var(--ai-ui-border) !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 3px 0 #d4c9b4 !important;
+            padding: 0.25rem;
+        }
+
+        html.dark body.animal-ui-theme .animal-main-shell :where(.tabs, [role="tablist"], .join) {
+            box-shadow: 0 3px 0 #3d4534 !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.tab, .join-item) {
+            border-radius: 9999px !important;
+            color: var(--ai-ui-muted) !important;
+            font-weight: 900;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.tab-active, .tab:is(.tab-active), .join-item:focus) {
+            background: var(--ai-sun) !important;
+            color: var(--ai-soil) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.alert) {
+            background: var(--ai-ui-highlight) !important;
+            border-color: var(--ai-ui-border) !important;
+            color: var(--ai-ui-text) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.modal) {
+            background: rgba(61, 52, 40, 0.32) !important;
+            backdrop-filter: blur(3px);
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.modal-action) {
+            border-color: var(--ai-ui-border) !important;
+            background: transparent !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.dropdown-content, .menu) {
+            background: var(--ai-ui-highlight) !important;
+            border: 2px solid var(--ai-ui-border) !important;
+            border-radius: 24px !important;
+            box-shadow: var(--ai-ui-shadow-md) !important;
+            color: var(--ai-ui-text) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.menu li > a, .menu li > button) {
+            border-radius: 16px !important;
+            color: var(--ai-ui-text) !important;
+            font-weight: 800;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.menu li > a:hover, .menu li > button:hover) {
+            background: rgba(255, 204, 0, 0.32) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.divider)::before,
+        body.animal-ui-theme .animal-main-shell :where(.divider)::after {
+            background-color: var(--ai-ui-border) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.progress) {
+            background: var(--ai-ui-surface-soft) !important;
+            border: 2px solid var(--ai-ui-border) !important;
+            border-radius: 9999px !important;
+            overflow: hidden;
+        }
+
+        body.animal-ui-theme .animal-main-shell .progress::-webkit-progress-value {
+            background: var(--ai-sea) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell .progress::-moz-progress-bar {
+            background: var(--ai-sea) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.avatar.placeholder > div, .nav-avatar-circle, .wiki-contributor-avatar) {
+            background: var(--ai-ui-highlight) !important;
+            border: 2px solid var(--ai-ui-border) !important;
+            color: var(--ai-ui-text) !important;
+            box-shadow: 0 3px 0 #d4c9b4 !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.toc-link, .page-link-active) {
+            border-color: var(--ai-ui-border) !important;
+            border-radius: 14px !important;
+            color: var(--ai-ui-muted) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.toc-link:hover, .toc-link.active, .page-link-active) {
+            background: rgba(255, 204, 0, 0.26) !important;
+            color: var(--ai-ui-text) !important;
+            border-left-color: var(--ai-sun) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.code-window, pre, code) {
+            border-radius: 18px !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.custom-mde-wrapper .editor-toolbar, .EasyMDEContainer .editor-toolbar) {
+            background: var(--ai-ui-highlight) !important;
+            border-bottom: 2px solid var(--ai-ui-border) !important;
+            border-radius: 22px 22px 0 0 !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.custom-mde-wrapper .CodeMirror, .EasyMDEContainer .CodeMirror) {
+            background: var(--ai-ui-surface) !important;
+            color: var(--ai-ui-text) !important;
+            border-radius: 0 0 22px 22px !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.sticker-fab) {
+            background: var(--ai-sun) !important;
+            border: 3px solid var(--ai-ui-border-strong) !important;
+            color: var(--ai-soil) !important;
+            box-shadow: 0 5px 0 #d4c9b4, 0 18px 34px rgba(61, 52, 40, 0.16) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell :where(.fixed.inset-0.-z-10, [class*="blur-[80px]"], [class*="blur-2xl"]) {
+            opacity: 0.16 !important;
+        }
+
         body.animal-ui-theme .top-nav-shell {
             --theme-primary: #ea580c;
             --theme-primary-hover: #d97706;

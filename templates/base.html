@@ -23,6 +23,7 @@
 
 
     <link href="{{ url_for('static', filename='css/daisyui.full.css') }}" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animal-island-ui@0.7.4/dist/index.css">
 
     <script src="{{ url_for('static', filename='js/tailwindcss.js') }}"></script>
 
@@ -88,11 +89,11 @@
 
         :root {
 
-            --theme-primary: #ea580c;
+            --theme-primary: var(--animal-primary-color, #19c8b9);
 
-            --theme-primary-hover: #d97706;
+            --theme-primary-hover: var(--animal-primary-color-hover, #3dd4c6);
 
-            --toggle-bg: #ea580c;
+            --toggle-bg: var(--animal-warning-color, #f5c31c);
 
         }
 
@@ -100,11 +101,11 @@
 
         :root.dark {
 
-            --theme-primary: #f97316;
+            --theme-primary: var(--animal-primary-color-hover, #3dd4c6);
 
-            --theme-primary-hover: #fb923c;
+            --theme-primary-hover: var(--animal-primary-color, #19c8b9);
 
-            --toggle-bg: #f97316;
+            --toggle-bg: var(--animal-warning-color, #f5c31c);
 
         }
 
@@ -821,9 +822,243 @@
         }
     </style>
 
+    <style id="animal-island-adapter">
+        :root {
+            --ai-paper: #f8f8f0;
+            --ai-paper-deep: #f7f3df;
+            --ai-cream: #fff8dc;
+            --ai-sun: #ffcc00;
+            --ai-soil: #725d42;
+            --ai-soil-soft: #9f927d;
+            --ai-line: #c4b89e;
+            --ai-line-dark: #a89878;
+            --ai-sea: #19c8b9;
+            --ai-leaf: #6fba2c;
+            --ai-peach: #e59266;
+            --ai-blue: #889df0;
+            --ai-shadow: 0 4px 0 #d4c9b4, 0 14px 30px rgba(61, 52, 40, 0.12);
+            --ai-home-bg: url("https://cdn.jsdelivr.net/gh/guokaigdg/animal-island-ui@main/demo/img/home_bg.webp");
+        }
+
+        @keyframes animal-island-bg-scroll {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-520px, 360px, 0); }
+        }
+
+        html {
+            background-color: #7DC395;
+        }
+
+        html.dark {
+            background-color: #1d2119;
+        }
+
+        body.animal-ui-theme {
+            background-color: #7DC395 !important;
+            background-image: none !important;
+            color: var(--ai-soil);
+            font-family: var(--animal-font-family);
+            isolation: isolate;
+        }
+
+        body.animal-ui-theme::before {
+            content: "";
+            position: fixed;
+            inset: -520px;
+            z-index: 0;
+            pointer-events: none;
+            background: var(--ai-home-bg) 0 0 / auto repeat, #7DC395;
+            animation: animal-island-bg-scroll 32s linear infinite;
+            transform: translate3d(0, 0, 0);
+            will-change: transform;
+        }
+
+        body.animal-ui-theme .top-nav-shell {
+            top: 0.85rem;
+        }
+
+        body.animal-ui-theme .nav-btn,
+        body.animal-ui-theme .nav-mode-toggle,
+        body.animal-ui-theme .user-nav-dropdown {
+            background: var(--ai-paper-deep) !important;
+            border: 2.5px solid var(--ai-line) !important;
+            border-radius: 50px !important;
+            box-shadow: 0 3px 0 #d4c9b4 !important;
+            color: var(--ai-soil) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            font-family: var(--animal-font-family);
+        }
+
+        body.animal-ui-theme .nav-btn:hover,
+        body.animal-ui-theme .dropdown.dropdown-open > .nav-btn,
+        body.animal-ui-theme .user-nav-dropdown:hover {
+            transform: translateY(-2px) !important;
+            border-color: var(--ai-line-dark) !important;
+            box-shadow: 0 5px 0 #c4b89e, 0 14px 26px rgba(61, 52, 40, 0.12) !important;
+            color: var(--ai-sea) !important;
+        }
+
+        body.animal-ui-theme .nav-btn:active,
+        body.animal-ui-theme .user-nav-dropdown:active {
+            transform: translateY(1px) !important;
+            box-shadow: 0 1px 0 #c4b89e !important;
+        }
+
+        body.animal-ui-theme .nav-pill-group {
+            height: 2.45rem;
+            background: var(--ai-cream) !important;
+            border: 2.5px solid var(--ai-line) !important;
+            border-radius: 50px !important;
+            box-shadow: 0 3px 0 #d4c9b4 !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        body.animal-ui-theme .nav-pill-item {
+            color: var(--ai-soil-soft);
+            border-radius: 50px;
+            font-family: var(--animal-font-family);
+            font-weight: 900;
+        }
+
+        body.animal-ui-theme .nav-pill-item:hover {
+            color: var(--ai-soil);
+            background: rgba(255, 204, 0, 0.22);
+        }
+
+        body.animal-ui-theme .nav-pill-item.active {
+            background: var(--ai-sun);
+            color: var(--ai-soil);
+            box-shadow: inset 0 -2px 0 rgba(114, 93, 66, 0.16);
+            text-shadow: none;
+        }
+
+        body.animal-ui-theme .nav-mode-slider {
+            background: var(--ai-sun);
+            box-shadow: inset 0 -2px 0 rgba(114, 93, 66, 0.16);
+        }
+
+        body.animal-ui-theme .nav-mode-option {
+            color: var(--ai-soil-soft);
+            font-weight: 900;
+        }
+
+        body.animal-ui-theme .nav-mode-option.active {
+            color: var(--ai-soil);
+            text-shadow: none;
+        }
+
+        body.animal-ui-theme .glass-dropdown-content {
+            background: #ffeea0 !important;
+            border: 0 !important;
+            border-radius: 28px !important;
+            box-shadow: 0 14px 0 rgba(114, 93, 66, 0.12), 0 22px 42px rgba(61, 52, 40, 0.16) !important;
+            color: var(--ai-soil);
+        }
+
+        body.animal-ui-theme .nav-menu-item {
+            border-radius: 18px;
+            color: var(--ai-soil) !important;
+            font-weight: 800;
+        }
+
+        body.animal-ui-theme .nav-menu-item:hover {
+            background: rgba(255, 204, 0, 0.4) !important;
+            color: var(--ai-soil) !important;
+            transform: translateX(2px);
+        }
+
+        body.animal-ui-theme .animal-mobile-topbar {
+            background: rgba(248, 248, 240, 0.94) !important;
+            border-bottom: 2px solid rgba(196, 184, 158, 0.65) !important;
+            box-shadow: 0 4px 0 rgba(212, 201, 180, 0.65);
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        body.animal-ui-theme .mobile-subnav {
+            background: rgba(247, 243, 223, 0.96) !important;
+            border-bottom: 2px solid rgba(196, 184, 158, 0.65) !important;
+        }
+
+        body.animal-ui-theme .animal-main-shell > div[class*="bg-white/60"] {
+            background: rgba(248, 248, 240, 0.9) !important;
+            border: 2px solid rgba(196, 184, 158, 0.65) !important;
+            border-radius: 28px !important;
+            box-shadow: var(--ai-shadow) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        body.animal-ui-theme .input,
+        body.animal-ui-theme .select,
+        body.animal-ui-theme .textarea,
+        body.animal-ui-theme .file-input {
+            background: var(--ai-paper-deep) !important;
+            border: 2.5px solid var(--ai-line) !important;
+            border-radius: 50px !important;
+            color: var(--ai-soil) !important;
+            box-shadow: 0 3px 0 #d4c9b4 !important;
+        }
+
+        body.animal-ui-theme .btn,
+        body.animal-ui-theme .btn-brutal,
+        body.animal-ui-theme .btn-brutal-outline,
+        body.animal-ui-theme .btn-brutal-danger {
+            border-radius: 50px !important;
+            font-family: var(--animal-font-family);
+        }
+
+        html.dark body.animal-ui-theme {
+            background-color: #1d2119 !important;
+            background-image: none !important;
+            color: #f7f3df !important;
+        }
+
+        html.dark body.animal-ui-theme::before {
+            background:
+                linear-gradient(rgba(29, 33, 25, 0.28), rgba(29, 33, 25, 0.28)) 0 0 / auto repeat,
+                var(--ai-home-bg) 0 0 / auto repeat,
+                #1d2119;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            body.animal-ui-theme::before {
+                animation: none;
+            }
+        }
+
+        html.dark body.animal-ui-theme .nav-btn,
+        html.dark body.animal-ui-theme .nav-mode-toggle,
+        html.dark body.animal-ui-theme .user-nav-dropdown,
+        html.dark body.animal-ui-theme .nav-pill-group,
+        html.dark body.animal-ui-theme .animal-main-shell > div[class*="bg-white/60"] {
+            background: #252a20 !important;
+            border-color: #5f674c !important;
+            box-shadow: 0 3px 0 #3d4534, 0 14px 28px rgba(0, 0, 0, 0.32) !important;
+            color: #f7f3df !important;
+        }
+
+        html.dark body.animal-ui-theme .nav-pill-item {
+            color: #d4c9b4;
+        }
+
+        html.dark body.animal-ui-theme .nav-pill-item.active {
+            background: #f5c31c;
+            color: #3d3428;
+        }
+
+        html.dark body.animal-ui-theme .glass-dropdown-content {
+            background: #3a3325 !important;
+            color: #f7f3df !important;
+            box-shadow: 0 16px 0 rgba(0, 0, 0, 0.16), 0 22px 42px rgba(0, 0, 0, 0.42) !important;
+        }
+    </style>
+
 </head>
 
-<body class="bg-base-200/40 text-base-content font-sans antialiased min-h-screen relative flex flex-col overflow-x-hidden pt-12 md:pt-24 xl:pt-16">
+<body class="animal-ui-theme bg-base-200/40 text-base-content font-sans antialiased min-h-screen relative flex flex-col overflow-x-hidden pt-12 md:pt-24 xl:pt-16">
 
     <div class="top-nav-shell hidden md:block">
         <div class="top-nav-layout">
@@ -1465,7 +1700,7 @@
 
 
 
-    <div class="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 dark:bg-base-100/80 backdrop-blur-xl border-b border-black/5 z-[100] flex items-center justify-between px-3">
+    <div class="animal-mobile-topbar md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 dark:bg-base-100/80 backdrop-blur-xl border-b border-black/5 z-[100] flex items-center justify-between px-3">
 
         
 
@@ -1832,7 +2067,7 @@
 
 
 
-    <main class="flex-1 w-full max-w-[1600px] mx-auto pt-6 px-4 sm:px-6 lg:px-10 pb-12 transition-all duration-300 relative z-10 {% if wiki %}mt-10 md:mt-12{% else %}mt-12{% endif %}">
+    <main class="animal-main-shell flex-1 w-full max-w-[1600px] mx-auto pt-6 px-4 sm:px-6 lg:px-10 pb-12 transition-all duration-300 relative z-10 {% if wiki %}mt-10 md:mt-12{% else %}mt-12{% endif %}">
 
             
 

@@ -4,206 +4,256 @@
 
 {% block extra_css %}
 <style>
-    :root {
-        --square-bg: #f5f7fb;
-        --square-panel: #ffffff;
-        --square-soft: #f9fafb;
-        --square-text: #172033;
-        --square-muted: #687386;
-        --square-line: #dfe5ee;
-        --square-strong: #c8d1df;
-        --square-blue: #2563eb;
-        --square-teal: #0f766e;
-        --square-amber: #d97706;
-        --square-shadow: 0 18px 48px rgba(21, 31, 48, 0.08);
-    }
-
-    .wiki-square-page {
+    .ai-square-page {
         min-height: calc(100vh - 8rem);
         padding: 28px;
-        background: var(--square-bg);
-        color: var(--square-text);
+        color: var(--animal-text-color);
+        font-family: var(--animal-font-family);
     }
 
-    .wiki-surface {
-        border: 1px solid var(--square-line);
-        border-radius: 8px;
-        background: var(--square-panel);
+    .ai-shell {
+        max-width: 1180px;
+        margin: 0 auto;
+        display: grid;
+        gap: 18px;
     }
 
-    .wiki-muted {
-        color: var(--square-muted);
+    .ai-title {
+        font-size: 64px;
+        line-height: 0.95;
+        font-weight: 900;
+        color: #725d42;
     }
 
-    .wiki-accent {
-        color: var(--square-teal);
+    .ai-kicker {
+        width: fit-content;
+        padding: 6px 14px;
+        border-radius: 50px;
+        background: #ffcc00;
+        color: #725d42;
+        font-size: 13px;
+        font-weight: 900;
+        box-shadow: inset 0 -2px 0 rgba(114, 93, 66, 0.14);
     }
 
-    .wiki-button {
-        min-height: 42px;
-        border-radius: 8px;
+    .ai-muted {
+        color: #8a7b66;
+    }
+
+    .ai-panel,
+    .ai-card,
+    .ai-search,
+    .ai-select {
+        background: #f7f3df;
+        border: 2.5px solid #c4b89e;
+        border-radius: 22px;
+        box-shadow: 0 4px 0 #d4c9b4, 0 16px 34px rgba(61, 52, 40, 0.1);
+    }
+
+    .ai-card {
+        transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    }
+
+    .ai-card:hover {
+        transform: translateY(-3px);
+        border-color: #a89878;
+        box-shadow: 0 6px 0 #c4b89e, 0 20px 34px rgba(61, 52, 40, 0.14);
+    }
+
+    .ai-btn {
+        min-height: 45px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 9px;
-        padding: 0 15px;
-        font-size: 14px;
-        font-weight: 800;
-        transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+        padding: 0 20px;
+        border-radius: 50px;
+        border: 2px solid #f8f8f0;
+        background: #f8f8f0;
+        color: #794f27;
+        font-weight: 900;
+        box-shadow: 0 5px #bdaea0;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        white-space: nowrap;
     }
 
-    .wiki-button:hover,
-    .wiki-card:hover {
-        transform: translateY(-2px);
-        border-color: var(--square-strong);
-        box-shadow: var(--square-shadow);
+    .ai-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px #bdaea0;
+        color: #794f27;
     }
 
-    .wiki-button.primary {
-        border: 1px solid #111827;
-        background: #111827;
+    .ai-btn:active {
+        transform: translateY(2px);
+        box-shadow: 0 1px #bdaea0;
+    }
+
+    .ai-btn.icon {
+        width: 45px;
+        padding: 0;
+    }
+
+    .ai-btn.sea {
+        background: #19c8b9;
+        border-color: #19c8b9;
+        color: #fff;
+        box-shadow: 0 5px #11a89b;
+    }
+
+    .ai-btn.sea:hover {
+        box-shadow: 0 6px #11a89b;
         color: #fff;
     }
 
-    .wiki-button.ghost {
-        width: 42px;
-        padding: 0;
-        border: 1px solid var(--square-line);
-        background: var(--square-panel);
-        color: var(--square-muted);
-    }
-
-    .wiki-search {
+    .ai-search {
         position: relative;
         display: grid;
         grid-template-columns: 42px minmax(0, 1fr) auto auto;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         min-height: 58px;
-        padding: 7px;
+        padding: 7px 8px;
+        background: #f7f3df;
+        border-radius: 50px;
     }
 
-    .wiki-search input,
-    .wiki-filter select {
+    .ai-search input,
+    .ai-select select {
         width: 100%;
         border: 0;
         outline: 0;
         background: transparent;
-        color: var(--square-text);
+        color: #725d42;
         font-weight: 800;
     }
 
-    .wiki-search input {
+    .ai-search input {
         height: 42px;
         font-size: 15px;
     }
 
-    .wiki-filter {
+    .ai-search input::placeholder {
+        color: #b5a98e;
+    }
+
+    .ai-select {
         min-height: 58px;
         min-width: 176px;
         display: flex;
         align-items: center;
-        padding: 0 12px;
+        padding: 0 18px;
+        border-radius: 50px;
     }
 
-    .wiki-cover {
-        width: 150px;
-        aspect-ratio: 4 / 5;
-        border-radius: 8px;
+    .ai-feature {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 270px;
+        gap: 20px;
+        overflow: hidden;
+    }
+
+    .ai-feature-main {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 164px minmax(0, 1fr);
+        gap: 22px;
+        align-items: center;
+    }
+
+    .ai-cover {
+        width: 164px;
+        aspect-ratio: 1;
+        border-radius: 42px;
+        display: grid;
+        place-items: center;
         background:
-            linear-gradient(135deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 38%),
-            linear-gradient(160deg, var(--wiki-color, var(--square-blue)), #172033);
-        box-shadow: 0 20px 36px rgba(21, 31, 48, 0.18);
+            linear-gradient(135deg, rgba(255, 255, 255, 0.38), transparent 42%),
+            linear-gradient(150deg, var(--wiki-color, #82d5bb), #19c8b9);
         color: #fff;
-        display: flex;
-        align-items: flex-end;
-        padding: 16px;
-        font-size: 42px;
-        line-height: 1;
+        font-size: 68px;
+        font-weight: 900;
+        box-shadow: inset 0 -6px 0 rgba(114, 93, 66, 0.18), 0 14px 24px rgba(61, 52, 40, 0.16);
+    }
+
+    .ai-metric {
+        border-bottom: 2px dashed rgba(114, 93, 66, 0.18);
+        padding-bottom: 12px;
+    }
+
+    .ai-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 12px;
+        border-radius: 50px;
+        background: #fffdf7;
+        color: #725d42;
+        font-size: 12px;
         font-weight: 900;
     }
 
-    .wiki-dot {
-        width: 34px;
-        height: 34px;
-        border-radius: 8px;
-        flex: 0 0 auto;
+    .ai-dot {
+        width: 38px;
+        height: 38px;
+        border-radius: 16px;
         background:
             linear-gradient(135deg, rgba(255, 255, 255, 0.35), transparent),
-            var(--wiki-color, var(--square-blue));
+            var(--wiki-color, #82d5bb);
+        box-shadow: inset 0 -3px 0 rgba(114, 93, 66, 0.16);
     }
 
-    .wiki-card {
-        min-height: 214px;
-        display: grid;
-        align-content: space-between;
-        transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
-    }
-
-    .wiki-card p {
+    .ai-card-desc {
         display: -webkit-box;
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
     }
 
-    .featured-side {
-        border-left: 1px solid var(--square-line);
-        padding-left: 20px;
-    }
-
-    .featured-metric {
-        border-bottom: 1px solid var(--square-line);
-        padding-bottom: 12px;
-    }
-
-    .instant-results {
+    .ai-instant {
         position: absolute;
-        top: calc(100% + 8px);
+        top: calc(100% + 10px);
         left: 0;
         right: 0;
         z-index: 80;
         max-height: 420px;
         overflow: auto;
-        box-shadow: var(--square-shadow);
+        background: #ffeea0;
+        border-radius: 28px;
+        box-shadow: 0 16px 0 rgba(114, 93, 66, 0.12), 0 24px 42px rgba(61, 52, 40, 0.16);
     }
 
     .instant-row {
         width: 100%;
         display: grid;
-        grid-template-columns: 38px minmax(0, 1fr);
+        grid-template-columns: 40px minmax(0, 1fr);
         gap: 12px;
         align-items: center;
-        padding: 12px;
-        border-bottom: 1px solid var(--square-line);
-        color: var(--square-text);
+        padding: 12px 14px;
+        color: #725d42;
         text-align: left;
     }
 
-    .instant-row:last-child {
-        border-bottom: 0;
-    }
-
     .instant-row:hover {
-        background: var(--square-soft);
+        background: rgba(255, 204, 0, 0.42);
     }
 
     .instant-icon {
-        width: 38px;
-        height: 38px;
-        border-radius: 8px;
+        width: 40px;
+        height: 40px;
+        border-radius: 16px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: #111827;
+        background: #82d5bb;
         color: #fff;
         font-size: 13px;
         font-weight: 900;
+        box-shadow: inset 0 -3px 0 rgba(114, 93, 66, 0.16);
     }
 
     .instant-icon.page {
-        background: #fff7ed;
-        color: var(--square-amber);
+        background: #f7cd67;
+        color: #725d42;
     }
 
     .single-line {
@@ -213,55 +263,70 @@
         text-overflow: ellipsis;
     }
 
-    html.dark .wiki-square-page {
-        background: #0f1115;
-        color: #f4f7fb;
-    }
-
-    html.dark .wiki-surface,
-    html.dark .instant-results {
-        background: #171b22;
-        border-color: #2b3442;
-    }
-
-    html.dark .wiki-muted,
-    html.dark .wiki-card p {
-        color: #9aa6b7;
-    }
-
-    html.dark .wiki-search input,
-    html.dark .wiki-filter select,
+    html.dark .ai-title,
+    html.dark .ai-search input,
+    html.dark .ai-select select,
     html.dark .instant-row {
-        color: #f4f7fb;
+        color: #f7f3df;
+    }
+
+    html.dark .ai-panel,
+    html.dark .ai-card,
+    html.dark .ai-search,
+    html.dark .ai-select {
+        background: #252a20;
+        border-color: #5f674c;
+        box-shadow: 0 4px 0 #3d4534, 0 16px 34px rgba(0, 0, 0, 0.28);
+    }
+
+    html.dark .ai-muted,
+    html.dark .ai-card-desc {
+        color: #d4c9b4;
+    }
+
+    html.dark .ai-chip {
+        background: #3a3325;
+        color: #f7f3df;
+    }
+
+    html.dark .ai-instant {
+        background: #3a3325;
+        box-shadow: 0 16px 0 rgba(0, 0, 0, 0.18), 0 24px 42px rgba(0, 0, 0, 0.42);
     }
 
     html.dark .instant-row:hover {
-        background: #12161d;
+        background: rgba(245, 195, 28, 0.16);
+    }
+
+    @media (max-width: 900px) {
+        .ai-feature,
+        .ai-feature-main {
+            grid-template-columns: 1fr;
+        }
     }
 
     @media (max-width: 720px) {
-        .wiki-square-page {
+        .ai-square-page {
             padding: 16px;
         }
 
-        .wiki-search {
+        .ai-title {
+            font-size: 40px;
+        }
+
+        .ai-search {
             grid-template-columns: 38px minmax(0, 1fr) auto;
         }
 
-        .wiki-search .clear-search,
-        .wiki-search .search-label {
+        .ai-search .clear-search,
+        .ai-search .search-label {
             display: none;
         }
 
-        .wiki-cover {
+        .ai-cover {
             width: 128px;
-        }
-
-        .featured-side {
-            border-left: 0;
-            border-top: 1px solid var(--square-line);
-            padding-left: 0;
-            padding-top: 16px;
+            border-radius: 34px;
+            font-size: 54px;
         }
     }
 </style>
@@ -275,15 +340,13 @@
 {% set featured = wikis[0] if wikis else none %}
 {% set card_wikis = wikis if q else wikis[1:] %}
 
-<div class="wiki-square-page">
-    <div class="max-w-6xl mx-auto space-y-4">
+<div class="ai-square-page">
+    <div class="ai-shell">
         <header class="grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
             <div>
-                <p class="wiki-accent text-sm font-extrabold mb-2">Wiki Square</p>
-                <h1 class="text-4xl md:text-5xl font-black leading-none">
-                    {% if q %}搜索结果{% else %}Wiki 广场{% endif %}
-                </h1>
-                <p class="wiki-muted mt-3 max-w-2xl text-sm md:text-base leading-7">
+                <p class="ai-kicker mb-3">Wiki Square</p>
+                <h1 class="ai-title">{% if q %}搜索结果{% else %}Wiki 广场{% endif %}</h1>
+                <p class="ai-muted mt-4 max-w-2xl text-sm md:text-base leading-7 font-bold">
                     {% if q %}
                         “{{ q }}” 找到 {{ wikis|length }} 个 Wiki{% if pages %}，{{ pages|length }} 个页面{% endif %}。
                     {% else %}
@@ -292,10 +355,10 @@
                 </p>
             </div>
             <div class="flex items-center gap-2">
-                <a class="wiki-button ghost" href="{{ url_for('index') }}" title="返回广场" aria-label="返回广场">
+                <a class="ai-btn icon" href="{{ url_for('index') }}" title="返回广场" aria-label="返回广场">
                     <i class="fas fa-compass"></i>
                 </a>
-                <a class="wiki-button primary" href="{{ url_for('create_wiki') }}">
+                <a class="ai-btn sea" href="{{ url_for('create_wiki') }}">
                     <i class="fas fa-plus"></i>
                     <span>新建 Wiki</span>
                 </a>
@@ -304,8 +367,8 @@
 
         <div class="grid gap-3 md:grid-cols-[1fr_auto]">
             <div id="searchContainer" class="relative">
-                <form action="{{ url_for('index') }}" method="get" id="wikiSearchForm" class="wiki-search wiki-surface">
-                    <span class="wiki-muted flex items-center justify-center" aria-hidden="true"><i class="fas fa-search"></i></span>
+                <form action="{{ url_for('index') }}" method="get" id="wikiSearchForm" class="ai-search">
+                    <span class="ai-muted flex items-center justify-center" aria-hidden="true"><i class="fas fa-search"></i></span>
                     <input type="text" id="wikiQuickInput" name="q" value="{{ q or '' }}"
                         oninput="handleWikiSearchInput(this.value)"
                         placeholder="搜索 Wiki 或页面" autocomplete="off">
@@ -313,20 +376,20 @@
                     <input type="hidden" name="visibility" value="{{ current_filter }}">
                     {% endif %}
                     {% if q %}
-                    <a class="wiki-button ghost clear-search" href="{{ url_for('index') }}" title="清空搜索" aria-label="清空搜索">
+                    <a class="ai-btn icon clear-search" href="{{ url_for('index') }}" title="清空搜索" aria-label="清空搜索">
                         <i class="fas fa-times"></i>
                     </a>
                     {% endif %}
-                    <button class="wiki-button primary" type="submit" title="搜索">
+                    <button class="ai-btn sea" type="submit" title="搜索">
                         <i class="fas fa-arrow-right"></i>
                         <span class="search-label">搜索</span>
                     </button>
                 </form>
-                <div id="wikiInstantSearchResults" class="instant-results wiki-surface hidden"></div>
+                <div id="wikiInstantSearchResults" class="ai-instant hidden"></div>
             </div>
 
             {% if not q %}
-            <form action="{{ url_for('index') }}" method="get" class="wiki-filter wiki-surface">
+            <form action="{{ url_for('index') }}" method="get" class="ai-select">
                 <select name="visibility" aria-label="Wiki 筛选" onchange="this.form.submit()">
                     <option value="all" {{ 'selected' if current_filter == 'all' else '' }}>全部精选</option>
                     {% if current_user.is_authenticated %}
@@ -347,50 +410,50 @@
         </div>
 
         <section class="grid gap-3 md:grid-cols-3" aria-label="广场统计">
-            <div class="wiki-surface p-4">
-                <strong class="block text-3xl leading-none">{{ wikis|length }}</strong>
-                <span class="wiki-muted mt-2 block text-sm font-extrabold">{% if q %}匹配 Wiki{% else %}精选 Wiki{% endif %}</span>
+            <div class="ai-panel p-4">
+                <strong class="block text-3xl leading-none text-[#19c8b9]">{{ wikis|length }}</strong>
+                <span class="ai-muted mt-2 block text-sm font-black">{% if q %}匹配 Wiki{% else %}精选 Wiki{% endif %}</span>
             </div>
-            <div class="wiki-surface p-4">
-                <strong class="block text-3xl leading-none">{% if q %}{{ pages|length }}{% else %}{{ total_pages.value }}{% endif %}</strong>
-                <span class="wiki-muted mt-2 block text-sm font-extrabold">{% if q %}匹配页面{% else %}收录页面{% endif %}</span>
+            <div class="ai-panel p-4">
+                <strong class="block text-3xl leading-none text-[#6fba2c]">{% if q %}{{ pages|length }}{% else %}{{ total_pages.value }}{% endif %}</strong>
+                <span class="ai-muted mt-2 block text-sm font-black">{% if q %}匹配页面{% else %}收录页面{% endif %}</span>
             </div>
-            <div class="wiki-surface p-4">
-                <strong class="block text-3xl leading-none">
+            <div class="ai-panel p-4">
+                <strong class="block text-3xl leading-none text-[#e59266]">
                     {% if q %}{{ (wikis|length) + (pages|length) }}{% elif current_filter == 'all' %}All{% else %}<i class="fas fa-filter"></i>{% endif %}
                 </strong>
-                <span class="wiki-muted mt-2 block text-sm font-extrabold">{% if q %}全部结果{% else %}当前视图{% endif %}</span>
+                <span class="ai-muted mt-2 block text-sm font-black">{% if q %}全部结果{% else %}当前视图{% endif %}</span>
             </div>
         </section>
 
         {% if not q and featured %}
-        <article class="wiki-surface p-4 md:p-5 grid gap-5 lg:grid-cols-[1fr_260px]" style="--wiki-color: {{ featured.bg_color or '#2563eb' }};">
-            <div class="grid gap-5 sm:grid-cols-[150px_1fr] sm:items-center">
-                <a class="wiki-cover" href="{{ url_for('wiki_detail', wiki_id=featured.id) }}" aria-label="打开 {{ featured.title }}">
+        <article class="ai-panel ai-feature p-4 md:p-5" style="--wiki-color: {{ featured.bg_color or '#82d5bb' }};">
+            <div class="ai-feature-main">
+                <a class="ai-cover" href="{{ url_for('wiki_detail', wiki_id=featured.id) }}" aria-label="打开 {{ featured.title }}">
                     {{ featured.title[:1]|upper }}
                 </a>
                 <div class="min-w-0">
-                    <p class="wiki-accent text-sm font-black mb-2">精选 Wiki</p>
-                    <h2 class="text-2xl md:text-3xl font-black leading-tight break-words">{{ featured.title }}</h2>
-                    <p class="wiki-muted mt-3 leading-7">{{ (featured.description or '暂无简介')|striptags|truncate(150) }}</p>
+                    <span class="ai-chip mb-3"><i class="fas fa-star text-[#f5c31c]"></i> 精选 Wiki</span>
+                    <h2 class="text-2xl md:text-3xl font-black leading-tight break-words text-[#725d42] dark:text-[#f7f3df]">{{ featured.title }}</h2>
+                    <p class="ai-muted mt-3 leading-7 font-bold">{{ (featured.description or '暂无简介')|striptags|truncate(150) }}</p>
                 </div>
             </div>
-            <aside class="featured-side grid content-between gap-3">
+            <aside class="grid content-between gap-4 border-l-0 lg:border-l-2 lg:border-dashed lg:border-[#c4b89e] lg:pl-5">
                 <div class="grid grid-cols-2 gap-5">
-                    <div class="featured-metric">
-                        <strong class="block text-2xl leading-none">{{ featured.pages|length }}</strong>
-                        <span class="wiki-muted mt-2 block text-xs font-extrabold">页面</span>
+                    <div class="ai-metric">
+                        <strong class="block text-2xl leading-none text-[#19c8b9]">{{ featured.pages|length }}</strong>
+                        <span class="ai-muted mt-2 block text-xs font-black">页面</span>
                     </div>
-                    <div class="featured-metric">
-                        <strong class="block text-2xl leading-none">{{ wikis|length }}</strong>
-                        <span class="wiki-muted mt-2 block text-xs font-extrabold">精选</span>
+                    <div class="ai-metric">
+                        <strong class="block text-2xl leading-none text-[#6fba2c]">{{ wikis|length }}</strong>
+                        <span class="ai-muted mt-2 block text-xs font-black">精选</span>
                     </div>
                 </div>
-                <div class="featured-metric">
+                <div class="ai-metric">
                     <strong class="single-line block text-lg font-black">{{ featured.created_by.username if featured.created_by else '未知' }}</strong>
-                    <span class="wiki-muted mt-2 block text-xs font-extrabold">创建者</span>
+                    <span class="ai-muted mt-2 block text-xs font-black">创建者</span>
                 </div>
-                <a class="wiki-button primary w-full" href="{{ url_for('wiki_detail', wiki_id=featured.id) }}">
+                <a class="ai-btn sea w-full" href="{{ url_for('wiki_detail', wiki_id=featured.id) }}">
                     <span>进入 Wiki</span>
                     <i class="fas fa-arrow-right"></i>
                 </a>
@@ -401,23 +464,23 @@
         {% if card_wikis %}
         <section class="space-y-3" aria-labelledby="wiki-list-title">
             <div class="flex items-center justify-between gap-3">
-                <h2 id="wiki-list-title" class="text-xl font-black">{% if q %}匹配 Wiki{% else %}更多精选{% endif %}</h2>
-                <span class="wiki-muted text-sm font-extrabold">{{ card_wikis|length }} 个</span>
+                <h2 id="wiki-list-title" class="text-xl font-black text-[#725d42] dark:text-[#f7f3df]">{% if q %}匹配 Wiki{% else %}更多精选{% endif %}</h2>
+                <span class="ai-chip">{{ card_wikis|length }} 个</span>
             </div>
             <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {% for w in card_wikis %}
-                <a class="wiki-card wiki-surface p-4 text-current" href="{{ url_for('wiki_detail', wiki_id=w.id) }}" style="--wiki-color: {{ w.bg_color or '#2563eb' }};">
+                <a class="ai-card p-4 text-current min-h-[218px] grid content-between gap-5" href="{{ url_for('wiki_detail', wiki_id=w.id) }}" style="--wiki-color: {{ w.bg_color or loop.cycle('#82d5bb', '#889df0', '#f7cd67', '#e59266', '#8ac68a') }};">
                     <div>
                         <div class="flex items-center justify-between gap-3 mb-4">
-                            <span class="wiki-dot" aria-hidden="true"></span>
-                            <span class="wiki-muted text-xs font-extrabold">
+                            <span class="ai-dot" aria-hidden="true"></span>
+                            <span class="ai-chip">
                                 {% if w.visibility == 'public' %}公开{% elif w.visibility == 'private' %}私有{% else %}限定{% endif %}
                             </span>
                         </div>
-                        <h3 class="text-xl font-black leading-snug break-words">{{ w.title }}</h3>
-                        <p class="wiki-muted mt-2 text-sm leading-6">{{ (w.description or '暂无简介')|striptags|truncate(110) }}</p>
+                        <h3 class="text-xl font-black leading-snug break-words text-[#725d42] dark:text-[#f7f3df]">{{ w.title }}</h3>
+                        <p class="ai-card-desc ai-muted mt-2 text-sm leading-6 font-bold">{{ (w.description or '暂无简介')|striptags|truncate(110) }}</p>
                     </div>
-                    <div class="wiki-muted flex items-center justify-between gap-3 text-xs font-extrabold">
+                    <div class="ai-muted flex items-center justify-between gap-3 text-xs font-black">
                         <span class="single-line"><i class="fas fa-file-alt"></i> {{ w.pages|length }} 页</span>
                         <span class="single-line">{{ w.created_by.username if w.created_by else '未知' }}</span>
                     </div>
@@ -430,18 +493,18 @@
         {% if q and pages %}
         <section class="space-y-3" aria-labelledby="page-results-title">
             <div class="flex items-center justify-between gap-3">
-                <h2 id="page-results-title" class="text-xl font-black">匹配页面</h2>
-                <span class="wiki-muted text-sm font-extrabold">{{ pages|length }} 个</span>
+                <h2 id="page-results-title" class="text-xl font-black text-[#725d42] dark:text-[#f7f3df]">匹配页面</h2>
+                <span class="ai-chip">{{ pages|length }} 个</span>
             </div>
             <div class="grid gap-2">
                 {% for page in pages %}
-                <a class="wiki-surface p-3 grid gap-3 sm:grid-cols-[42px_1fr_auto] sm:items-center text-current" href="{{ url_for('view_page', wiki_id=page.wiki_id, slug=page.slug) }}">
-                    <span class="w-[42px] h-[42px] rounded-lg bg-orange-50 text-orange-600 hidden sm:flex items-center justify-center" aria-hidden="true">
+                <a class="ai-card p-3 grid gap-3 sm:grid-cols-[44px_1fr_auto] sm:items-center text-current" href="{{ url_for('view_page', wiki_id=page.wiki_id, slug=page.slug) }}">
+                    <span class="w-[44px] h-[44px] rounded-[18px] bg-[#f7cd67] text-[#725d42] hidden sm:flex items-center justify-center shadow-[inset_0_-3px_0_rgba(114,93,66,0.16)]" aria-hidden="true">
                         <i class="fas fa-file-alt"></i>
                     </span>
                     <span class="min-w-0">
-                        <strong class="single-line block font-black">{{ page.title }}</strong>
-                        <span class="single-line wiki-muted mt-1 block text-xs font-extrabold">{{ page.wiki.title }} · {{ page.updated_at.strftime('%Y-%m-%d') if page.updated_at else '未更新' }}</span>
+                        <strong class="single-line block font-black text-[#725d42] dark:text-[#f7f3df]">{{ page.title }}</strong>
+                        <span class="single-line ai-muted mt-1 block text-xs font-black">{{ page.wiki.title }} · {{ page.updated_at.strftime('%Y-%m-%d') if page.updated_at else '未更新' }}</span>
                     </span>
                     <i class="fas fa-arrow-right hidden sm:block" aria-hidden="true"></i>
                 </a>
@@ -451,20 +514,22 @@
         {% endif %}
 
         {% if not wikis and (not q or not pages) %}
-        <section class="wiki-surface p-8 min-h-[280px] grid place-items-center text-center">
+        <section class="ai-panel p-8 min-h-[280px] grid place-items-center text-center">
             <div>
-                <i class="fas fa-book-open wiki-muted text-3xl mb-4" aria-hidden="true"></i>
-                <h2 class="text-2xl font-black">{% if q %}没有找到匹配内容{% else %}还没有 Wiki{% endif %}</h2>
-                <p class="wiki-muted max-w-md mx-auto mt-3 leading-7">
+                <span class="inline-flex w-16 h-16 rounded-[24px] bg-[#82d5bb] text-white items-center justify-center text-2xl shadow-[inset_0_-4px_0_rgba(114,93,66,0.16)]">
+                    <i class="fas fa-book-open" aria-hidden="true"></i>
+                </span>
+                <h2 class="text-2xl font-black mt-4 text-[#725d42] dark:text-[#f7f3df]">{% if q %}没有找到匹配内容{% else %}还没有 Wiki{% endif %}</h2>
+                <p class="ai-muted max-w-md mx-auto mt-3 leading-7 font-bold">
                     {% if q %}换个关键词，或者创建一个新的 Wiki。{% else %}创建第一个 Wiki，把文档、页面和协作资料放进来。{% endif %}
                 </p>
                 <div class="flex justify-center gap-2 mt-5">
                     {% if q %}
-                    <a class="wiki-button ghost" href="{{ url_for('index') }}" title="返回广场" aria-label="返回广场">
+                    <a class="ai-btn icon" href="{{ url_for('index') }}" title="返回广场" aria-label="返回广场">
                         <i class="fas fa-arrow-left"></i>
                     </a>
                     {% endif %}
-                    <a class="wiki-button primary" href="{{ url_for('create_wiki') }}">
+                    <a class="ai-btn sea" href="{{ url_for('create_wiki') }}">
                         <i class="fas fa-plus"></i>
                         <span>新建 Wiki</span>
                     </a>
@@ -502,9 +567,9 @@
             ? `/wikis/${encodeURIComponent(item.id)}`
             : `/wikis/${encodeURIComponent(item.wiki_id)}/pages/${encodeURIComponent(item.slug)}`;
         const meta = isWiki ? 'Wiki' : wikiTitle;
-        const detail = snippet ? `<span class="single-line wiki-muted mt-1 block text-xs">${snippet}</span>` : '';
+        const detail = snippet ? `<span class="single-line ai-muted mt-1 block text-xs">${snippet}</span>` : '';
 
-        return `<a href="${href}" class="instant-row">${icon}<span class="min-w-0"><strong class="single-line block text-sm font-black">${title}</strong><span class="single-line wiki-muted mt-1 block text-xs font-extrabold">${meta}</span>${detail}</span></a>`;
+        return `<a href="${href}" class="instant-row">${icon}<span class="min-w-0"><strong class="single-line block text-sm font-black">${title}</strong><span class="single-line ai-muted mt-1 block text-xs font-black">${meta}</span>${detail}</span></a>`;
     }
 
     function setInstantMessage(iconClass, text, canSubmit) {

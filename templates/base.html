@@ -873,6 +873,32 @@
             will-change: transform;
         }
 
+        body.animal-ui-theme.animal-bg-paused::before {
+            animation-play-state: paused;
+        }
+
+        body.animal-ui-theme .animal-bg-toggle-btn {
+            min-width: 2.25rem;
+        }
+
+        body.animal-ui-theme .animal-bg-toggle-btn .animal-bg-play-icon {
+            display: none;
+        }
+
+        body.animal-ui-theme.animal-bg-paused .animal-bg-toggle-btn {
+            background: var(--ai-sun) !important;
+            color: var(--ai-soil) !important;
+            border-color: var(--ai-line-dark) !important;
+        }
+
+        body.animal-ui-theme.animal-bg-paused .animal-bg-toggle-btn .animal-bg-pause-icon {
+            display: none;
+        }
+
+        body.animal-ui-theme.animal-bg-paused .animal-bg-toggle-btn .animal-bg-play-icon {
+            display: inline-block;
+        }
+
         body.animal-ui-theme .top-nav-shell {
             top: 0.85rem;
         }
@@ -1053,6 +1079,154 @@
             background: #3a3325 !important;
             color: #f7f3df !important;
             box-shadow: 0 16px 0 rgba(0, 0, 0, 0.16), 0 22px 42px rgba(0, 0, 0, 0.42) !important;
+        }
+
+        body.animal-ui-theme .top-nav-shell {
+            --theme-primary: #ea580c;
+            --theme-primary-hover: #d97706;
+            --toggle-bg: #ea580c;
+            top: 1.1rem;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        html.dark body.animal-ui-theme .top-nav-shell {
+            --theme-primary: #f97316;
+            --theme-primary-hover: #fb923c;
+            --toggle-bg: #f97316;
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-btn,
+        body.animal-ui-theme .top-nav-shell .nav-mode-toggle,
+        body.animal-ui-theme .top-nav-shell .user-nav-dropdown {
+            background: rgba(255, 255, 255, 0.35) !important;
+            backdrop-filter: blur(40px) saturate(250%) !important;
+            -webkit-backdrop-filter: blur(40px) saturate(250%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.6) !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.9) !important;
+            color: hsl(var(--bc) / 0.85) !important;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        html.dark body.animal-ui-theme .top-nav-shell .nav-btn,
+        html.dark body.animal-ui-theme .top-nav-shell .nav-mode-toggle,
+        html.dark body.animal-ui-theme .top-nav-shell .user-nav-dropdown {
+            background: rgba(17, 17, 17, 0.74) !important;
+            border-color: rgba(255, 255, 255, 0.16) !important;
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.62), inset 0 1px 1px rgba(255, 255, 255, 0.08) !important;
+            color: #ececec !important;
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-btn:hover,
+        body.animal-ui-theme .top-nav-shell .dropdown.dropdown-open > .nav-btn,
+        body.animal-ui-theme .top-nav-shell .user-nav-dropdown:hover {
+            transform: translateY(-2px) scale(1.02) !important;
+            color: var(--theme-primary) !important;
+            background: rgba(255, 255, 255, 0.5) !important;
+            border-color: rgba(255, 255, 255, 0.6) !important;
+            box-shadow: 0 12px 40px -4px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(255, 255, 255, 1) !important;
+        }
+
+        html.dark body.animal-ui-theme .top-nav-shell .nav-btn:hover,
+        html.dark body.animal-ui-theme .top-nav-shell .dropdown.dropdown-open > .nav-btn,
+        html.dark body.animal-ui-theme .top-nav-shell .user-nav-dropdown:hover {
+            background: rgba(28, 28, 28, 0.92) !important;
+            border-color: rgba(234, 88, 12, 0.45) !important;
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(234, 88, 12, 0.16) !important;
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-pill-group {
+            background: rgba(255, 255, 255, 0.35) !important;
+            backdrop-filter: blur(40px) saturate(250%) !important;
+            -webkit-backdrop-filter: blur(40px) saturate(250%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.6) !important;
+            border-radius: 9999px !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.9) !important;
+            height: 2.25rem;
+        }
+
+        html.dark body.animal-ui-theme .top-nav-shell .nav-pill-group {
+            background: rgba(14, 14, 14, 0.8) !important;
+            border-color: rgba(255, 255, 255, 0.16) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.05) !important;
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-pill-item {
+            color: hsl(var(--bc) / 0.7) !important;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-weight: 700;
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-pill-item:hover {
+            color: hsl(var(--bc)) !important;
+            background: rgba(0, 0, 0, 0.04) !important;
+        }
+
+        html.dark body.animal-ui-theme .top-nav-shell .nav-pill-item:hover {
+            color: #f6f6f6 !important;
+            background: rgba(234, 88, 12, 0.16) !important;
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-pill-item.active {
+            background: var(--theme-primary) !important;
+            color: white !important;
+            box-shadow: 0 4px 12px -2px var(--theme-primary) !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-mode-option {
+            color: hsl(var(--bc) / 0.65) !important;
+            font-weight: 800;
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-mode-option.active {
+            color: white !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-mode-slider {
+            background-color: var(--toggle-bg) !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        body.animal-ui-theme .top-nav-shell .glass-dropdown-content {
+            background: rgba(255, 255, 255, 0.55) !important;
+            backdrop-filter: blur(50px) saturate(200%) !important;
+            -webkit-backdrop-filter: blur(50px) saturate(200%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.7) !important;
+            border-radius: 1.5rem !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.9) !important;
+            color: hsl(var(--bc) / 0.9);
+        }
+
+        html.dark body.animal-ui-theme .top-nav-shell .glass-dropdown-content {
+            background: rgba(14, 14, 14, 0.92) !important;
+            border-color: rgba(255, 255, 255, 0.16) !important;
+            box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.72), inset 0 1px 1px rgba(255, 255, 255, 0.08) !important;
+            color: #ececec;
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-menu-item {
+            border-radius: 0.5rem;
+            color: hsl(var(--bc) / 0.8) !important;
+            font-weight: 600;
+        }
+
+        body.animal-ui-theme .top-nav-shell .nav-menu-item:hover {
+            background: hsl(var(--bc) / 0.05) !important;
+            color: var(--theme-primary) !important;
+            transform: none;
+        }
+
+        body.animal-ui-theme.animal-bg-paused .top-nav-shell .animal-bg-toggle-btn {
+            background: var(--theme-primary) !important;
+            color: white !important;
+        }
+
+        @media (max-width: 1399px) {
+            body.animal-ui-theme .top-nav-shell {
+                top: 0.95rem;
+            }
         }
     </style>
 
@@ -1694,6 +1868,17 @@
 
         {% endif %}
 
+            <button type="button"
+                    class="nav-btn animal-bg-toggle-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom transition-colors select-none"
+                    data-bg-toggle
+                    data-tip="暂停背景移动"
+                    aria-label="暂停背景移动"
+                    aria-pressed="false"
+                    onclick="toggleAnimalBackgroundMotion()">
+                <i class="fas fa-pause animal-bg-pause-icon pointer-events-none"></i>
+                <i class="fas fa-play animal-bg-play-icon pointer-events-none"></i>
+            </button>
+
     </div>
         </div>
     </div>
@@ -1731,6 +1916,16 @@
             </a>
 
             {% endif %}
+
+            <button type="button"
+                    class="nav-btn animal-bg-toggle-btn px-2 shadow-none border-transparent h-8"
+                    data-bg-toggle
+                    aria-label="暂停背景移动"
+                    aria-pressed="false"
+                    onclick="toggleAnimalBackgroundMotion()">
+                <i class="fas fa-pause animal-bg-pause-icon pointer-events-none text-xs"></i>
+                <i class="fas fa-play animal-bg-play-icon pointer-events-none text-xs"></i>
+            </button>
 
             
 
@@ -4627,7 +4822,39 @@ toast: {
         });
         
         // ==========================================
-        // 💡 明暗主题切换引擎
+        // Animal Island 背景动效控制
+        // ==========================================
+        const ANIMAL_BG_PAUSED_KEY = 'animalBackgroundPaused';
+
+        function syncAnimalBackgroundToggleUI() {
+            const isPaused = document.body.classList.contains('animal-bg-paused');
+            const label = isPaused ? '继续背景移动' : '暂停背景移动';
+
+            document.querySelectorAll('[data-bg-toggle]').forEach((btn) => {
+                btn.setAttribute('aria-label', label);
+                btn.setAttribute('aria-pressed', String(isPaused));
+                btn.setAttribute('title', label);
+                if (btn.hasAttribute('data-tip')) {
+                    btn.setAttribute('data-tip', label);
+                }
+            });
+        }
+
+        function initAnimalBackgroundMotion() {
+            const shouldPause = localStorage.getItem(ANIMAL_BG_PAUSED_KEY) === 'true';
+            document.body.classList.toggle('animal-bg-paused', shouldPause);
+            syncAnimalBackgroundToggleUI();
+        }
+
+        window.toggleAnimalBackgroundMotion = function() {
+            const shouldPause = !document.body.classList.contains('animal-bg-paused');
+            document.body.classList.toggle('animal-bg-paused', shouldPause);
+            localStorage.setItem(ANIMAL_BG_PAUSED_KEY, String(shouldPause));
+            syncAnimalBackgroundToggleUI();
+        };
+
+        // ==========================================
+        // 明暗主题切换引擎
         // ==========================================
         function syncThemeToggleUI() {
             const btn = document.getElementById('theme-toggle-btn');
@@ -4662,6 +4889,7 @@ toast: {
         };
 
         document.addEventListener('DOMContentLoaded', () => {
+            initAnimalBackgroundMotion();
             app.init();
             syncThemeToggleUI();
         });

@@ -905,6 +905,20 @@
             gap: 0.55rem;
         }
 
+        .animal-wallpaper-section + .animal-wallpaper-section {
+            margin-top: 0.85rem;
+            padding-top: 0.85rem;
+            border-top: 1px solid hsl(var(--bc) / 0.08);
+        }
+
+        .animal-wallpaper-grid-dark {
+            grid-template-columns: 1fr;
+        }
+
+        .animal-wallpaper-grid-dark .animal-wallpaper-option {
+            aspect-ratio: 2.65;
+        }
+
         .animal-wallpaper-option {
             position: relative;
             aspect-ratio: 1.28;
@@ -949,8 +963,14 @@
         }
 
         .animal-bg-motion-toggle {
-            width: 100%;
-            justify-content: space-between;
+            width: 2.25rem;
+            min-width: 2.25rem;
+            height: 2.25rem;
+            min-height: 0;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             border-radius: 9999px;
         }
 
@@ -2365,6 +2385,51 @@
 
 
 
+            <div class="dropdown dropdown-end">
+                <button type="button"
+                        tabindex="0"
+                        class="nav-btn animal-bg-menu-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom transition-colors select-none"
+                        data-bg-menu-toggle
+                        data-tip="背景设置"
+                        aria-label="背景设置"
+                        aria-haspopup="true">
+                    <i class="fas fa-image pointer-events-none"></i>
+                </button>
+                <div tabindex="0" class="dropdown-content z-[120] mt-2 p-3 animal-bg-menu glass-dropdown-content">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <span class="text-xs font-black tracking-wide text-base-content/60">壁纸</span>
+                        <button type="button"
+                                class="btn btn-xs animal-bg-motion-toggle"
+                                data-bg-motion-toggle
+                                aria-label="暂停滚动"
+                                aria-pressed="false"
+                                onclick="toggleAnimalBackgroundMotion()">
+                            <i class="fas fa-pause animal-bg-pause-icon pointer-events-none"></i>
+                            <i class="fas fa-play animal-bg-play-icon pointer-events-none"></i>
+                        </button>
+                    </div>
+                    <div class="animal-wallpaper-section">
+                        <p class="text-[10px] font-black tracking-widest text-base-content/40 uppercase mb-2">亮色壁纸</p>
+                        <div class="animal-wallpaper-grid">
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="default" data-wallpaper-theme="light" data-wallpaper-color="#7DC395" style="--wallpaper-image: url('{{ url_for('static', filename='images/animal-island-home-bg.webp') }}'); --wallpaper-color: #7DC395;" aria-label="默认亮色壁纸" title="默认亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="blue" data-wallpaper-theme="light" data-wallpaper-color="#7fb8df" style="--wallpaper-image: url('{{ url_for('static', filename='images/blue.png') }}'); --wallpaper-color: #7fb8df;" aria-label="蓝色亮色壁纸" title="蓝色亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="orange" data-wallpaper-theme="light" data-wallpaper-color="#e9a460" style="--wallpaper-image: url('{{ url_for('static', filename='images/orange.png') }}'); --wallpaper-color: #e9a460;" aria-label="橙色亮色壁纸" title="橙色亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="purple" data-wallpaper-theme="light" data-wallpaper-color="#9c87d3" style="--wallpaper-image: url('{{ url_for('static', filename='images/purple.png') }}'); --wallpaper-color: #9c87d3;" aria-label="紫色亮色壁纸" title="紫色亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="red" data-wallpaper-theme="light" data-wallpaper-color="#d86f6b" style="--wallpaper-image: url('{{ url_for('static', filename='images/red.png') }}'); --wallpaper-color: #d86f6b;" aria-label="红色亮色壁纸" title="红色亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="yellow" data-wallpaper-theme="light" data-wallpaper-color="#e6cc66" style="--wallpaper-image: url('{{ url_for('static', filename='images/yellow.png') }}'); --wallpaper-color: #e6cc66;" aria-label="黄色亮色壁纸" title="黄色亮色壁纸"></button>
+                        </div>
+                    </div>
+                    <div class="animal-wallpaper-section">
+                        <p class="text-[10px] font-black tracking-widest text-base-content/40 uppercase mb-2">暗色壁纸</p>
+                        <div class="animal-wallpaper-grid animal-wallpaper-grid-dark">
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="dark" data-wallpaper-theme="dark" data-wallpaper-color="#1d2119" style="--wallpaper-image: url('{{ url_for('static', filename='images/animal-island-home-bg-dark.png') }}'); --wallpaper-color: #1d2119;" aria-label="暗色壁纸" title="暗色壁纸"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
             <div class="relative inline-block text-left ml-1" id="user-menu-container">
 
                 <button type="button" id="user-menu-btn" class="user-nav-dropdown group flex items-center gap-2 pr-4 bg-white/50 dark:bg-base-100/50 hover:bg-white dark:hover:bg-base-200 transition-all border border-black/5 dark:border-white/5 rounded-full h-9 focus:outline-none">
@@ -2518,43 +2583,6 @@
 
         {% endif %}
 
-            <div class="dropdown dropdown-end">
-                <button type="button"
-                        tabindex="0"
-                        class="nav-btn animal-bg-menu-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom transition-colors select-none"
-                        data-bg-menu-toggle
-                        data-tip="背景设置"
-                        aria-label="背景设置"
-                        aria-haspopup="true">
-                    <i class="fas fa-image pointer-events-none"></i>
-                </button>
-                <div tabindex="0" class="dropdown-content z-[120] mt-2 p-3 animal-bg-menu glass-dropdown-content">
-                    <div class="flex items-center justify-between gap-3 mb-3">
-                        <span class="text-xs font-black tracking-wide text-base-content/60">壁纸</span>
-                        <button type="button"
-                                class="btn btn-xs animal-bg-motion-toggle"
-                                data-bg-motion-toggle
-                                aria-label="暂停背景移动"
-                                aria-pressed="false"
-                                onclick="toggleAnimalBackgroundMotion()">
-                            <span data-bg-motion-label>暂停滚动</span>
-                            <span class="inline-flex items-center">
-                                <i class="fas fa-pause animal-bg-pause-icon pointer-events-none"></i>
-                                <i class="fas fa-play animal-bg-play-icon pointer-events-none"></i>
-                            </span>
-                        </button>
-                    </div>
-                    <div class="animal-wallpaper-grid">
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="default" data-wallpaper-color="#7DC395" style="--wallpaper-image: url('{{ url_for('static', filename='images/animal-island-home-bg.webp') }}'); --wallpaper-color: #7DC395;" aria-label="默认壁纸" title="默认壁纸"></button>
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="blue" data-wallpaper-color="#7fb8df" style="--wallpaper-image: url('{{ url_for('static', filename='images/blue.png') }}'); --wallpaper-color: #7fb8df;" aria-label="蓝色壁纸" title="蓝色壁纸"></button>
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="orange" data-wallpaper-color="#e9a460" style="--wallpaper-image: url('{{ url_for('static', filename='images/orange.png') }}'); --wallpaper-color: #e9a460;" aria-label="橙色壁纸" title="橙色壁纸"></button>
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="purple" data-wallpaper-color="#9c87d3" style="--wallpaper-image: url('{{ url_for('static', filename='images/purple.png') }}'); --wallpaper-color: #9c87d3;" aria-label="紫色壁纸" title="紫色壁纸"></button>
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="red" data-wallpaper-color="#d86f6b" style="--wallpaper-image: url('{{ url_for('static', filename='images/red.png') }}'); --wallpaper-color: #d86f6b;" aria-label="红色壁纸" title="红色壁纸"></button>
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="yellow" data-wallpaper-color="#e6cc66" style="--wallpaper-image: url('{{ url_for('static', filename='images/yellow.png') }}'); --wallpaper-color: #e6cc66;" aria-label="黄色壁纸" title="黄色壁纸"></button>
-                    </div>
-                </div>
-            </div>
-
     </div>
         </div>
     </div>
@@ -2608,23 +2636,29 @@
                         <button type="button"
                                 class="btn btn-xs animal-bg-motion-toggle"
                                 data-bg-motion-toggle
-                                aria-label="暂停背景移动"
+                                aria-label="暂停滚动"
                                 aria-pressed="false"
                                 onclick="toggleAnimalBackgroundMotion()">
-                            <span data-bg-motion-label>暂停滚动</span>
-                            <span class="inline-flex items-center">
-                                <i class="fas fa-pause animal-bg-pause-icon pointer-events-none"></i>
-                                <i class="fas fa-play animal-bg-play-icon pointer-events-none"></i>
-                            </span>
+                            <i class="fas fa-pause animal-bg-pause-icon pointer-events-none"></i>
+                            <i class="fas fa-play animal-bg-play-icon pointer-events-none"></i>
                         </button>
                     </div>
-                    <div class="animal-wallpaper-grid">
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="default" data-wallpaper-color="#7DC395" style="--wallpaper-image: url('{{ url_for('static', filename='images/animal-island-home-bg.webp') }}'); --wallpaper-color: #7DC395;" aria-label="默认壁纸" title="默认壁纸"></button>
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="blue" data-wallpaper-color="#7fb8df" style="--wallpaper-image: url('{{ url_for('static', filename='images/blue.png') }}'); --wallpaper-color: #7fb8df;" aria-label="蓝色壁纸" title="蓝色壁纸"></button>
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="orange" data-wallpaper-color="#e9a460" style="--wallpaper-image: url('{{ url_for('static', filename='images/orange.png') }}'); --wallpaper-color: #e9a460;" aria-label="橙色壁纸" title="橙色壁纸"></button>
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="purple" data-wallpaper-color="#9c87d3" style="--wallpaper-image: url('{{ url_for('static', filename='images/purple.png') }}'); --wallpaper-color: #9c87d3;" aria-label="紫色壁纸" title="紫色壁纸"></button>
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="red" data-wallpaper-color="#d86f6b" style="--wallpaper-image: url('{{ url_for('static', filename='images/red.png') }}'); --wallpaper-color: #d86f6b;" aria-label="红色壁纸" title="红色壁纸"></button>
-                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="yellow" data-wallpaper-color="#e6cc66" style="--wallpaper-image: url('{{ url_for('static', filename='images/yellow.png') }}'); --wallpaper-color: #e6cc66;" aria-label="黄色壁纸" title="黄色壁纸"></button>
+                    <div class="animal-wallpaper-section">
+                        <p class="text-[10px] font-black tracking-widest text-base-content/40 uppercase mb-2">亮色壁纸</p>
+                        <div class="animal-wallpaper-grid">
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="default" data-wallpaper-theme="light" data-wallpaper-color="#7DC395" style="--wallpaper-image: url('{{ url_for('static', filename='images/animal-island-home-bg.webp') }}'); --wallpaper-color: #7DC395;" aria-label="默认亮色壁纸" title="默认亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="blue" data-wallpaper-theme="light" data-wallpaper-color="#7fb8df" style="--wallpaper-image: url('{{ url_for('static', filename='images/blue.png') }}'); --wallpaper-color: #7fb8df;" aria-label="蓝色亮色壁纸" title="蓝色亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="orange" data-wallpaper-theme="light" data-wallpaper-color="#e9a460" style="--wallpaper-image: url('{{ url_for('static', filename='images/orange.png') }}'); --wallpaper-color: #e9a460;" aria-label="橙色亮色壁纸" title="橙色亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="purple" data-wallpaper-theme="light" data-wallpaper-color="#9c87d3" style="--wallpaper-image: url('{{ url_for('static', filename='images/purple.png') }}'); --wallpaper-color: #9c87d3;" aria-label="紫色亮色壁纸" title="紫色亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="red" data-wallpaper-theme="light" data-wallpaper-color="#d86f6b" style="--wallpaper-image: url('{{ url_for('static', filename='images/red.png') }}'); --wallpaper-color: #d86f6b;" aria-label="红色亮色壁纸" title="红色亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="yellow" data-wallpaper-theme="light" data-wallpaper-color="#e6cc66" style="--wallpaper-image: url('{{ url_for('static', filename='images/yellow.png') }}'); --wallpaper-color: #e6cc66;" aria-label="黄色亮色壁纸" title="黄色亮色壁纸"></button>
+                        </div>
+                    </div>
+                    <div class="animal-wallpaper-section">
+                        <p class="text-[10px] font-black tracking-widest text-base-content/40 uppercase mb-2">暗色壁纸</p>
+                        <div class="animal-wallpaper-grid animal-wallpaper-grid-dark">
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="dark" data-wallpaper-theme="dark" data-wallpaper-color="#1d2119" style="--wallpaper-image: url('{{ url_for('static', filename='images/animal-island-home-bg-dark.png') }}'); --wallpaper-color: #1d2119;" aria-label="暗色壁纸" title="暗色壁纸"></button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5629,16 +5663,42 @@ toast: {
             }
 
             document.querySelectorAll('[data-wallpaper-option]').forEach((btn) => {
-                const isActive = btn.dataset.wallpaper === wallpaperName;
+                const isActive = isDark
+                    ? btn.dataset.wallpaperTheme === 'dark'
+                    : btn.dataset.wallpaperTheme !== 'dark' && btn.dataset.wallpaper === wallpaperName;
                 btn.classList.toggle('is-active', isActive);
                 btn.setAttribute('aria-pressed', String(isActive));
             });
         }
 
+        function setAnimalThemeMode(mode) {
+            const html = document.documentElement;
+            const isBookMode = window.location.pathname.startsWith('/book');
+            const lightTheme = isBookMode ? 'winter' : 'cupcake';
+            const darkTheme = 'business';
+
+            if (mode === 'dark') {
+                html.classList.add('dark');
+                html.setAttribute('data-theme', darkTheme);
+                localStorage.setItem('theme', 'dark');
+            } else {
+                html.classList.remove('dark');
+                html.setAttribute('data-theme', lightTheme);
+                localStorage.setItem('theme', 'light');
+            }
+
+            syncThemeToggleUI();
+        }
+
         window.setAnimalWallpaper = function(name) {
             const option = getWallpaperOption(name);
             const wallpaperName = option ? option.dataset.wallpaper : 'default';
-            localStorage.setItem(ANIMAL_WALLPAPER_KEY, wallpaperName);
+            const wallpaperTheme = option ? option.dataset.wallpaperTheme : 'light';
+
+            setAnimalThemeMode(wallpaperTheme === 'dark' ? 'dark' : 'light');
+            if (wallpaperTheme !== 'dark') {
+                localStorage.setItem(ANIMAL_WALLPAPER_KEY, wallpaperName);
+            }
             applyAnimalWallpaper(wallpaperName);
         };
 
@@ -5650,10 +5710,6 @@ toast: {
                 btn.setAttribute('aria-label', label);
                 btn.setAttribute('aria-pressed', String(isPaused));
                 btn.setAttribute('title', label);
-            });
-
-            document.querySelectorAll('[data-bg-motion-label]').forEach((labelEl) => {
-                labelEl.textContent = label;
             });
         }
 
@@ -5689,25 +5745,7 @@ toast: {
         window.toggleTheme = function() {
             const html = document.documentElement;
             const isDark = html.classList.contains('dark');
-            const isBookMode = window.location.pathname.startsWith('/book');
-            
-            // 这里的 lightTheme 保持与你 head 中初始化时一致
-            const lightTheme = isBookMode ? 'winter' : 'cupcake'; 
-            const darkTheme = 'business';
-
-            if (isDark) {
-                // 切换到明亮模式
-                html.classList.remove('dark');
-                html.setAttribute('data-theme', lightTheme);
-                localStorage.setItem('theme', 'light');
-            } else {
-                // 切换到暗黑模式
-                html.classList.add('dark');
-                html.setAttribute('data-theme', darkTheme);
-                localStorage.setItem('theme', 'dark');
-            }
-
-            syncThemeToggleUI();
+            setAnimalThemeMode(isDark ? 'light' : 'dark');
             applyAnimalWallpaper(localStorage.getItem(ANIMAL_WALLPAPER_KEY) || 'default');
         };
 

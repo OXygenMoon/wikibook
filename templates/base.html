@@ -847,6 +847,7 @@
             --ai-shadow: 0 4px 0 #d4c9b4, 0 14px 30px rgba(61, 52, 40, 0.12);
             --ai-home-bg-light: url("{{ url_for('static', filename='images/animal-island-home-bg.webp') }}");
             --ai-home-bg-dark: url("{{ url_for('static', filename='images/animal-island-home-bg-dark.png') }}");
+            --ai-home-bg-default: var(--ai-home-bg-light);
             --ai-home-bg: var(--ai-home-bg-light);
             --ai-home-bg-color: #7DC395;
         }
@@ -890,25 +891,78 @@
             animation-play-state: paused;
         }
 
-        body.animal-ui-theme .animal-bg-toggle-btn {
+        body.animal-ui-theme .animal-bg-menu-btn {
             min-width: 2.25rem;
         }
 
-        body.animal-ui-theme .animal-bg-toggle-btn .animal-bg-play-icon {
+        .animal-bg-menu {
+            width: min(19rem, calc(100vw - 1.5rem));
+        }
+
+        .animal-wallpaper-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.55rem;
+        }
+
+        .animal-wallpaper-option {
+            position: relative;
+            aspect-ratio: 1.28;
+            border-radius: 0.9rem;
+            border: 2px solid rgba(114, 93, 66, 0.18);
+            overflow: hidden;
+            background-color: var(--wallpaper-color, #7DC395);
+            background-image: var(--wallpaper-image);
+            background-size: cover;
+            background-position: center;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42), 0 4px 10px rgba(61, 52, 40, 0.1);
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .animal-wallpaper-option:hover {
+            transform: translateY(-1px);
+            border-color: var(--theme-primary);
+        }
+
+        .animal-wallpaper-option.is-active {
+            border-color: var(--theme-primary);
+            box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.18), 0 6px 14px rgba(61, 52, 40, 0.16);
+        }
+
+        .animal-wallpaper-option.is-active::after {
+            content: "\f00c";
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            position: absolute;
+            right: 0.35rem;
+            bottom: 0.35rem;
+            width: 1.35rem;
+            height: 1.35rem;
+            display: grid;
+            place-items: center;
+            border-radius: 9999px;
+            background: var(--theme-primary);
+            color: #ffffff;
+            font-size: 0.7rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+        }
+
+        .animal-bg-motion-toggle {
+            width: 100%;
+            justify-content: space-between;
+            border-radius: 9999px;
+        }
+
+        .animal-bg-motion-toggle .animal-bg-play-icon {
             display: none;
         }
 
-        body.animal-ui-theme.animal-bg-paused .animal-bg-toggle-btn {
-            background: var(--ai-sun) !important;
-            color: var(--ai-soil) !important;
-            border-color: var(--ai-line-dark) !important;
-        }
-
-        body.animal-ui-theme.animal-bg-paused .animal-bg-toggle-btn .animal-bg-pause-icon {
+        body.animal-ui-theme.animal-bg-paused .animal-bg-motion-toggle .animal-bg-pause-icon {
             display: none;
         }
 
-        body.animal-ui-theme.animal-bg-paused .animal-bg-toggle-btn .animal-bg-play-icon {
+        body.animal-ui-theme.animal-bg-paused .animal-bg-motion-toggle .animal-bg-play-icon {
             display: inline-block;
         }
 
@@ -1743,7 +1797,7 @@
             transform: none;
         }
 
-        body.animal-ui-theme.animal-bg-paused .top-nav-shell .animal-bg-toggle-btn {
+        body.animal-ui-theme .top-nav-shell .dropdown:focus-within .animal-bg-menu-btn {
             background: var(--theme-primary) !important;
             color: white !important;
         }
@@ -2464,16 +2518,42 @@
 
         {% endif %}
 
-            <button type="button"
-                    class="nav-btn animal-bg-toggle-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom transition-colors select-none"
-                    data-bg-toggle
-                    data-tip="暂停背景移动"
-                    aria-label="暂停背景移动"
-                    aria-pressed="false"
-                    onclick="toggleAnimalBackgroundMotion()">
-                <i class="fas fa-pause animal-bg-pause-icon pointer-events-none"></i>
-                <i class="fas fa-play animal-bg-play-icon pointer-events-none"></i>
-            </button>
+            <div class="dropdown dropdown-end">
+                <button type="button"
+                        tabindex="0"
+                        class="nav-btn animal-bg-menu-btn px-3 shadow-sm border-transparent tooltip tooltip-bottom transition-colors select-none"
+                        data-bg-menu-toggle
+                        data-tip="背景设置"
+                        aria-label="背景设置"
+                        aria-haspopup="true">
+                    <i class="fas fa-image pointer-events-none"></i>
+                </button>
+                <div tabindex="0" class="dropdown-content z-[120] mt-2 p-3 animal-bg-menu glass-dropdown-content">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <span class="text-xs font-black tracking-wide text-base-content/60">壁纸</span>
+                        <button type="button"
+                                class="btn btn-xs animal-bg-motion-toggle"
+                                data-bg-motion-toggle
+                                aria-label="暂停背景移动"
+                                aria-pressed="false"
+                                onclick="toggleAnimalBackgroundMotion()">
+                            <span data-bg-motion-label>暂停滚动</span>
+                            <span class="inline-flex items-center">
+                                <i class="fas fa-pause animal-bg-pause-icon pointer-events-none"></i>
+                                <i class="fas fa-play animal-bg-play-icon pointer-events-none"></i>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="animal-wallpaper-grid">
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="default" data-wallpaper-color="#7DC395" style="--wallpaper-image: url('{{ url_for('static', filename='images/animal-island-home-bg.webp') }}'); --wallpaper-color: #7DC395;" aria-label="默认壁纸" title="默认壁纸"></button>
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="blue" data-wallpaper-color="#7fb8df" style="--wallpaper-image: url('{{ url_for('static', filename='images/blue.png') }}'); --wallpaper-color: #7fb8df;" aria-label="蓝色壁纸" title="蓝色壁纸"></button>
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="orange" data-wallpaper-color="#e9a460" style="--wallpaper-image: url('{{ url_for('static', filename='images/orange.png') }}'); --wallpaper-color: #e9a460;" aria-label="橙色壁纸" title="橙色壁纸"></button>
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="purple" data-wallpaper-color="#9c87d3" style="--wallpaper-image: url('{{ url_for('static', filename='images/purple.png') }}'); --wallpaper-color: #9c87d3;" aria-label="紫色壁纸" title="紫色壁纸"></button>
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="red" data-wallpaper-color="#d86f6b" style="--wallpaper-image: url('{{ url_for('static', filename='images/red.png') }}'); --wallpaper-color: #d86f6b;" aria-label="红色壁纸" title="红色壁纸"></button>
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="yellow" data-wallpaper-color="#e6cc66" style="--wallpaper-image: url('{{ url_for('static', filename='images/yellow.png') }}'); --wallpaper-color: #e6cc66;" aria-label="黄色壁纸" title="黄色壁纸"></button>
+                    </div>
+                </div>
+            </div>
 
     </div>
         </div>
@@ -2513,15 +2593,41 @@
 
             {% endif %}
 
-            <button type="button"
-                    class="nav-btn animal-bg-toggle-btn px-2 shadow-none border-transparent h-8"
-                    data-bg-toggle
-                    aria-label="暂停背景移动"
-                    aria-pressed="false"
-                    onclick="toggleAnimalBackgroundMotion()">
-                <i class="fas fa-pause animal-bg-pause-icon pointer-events-none text-xs"></i>
-                <i class="fas fa-play animal-bg-play-icon pointer-events-none text-xs"></i>
-            </button>
+            <div class="dropdown dropdown-end">
+                <button type="button"
+                        tabindex="0"
+                        class="nav-btn animal-bg-menu-btn px-2 shadow-none border-transparent h-8"
+                        data-bg-menu-toggle
+                        aria-label="背景设置"
+                        aria-haspopup="true">
+                    <i class="fas fa-image pointer-events-none text-xs"></i>
+                </button>
+                <div tabindex="0" class="dropdown-content z-[120] mt-3 p-3 animal-bg-menu glass-dropdown-content">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <span class="text-xs font-black tracking-wide text-base-content/60">壁纸</span>
+                        <button type="button"
+                                class="btn btn-xs animal-bg-motion-toggle"
+                                data-bg-motion-toggle
+                                aria-label="暂停背景移动"
+                                aria-pressed="false"
+                                onclick="toggleAnimalBackgroundMotion()">
+                            <span data-bg-motion-label>暂停滚动</span>
+                            <span class="inline-flex items-center">
+                                <i class="fas fa-pause animal-bg-pause-icon pointer-events-none"></i>
+                                <i class="fas fa-play animal-bg-play-icon pointer-events-none"></i>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="animal-wallpaper-grid">
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="default" data-wallpaper-color="#7DC395" style="--wallpaper-image: url('{{ url_for('static', filename='images/animal-island-home-bg.webp') }}'); --wallpaper-color: #7DC395;" aria-label="默认壁纸" title="默认壁纸"></button>
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="blue" data-wallpaper-color="#7fb8df" style="--wallpaper-image: url('{{ url_for('static', filename='images/blue.png') }}'); --wallpaper-color: #7fb8df;" aria-label="蓝色壁纸" title="蓝色壁纸"></button>
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="orange" data-wallpaper-color="#e9a460" style="--wallpaper-image: url('{{ url_for('static', filename='images/orange.png') }}'); --wallpaper-color: #e9a460;" aria-label="橙色壁纸" title="橙色壁纸"></button>
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="purple" data-wallpaper-color="#9c87d3" style="--wallpaper-image: url('{{ url_for('static', filename='images/purple.png') }}'); --wallpaper-color: #9c87d3;" aria-label="紫色壁纸" title="紫色壁纸"></button>
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="red" data-wallpaper-color="#d86f6b" style="--wallpaper-image: url('{{ url_for('static', filename='images/red.png') }}'); --wallpaper-color: #d86f6b;" aria-label="红色壁纸" title="红色壁纸"></button>
+                        <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="yellow" data-wallpaper-color="#e6cc66" style="--wallpaper-image: url('{{ url_for('static', filename='images/yellow.png') }}'); --wallpaper-color: #e6cc66;" aria-label="黄色壁纸" title="黄色壁纸"></button>
+                    </div>
+                </div>
+            </div>
 
             
 
@@ -5497,24 +5603,68 @@ toast: {
         // Animal Island 背景动效控制
         // ==========================================
         const ANIMAL_BG_PAUSED_KEY = 'animalBackgroundPaused';
+        const ANIMAL_WALLPAPER_KEY = 'animalWallpaper';
+        const ANIMAL_DARK_WALLPAPER = 'url("{{ url_for('static', filename='images/animal-island-home-bg-dark.png') }}")';
+        const ANIMAL_DARK_BG_COLOR = '#1d2119';
+
+        function getWallpaperOption(name) {
+            return Array.from(document.querySelectorAll('[data-wallpaper-option]')).find((btn) => btn.dataset.wallpaper === name)
+                || document.querySelector('[data-wallpaper-option][data-wallpaper="default"]');
+        }
+
+        function applyAnimalWallpaper(name) {
+            const selectedName = name || 'default';
+            const option = getWallpaperOption(selectedName);
+            const wallpaperName = option ? option.dataset.wallpaper : 'default';
+            const wallpaperImage = option ? option.style.getPropertyValue('--wallpaper-image') : 'var(--ai-home-bg-light)';
+            const wallpaperColor = option ? option.dataset.wallpaperColor : '#7DC395';
+            const isDark = document.documentElement.classList.contains('dark');
+
+            if (isDark) {
+                document.documentElement.style.setProperty('--ai-home-bg', ANIMAL_DARK_WALLPAPER);
+                document.documentElement.style.setProperty('--ai-home-bg-color', ANIMAL_DARK_BG_COLOR);
+            } else {
+                document.documentElement.style.setProperty('--ai-home-bg', wallpaperImage);
+                document.documentElement.style.setProperty('--ai-home-bg-color', wallpaperColor);
+            }
+
+            document.querySelectorAll('[data-wallpaper-option]').forEach((btn) => {
+                const isActive = btn.dataset.wallpaper === wallpaperName;
+                btn.classList.toggle('is-active', isActive);
+                btn.setAttribute('aria-pressed', String(isActive));
+            });
+        }
+
+        window.setAnimalWallpaper = function(name) {
+            const option = getWallpaperOption(name);
+            const wallpaperName = option ? option.dataset.wallpaper : 'default';
+            localStorage.setItem(ANIMAL_WALLPAPER_KEY, wallpaperName);
+            applyAnimalWallpaper(wallpaperName);
+        };
 
         function syncAnimalBackgroundToggleUI() {
             const isPaused = document.body.classList.contains('animal-bg-paused');
-            const label = isPaused ? '继续背景移动' : '暂停背景移动';
+            const label = isPaused ? '继续滚动' : '暂停滚动';
 
-            document.querySelectorAll('[data-bg-toggle]').forEach((btn) => {
+            document.querySelectorAll('[data-bg-motion-toggle]').forEach((btn) => {
                 btn.setAttribute('aria-label', label);
                 btn.setAttribute('aria-pressed', String(isPaused));
                 btn.setAttribute('title', label);
-                if (btn.hasAttribute('data-tip')) {
-                    btn.setAttribute('data-tip', label);
-                }
+            });
+
+            document.querySelectorAll('[data-bg-motion-label]').forEach((labelEl) => {
+                labelEl.textContent = label;
             });
         }
 
         function initAnimalBackgroundMotion() {
             const shouldPause = localStorage.getItem(ANIMAL_BG_PAUSED_KEY) === 'true';
             document.body.classList.toggle('animal-bg-paused', shouldPause);
+            const savedWallpaper = localStorage.getItem(ANIMAL_WALLPAPER_KEY) || 'default';
+            applyAnimalWallpaper(savedWallpaper);
+            document.querySelectorAll('[data-wallpaper-option]').forEach((btn) => {
+                btn.addEventListener('click', () => window.setAnimalWallpaper(btn.dataset.wallpaper));
+            });
             syncAnimalBackgroundToggleUI();
         }
 
@@ -5558,6 +5708,7 @@ toast: {
             }
 
             syncThemeToggleUI();
+            applyAnimalWallpaper(localStorage.getItem(ANIMAL_WALLPAPER_KEY) || 'default');
         };
 
         document.addEventListener('DOMContentLoaded', () => {

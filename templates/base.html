@@ -421,6 +421,7 @@
         }
 
         .user-phone-panel .animal-phone__home {
+            position: relative;
             padding-top: 28px;
             padding-bottom: 28px;
             background:
@@ -448,6 +449,8 @@
             width: 123px;
             height: 123px;
             border-radius: 34px;
+            border: 0;
+            cursor: pointer;
         }
 
         .user-phone-clockline {
@@ -474,6 +477,21 @@
         }
 
         .user-phone-app-link .animal-phone__app-icon {
+            pointer-events: none;
+        }
+
+        .user-phone-fa-icon {
+            display: grid;
+            place-items: center;
+            color: rgba(255, 252, 235, 0.96);
+            font-size: 52px;
+            text-shadow: 0 3px 0 rgba(93, 64, 55, 0.14);
+        }
+
+        .user-phone-upload-icon {
+            width: 72%;
+            height: 72%;
+            object-fit: contain;
             pointer-events: none;
         }
 
@@ -517,6 +535,113 @@
 
         .user-phone-panel .animal-phone__page-indicator {
             margin-top: 12px;
+        }
+
+        .user-phone-home-layer {
+            display: contents;
+        }
+
+        .user-phone-internal-screen {
+            position: absolute;
+            inset: 54px 24px 24px;
+            z-index: 20;
+            display: none;
+            flex-direction: column;
+            border-radius: 58px;
+            background: rgba(255, 251, 240, 0.96);
+            border: 2px solid rgba(216, 198, 168, 0.66);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 18px 38px rgba(93, 64, 55, 0.12);
+            overflow: hidden;
+        }
+
+        .user-phone-panel.is-app-open .user-phone-internal-screen {
+            display: flex;
+        }
+
+        .user-phone-panel.is-app-open .user-phone-home-layer {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .user-phone-internal-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 20px 22px 14px;
+            border-bottom: 1px solid rgba(216, 198, 168, 0.58);
+        }
+
+        .user-phone-back {
+            width: 42px;
+            height: 42px;
+            border: 0;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: #ede3ca;
+            color: #725c4e;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .user-phone-internal-title {
+            color: #725c4e;
+            font-size: 24px;
+            font-weight: 1000;
+            line-height: 1;
+        }
+
+        .user-phone-internal-subtitle {
+            margin-top: 5px;
+            color: #9b8a72;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .user-phone-internal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 18px 20px 24px;
+        }
+
+        .user-phone-internal-app {
+            display: none;
+        }
+
+        .user-phone-internal-app.is-active {
+            display: block;
+        }
+
+        .user-phone-store-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.64);
+            border: 1px solid rgba(216, 198, 168, 0.48);
+            margin-bottom: 10px;
+        }
+
+        .user-phone-store-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            flex: 0 0 auto;
+        }
+
+        .user-phone-store-icon img {
+            width: 72%;
+            height: 72%;
+            object-fit: contain;
+        }
+
+        .user-phone-store-icon i {
+            color: rgba(255, 252, 235, 0.96);
+            font-size: 22px;
         }
 
         @media (max-width: 640px) {
@@ -2440,6 +2565,7 @@
     <li><a href="{{ url_for('manage_announcements') }}" class="nav-menu-item"><i class="fas fa-bullhorn w-4 text-center"></i> 通知</a></li>
     <li><a href="{{ url_for('manage_comments') }}" class="nav-menu-item"><i class="fas fa-comment-dots w-4 text-center text-emerald-600"></i> 评论审核</a></li>
     <li><a href="{{ url_for('manage_users') }}" class="nav-menu-item"><i class="fas fa-users-cog w-4 text-center"></i> 用户</a></li>
+    <li><a href="{{ url_for('manage_phone_apps') }}" class="nav-menu-item"><i class="fas fa-store w-4 text-center text-sky-500"></i> 手机 App</a></li>
     <li><a href="{{ url_for('manage_badges') }}" class="nav-menu-item"><i class="fas fa-medal w-4 text-center"></i> 徽章</a></li>
     <li><a href="{{ url_for('manage_bookmarks') }}" class="nav-menu-item"><i class="fas fa-bookmark w-4 text-center text-indigo-500"></i> 书签图鉴</a></li>
     <li>
@@ -2650,68 +2776,99 @@
 
                                     <div class="animal-phone__screen">
                                         <div class="animal-phone__home">
-                                            <div class="animal-phone__date-display">
-                                                <div class="animal-phone__date-header">
-                                                    <span class="user-phone-date-line">
-                                                        <span id="user-phone-monthday">1月1日</span>
-                                                        <span class="user-phone-weekday-inline" id="user-phone-day-text">星期一</span>
-                                                    </span>
-                                                    <div class="user-phone-clockline">
-                                                        <span id="user-phone-hours">00</span>
-                                                        <span class="animal-phone__blink">:</span>
-                                                        <span id="user-phone-minutes">00</span>
+                                            <div class="user-phone-home-layer">
+                                                <div class="animal-phone__date-display">
+                                                    <div class="animal-phone__date-header">
+                                                        <span class="user-phone-date-line">
+                                                            <span id="user-phone-monthday">1月1日</span>
+                                                            <span class="user-phone-weekday-inline" id="user-phone-day-text">星期一</span>
+                                                        </span>
+                                                        <div class="user-phone-clockline">
+                                                            <span id="user-phone-hours">00</span>
+                                                            <span class="animal-phone__blink">:</span>
+                                                            <span id="user-phone-minutes">00</span>
+                                                        </div>
+                                                        <span class="animal-phone__location"></span>
                                                     </div>
-                                                    <span class="animal-phone__location"></span>
+                                                    <span class="animal-phone__day-text">{{ current_user.username }}</span>
                                                 </div>
-                                                <span class="animal-phone__day-text">{{ current_user.username }}</span>
+
+                                                {% set user_phone_apps = get_phone_apps() %}
+                                                <div class="animal-phone__apps">
+                                                    {% for phone_app in user_phone_apps %}
+                                                        {% set phone_app_tag = 'button' if phone_app.action_type == 'internal' else 'a' %}
+                                                        <{{ phone_app_tag }}
+                                                            {% if phone_app.action_type == 'internal' %}
+                                                                type="button"
+                                                                data-phone-app-open="{{ phone_app.internal_key or 'app_store' }}"
+                                                                data-phone-app-title="{{ phone_app.name }}"
+                                                            {% else %}
+                                                                href="{{ phone_app_url(phone_app) }}"
+                                                            {% endif %}
+                                                            class="animal-phone__app user-phone-app-link {% if phone_app.icon_class == 'animal-phone__app-icon--miles' %}animal-phone__app--offset{% endif %}"
+                                                            style="background: {{ phone_app.bg_color or '#82d5bb' }}"
+                                                            title="{{ phone_app.description or phone_app.name }}">
+                                                            {% if phone_app.icon_url %}
+                                                                <img src="{{ phone_app.icon_url }}" class="user-phone-upload-icon" alt="{{ phone_app.name }}">
+                                                            {% elif phone_app.is_builtin_icon %}
+                                                                <span class="animal-phone__app-icon {{ phone_app.icon_class }} {% if phone_app.icon_class == 'animal-phone__app-icon--miles' %}animal-phone__app-icon--offset{% endif %}"></span>
+                                                            {% else %}
+                                                                <i class="animal-phone__app-icon user-phone-fa-icon {{ phone_app.icon_class or 'fas fa-cube' }}"></i>
+                                                            {% endif %}
+                                                            <span class="user-phone-app-label">{{ phone_app.name }}</span>
+                                                        </{{ phone_app_tag }}>
+                                                    {% endfor %}
+                                                </div>
+
+                                                <div class="user-phone-footer">
+                                                    <div class="user-phone-footer-name">{{ current_user.username }}</div>
+                                                    <div class="user-phone-footer-meta">今日学习 {{ current_user.study_time_today_human }}</div>
+                                                </div>
+
+                                                <div class="animal-phone__page-indicator">
+                                                    <span class="animal-phone__page"></span>
+                                                </div>
                                             </div>
 
-                                            <div class="animal-phone__apps">
-                                                <a href="{{ url_for('user_profile') }}" class="animal-phone__app user-phone-app-link" style="background:#b77dee">
-                                                    <span class="animal-phone__app-icon animal-phone__app-icon--camera"></span>
-                                                    <span class="user-phone-app-label">主页</span>
-                                                </a>
-                                                <a href="{{ url_for('settings') }}" class="animal-phone__app user-phone-app-link animal-phone__app--offset" style="background:#889df0">
-                                                    <span class="animal-phone__app-icon animal-phone__app-icon--miles animal-phone__app-icon--offset"></span>
-                                                    <span class="user-phone-app-label">设置</span>
-                                                </a>
-                                                <a href="{{ url_for('index') }}" class="animal-phone__app user-phone-app-link" style="background:#f7cd67">
-                                                    <span class="animal-phone__app-icon animal-phone__app-icon--critterpedia"></span>
-                                                    <span class="user-phone-app-label">广场</span>
-                                                </a>
-                                                <a href="{{ url_for('book_index') }}" class="animal-phone__app user-phone-app-link" style="background:#e59266">
-                                                    <span class="animal-phone__app-icon animal-phone__app-icon--diy"></span>
-                                                    <span class="user-phone-app-label">Book</span>
-                                                </a>
-                                                <a href="{{ url_for('sticker_walls_view') }}" class="animal-phone__app user-phone-app-link" style="background:#f8a6b2">
-                                                    <span class="animal-phone__app-icon animal-phone__app-icon--design"></span>
-                                                    <span class="user-phone-app-label">贴纸墙</span>
-                                                </a>
-                                                <a href="{{ url_for('leaderboard') }}" class="animal-phone__app user-phone-app-link" style="background:#82d5bb">
-                                                    <span class="animal-phone__app-icon animal-phone__app-icon--map"></span>
-                                                    <span class="user-phone-app-label">排行榜</span>
-                                                </a>
-                                                <a href="{{ url_for('announcements_view') }}" class="animal-phone__app user-phone-app-link" style="background:#8ac68a">
-                                                    <span class="animal-phone__app-icon animal-phone__app-icon--variant"></span>
-                                                    <span class="user-phone-app-label">公告栏</span>
-                                                </a>
-                                                <a href="{{ url_for('bulletin_view') }}" class="animal-phone__app user-phone-app-link" style="background:#fc736d">
-                                                    <span class="animal-phone__app-icon animal-phone__app-icon--helicopter"></span>
-                                                    <span class="user-phone-app-label">任务栏</span>
-                                                </a>
-                                                <a href="{{ url_for('logout') }}" class="animal-phone__app user-phone-app-link" style="background:#d1da49">
-                                                    <span class="animal-phone__app-icon animal-phone__app-icon--chat"></span>
-                                                    <span class="user-phone-app-label">退出</span>
-                                                </a>
-                                            </div>
-
-                                            <div class="user-phone-footer">
-                                                <div class="user-phone-footer-name">{{ current_user.username }}</div>
-                                                <div class="user-phone-footer-meta">今日学习 {{ current_user.study_time_today_human }}</div>
-                                            </div>
-
-                                            <div class="animal-phone__page-indicator">
-                                                <span class="animal-phone__page"></span>
+                                            <div class="user-phone-internal-screen" id="user-phone-internal-screen">
+                                                <div class="user-phone-internal-header">
+                                                    <button type="button" class="user-phone-back" id="user-phone-back" aria-label="返回手机桌面">
+                                                        <i class="fas fa-chevron-left"></i>
+                                                    </button>
+                                                    <div>
+                                                        <div class="user-phone-internal-title" id="user-phone-internal-title">App</div>
+                                                        <div class="user-phone-internal-subtitle" id="user-phone-internal-subtitle">手机内打开</div>
+                                                    </div>
+                                                </div>
+                                                <div class="user-phone-internal-body">
+                                                    <div class="user-phone-internal-app" data-phone-app-key="app_store">
+                                                        {% for store_app in get_phone_apps(0) %}
+                                                            <div class="user-phone-store-item">
+                                                                <div class="user-phone-store-icon" style="background: {{ store_app.bg_color or '#82d5bb' }}">
+                                                                    {% if store_app.icon_url %}
+                                                                        <img src="{{ store_app.icon_url }}" alt="{{ store_app.name }}">
+                                                                    {% elif store_app.is_builtin_icon %}
+                                                                        <span class="animal-phone__app-icon {{ store_app.icon_class }}"></span>
+                                                                    {% else %}
+                                                                        <i class="{{ store_app.icon_class or 'fas fa-cube' }}"></i>
+                                                                    {% endif %}
+                                                                </div>
+                                                                <div class="min-w-0 flex-1">
+                                                                    <div class="text-[15px] font-black text-[#725c4e] truncate">{{ store_app.name }}</div>
+                                                                    <div class="text-[11px] font-bold text-[#9b8a72] leading-snug">{{ store_app.description or '这个 App 还没有描述。' }}</div>
+                                                                </div>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <div class="user-phone-internal-app" data-phone-app-key="profile_card">
+                                                        <div class="text-center px-4 py-8">
+                                                            <div class="w-24 h-24 mx-auto rounded-full {{ style_class }} grid place-items-center text-white text-4xl font-black shadow-inner">{{ current_user.username[0] | upper }}</div>
+                                                            <div class="mt-5 text-3xl font-black text-[#725c4e]">{{ current_user.username }}</div>
+                                                            <div class="mt-2 text-sm font-bold text-[#9b8a72]">今日学习 {{ current_user.study_time_today_human }}</div>
+                                                            <a href="{{ url_for('user_profile') }}" class="mt-6 inline-flex px-5 py-3 rounded-full bg-[#725c4e] text-white text-sm font-black">打开完整主页</a>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -2904,6 +3061,8 @@
                                         <li><a href="{{ url_for('manage_comments') }}" class="py-2.5 rounded-lg"><i class="fas fa-comment-dots w-4 text-center text-emerald-600"></i> 评论审核</a></li>
 
                                         <li><a href="{{ url_for('manage_users') }}" class="py-2.5 rounded-lg"><i class="fas fa-users-cog w-4 text-center"></i> 用户管理</a></li>
+
+                                        <li><a href="{{ url_for('manage_phone_apps') }}" class="py-2.5 rounded-lg"><i class="fas fa-store w-4 text-center text-sky-500"></i> 手机 App</a></li>
 
                                         <li><a href="{{ url_for('manage_badges') }}" class="py-2.5 rounded-lg"><i class="fas fa-medal w-4 text-center"></i> 徽章</a></li>
 
@@ -3575,6 +3734,11 @@
             const userPhonePopover = document.getElementById('user_phone_popover');
             const userPhoneClose = document.getElementById('user-phone-close');
             const userPhoneScale = document.getElementById('user-phone-scale');
+            const userPhonePanel = userPhonePopover?.querySelector('.user-phone-panel');
+            const userPhoneBack = document.getElementById('user-phone-back');
+            const userPhoneInternalTitle = document.getElementById('user-phone-internal-title');
+            const userPhoneInternalSubtitle = document.getElementById('user-phone-internal-subtitle');
+            const userPhoneInternalApps = userPhonePopover?.querySelectorAll('.user-phone-internal-app') || [];
             const statusTime = document.getElementById('user-phone-status-time');
             const phoneHours = document.getElementById('user-phone-hours');
             const phoneMinutes = document.getElementById('user-phone-minutes');
@@ -3657,6 +3821,38 @@
                 }
             }
 
+            function closeInternalPhoneApp() {
+                if (!userPhonePanel) return;
+                userPhonePanel.classList.remove('is-app-open');
+                userPhoneInternalApps.forEach((appPanel) => {
+                    appPanel.classList.remove('is-active');
+                });
+            }
+
+            function openInternalPhoneApp(appKey, appTitle) {
+                if (!userPhonePanel) return;
+
+                const safeKey = appKey || 'app_store';
+                const targetPanel = userPhonePopover?.querySelector(`.user-phone-internal-app[data-phone-app-key="${safeKey}"]`);
+                userPhoneInternalApps.forEach((appPanel) => {
+                    appPanel.classList.toggle('is-active', appPanel === targetPanel);
+                });
+
+                if (!targetPanel) {
+                    const fallbackPanel = userPhonePopover?.querySelector('.user-phone-internal-app[data-phone-app-key="app_store"]');
+                    fallbackPanel?.classList.add('is-active');
+                }
+
+                if (userPhoneInternalTitle) {
+                    userPhoneInternalTitle.textContent = appTitle || 'App';
+                }
+                if (userPhoneInternalSubtitle) {
+                    userPhoneInternalSubtitle.textContent = safeKey === 'app_store' ? '安装在这台小手机里的功能目录' : '手机内打开';
+                }
+
+                userPhonePanel.classList.add('is-app-open');
+            }
+
             function updateUserPhoneClock() {
                 const now = new Date();
                 const hours24 = now.getHours();
@@ -3699,6 +3895,7 @@
                 if (!userPhonePopover || !isUserPhoneOpen) return;
                 isUserPhoneOpen = false;
                 userPhonePopover.classList.remove('is-open');
+                closeInternalPhoneApp();
                 stopUserPhoneClock();
                 if (userBtn) {
                     userBtn.setAttribute('aria-expanded', 'false');
@@ -3738,6 +3935,20 @@
                     });
                 });
 
+                userPhonePopover.querySelectorAll('[data-phone-app-open]').forEach((appButton) => {
+                    appButton.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openInternalPhoneApp(appButton.dataset.phoneAppOpen, appButton.dataset.phoneAppTitle);
+                    });
+                });
+
+                userPhoneBack?.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeInternalPhoneApp();
+                });
+
                 document.addEventListener('click', (event) => {
                     if (!isUserPhoneOpen || !userContainer) return;
                     if (!userContainer.contains(event.target)) {
@@ -3747,7 +3958,11 @@
 
                 document.addEventListener('keydown', (event) => {
                     if (event.key === 'Escape' && isUserPhoneOpen) {
-                        closeUserPhone();
+                        if (userPhonePanel?.classList.contains('is-app-open')) {
+                            closeInternalPhoneApp();
+                        } else {
+                            closeUserPhone();
+                        }
                     }
                 });
 

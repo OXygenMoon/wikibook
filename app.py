@@ -803,6 +803,29 @@ class UserVinyl(db.Model):
     is_notified = db.Column(db.Boolean, default=False)
 
 
+class PhoneApp(db.Model):
+    __tablename__ = 'phone_app'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(40), nullable=False)
+    description = db.Column(db.Text, default="")
+    icon_url = db.Column(db.String(255), default="")
+    icon_class = db.Column(db.String(120), default="")
+    bg_color = db.Column(db.String(20), default="#82d5bb")
+    action_type = db.Column(db.String(20), default="link")  # link, internal
+    target_endpoint = db.Column(db.String(80), default="")
+    target_url = db.Column(db.String(255), default="")
+    internal_key = db.Column(db.String(80), default="")
+    sort_order = db.Column(db.Integer, default=0)
+    enabled = db.Column(db.Boolean, default=True)
+    admin_only = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
+
+    @property
+    def is_builtin_icon(self):
+        return bool(self.icon_class and self.icon_class.startswith("animal-phone__app-icon--"))
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -827,6 +850,53 @@ def can_view_wiki(wiki_id):
         return False
         
     return w.is_visible_to(current_user)
+
+DEFAULT_PHONE_APPS = [
+    {"name": "主页", "description": "查看个人主页与成长记录。", "icon_class": "animal-phone__app-icon--camera", "bg_color": "#b77dee", "action_type": "link", "target_endpoint": "user_profile", "sort_order": 10},
+    {"name": "设置", "description": "修改账号资料、主题与偏好。", "icon_class": "animal-phone__app-icon--miles", "bg_color": "#889df0", "action_type": "link", "target_endpoint": "settings", "sort_order": 20},
+    {"name": "广场", "description": "浏览精选 Wiki 与公开知识库。", "icon_class": "animal-phone__app-icon--critterpedia", "bg_color": "#f7cd67", "action_type": "link", "target_endpoint": "index", "sort_order": 30},
+    {"name": "Book", "description": "进入笔记与个人知识本。", "icon_class": "animal-phone__app-icon--diy", "bg_color": "#e59266", "action_type": "link", "target_endpoint": "book_index", "sort_order": 40},
+    {"name": "贴纸墙", "description": "打开大家的学习贴纸墙。", "icon_class": "animal-phone__app-icon--design", "bg_color": "#f8a6b2", "action_type": "link", "target_endpoint": "sticker_walls_view", "sort_order": 50},
+    {"name": "排行榜", "description": "查看学习、番茄与贡献榜。", "icon_class": "animal-phone__app-icon--map", "bg_color": "#82d5bb", "action_type": "link", "target_endpoint": "leaderboard", "sort_order": 60},
+    {"name": "公告栏", "description": "阅读系统公告与活动信息。", "icon_class": "animal-phone__app-icon--variant", "bg_color": "#8ac68a", "action_type": "link", "target_endpoint": "announcements_view", "sort_order": 70},
+    {"name": "任务栏", "description": "查看委托任务和悬赏。", "icon_class": "animal-phone__app-icon--helicopter", "bg_color": "#fc736d", "action_type": "link", "target_endpoint": "bulletin_view", "sort_order": 80},
+    {"name": "退出", "description": "退出当前账号。", "icon_class": "animal-phone__app-icon--chat", "bg_color": "#d1da49", "action_type": "link", "target_endpoint": "logout", "sort_order": 90},
+]
+
+PHONE_INTERNAL_APP_META = {
+    "app_store": {"title": "App Store", "subtitle": "安装在这台小手机里的功能目录"},
+    "profile_card": {"title": "我的名片", "subtitle": "在手机内查看个人摘要"},
+}
+
+def seed_default_phone_apps():
+    if PhoneApp.query.first() is not None:
+        return
+    for data in DEFAULT_PHONE_APPS:
+        db.session.add(PhoneApp(**data))
+    db.session.commit()
+
+def resolve_phone_app_url(phone_app):
+    if not phone_app:
+        return "#"
+    if phone_app.target_endpoint:
+        try:
+            return url_for(phone_app.target_endpoint)
+        except Exception:
+            return phone_app.target_url or "#"
+    return phone_app.target_url or "#"
+
+def get_visible_phone_apps(limit=9):
+    if not current_user.is_authenticated:
+        return []
+    query = PhoneApp.query.filter_by(enabled=True).order_by(PhoneApp.sort_order.asc(), PhoneApp.id.asc())
+    apps = []
+    for phone_app in query.all():
+        if phone_app.admin_only and not current_user.is_admin:
+            continue
+        apps.append(phone_app)
+        if limit and len(apps) >= limit:
+            break
+    return apps
 
 def get_visible_comments(note_id=None, wiki_page_id=None):
     query = Comment.query
@@ -1031,6 +1101,7 @@ def ensure_db():
                 s = MarkdownStyle(css_text="")
                 db.session.add(s)
                 db.session.commit()
+            seed_default_phone_apps()
         _db_initialized = True
 
 @app.route("/")
@@ -2127,6 +2198,112 @@ def moderate_comment(comment_id):
     if not next_url.startswith("/"):
         next_url = request.referrer or url_for("manage_comments")
     return redirect(next_url)
+
+def get_phone_app_endpoint_choices():
+    endpoints = []
+    skip_prefixes = ("static", "api_", "service_")
+    for rule in app.url_map.iter_rules():
+        if "GET" not in rule.methods or "<" in rule.rule:
+            continue
+        if rule.endpoint.startswith(skip_prefixes):
+            continue
+        endpoints.append((rule.endpoint, rule.rule))
+    return sorted(set(endpoints), key=lambda item: item[0])
+
+def apply_phone_app_form(phone_app):
+    phone_app.name = request.form.get("name", "").strip() or "未命名 App"
+    phone_app.description = request.form.get("description", "").strip()
+    phone_app.icon_class = request.form.get("icon_class", "").strip()
+    phone_app.bg_color = request.form.get("bg_color", "").strip() or "#82d5bb"
+    phone_app.action_type = request.form.get("action_type", "link").strip()
+    phone_app.target_endpoint = request.form.get("target_endpoint", "").strip()
+    phone_app.target_url = request.form.get("target_url", "").strip()
+    phone_app.internal_key = request.form.get("internal_key", "").strip()
+    phone_app.enabled = request.form.get("enabled") == "on"
+    phone_app.admin_only = request.form.get("admin_only") == "on"
+
+    if phone_app.action_type not in ["link", "internal"]:
+        phone_app.action_type = "link"
+
+    try:
+        phone_app.sort_order = int(request.form.get("sort_order", 0))
+    except ValueError:
+        phone_app.sort_order = 0
+
+    if request.form.get("remove_icon") == "on":
+        remove_uploaded_static_file(phone_app.icon_url, "phone_apps")
+        phone_app.icon_url = ""
+
+    icon_file = request.files.get("icon_file")
+    if icon_file and icon_file.filename:
+        remove_uploaded_static_file(phone_app.icon_url, "phone_apps")
+        phone_app.icon_url = save_uploaded_image(icon_file, "phone_apps", "phone_app")
+
+    return phone_app
+
+@app.route("/admin/phone-apps", methods=["GET", "POST"])
+@login_required
+def manage_phone_apps():
+    if not current_user.is_admin:
+        abort(403)
+
+    if request.method == "POST":
+        try:
+            phone_app = apply_phone_app_form(PhoneApp())
+            db.session.add(phone_app)
+            db.session.commit()
+            flash("手机 App 已创建", "success")
+        except ValueError as error:
+            flash(str(error), "error")
+        return redirect(url_for("manage_phone_apps"))
+
+    phone_apps = PhoneApp.query.order_by(PhoneApp.sort_order.asc(), PhoneApp.id.asc()).all()
+    return render_template(
+        "admin/manage_phone_apps.html",
+        phone_apps=phone_apps,
+        endpoint_choices=get_phone_app_endpoint_choices(),
+        internal_app_meta=PHONE_INTERNAL_APP_META,
+    )
+
+@app.route("/admin/phone-apps/<int:app_id>", methods=["POST"])
+@login_required
+def update_phone_app(app_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    phone_app = PhoneApp.query.get_or_404(app_id)
+    try:
+        apply_phone_app_form(phone_app)
+        db.session.commit()
+        flash("手机 App 已更新", "success")
+    except ValueError as error:
+        flash(str(error), "error")
+    return redirect(url_for("manage_phone_apps"))
+
+@app.route("/admin/phone-apps/<int:app_id>/delete", methods=["POST"])
+@login_required
+def delete_phone_app(app_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    phone_app = PhoneApp.query.get_or_404(app_id)
+    remove_uploaded_static_file(phone_app.icon_url, "phone_apps")
+    db.session.delete(phone_app)
+    db.session.commit()
+    flash("手机 App 已删除", "success")
+    return redirect(url_for("manage_phone_apps"))
+
+@app.route("/admin/phone-apps/reset-defaults", methods=["POST"])
+@login_required
+def reset_phone_apps_defaults():
+    if not current_user.is_admin:
+        abort(403)
+
+    PhoneApp.query.delete()
+    db.session.commit()
+    seed_default_phone_apps()
+    flash("已恢复默认 3x3 手机 App", "success")
+    return redirect(url_for("manage_phone_apps"))
 
 @app.route("/admin/classes", methods=["GET", "POST"])
 @login_required
@@ -4161,7 +4338,10 @@ def inject_helpers():
         can_edit_wiki=can_edit_wiki,
         online_user_count=online_count,
         get_badge_usage=get_badge_usage,
-        get_global_sticker_limit=get_global_sticker_limit
+        get_global_sticker_limit=get_global_sticker_limit,
+        get_phone_apps=get_visible_phone_apps,
+        phone_app_url=resolve_phone_app_url,
+        phone_internal_app_meta=PHONE_INTERNAL_APP_META
     )
 
 

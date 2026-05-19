@@ -23,7 +23,7 @@
 
 
     <link href="{{ url_for('static', filename='css/daisyui.full.css') }}" rel="stylesheet" type="text/css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animal-island-ui@0.9.1/dist/index.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animal-island-ui.css') }}">
 
     <script src="{{ url_for('static', filename='js/tailwindcss.js') }}"></script>
 
@@ -2840,7 +2840,7 @@
 
                 <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-sitemap text-primary"></i> 页面导航</h3>
 
-                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+                <form method="dialog"><button class="animal-btn animal-btn--text animal-btn--small animal-btn--circle text-stone-500 hover:text-stone-900">✕</button></form>
 
             </div>
 
@@ -2937,7 +2937,7 @@
 
                 <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-list-ul text-primary"></i> 本页大纲</h3>
 
-                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+                <form method="dialog"><button class="animal-btn animal-btn--text animal-btn--small animal-btn--circle text-stone-500 hover:text-stone-900">✕</button></form>
 
             </div>
 
@@ -2967,7 +2967,7 @@
 
                 <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-cog text-primary"></i> Wiki 管理</h3>
 
-                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost">✕</button></form>
+                <form method="dialog"><button class="animal-btn animal-btn--text animal-btn--small animal-btn--circle text-stone-500 hover:text-stone-900">✕</button></form>
 
             </div>
 
@@ -3104,7 +3104,7 @@
 
     <button id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" 
 
-            class="fixed bottom-10 right-10 btn btn-circle btn-primary shadow-xl shadow-primary/30 z-[150] opacity-0 pointer-events-none translate-y-10 transition-all duration-500 hover:-translate-y-1 hover:scale-110">
+            class="fixed bottom-10 right-10 animal-btn animal-btn--primary animal-btn--large animal-btn--circle shadow-xl shadow-primary/30 z-[150] opacity-0 pointer-events-none translate-y-10 transition-all duration-500 hover:-translate-y-1 hover:scale-110">
 
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
 
@@ -3120,7 +3120,7 @@
 
             <div id="ann_modal_content" class="prose prose-sm md:prose-base max-w-none text-base-content/80 bg-base-200/30 p-4 md:p-6 rounded-xl"></div>
 
-            <div class="modal-action mt-8"><button class="btn btn-primary px-8 rounded-full shadow-lg shadow-primary/30" onclick="app.announcements.confirm()">我已收到</button></div>
+            <div class="modal-action mt-8"><button id="ann_modal_confirm" class="animal-btn animal-btn--primary animal-btn--middle px-8 shadow-lg shadow-primary/30" onclick="app.announcements.confirm()">我已收到</button></div>
 
         </div>
 
@@ -3146,7 +3146,7 @@
 
             <form method="dialog">
 
-                <button class="btn btn-success bg-emerald-500 border-none text-white px-12 py-3 h-auto rounded-2xl shadow-xl shadow-emerald-500/30 font-black tracking-widest text-lg hover:scale-105 transition-transform" onclick="app.pomodoro.closeModal()">开始休息</button>
+                <button class="animal-btn animal-btn--primary px-12 py-3 h-auto rounded-2xl !bg-emerald-500 !border-emerald-500 !text-white shadow-xl shadow-emerald-500/30 font-black tracking-widest text-lg hover:scale-105 transition-transform" onclick="app.pomodoro.closeModal()">开始休息</button>
 
             </form>
 
@@ -3236,7 +3236,7 @@
 
             
 
-            <button onclick="app.badges.closeModal()" class="absolute top-4 right-4 btn btn-circle btn-sm btn-ghost bg-black/5 dark:bg-white/10 text-stone-500 dark:text-white hover:text-stone-900 dark:hover:bg-white/20 z-30 transition-all shadow-sm backdrop-blur-md">✕</button>
+            <button onclick="app.badges.closeModal()" class="absolute top-4 right-4 animal-btn animal-btn--text animal-btn--small animal-btn--circle bg-black/5 dark:bg-white/10 text-stone-500 dark:text-white hover:text-stone-900 dark:hover:bg-white/20 z-30 transition-all shadow-sm backdrop-blur-md">✕</button>
 
         </div>
 
@@ -3265,10 +3265,10 @@
 
             <div class="mt-4 pt-5 border-t border-stone-100 dark:border-stone-700/50 relative z-10 flex justify-between items-center">
                 <div class="badge badge-outline font-black text-[10px] uppercase tracking-widest text-indigo-400 border-indigo-200" id="new-bookmark-rarity"></div>
-                <button onclick="app.bookmarks.closeModal()" class="btn btn-primary btn-sm rounded-full px-6 shadow-md shadow-primary/20">开心收下</button>
+                <button onclick="app.bookmarks.closeModal()" class="animal-btn animal-btn--primary animal-btn--small px-6 shadow-md shadow-primary/20">开心收下</button>
             </div>
             
-            <button onclick="app.bookmarks.closeModal()" class="absolute top-4 right-4 btn btn-circle btn-sm btn-ghost bg-black/5 dark:bg-white/10 text-stone-500 dark:text-white hover:text-stone-900 dark:hover:bg-white/20 z-30 transition-all shadow-sm backdrop-blur-md">✕</button>
+            <button onclick="app.bookmarks.closeModal()" class="absolute top-4 right-4 animal-btn animal-btn--text animal-btn--small animal-btn--circle bg-black/5 dark:bg-white/10 text-stone-500 dark:text-white hover:text-stone-900 dark:hover:bg-white/20 z-30 transition-all shadow-sm backdrop-blur-md">✕</button>
         </div>
         <form method="dialog" class="modal-backdrop"><button onclick="app.bookmarks.closeModal()">close</button></form>
     </dialog>
@@ -3290,7 +3290,9 @@
 
                 <label class="label pb-1"><span class="label-text font-bold">专注时长 (分钟)</span><span class="label-text-alt text-error font-medium">最少 30</span></label>
 
-                <input type="number" id="pomo-setting-work" min="30" class="input input-bordered w-full bg-base-200 focus:bg-base-100 font-mono font-bold" />
+                <span class="animal-input animal-input--middle animal-input--no-shadow w-full bg-base-200 focus-within:bg-base-100">
+                    <input type="number" id="pomo-setting-work" min="30" class="animal-input__field font-mono font-bold" />
+                </span>
 
             </div>
 
@@ -3300,7 +3302,9 @@
 
                 <label class="label pb-1"><span class="label-text font-bold">休息时长 (分钟)</span><span class="label-text-alt text-error font-medium">最多 15</span></label>
 
-                <input type="number" id="pomo-setting-rest" max="15" min="1" class="input input-bordered w-full bg-base-200 focus:bg-base-100 font-mono font-bold" />
+                <span class="animal-input animal-input--middle animal-input--no-shadow w-full bg-base-200 focus-within:bg-base-100">
+                    <input type="number" id="pomo-setting-rest" max="15" min="1" class="animal-input__field font-mono font-bold" />
+                </span>
 
             </div>
 
@@ -3308,9 +3312,9 @@
 
             <div class="modal-action mt-0 flex gap-3">
 
-                <form method="dialog" class="m-0"><button class="btn btn-ghost rounded-xl px-6">取消</button></form>
+                <form method="dialog" class="m-0"><button class="animal-btn animal-btn--text animal-btn--middle rounded-xl px-6">取消</button></form>
 
-                <button class="btn btn-primary rounded-xl px-8 flex-1 shadow-lg shadow-primary/30" onclick="app.pomodoro.saveSettings()">保存配置</button>
+                <button class="animal-btn animal-btn--primary animal-btn--middle rounded-xl px-8 flex-1 shadow-lg shadow-primary/30" onclick="app.pomodoro.saveSettings()">保存配置</button>
 
             </div>
 
@@ -3365,7 +3369,7 @@
                 </div>
 
                 <div class="px-6 pt-8 mt-2">
-                    <button onclick="app.reports.confirm()" class="btn btn-block bg-stone-800 hover:bg-stone-700 text-white rounded-xl h-12 shadow-lg shadow-stone-800/20 text-base border-none font-black transition-transform active:scale-95">
+                    <button onclick="app.reports.confirm()" class="animal-btn animal-btn--block animal-btn--middle !bg-stone-800 hover:!bg-stone-700 !border-stone-800 !text-white rounded-xl h-12 shadow-lg shadow-stone-800/20 text-base border-none font-black transition-transform active:scale-95">
                         开心收下
                     </button>
                 </div>
@@ -3378,7 +3382,7 @@
         <div class="modal-box p-0 overflow-hidden rounded-[2rem] border border-base-200 shadow-2xl max-w-sm">
             <div class="p-5 border-b border-base-200 bg-base-200/50 flex justify-between items-center">
                 <h3 class="font-bold text-base flex items-center gap-2"><i class="fas fa-users text-primary"></i> 该段落的书签</h3>
-                <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost bg-white">✕</button></form>
+                <form method="dialog"><button class="animal-btn animal-btn--text animal-btn--small animal-btn--circle bg-white">✕</button></form>
             </div>
             <div id="multi_bookmark_list" class="p-5 max-h-[60vh] overflow-y-auto custom-scroll space-y-3 bg-base-100">
                 </div>
@@ -3394,12 +3398,12 @@
                 <h3 class="text-3xl font-black tracking-tight">任务手册</h3>
                 <p class="text-xs font-bold uppercase tracking-[0.2em] opacity-70 mt-1">Adventurer's Quest Log</p>
             </div>
-            <form method="dialog"><button class="btn btn-circle btn-sm bg-white/20 border-none text-white hover:bg-white/40">✕</button></form>
+            <form method="dialog"><button class="animal-btn animal-btn--text animal-btn--small animal-btn--circle bg-white/20 border-none text-white hover:bg-white/40">✕</button></form>
         </div>
 
         <div class="flex gap-1 p-4 bg-stone-100">
-            <button onclick="app.quests.switchTab('active')" id="btn-tab-active" class="flex-1 py-3 rounded-xl font-black text-sm transition-all bg-[#8b5a2b] text-white">进行中</button>
-            <button onclick="app.quests.switchTab('completed')" id="btn-tab-completed" class="flex-1 py-3 rounded-xl font-black text-sm transition-all text-stone-400 hover:bg-stone-200">已结案</button>
+            <button onclick="app.quests.switchTab('active')" id="btn-tab-active" class="animal-btn animal-btn--primary animal-btn--middle flex-1 rounded-xl font-black text-sm transition-all !bg-[#8b5a2b] !border-[#8b5a2b] !text-white">进行中</button>
+            <button onclick="app.quests.switchTab('completed')" id="btn-tab-completed" class="animal-btn animal-btn--text animal-btn--middle flex-1 rounded-xl font-black text-sm transition-all text-stone-400 hover:bg-stone-200">已结案</button>
         </div>
 
         <div id="quest-list-content" class="flex-1 overflow-y-auto custom-scroll p-6 space-y-4">
@@ -3764,7 +3768,7 @@ toast: {
 
                     
 
-                    el.innerHTML = `<div class="mt-0.5 text-lg">${iconMap[type] || iconMap.info}</div><div class="flex-1 text-sm font-medium leading-relaxed tracking-wide">${message}</div><button onclick="this.parentElement.remove()" class="btn btn-xs btn-ghost btn-circle text-white/40 hover:text-white">✕</button>`;
+                    el.innerHTML = `<div class="mt-0.5 text-lg">${iconMap[type] || iconMap.info}</div><div class="flex-1 text-sm font-medium leading-relaxed tracking-wide">${message}</div><button onclick="this.parentElement.remove()" class="animal-btn animal-btn--text animal-btn--small animal-btn--circle text-white/40 hover:text-white">✕</button>`;
 
                     this.container.appendChild(el);
 
@@ -3915,7 +3919,7 @@ toast: {
 
                     if (!this.currentId) return; 
 
-                    const btn = document.querySelector('#announcement_modal .btn-primary'); 
+                    const btn = document.getElementById('ann_modal_confirm'); 
 
                     btn.disabled = true; 
 
@@ -5096,7 +5100,7 @@ toast: {
                                             </div>
                                             <p class="text-[10px] text-base-content/50 line-clamp-1 italic pl-6" title="${b.target_snippet}">${b.target_snippet}</p>
                                         </div>
-                                        <button onclick="app.bookmarks.removePlacing(${b.id}, event)" class="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 btn btn-xs btn-ghost text-error bg-error/10 hover:bg-error hover:text-white min-h-0 h-6 px-2 shadow-sm transition-all" title="取下书签">
+                                        <button onclick="app.bookmarks.removePlacing(${b.id}, event)" class="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 animal-btn animal-btn--text animal-btn--small text-error bg-error/10 hover:bg-error hover:text-white min-h-0 h-6 px-2 shadow-sm transition-all" title="取下书签">
                                             取下
                                         </button>
                                     </div>
@@ -5113,7 +5117,7 @@ toast: {
                                             </div>
                                             <span class="text-xs font-bold text-base-content truncate">${b.name}</span>
                                         </div>
-                                        <button onclick="document.activeElement.blur(); app.bookmarks.startPlacing(${b.id})" class="btn btn-xs btn-primary min-h-0 h-6 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 shadow-sm font-medium">夹入</button>
+                                        <button onclick="document.activeElement.blur(); app.bookmarks.startPlacing(${b.id})" class="animal-btn animal-btn--primary animal-btn--small min-h-0 h-6 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 shadow-sm font-medium">夹入</button>
                                     </div>
                                 </li>`;
                         }
@@ -5428,11 +5432,11 @@ toast: {
                     const container = document.getElementById('quest-list-content');
 
                     if (tab === 'active') {
-                        btnActive.className = "flex-1 py-3 rounded-xl font-black text-sm transition-all bg-[#8b5a2b] text-white";
-                        btnComp.className = "flex-1 py-3 rounded-xl font-black text-sm transition-all text-stone-400 hover:bg-stone-200";
+                        btnActive.className = "animal-btn animal-btn--primary animal-btn--middle flex-1 rounded-xl font-black text-sm transition-all !bg-[#8b5a2b] !border-[#8b5a2b] !text-white";
+                        btnComp.className = "animal-btn animal-btn--text animal-btn--middle flex-1 rounded-xl font-black text-sm transition-all text-stone-400 hover:bg-stone-200";
                     } else {
-                        btnComp.className = "flex-1 py-3 rounded-xl font-black text-sm transition-all bg-[#8b5a2b] text-white";
-                        btnActive.className = "flex-1 py-3 rounded-xl font-black text-sm transition-all text-stone-400 hover:bg-stone-200";
+                        btnComp.className = "animal-btn animal-btn--primary animal-btn--middle flex-1 rounded-xl font-black text-sm transition-all !bg-[#8b5a2b] !border-[#8b5a2b] !text-white";
+                        btnActive.className = "animal-btn animal-btn--text animal-btn--middle flex-1 rounded-xl font-black text-sm transition-all text-stone-400 hover:bg-stone-200";
                     }
 
                     const filtered = this.data.filter(q => tab === 'active' ? q.status !== 'graded' : q.status === 'graded');
@@ -5461,7 +5465,7 @@ toast: {
                                 </div>
                                 <div class="flex items-center gap-3">
                                     ${q.grade ? `<span class="text-lg font-black text-[#8b5a2b] mr-2">${q.grade}</span>` : ''}
-                                    <a href="${q.page_url}" onclick="app.quests.markViewed(${q.id})" class="btn btn-sm btn-ghost bg-stone-100 rounded-lg font-bold">详情</a>
+                                    <a href="${q.page_url}" onclick="app.quests.markViewed(${q.id})" class="animal-btn animal-btn--text animal-btn--small bg-stone-100 rounded-lg font-bold">详情</a>
                                 </div>
                             </div>
                         `;

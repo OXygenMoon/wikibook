@@ -21,6 +21,7 @@ find_python() {
     for candidate in \
         "${ROOT_DIR}/.venv/bin/python" \
         "${ROOT_DIR}/venv/bin/python" \
+        "/opt/homebrew/anaconda3/bin/python" \
         "$(command -v python3 2>/dev/null || true)" \
         "$(command -v python 2>/dev/null || true)"; do
         if [ -n "${candidate}" ] && [ -x "${candidate}" ]; then
@@ -105,6 +106,17 @@ stop_service() {
     local waited=0
     while kill -0 "${pid}" 2>/dev/null; do
         if [ "${waited}" -ge 10 ]; then
+            echo "Process ${pid} did not stop after SIGTERM; forcing shutdown..."
+            kill -9 "${pid}" 2>/dev/null || true
+            break
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    waited=0
+    while kill -0 "${pid}" 2>/dev/null; do
+        if [ "${waited}" -ge 5 ]; then
             echo "Process ${pid} is still running. Please check it manually."
             exit 1
         fi
@@ -114,6 +126,12 @@ stop_service() {
 
     rm -f "${PIDFILE}"
     echo "Service stopped."
+}
+
+restart_service() {
+    echo "Restarting Wikibook local service..."
+    stop_service
+    start_service
 }
 
 show_status() {
@@ -139,7 +157,7 @@ show_logs() {
     tail -n 50 "${LOGFILE}"
 }
 
-case "${1:-start}" in
+case "${1:-restart}" in
     start)
         start_service
         ;;
@@ -147,8 +165,7 @@ case "${1:-start}" in
         stop_service
         ;;
     restart)
-        stop_service
-        start_service
+        restart_service
         ;;
     status)
         show_status
@@ -158,6 +175,7 @@ case "${1:-start}" in
         ;;
     *)
         echo "Usage: $0 {start|stop|restart|status|logs}"
+        echo "No argument defaults to: restart"
         exit 1
         ;;
 esac

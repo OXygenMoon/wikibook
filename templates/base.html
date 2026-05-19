@@ -361,6 +361,174 @@
 
         .nav-avatar-circle { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.75rem; color: white; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 5px rgba(0,0,0,0.15); }
 
+        .user-phone-popover {
+            position: absolute;
+            top: calc(100% + 0.75rem);
+            right: 0;
+            z-index: 140;
+            --user-phone-shift-x: 0px;
+            --user-phone-shift-y: 0px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translate(var(--user-phone-shift-x), calc(var(--user-phone-shift-y) - 8px)) scale(0.98);
+            transform-origin: top right;
+            transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease;
+            pointer-events: none;
+        }
+
+        .user-phone-popover.is-open {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(var(--user-phone-shift-x), var(--user-phone-shift-y)) scale(1);
+            pointer-events: auto;
+        }
+
+        .user-phone-stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.55rem;
+            padding: 0;
+        }
+
+        .user-phone-close {
+            align-self: flex-end;
+            margin-right: 0.3rem;
+        }
+
+        .user-phone-scale {
+            width: calc(527px * var(--user-phone-scale, 0.54));
+            height: calc(788px * var(--user-phone-scale, 0.54));
+            position: relative;
+            overflow: visible;
+        }
+
+        .user-phone-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 527px;
+            height: 788px;
+            transform: scale(var(--user-phone-scale, 0.54));
+            transform-origin: top right;
+            filter: drop-shadow(0 20px 42px rgba(0, 0, 0, 0.22));
+        }
+
+        .user-phone-panel .animal-phone__device {
+            border: 8px solid rgba(255, 255, 255, 0.8);
+            border-radius: 104px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.65), 0 14px 42px rgba(0, 0, 0, 0.14);
+        }
+
+        .user-phone-panel .animal-phone__home {
+            padding-top: 28px;
+            padding-bottom: 28px;
+            background:
+                radial-gradient(circle at top left, rgba(255, 230, 148, 0.24), transparent 26%),
+                linear-gradient(180deg, #f8f4e8 0%, #f5efdf 100%);
+        }
+
+        .user-phone-panel .animal-phone__date-display {
+            padding-bottom: 18px;
+        }
+
+        .user-phone-panel .animal-phone__day-text {
+            height: 48px;
+            margin-top: 12px;
+            font-size: 42px;
+        }
+
+        .user-phone-panel .animal-phone__apps {
+            flex: 0 0 auto;
+            gap: 34px 32px;
+            padding: 8px;
+        }
+
+        .user-phone-panel .animal-phone__app {
+            width: 123px;
+            height: 123px;
+            border-radius: 34px;
+        }
+
+        .user-phone-clockline {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 2px;
+        }
+
+        .user-phone-date-line {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 14px;
+            white-space: nowrap;
+        }
+
+        .user-phone-weekday-inline {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+
+        .user-phone-app-link {
+            text-decoration: none;
+        }
+
+        .user-phone-app-link .animal-phone__app-icon {
+            pointer-events: none;
+        }
+
+        .user-phone-app-label {
+            position: absolute;
+            left: 50%;
+            bottom: -30px;
+            transform: translateX(-50%);
+            color: #6c5645;
+            font-size: 15px;
+            font-weight: 900;
+            white-space: nowrap;
+            pointer-events: none;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        .user-phone-footer {
+            width: calc(100% - 84px);
+            margin-top: 8px;
+            padding: 12px 24px;
+            border: 2px solid rgba(216, 198, 168, 0.72);
+            border-radius: 30px;
+            background: rgba(255, 251, 240, 0.84);
+            text-align: center;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        .user-phone-footer-name {
+            color: #725c4e;
+            font-size: 24px;
+            font-weight: 900;
+            line-height: 1.1;
+        }
+
+        .user-phone-footer-meta {
+            margin-top: 6px;
+            color: #9b8a72;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .user-phone-panel .animal-phone__page-indicator {
+            margin-top: 12px;
+        }
+
+        @media (max-width: 640px) {
+            .user-phone-stage {
+                padding: 0;
+            }
+
+            .user-phone-close {
+                margin-right: 0.2rem;
+            }
+        }
+
 
 
         /* 下拉菜单通用样式 */
@@ -2432,7 +2600,7 @@
 
             <div class="relative inline-block text-left ml-1" id="user-menu-container">
 
-                <button type="button" id="user-menu-btn" class="user-nav-dropdown group flex items-center gap-2 pr-4 bg-white/50 dark:bg-base-100/50 hover:bg-white dark:hover:bg-base-200 transition-all border border-black/5 dark:border-white/5 rounded-full h-9 focus:outline-none">
+                <button type="button" id="user-menu-btn" class="user-nav-dropdown group flex items-center gap-2 pr-4 bg-white/50 dark:bg-base-100/50 hover:bg-white dark:hover:bg-base-200 transition-all border border-black/5 dark:border-white/5 rounded-full h-9 focus:outline-none" aria-haspopup="true" aria-expanded="false" aria-controls="user_phone_popover">
 
                     {% set style_class = ['bg-rose-500', 'bg-orange-500', 'bg-emerald-500', 'bg-cyan-500', 'bg-blue-500', 'bg-violet-500', 'bg-fuchsia-500'][(current_user.id) % 7] %}
 
@@ -2464,111 +2632,94 @@
 
                 </button>
 
+                <div id="user_phone_popover" class="user-phone-popover" role="dialog" aria-label="用户快捷手机面板">
+                    <div class="user-phone-stage">
+                        <button type="button" id="user-phone-close" class="animal-btn animal-btn--text animal-btn--small animal-btn--circle user-phone-close bg-white/90 text-stone-600">
+                            ✕
+                        </button>
 
+                        <div id="user-phone-scale" class="user-phone-scale">
+                            <div class="animal-phone user-phone-panel">
+                                <div class="animal-phone__device">
+                                    <div class="animal-phone__statusbar">
+                                        <span class="animal-phone__status-time" id="user-phone-status-time">00:00</span>
+                                        <div class="animal-phone__signal-icons">
+                                            <span class="animal-phone__wifi"></span>
+                                        </div>
+                                    </div>
 
-                <div id="user-panel-wrapper" class="absolute right-0 mt-3 w-64 origin-top-right transition-all duration-300 opacity-0 invisible scale-95 z-[120]">
+                                    <div class="animal-phone__screen">
+                                        <div class="animal-phone__home">
+                                            <div class="animal-phone__date-display">
+                                                <div class="animal-phone__date-header">
+                                                    <span class="user-phone-date-line">
+                                                        <span id="user-phone-monthday">1月1日</span>
+                                                        <span class="user-phone-weekday-inline" id="user-phone-day-text">星期一</span>
+                                                    </span>
+                                                    <div class="user-phone-clockline">
+                                                        <span id="user-phone-hours">00</span>
+                                                        <span class="animal-phone__blink">:</span>
+                                                        <span id="user-phone-minutes">00</span>
+                                                    </div>
+                                                    <span class="animal-phone__location"></span>
+                                                </div>
+                                                <span class="animal-phone__day-text">{{ current_user.username }}</span>
+                                            </div>
 
-                    
+                                            <div class="animal-phone__apps">
+                                                <a href="{{ url_for('user_profile') }}" class="animal-phone__app user-phone-app-link" style="background:#b77dee">
+                                                    <span class="animal-phone__app-icon animal-phone__app-icon--camera"></span>
+                                                    <span class="user-phone-app-label">主页</span>
+                                                </a>
+                                                <a href="{{ url_for('settings') }}" class="animal-phone__app user-phone-app-link animal-phone__app--offset" style="background:#889df0">
+                                                    <span class="animal-phone__app-icon animal-phone__app-icon--miles animal-phone__app-icon--offset"></span>
+                                                    <span class="user-phone-app-label">设置</span>
+                                                </a>
+                                                <a href="{{ url_for('index') }}" class="animal-phone__app user-phone-app-link" style="background:#f7cd67">
+                                                    <span class="animal-phone__app-icon animal-phone__app-icon--critterpedia"></span>
+                                                    <span class="user-phone-app-label">广场</span>
+                                                </a>
+                                                <a href="{{ url_for('book_index') }}" class="animal-phone__app user-phone-app-link" style="background:#e59266">
+                                                    <span class="animal-phone__app-icon animal-phone__app-icon--diy"></span>
+                                                    <span class="user-phone-app-label">Book</span>
+                                                </a>
+                                                <a href="{{ url_for('sticker_walls_view') }}" class="animal-phone__app user-phone-app-link" style="background:#f8a6b2">
+                                                    <span class="animal-phone__app-icon animal-phone__app-icon--design"></span>
+                                                    <span class="user-phone-app-label">贴纸墙</span>
+                                                </a>
+                                                <a href="{{ url_for('leaderboard') }}" class="animal-phone__app user-phone-app-link" style="background:#82d5bb">
+                                                    <span class="animal-phone__app-icon animal-phone__app-icon--map"></span>
+                                                    <span class="user-phone-app-label">排行榜</span>
+                                                </a>
+                                                <a href="{{ url_for('announcements_view') }}" class="animal-phone__app user-phone-app-link" style="background:#8ac68a">
+                                                    <span class="animal-phone__app-icon animal-phone__app-icon--variant"></span>
+                                                    <span class="user-phone-app-label">公告栏</span>
+                                                </a>
+                                                <a href="{{ url_for('bulletin_view') }}" class="animal-phone__app user-phone-app-link" style="background:#fc736d">
+                                                    <span class="animal-phone__app-icon animal-phone__app-icon--helicopter"></span>
+                                                    <span class="user-phone-app-label">任务栏</span>
+                                                </a>
+                                                <a href="{{ url_for('logout') }}" class="animal-phone__app user-phone-app-link" style="background:#d1da49">
+                                                    <span class="animal-phone__app-icon animal-phone__app-icon--chat"></span>
+                                                    <span class="user-phone-app-label">退出</span>
+                                                </a>
+                                            </div>
 
-                    {% if current_user.selected_badge %}
+                                            <div class="user-phone-footer">
+                                                <div class="user-phone-footer-name">{{ current_user.username }}</div>
+                                                <div class="user-phone-footer-meta">今日学习 {{ current_user.study_time_today_human }}</div>
+                                            </div>
 
-                    <div id="user-badge-card" class="bg-white dark:bg-base-200 rounded-[1.5rem] shadow-2xl border border-black/5 dark:border-white/5 overflow-hidden relative transition-all duration-300">
-
-                        {% set rarity_colors = {'common': 'from-stone-400 to-stone-200', 'rare': 'from-[#18293d] to-[#3b82f6]', 'epic': 'from-purple-600 to-fuchsia-400', 'legendary': 'from-amber-500 to-yellow-300'} %}
-
-                        {% set current_rarity = current_user.selected_badge.rarity | default('common') %}
-
-                        {% set gradient_class = rarity_colors.get(current_rarity, rarity_colors['common']) %}
-
-                        
-
-                        <div class="absolute top-0 right-0 w-24 h-24 opacity-90 transform translate-x-6 -translate-y-6 rotate-12 -z-10 shadow-inner bg-gradient-to-bl {{ gradient_class }}"></div>
-
-                        
-
-                        <div class="p-5 pb-5 text-left relative z-10">
-
-                            <div class="flex justify-between items-start mb-1">
-
-                                <p class="text-[#00a8ff] font-extrabold text-[10px] tracking-widest uppercase flex items-center gap-1 mt-1">✨ 佩戴的徽章</p>
-
-                                <div class="w-10 h-10 drop-shadow-md -mt-1 -mr-1">
-
-                                    {% if current_user.selected_badge.icon|is_image_icon %}
-
-                                        <img src="{{ current_user.selected_badge.icon|badge_icon_url }}" class="w-full h-full object-contain">
-
-                                    {% else %}
-
-                                        <span class="text-3xl leading-none block text-center">{{ current_user.selected_badge.icon }}</span>
-
-                                    {% endif %}
-
+                                            <div class="animal-phone__page-indicator">
+                                                <span class="animal-phone__page"></span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-
                             </div>
-
-                            <h4 class="text-base font-black text-stone-800 dark:text-white leading-tight mb-1">{{ current_user.selected_badge.name }}</h4>
-
-                            <p class="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 font-medium">{{ current_user.selected_badge.description }}</p>
-
                         </div>
-
                     </div>
-
-                    {% endif %}
-
-
-
-                    <div id="user-action-menu" class="hidden bg-white/95 dark:bg-base-200/95 backdrop-blur-xl border border-black/5 dark:border-white/5 shadow-2xl p-2 relative z-0 pt-4 rounded-b-[1.5rem] rounded-t-xl transition-all duration-300 transform -translate-y-2 opacity-0 {% if current_user.selected_badge %}mt-[-10px]{% else %}mt-2 rounded-t-[1.5rem]{% endif %}">
-
-                        <div class="user-menu-meta px-3 py-2 text-xs font-bold border-b border-black/5 dark:border-white/5 mb-1.5 flex justify-between items-center text-stone-500">
-
-                            <span>今日学习</span>
-
-                            <span class="text-primary">{{ current_user.study_time_today_human }}</span>
-
-                        </div>
-
-                        
-
-                        <div class="flex flex-col gap-1">
-
-                            <a href="{{ url_for('user_profile') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stone-50 dark:hover:bg-base-300 text-stone-700 dark:text-stone-200 font-bold text-sm transition-colors group">
-
-                                <i class="fas fa-user-circle text-stone-400 group-hover:text-primary transition-colors w-5 text-center"></i> 个人主页
-
-                            </a>
-
-<a href="{{ url_for('settings') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-stone-50 dark:hover:bg-base-300 text-stone-700 dark:text-stone-200 font-bold text-sm transition-colors group">
-            <i class="fas fa-cog text-stone-400 group-hover:text-primary transition-colors w-5 text-center"></i> 偏好设置
-        </a>
-        
-        <div class="h-px w-full bg-black/5 dark:bg-white/5 my-0.5"></div>
-        
-        {% if current_user.is_admin %}
-        <div class="px-2 py-1.5 flex flex-col gap-1 bg-amber-50/50 dark:bg-amber-900/10 rounded-xl my-1 border border-amber-100 dark:border-amber-900/30">
-            <span class="text-[10px] font-black text-amber-500/80 uppercase tracking-widest pl-1 mb-0.5">🛠️ 弹窗测试</span>
-            <div class="flex gap-1">
-                <button onclick="app.reports.testTrigger('daily')" class="flex-1 btn btn-xs btn-ghost bg-white dark:bg-base-200 hover:bg-amber-100 hover:text-amber-600 text-[10px] h-7 min-h-0 border border-black/5">测日报</button>
-                <button onclick="app.reports.testTrigger('weekly')" class="flex-1 btn btn-xs btn-ghost bg-white dark:bg-base-200 hover:bg-amber-100 hover:text-amber-600 text-[10px] h-7 min-h-0 border border-black/5">测周报</button>
-                <button onclick="app.reports.testTrigger('monthly')" class="flex-1 btn btn-xs btn-ghost bg-white dark:bg-base-200 hover:bg-amber-100 hover:text-amber-600 text-[10px] h-7 min-h-0 border border-black/5">测月报</button>
-            </div>
-        </div>
-        <div class="h-px w-full bg-black/5 dark:bg-white/5 my-0.5"></div>
-        {% endif %}
-
-        <a href="{{ url_for('logout') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-500 font-bold text-sm transition-colors">
-                                <i class="fas fa-sign-out-alt w-5 text-center opacity-80"></i> 退出登录
-
-                            </a>
-
-                        </div>
-
-                    </div>
-
                 </div>
-
             </div>
 
 {% else %}
@@ -3419,162 +3570,196 @@
 
         document.addEventListener('DOMContentLoaded', () => {
 
-            // 💡 用户右上角融合菜单交互逻辑
-
             const userContainer = document.getElementById('user-menu-container');
-
             const userBtn = document.getElementById('user-menu-btn');
+            const userPhonePopover = document.getElementById('user_phone_popover');
+            const userPhoneClose = document.getElementById('user-phone-close');
+            const userPhoneScale = document.getElementById('user-phone-scale');
+            const statusTime = document.getElementById('user-phone-status-time');
+            const phoneHours = document.getElementById('user-phone-hours');
+            const phoneMinutes = document.getElementById('user-phone-minutes');
+            const phoneMonthday = document.getElementById('user-phone-monthday');
+            const phoneDayText = document.getElementById('user-phone-day-text');
+            let userPhoneClockTimer = null;
+            let isUserPhoneOpen = false;
 
-            const panelWrapper = document.getElementById('user-panel-wrapper');
+            function updateUserPhoneScale() {
+                if (!userPhoneScale) return;
+                const scale = Math.min(
+                    0.58,
+                    (window.innerWidth - 36) / 527,
+                    (window.innerHeight - 110) / 788
+                );
+                const safeScale = Math.max(0.38, scale);
+                userPhoneScale.style.setProperty('--user-phone-scale', safeScale.toFixed(3));
+            }
 
-            const badgeCard = document.getElementById('user-badge-card');
+            function fitUserPhoneIntoViewport() {
+                if (!userPhonePopover || !userPhoneScale) return;
 
-            const actionMenu = document.getElementById('user-action-menu');
+                const viewportPadding = 14;
+                userPhonePopover.style.setProperty('--user-phone-shift-x', '0px');
+                userPhonePopover.style.setProperty('--user-phone-shift-y', '0px');
 
-            
+                let rect = userPhonePopover.getBoundingClientRect();
+                let shiftX = 0;
+                let shiftY = 0;
 
-            let hoverTimeout;
+                if (rect.right > window.innerWidth - viewportPadding) {
+                    shiftX -= rect.right - (window.innerWidth - viewportPadding);
+                }
+                if (rect.left < viewportPadding) {
+                    shiftX += viewportPadding - rect.left;
+                }
+                if (rect.bottom > window.innerHeight - viewportPadding) {
+                    shiftY -= rect.bottom - (window.innerHeight - viewportPadding);
+                }
+                if (rect.top < viewportPadding) {
+                    shiftY += viewportPadding - rect.top;
+                }
 
-            let isMenuOpen = false;
+                userPhonePopover.style.setProperty('--user-phone-shift-x', `${Math.round(shiftX)}px`);
+                userPhonePopover.style.setProperty('--user-phone-shift-y', `${Math.round(shiftY)}px`);
 
+                rect = userPhonePopover.getBoundingClientRect();
+                const availableScale = Math.min(
+                    0.58,
+                    (window.innerWidth - viewportPadding * 2) / rect.width * parseFloat(getComputedStyle(userPhoneScale).getPropertyValue('--user-phone-scale') || '0.54'),
+                    (window.innerHeight - viewportPadding * 2) / rect.height * parseFloat(getComputedStyle(userPhoneScale).getPropertyValue('--user-phone-scale') || '0.54')
+                );
 
+                if (availableScale < parseFloat(getComputedStyle(userPhoneScale).getPropertyValue('--user-phone-scale') || '0.54')) {
+                    userPhoneScale.style.setProperty('--user-phone-scale', Math.max(0.34, availableScale).toFixed(3));
+                    userPhonePopover.style.setProperty('--user-phone-shift-x', '0px');
+                    userPhonePopover.style.setProperty('--user-phone-shift-y', '0px');
 
-            if (userContainer && panelWrapper) {
+                    requestAnimationFrame(() => {
+                        const resizedRect = userPhonePopover.getBoundingClientRect();
+                        let resizedShiftX = 0;
+                        let resizedShiftY = 0;
 
-                // 1. Hover 显现逻辑
-
-                userContainer.addEventListener('mouseenter', () => {
-
-                    clearTimeout(hoverTimeout);
-
-                    panelWrapper.classList.remove('opacity-0', 'invisible', 'scale-95');
-
-                    panelWrapper.classList.add('opacity-100', 'visible', 'scale-100');
-
-                });
-
-
-
-                userContainer.addEventListener('mouseleave', () => {
-
-                    // 如果菜单没有被点击锁定，延迟隐藏
-
-                    if (!isMenuOpen) {
-
-                        hoverTimeout = setTimeout(() => {
-
-                            panelWrapper.classList.add('opacity-0', 'invisible', 'scale-95');
-
-                            panelWrapper.classList.remove('opacity-100', 'visible', 'scale-100');
-
-                        }, 200); 
-
-                    }
-
-                });
-
-
-
-                // 2. Click 展开下半部菜单逻辑
-
-                if (userBtn && actionMenu) {
-
-                    userBtn.addEventListener('click', (e) => {
-
-                        e.stopPropagation();
-
-                        isMenuOpen = !isMenuOpen;
-
-                        
-
-                        if (isMenuOpen) {
-
-                            // 展开菜单
-
-                            actionMenu.classList.remove('hidden');
-
-                            requestAnimationFrame(() => {
-
-                                actionMenu.classList.remove('-translate-y-2', 'opacity-0');
-
-                                actionMenu.classList.add('translate-y-0', 'opacity-100');
-
-                                if(badgeCard) {
-
-                                    badgeCard.classList.remove('rounded-[1.5rem]', 'shadow-2xl');
-
-                                    badgeCard.classList.add('rounded-t-[1.5rem]', 'rounded-b-none', 'border-b-0');
-
-                                }
-
-                            });
-
-                        } else {
-
-                            closeMenu();
-
+                        if (resizedRect.right > window.innerWidth - viewportPadding) {
+                            resizedShiftX -= resizedRect.right - (window.innerWidth - viewportPadding);
+                        }
+                        if (resizedRect.left < viewportPadding) {
+                            resizedShiftX += viewportPadding - resizedRect.left;
+                        }
+                        if (resizedRect.bottom > window.innerHeight - viewportPadding) {
+                            resizedShiftY -= resizedRect.bottom - (window.innerHeight - viewportPadding);
+                        }
+                        if (resizedRect.top < viewportPadding) {
+                            resizedShiftY += viewportPadding - resizedRect.top;
                         }
 
+                        userPhonePopover.style.setProperty('--user-phone-shift-x', `${Math.round(resizedShiftX)}px`);
+                        userPhonePopover.style.setProperty('--user-phone-shift-y', `${Math.round(resizedShiftY)}px`);
                     });
-
                 }
+            }
 
+            function updateUserPhoneClock() {
+                const now = new Date();
+                const hours24 = now.getHours();
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
 
+                if (statusTime) {
+                    statusTime.textContent = `${String(hours24).padStart(2, '0')}:${minutes}`;
+                }
+                if (phoneHours) {
+                    phoneHours.textContent = String(hours24).padStart(2, '0');
+                }
+                if (phoneMinutes) {
+                    phoneMinutes.textContent = minutes;
+                }
+                if (phoneMonthday) {
+                    phoneMonthday.textContent = `${now.getMonth() + 1}月${now.getDate()}日`;
+                }
+                if (phoneDayText) {
+                    phoneDayText.textContent = weekdays[now.getDay()];
+                }
+            }
 
-                // 3. 点击外部区域，彻底收起（Hover状态也一并隐藏）
+            function startUserPhoneClock() {
+                updateUserPhoneClock();
+                if (userPhoneClockTimer) {
+                    clearInterval(userPhoneClockTimer);
+                }
+                userPhoneClockTimer = setInterval(updateUserPhoneClock, 1000);
+            }
 
-                document.addEventListener('click', (e) => {
+            function stopUserPhoneClock() {
+                if (userPhoneClockTimer) {
+                    clearInterval(userPhoneClockTimer);
+                    userPhoneClockTimer = null;
+                }
+            }
 
-                    if (isMenuOpen && !userContainer.contains(e.target)) {
+            function closeUserPhone() {
+                if (!userPhonePopover || !isUserPhoneOpen) return;
+                isUserPhoneOpen = false;
+                userPhonePopover.classList.remove('is-open');
+                stopUserPhoneClock();
+                if (userBtn) {
+                    userBtn.setAttribute('aria-expanded', 'false');
+                }
+            }
 
-                        closeMenu();
+            function openUserPhone() {
+                if (!userPhonePopover) return;
+                updateUserPhoneScale();
+                startUserPhoneClock();
+                isUserPhoneOpen = true;
+                userPhonePopover.classList.add('is-open');
+                if (userBtn) {
+                    userBtn.setAttribute('aria-expanded', 'true');
+                }
+                requestAnimationFrame(() => {
+                    fitUserPhoneIntoViewport();
+                });
+            }
 
-                        
-
-                        // 强制让整个 Wrapper 消失（连同Hover徽章一起隐藏）
-
-                        setTimeout(() => {
-
-                            panelWrapper.classList.add('opacity-0', 'invisible', 'scale-95');
-
-                            panelWrapper.classList.remove('opacity-100', 'visible', 'scale-100');
-
-                        }, 50);
-
+            if (userBtn && userPhonePopover) {
+                userBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (isUserPhoneOpen) {
+                        closeUserPhone();
+                    } else {
+                        openUserPhone();
                     }
-
                 });
 
+                userPhoneClose?.addEventListener('click', closeUserPhone);
 
+                userPhonePopover.querySelectorAll('a').forEach((link) => {
+                    link.addEventListener('click', () => {
+                        closeUserPhone();
+                    });
+                });
 
-                function closeMenu() {
-
-                    isMenuOpen = false;
-
-                    actionMenu.classList.remove('translate-y-0', 'opacity-100');
-
-                    actionMenu.classList.add('-translate-y-2', 'opacity-0');
-
-                    
-
-                    if(badgeCard) {
-
-                        badgeCard.classList.add('rounded-[1.5rem]', 'shadow-2xl');
-
-                        badgeCard.classList.remove('rounded-t-[1.5rem]', 'rounded-b-none', 'border-b-0');
-
+                document.addEventListener('click', (event) => {
+                    if (!isUserPhoneOpen || !userContainer) return;
+                    if (!userContainer.contains(event.target)) {
+                        closeUserPhone();
                     }
+                });
 
-                    
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape' && isUserPhoneOpen) {
+                        closeUserPhone();
+                    }
+                });
 
-                    setTimeout(() => {
-
-                        if(!isMenuOpen) actionMenu.classList.add('hidden');
-
-                    }, 300);
-
-                }
-
+                window.addEventListener('resize', () => {
+                    updateUserPhoneScale();
+                    if (isUserPhoneOpen) {
+                        requestAnimationFrame(() => {
+                            fitUserPhoneIntoViewport();
+                            requestAnimationFrame(fitUserPhoneIntoViewport);
+                        });
+                    }
+                });
             }
 
         });

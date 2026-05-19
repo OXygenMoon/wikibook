@@ -108,6 +108,18 @@
         overflow-y: auto !important; /* 强制垂直滚动 */
         overflow-x: hidden;
     }
+
+    .wiki-icon-shell {
+        overflow: hidden;
+        position: relative;
+    }
+
+    .wiki-icon-shell img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform-origin: center center;
+    }
 </style>
 {% endblock %}
 
@@ -162,6 +174,9 @@
 
 
 {% block raw_content %}
+{% set wiki_icon_scale = wiki.icon_scale if wiki.icon_scale is not none else 1.0 %}
+{% set wiki_icon_x = wiki.icon_position_x if wiki.icon_position_x is not none else 50 %}
+{% set wiki_icon_y = wiki.icon_position_y if wiki.icon_position_y is not none else 50 %}
 
 <script type="application/json" id="recent-notes-data">
 {
@@ -234,8 +249,15 @@
             <div class="card-body p-4 sm:p-5 flex-row items-center justify-between gap-4">
                 
                 <div class="flex-1 min-w-0 group relative flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary grid place-items-center font-bold text-lg shadow-inner flex-shrink-0">
+                    <div class="wiki-icon-shell w-10 h-10 rounded-xl bg-primary/10 text-primary grid place-items-center font-bold text-lg shadow-inner flex-shrink-0">
+                        {% if wiki.icon_url %}
+                        <img
+                            src="{{ wiki.icon_url }}"
+                            alt="{{ wiki.title }} 图标"
+                            style="object-position: {{ wiki_icon_x }}% {{ wiki_icon_y }}%; transform: scale({{ wiki_icon_scale }});">
+                        {% else %}
                         <span class="leading-none">{{ wiki.title[0]|upper }}</span>
+                        {% endif %}
                     </div>
                     <div class="flex flex-col">
                         <h2 class="text-xl font-bold text-base-content truncate tracking-tight" title="{{ wiki.title }}">{{ wiki.title }}</h2>
@@ -430,8 +452,15 @@
                 {% else %}
                     <div class="hero h-full min-h-[50vh]">
                       <div class="hero-content text-center flex flex-col">
-                        <div class="w-24 h-24 rounded-3xl bg-primary/10 text-primary flex items-center justify-center text-5xl font-black mb-6 shadow-inner rotate-3">
+                        <div class="wiki-icon-shell w-24 h-24 rounded-3xl bg-primary/10 text-primary flex items-center justify-center text-5xl font-black mb-6 shadow-inner rotate-3">
+                            {% if wiki.icon_url %}
+                            <img
+                                src="{{ wiki.icon_url }}"
+                                alt="{{ wiki.title }} 图标"
+                                style="object-position: {{ wiki_icon_x }}% {{ wiki_icon_y }}%; transform: scale({{ wiki_icon_scale }});">
+                            {% else %}
                             <span class="leading-none">{{ wiki.title[0]|upper }}</span>
+                            {% endif %}
                         </div>
                         <div class="max-w-md">
                           <h1 class="text-4xl font-black text-stone-800 dark:text-stone-100 mb-4 tracking-tight">欢迎来到 Wiki</h1>

@@ -46,8 +46,9 @@
     .wall-wrapper {
         position: relative;
         width: 100%;
-        height: 75vh; 
-        min-height: 600px;
+        height: 58vh;
+        min-height: 440px;
+        max-height: 640px;
         background-color: #fff; 
         border-radius: 2px; /* 极简方角 */
         overflow: hidden;
@@ -193,59 +194,291 @@
     html.dark .wall-nav-divider {
         background: rgba(255,255,255,0.14) !important;
     }
+
+    .wall-tabs-shell {
+        border-color: rgba(0,0,0,0.08);
+        box-shadow: 0 18px 40px rgba(0,0,0,0.05);
+    }
+
+    .wall-tabs-list {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        padding: 14px;
+    }
+
+    .wall-tabs-list::-webkit-scrollbar {
+        display: none;
+    }
+
+    .wall-tab-btn {
+        white-space: nowrap;
+        flex: 0 0 auto;
+    }
+
+    .wall-tab-btn .animal-tabs__icon {
+        width: 26px;
+        height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.7);
+        font-size: 11px;
+    }
+
+    .wall-tab-btn.animal-tabs__item--active .animal-tabs__icon {
+        background: rgba(255,255,255,0.2);
+    }
+
+    .wall-tab-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .wall-tab-count {
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: rgba(121,79,39,0.08);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+    }
+
+    .wall-tab-btn.animal-tabs__item--active .wall-tab-count {
+        background: rgba(255,249,227,0.18);
+        color: #fff9e3;
+    }
+
+    .wall-stage {
+        display: grid;
+        gap: 20px;
+    }
+
+    .wall-stage-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: start;
+    }
+
+    .wall-stage-kicker {
+        font-size: 10px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: #9f927d;
+        font-weight: 900;
+        margin-bottom: 10px;
+    }
+
+    .wall-stage-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .wall-stage-title h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 3.4rem);
+        line-height: 0.96;
+        color: #725d42;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        text-transform: none;
+    }
+
+    .wall-stage-desc {
+        margin-top: 12px;
+        font-size: 14px;
+        line-height: 1.8;
+        color: #8a7b66;
+        max-width: 780px;
+    }
+
+    .wall-stage-stats {
+        display: flex;
+        align-items: stretch;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .wall-stage-stat {
+        min-width: 132px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.8);
+        border: 2px solid rgba(0,0,0,0.06);
+        box-shadow: inset 0 -2px 0 rgba(121,79,39,0.08);
+    }
+
+    .wall-stage-stat-label {
+        display: block;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        color: #9f927d;
+        font-weight: 900;
+        margin-bottom: 7px;
+    }
+
+    .wall-stage-stat-value {
+        display: block;
+        font-size: 22px;
+        color: #6f5534;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .wall-style-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 11px;
+        border-radius: 999px;
+        background: #fffdf7;
+        color: #725d42;
+        font-size: 12px;
+        font-weight: 900;
+        border: 2px solid rgba(0,0,0,0.06);
+    }
+
+    html.dark .wall-tabs-shell {
+        border-color: rgba(255,255,255,0.08);
+        box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+    }
+
+    html.dark .wall-stage-desc,
+    html.dark .wall-stage-stat-label {
+        color: #cbd5e1;
+    }
+
+    html.dark .wall-stage-title h1,
+    html.dark .wall-style-chip,
+    html.dark .wall-stage-stat-value {
+        color: #f8fafc;
+    }
+
+    html.dark .wall-stage-stat {
+        background: rgba(17,17,17,0.72);
+        border-color: rgba(255,255,255,0.1);
+        box-shadow: inset 0 -2px 0 rgba(255,255,255,0.05);
+    }
+
+    html.dark .wall-style-chip {
+        background: rgba(255,255,255,0.08);
+        border-color: rgba(255,255,255,0.12);
+    }
+
+    html.dark .wall-tab-count {
+        background: rgba(255,255,255,0.08);
+        color: #f1f5f9;
+    }
+
+    @media (max-width: 820px) {
+        .wall-stage-head {
+            grid-template-columns: 1fr;
+        }
+
+        .wall-stage-stats {
+            justify-content: flex-start;
+        }
+
+        .wall-wrapper {
+            height: 50vh;
+            min-height: 360px;
+            max-height: 520px;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="w-full min-h-screen pt-4 pb-20 sticker-wall-page">
-    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 flex flex-col gap-6 relative z-40">
-        
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b grid-border pb-6 bg-transparent relative overflow-hidden group">
-            
-            <div class="relative z-10 flex-1 min-w-0">
-                <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2 wall-header-label">INTERACTIVE BOARD</span>
-                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase flex items-center gap-4 fade-text-transition wall-title-main" id="wall-name-container">
-                    <span id="wall-name-display" class="truncate">{{ walls[0].name if walls else 'STICKER WALL' }}</span>
-                    <span class="font-mono font-bold text-sm bg-stone-100 text-stone-500 px-3 py-1 border grid-border align-middle -translate-y-1 wall-count-pill">
-                        <i class="fas fa-shapes text-[10px] mr-1"></i> <span id="wall-count-display">0</span>
+<div class="w-full pt-0 pb-6 sticker-wall-page">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12 flex flex-col gap-4 relative z-40">
+        {% if walls %}
+        <section class="animal-tabs wall-tabs-shell">
+            <div class="animal-tabs__list wall-tabs-list" id="wall-tabs-list" role="tablist" aria-label="贴纸墙列表">
+                {% for wall in walls %}
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected="{{ 'true' if loop.first else 'false' }}"
+                    class="animal-tabs__item wall-tab-btn {{ 'animal-tabs__item--active animal-tabs__item--active-shadow' if loop.first else '' }}"
+                    data-wall-index="{{ loop.index0 }}">
+                    <span class="animal-tabs__icon">
+                        {% if wall.bg_style == 'grid' %}
+                        <i class="fas fa-border-all"></i>
+                        {% elif wall.bg_style == 'lines' %}
+                        <i class="fas fa-grip-lines"></i>
+                        {% elif wall.bg_style == 'empty' %}
+                        <i class="far fa-square"></i>
+                        {% else %}
+                        <i class="fas fa-braille"></i>
+                        {% endif %}
                     </span>
-                </h1>
-                <p class="text-xs text-stone-500 mt-4 font-medium hidden md:block fade-text-transition truncate uppercase tracking-widest wall-desc-text" id="wall-desc-display">
-                    {{ walls[0].description if walls else 'No active wall available' }}
-                </p>
+                    <span class="wall-tab-meta">
+                        <span class="animal-tabs__label">{{ wall.name }}</span>
+                        <span class="wall-tab-count">W{{ "%02d"|format(loop.index) }}</span>
+                    </span>
+                    {% if loop.first %}
+                    <span class="animal-tabs__leaf animal-tabs__leaf--static"></span>
+                    {% endif %}
+                </button>
+                {% endfor %}
             </div>
-            
-            <div class="flex flex-wrap items-center gap-4 relative z-10 shrink-0 mt-6 md:mt-0">
-                <div class="bg-white px-4 py-2 border grid-border flex items-center gap-3 tooltip tooltip-left wall-quota-box" data-tip="每完成一次派发任务，额度上限 +1">
-                    <span class="text-[10px] font-bold text-stone-400 tracking-widest uppercase wall-quota-label">QUOTA</span>
-                    <div class="font-black font-mono text-base {{ 'text-red-500 animate-pulse' if my_total_stickers >= max_stickers_limit else 'text-stone-800' }}" id="quota-badge">
-                        <span id="quota-display">{{ my_total_stickers }}</span><span class="opacity-40 text-xs">/{{ max_stickers_limit }}</span>
+
+            <div class="animal-tabs__content">
+                <div class="animal-tabs__content-inner wall-stage">
+                    <div class="wall-stage-head">
+                        <div class="min-w-0">
+                            <div class="wall-stage-title" id="wall-name-container">
+                                <h1 id="wall-name-display">{{ walls[0].name if walls else 'Sticker Wall' }}</h1>
+                                <span class="wall-style-chip">
+                                    <i class="fas fa-shapes text-[11px]"></i>
+                                    <span id="wall-count-display">0</span>
+                                </span>
+                                <span class="wall-style-chip" id="wall-permission-chip">
+                                    {{ '可布置' if walls[0].can_arrange_stickers(current_user) else '只读围观' }}
+                                </span>
+                            </div>
+                            <p class="wall-stage-desc" id="wall-desc-display">
+                                {{ walls[0].description if walls else 'No active wall available' }}
+                            </p>
+                        </div>
+
+                        <div class="wall-stage-stats">
+                            <div class="wall-stage-stat">
+                                <span class="wall-stage-stat-label">贴纸额度</span>
+                                <span class="wall-stage-stat-value {{ 'text-red-500 animate-pulse' if my_total_stickers >= max_stickers_limit else '' }}" id="quota-badge">
+                                    <span id="quota-display">{{ my_total_stickers }}</span><span class="opacity-40 text-sm">/{{ max_stickers_limit }}</span>
+                                </span>
+                            </div>
+                            <div class="wall-stage-stat">
+                                <span class="wall-stage-stat-label">墙面总数</span>
+                                <span class="wall-stage-stat-value">{{ walls|length }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="wall-wrapper group" id="profile-sticker-header">
+                        <div id="sticker-canvas"></div>
+
+                        <div class="absolute bottom-6 right-8 opacity-[0.05] font-black text-6xl tracking-[0.5em] select-none pointer-events-none z-10 transition-opacity duration-500">
+                            WIKIBOOK
+                        </div>
+
+                        <div class="absolute inset-0 flex flex-col items-center justify-center opacity-40 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none z-10" id="empty-wall-hint" style="display:none;">
+                            <i class="fas fa-plus text-4xl mb-4 text-stone-300"></i>
+                            <span class="text-[10px] font-bold tracking-widest text-stone-400 uppercase">Awaiting First Input...</span>
+                        </div>
                     </div>
                 </div>
-                
-                {% if walls|length > 1 %}
-                <div class="flex items-center bg-white border grid-border p-1 wall-nav-box">
-                    <button onclick="switchWall(-1)" class="w-8 h-8 flex items-center justify-center hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition-colors wall-nav-btn" title="Previous Wall"><i class="fas fa-chevron-left text-xs"></i></button>
-                    <div class="w-px h-4 bg-stone-200 mx-1 wall-nav-divider"></div>
-                    <button onclick="switchWall(1)" class="w-8 h-8 flex items-center justify-center hover:bg-stone-100 text-stone-500 hover:text-stone-900 transition-colors wall-nav-btn" title="Next Wall"><i class="fas fa-chevron-right text-xs"></i></button>
-                </div>
-                {% endif %}
             </div>
-        </div>
-
-        {% if walls %}
-        <div class="wall-wrapper group" id="profile-sticker-header"> 
-            <div id="sticker-canvas"></div>
-            
-            <div class="absolute bottom-6 right-8 opacity-[0.05] font-black text-6xl tracking-[0.5em] select-none pointer-events-none z-10 transition-opacity duration-500">
-                WIKIBOOK
-            </div>
-            
-            <div class="absolute inset-0 flex flex-col items-center justify-center opacity-40 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none z-10" id="empty-wall-hint" style="display:none;">
-                <i class="fas fa-plus text-4xl mb-4 text-stone-300"></i>
-                <span class="text-[10px] font-bold tracking-widest text-stone-400 uppercase">Awaiting First Input...</span>
-            </div>
-        </div>
+        </section>
         {% else %}
         <div class="text-center py-32 bg-white border border-dashed grid-border mt-8">
             <div class="w-16 h-16 bg-stone-100 border grid-border flex items-center justify-center mx-auto mb-6">
@@ -330,7 +563,7 @@
     {% if walls %}
     const wallsData = [
         {% for w in walls %}
-        { id: {{ w.id }}, name: "{{ w.name }}", desc: "{{ w.description }}", bg_style: "{{ w.bg_style }}" },
+        { id: {{ w.id }}, name: "{{ w.name }}", desc: "{{ w.description }}", bg_style: "{{ w.bg_style }}", can_edit: {{ 'true' if w.can_arrange_stickers(current_user) else 'false' }} },
         {% endfor %}
     ];
     
@@ -341,6 +574,32 @@
     let baseGlobalUsed = {{ my_total_stickers }};
     // 💡 核心：把原本写死的 10，变成后端传来的动态上限
     const MAX_QUOTA = {{ max_stickers_limit }};
+
+    function formatWallStyle(style) {
+        const map = {
+            dots: '点阵底纹',
+            grid: '网格底纹',
+            lines: '线稿底纹',
+            empty: '纯色底纹'
+        };
+        return map[style] || '点阵底纹';
+    }
+
+    function updateWallPermissionUI() {
+        const wall = wallsData[currentWallIndex];
+        const fab = document.getElementById('sticker-fab');
+        const drawer = document.getElementById('sticker-drawer');
+        const canEdit = !!wall.can_edit;
+
+        if (fab) {
+            fab.style.display = canEdit ? 'flex' : 'none';
+        }
+
+        if (drawer && !canEdit) {
+            drawer.classList.remove('translate-y-0', 'drawer-peek');
+            drawer.classList.add('translate-y-full');
+        }
+    }
 
     // 💡 独立更新墙面计数器的函数
     function updateWallCountDisplay(count) {
@@ -486,6 +745,9 @@ const fabBtn = document.getElementById('sticker-fab');
             renderDrawer() {}
             
             async saveStickers(silent = false) {
+                if (this.readOnly) {
+                    return { success: true, skipped: true };
+                }
                 try {
                     const myStickers = this.stickers.filter(s => s.is_editable || s.id == null);
                     const payload = {
@@ -501,6 +763,12 @@ const fabBtn = document.getElementById('sticker-fab');
                     });
                     
                     const data = await res.json();
+                    if (!res.ok) {
+                        if (!silent) {
+                            alert(data.error || "保存失败");
+                        }
+                        return { success: false, error: data.error || '保存失败' };
+                    }
                     if(data.success) {
                         if(!silent && typeof window.app !== 'undefined' && window.app.toast) {
                             window.app.toast.show('SYSTEM UPDATED SUCCESSFULLY', 'success');
@@ -509,15 +777,22 @@ const fabBtn = document.getElementById('sticker-fab');
                             alert("保存成功");
                             window.location.reload();
                         }
+                        return { success: true };
                     } else {
-                        alert(data.error || "保存失败");
+                        if (!silent) {
+                            alert(data.error || "保存失败");
+                        }
+                        return { success: false, error: data.error || '保存失败' };
                     }
-                } catch (e) { console.error('Save failed:', e); }
+                } catch (e) {
+                    console.error('Save failed:', e);
+                    return { success: false, error: e.message || '保存失败' };
+                }
             }
 
             // 一键回收与双击回收的逻辑
             recallAllStickers() {
-                if (this.isReadOnly) return;
+                if (this.readOnly) return;
                 const myStickers = this.stickers.filter(s => s.is_editable || s.id == null);
                 if (myStickers.length === 0) return;
                 
@@ -543,7 +818,7 @@ const fabBtn = document.getElementById('sticker-fab');
             }
 
             recallStickersByBadgeId(badgeId) {
-                if (this.isReadOnly) return;
+                if (this.readOnly) return;
                 let recalledCount = 0;
                 for (let i = this.stickers.length - 1; i >= 0; i--) {
                     if (String(this.stickers[i].badge_id) === String(badgeId) && (this.stickers[i].is_editable || this.stickers[i].id == null)) {
@@ -567,8 +842,16 @@ const fabBtn = document.getElementById('sticker-fab');
             }
         };
 
-        window.wallStickerManager = new StickerManager('wall', wallsData[currentWallIndex].id, false);
+        window.wallStickerManager = new StickerManager('wall', wallsData[currentWallIndex].id, !wallsData[currentWallIndex].can_edit);
         updateWallUI();
+        updateWallPermissionUI();
+
+        document.querySelectorAll('.wall-tab-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const nextIndex = parseInt(btn.dataset.wallIndex, 10);
+                switchWallToIndex(nextIndex);
+            });
+        });
 
         const canvas = document.getElementById('sticker-canvas');
         ['mousedown', 'touchstart', 'dblclick'].forEach(evt => {
@@ -712,8 +995,16 @@ const fabBtn = document.getElementById('sticker-fab');
 
     // 切换墙面
     window.switchWall = function(delta) {
-        if(window.wallStickerManager) window.wallStickerManager.saveStickers(true);
-        currentWallIndex = (currentWallIndex + delta + wallsData.length) % wallsData.length;
+        const nextIndex = (currentWallIndex + delta + wallsData.length) % wallsData.length;
+        switchWallToIndex(nextIndex);
+    }
+
+    async function switchWallToIndex(nextIndex) {
+        if (nextIndex === currentWallIndex) return;
+        if (window.wallStickerManager && !window.wallStickerManager.readOnly) {
+            await window.wallStickerManager.saveStickers(true);
+        }
+        currentWallIndex = nextIndex;
         sessionStorage.setItem('currentStickerWallIndex', currentWallIndex);
         
         updateWallUI();
@@ -721,7 +1012,8 @@ const fabBtn = document.getElementById('sticker-fab');
         canvasDiv.innerHTML = ''; 
         // 💡 切换墙面时，先将数量重置为 0
         updateWallCountDisplay(0); 
-        window.wallStickerManager = new StickerManager('wall', wallsData[currentWallIndex].id, false);
+        window.wallStickerManager = new StickerManager('wall', wallsData[currentWallIndex].id, !wallsData[currentWallIndex].can_edit);
+        updateWallPermissionUI();
     }
     
     // 更新墙面UI文案
@@ -732,6 +1024,10 @@ const fabBtn = document.getElementById('sticker-fab');
         
         if(titleEl) titleEl.innerText = wall.name;
         if(descEl) descEl.innerText = wall.desc || 'PUBLIC CANVAS ZONE';
+        const permissionChip = document.getElementById('wall-permission-chip');
+        if (permissionChip) {
+            permissionChip.innerText = wall.can_edit ? '可布置' : '只读围观';
+        }
         
         const wrapper = document.querySelector('.wall-wrapper');
         if(wrapper) {
@@ -739,6 +1035,23 @@ const fabBtn = document.getElementById('sticker-fab');
             if (wall.bg_style) wrapper.classList.add(`bg-${wall.bg_style}`);
             else wrapper.classList.add('bg-dots'); 
         }
+
+        document.querySelectorAll('.wall-tab-btn').forEach((btn, index) => {
+            const active = index === currentWallIndex;
+            btn.classList.toggle('animal-tabs__item--active', active);
+            btn.classList.toggle('animal-tabs__item--active-shadow', active);
+            btn.setAttribute('aria-selected', active ? 'true' : 'false');
+
+            const leaf = btn.querySelector('.animal-tabs__leaf');
+            if (active && !leaf) {
+                const node = document.createElement('span');
+                node.className = 'animal-tabs__leaf animal-tabs__leaf--static';
+                btn.appendChild(node);
+            }
+            if (!active && leaf) {
+                leaf.remove();
+            }
+        });
     }
     {% endif %}
 </script>

@@ -93,6 +93,37 @@ def badge_icon_url(s):
         return url_for("static", filename=f"uploads/{v}")
     return ""
 
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
+
+def is_allowed_image_file(filename):
+    ext = os.path.splitext(filename or "")[1].lower()
+    return ext in ALLOWED_IMAGE_EXTENSIONS
+
+def save_uploaded_image(file_storage, upload_subdir, prefix):
+    if not file_storage or not file_storage.filename:
+        return ""
+    if not is_allowed_image_file(file_storage.filename):
+        raise ValueError("不支持的图片格式，请上传 jpg、jpeg、png、gif、webp 或 svg")
+
+    ext = os.path.splitext(secure_filename(file_storage.filename))[1].lower()
+    filename = secure_filename(f"{prefix}_{uuid.uuid4().hex}{ext}")
+    save_dir = os.path.join(app.root_path, "static", "uploads", upload_subdir)
+    os.makedirs(save_dir, exist_ok=True)
+    file_storage.save(os.path.join(save_dir, filename))
+    return f"/static/uploads/{upload_subdir}/{filename}"
+
+def remove_uploaded_static_file(file_url, upload_subdir):
+    prefix = f"/static/uploads/{upload_subdir}/"
+    if not file_url or not file_url.startswith(prefix):
+        return
+    filename = file_url.split("/")[-1]
+    path = os.path.join(app.root_path, "static", "uploads", upload_subdir, filename)
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
 app.jinja_env.filters["is_image_icon"] = is_image_icon
 app.jinja_env.filters["badge_icon_url"] = badge_icon_url
 
@@ -462,6 +493,10 @@ class Wiki(db.Model):
     bg_color = db.Column(db.String(20), default="#ffffff")
     fg_color = db.Column(db.String(20), default="#1f2937")
     pattern = db.Column(db.String(50), default="pattern-none")
+    icon_url = db.Column(db.String(255), nullable=True)
+    icon_scale = db.Column(db.Float, default=1.0)
+    icon_position_x = db.Column(db.Float, default=50.0)
+    icon_position_y = db.Column(db.Float, default=50.0)
     
     # Advanced Appearance (Arc Style)
     blur_level = db.Column(db.Integer, default=60) # px
@@ -1363,6 +1398,31 @@ def edit_wiki(wiki_id):
         w.gradient_color = request.form.get("gradient_color", "").strip()
         w.gradient_direction = request.form.get("gradient_direction", "to bottom right").strip()
         w.visibility = request.form.get("visibility", "public")
+        w.icon_scale = request.form.get("icon_scale", 1.0, type=float)
+        w.icon_position_x = request.form.get("icon_position_x", 50.0, type=float)
+        w.icon_position_y = request.form.get("icon_position_y", 50.0, type=float)
+
+        w.icon_scale = max(0.5, min(w.icon_scale, 3.0))
+        w.icon_position_x = max(0.0, min(w.icon_position_x, 100.0))
+        w.icon_position_y = max(0.0, min(w.icon_position_y, 100.0))
+
+        remove_icon = request.form.get("remove_icon") == "1"
+        icon_file = request.files.get("icon_file")
+
+        if remove_icon and w.icon_url:
+            remove_uploaded_static_file(w.icon_url, "wiki_icons")
+            w.icon_url = None
+
+        if icon_file and icon_file.filename:
+            try:
+                new_icon_url = save_uploaded_image(icon_file, "wiki_icons", "wiki_icon")
+            except ValueError as exc:
+                flash(str(exc), "error")
+                return redirect(url_for("edit_wiki", wiki_id=w.id))
+
+            if w.icon_url and w.icon_url != new_icon_url:
+                remove_uploaded_static_file(w.icon_url, "wiki_icons")
+            w.icon_url = new_icon_url
         
         # 权限更新逻辑（保持你原有的逻辑）
         class_ids = request.form.getlist("allowed_classes")
@@ -4869,6 +4929,25 @@ def upgrade_db():
 
                 if needs_commit:
                     conn.commit()
+
+        if 'wiki' in inspector.get_table_names():
+            wiki_columns = [c['name'] for c in inspector.get_columns('wiki')]
+            with db.engine.connect() as conn:
+                needs_commit = False
+                if 'icon_url' not in wiki_columns:
+                    conn.execute(db.text("ALTER TABLE wiki ADD COLUMN icon_url VARCHAR(255)"))
+                    needs_commit = True
+                if 'icon_scale' not in wiki_columns:
+                    conn.execute(db.text("ALTER TABLE wiki ADD COLUMN icon_scale FLOAT DEFAULT 1.0"))
+                    needs_commit = True
+                if 'icon_position_x' not in wiki_columns:
+                    conn.execute(db.text("ALTER TABLE wiki ADD COLUMN icon_position_x FLOAT DEFAULT 50.0"))
+                    needs_commit = True
+                if 'icon_position_y' not in wiki_columns:
+                    conn.execute(db.text("ALTER TABLE wiki ADD COLUMN icon_position_y FLOAT DEFAULT 50.0"))
+                    needs_commit = True
+                if needs_commit:
+                    conn.commit()
                 
 
 @app.route('/service/wiki/pages')
@@ -5062,8 +5141,13 @@ class StickerWall(db.Model):
     stickers = db.relationship("WallSticker", backref="wall", cascade="all, delete-orphan")
 
     def is_visible_to(self, user):
-        if self.visibility == 'public': return True
-        if not user.is_authenticated: return False
+        return True
+
+    def can_arrange_stickers(self, user):
+        if not user.is_authenticated:
+            return False
+        if self.visibility == 'public':
+            return True
         if user.is_admin: return True
         if user in self.allowed_users: return True
         if user.student_class and user.student_class in self.allowed_classes: return True
@@ -5204,8 +5288,7 @@ def delete_sticker_wall(wall_id):
 @login_required
 def sticker_walls_view():
     all_walls = StickerWall.query.order_by(StickerWall.created_at.desc()).all()
-    # 过滤出当前用户可见的墙
-    visible_walls = [w for w in all_walls if w.is_visible_to(current_user)]
+    visible_walls = all_walls
     
     # 1. 获取用户拥有的所有徽章数量 (分组统计)
     user_badges = UserBadge.query.filter_by(user_id=current_user.id).all()
@@ -5267,10 +5350,7 @@ def api_stickers(page_type):
             # sticker.js 默认通过 user_id 参数传目标 ID，对于 wall 来说，它就是 wall_id
             wall_id = request.args.get('user_id', type=int) 
             wall = StickerWall.query.get_or_404(wall_id)
-            
-            # 权限校验
-            if not wall.is_visible_to(current_user):
-                return jsonify({"error": "Permission denied"}), 403
+            can_arrange = wall.can_arrange_stickers(current_user)
                 
             # 拉取该墙面上所有的贴纸（包括别人的）
             stickers = WallSticker.query.filter_by(wall_id=wall_id).all()
@@ -5296,7 +5376,7 @@ def api_stickers(page_type):
                     "user_name": s.user.username,
                     "created_at": s.created_at.strftime("%Y-%m-%d %H:%M"),
                     # 关键控制权限：只有当前贴纸的主人才能选中/拖拽/删除
-                    "is_editable": s.user_id == current_user.id 
+                    "is_editable": can_arrange and (s.user_id == current_user.id)
                 } for s in stickers],
                 "inventory_usage": inventory_usage
             })
@@ -5339,6 +5419,8 @@ def api_stickers(page_type):
         if page_type == 'wall':
             wall_id = request.args.get('user_id', type=int)
             wall = StickerWall.query.get_or_404(wall_id)
+            if not wall.can_arrange_stickers(current_user):
+                return jsonify({"error": "Permission denied: You cannot arrange stickers on this wall"}), 403
             
             # [全局额度强校验]
             # 计算除了当前墙以外，该用户在其他所有的墙上贴了多少张
@@ -5437,95 +5519,169 @@ def api_nuclear_reset_stickers():
 # ==========================================
 # 🏆 巅峰竞技场 (Leaderboard) 路由
 # ==========================================
-@app.route("/leaderboard")
-@login_required
-def leaderboard():
-    metric = request.args.get('metric', 'duration') # duration, contribution, streak, pomo
-    period = request.args.get('period', 'all') # all, weekly
-    
-    users = User.query.all()
+LEADERBOARD_METRICS = {
+    "duration": {
+        "label": "肝帝榜",
+        "icon": "fa-stopwatch",
+        "unit": "小时",
+        "description": "累计专注时长",
+    },
+    "pomo": {
+        "label": "番茄榜",
+        "icon": "fa-clock",
+        "unit": "个",
+        "description": "完成番茄钟数量",
+    },
+    "contribution": {
+        "label": "贡献榜",
+        "icon": "fa-pen-nib",
+        "unit": "源力",
+        "description": "笔记与 Wiki 编辑综合得分",
+    },
+    "streak": {
+        "label": "毅力榜",
+        "icon": "fa-fire",
+        "unit": "天",
+        "description": "连续打卡天数",
+    },
+}
+
+LEADERBOARD_PERIODS = {
+    "weekly": "本周",
+    "all": "总榜",
+}
+
+
+def build_leaderboard_snapshot(users, metric, period, weekly_start):
     ranking_data = []
-    
-    now = now_utc8()
-    if period == 'weekly':
-        # 计算本周一的凌晨0点作为起点
-        start_date = now - timedelta(days=now.weekday())
-        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
-    else:
-        start_date = datetime.min
-        
+    start_date = weekly_start if period == "weekly" else datetime.min
+    metric_meta = LEADERBOARD_METRICS[metric]
+
     for u in users:
         score = 0
-        unit = ""
-        
-        # 1. 肝帝榜：累计专注时长
-        if metric == 'duration':
-            sessions = StudySession.query.filter(StudySession.user_id == u.id, StudySession.start_time >= start_date).all()
-            total_sec = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+
+        if metric == "duration":
+            sessions = StudySession.query.filter(
+                StudySession.user_id == u.id,
+                StudySession.start_time >= start_date,
+            ).all()
+            total_sec = sum(
+                (s.end_time - s.start_time).total_seconds()
+                for s in sessions
+                if (s.end_time - s.start_time).total_seconds() > 0
+            )
             score = round(total_sec / 3600, 1)
-            unit = "小时"
-            
-        # 2. 贡献榜：笔记数 + Wiki编辑数
-        elif metric == 'contribution':
+
+        elif metric == "contribution":
             notes_query = Note.query.filter_by(user_id=u.id)
             edits_query = WikiPageHistory.query.filter_by(user_id=u.id)
-            if period == 'weekly':
+            if period == "weekly":
                 notes_query = notes_query.filter(Note.created_at >= start_date)
                 edits_query = edits_query.filter(WikiPageHistory.created_at >= start_date)
-            
+
             note_count = notes_query.count()
             edit_count = edits_query.count()
             score = note_count * 10 + edit_count * 2
-            unit = "源力"
-            
-        # 3. 毅力榜：连续打卡
-        elif metric == 'streak':
+
+        elif metric == "streak":
             stats = u.calculate_stats()
             score = stats.get("streak_days", 0)
-            unit = "天"
 
-        # 4. 💡 新增：番茄榜 - 累计完成的番茄钟数量
-        elif metric == 'pomo':
+        elif metric == "pomo":
             pomo_query = PomodoroRecord.query.filter_by(user_id=u.id)
-            if period == 'weekly':
+            if period == "weekly":
                 pomo_query = pomo_query.filter(PomodoroRecord.completed_at >= start_date)
             score = pomo_query.count()
-            unit = "个"
-            
-        # 只有在有成绩或者是当前用户自己时，才加入榜单展示
+
         if score > 0 or u.id == current_user.id:
-            # 提取前3个获得的徽章对象用于展示，增加荣誉感
-            display_badges = [ub.badge for ub in u.earned_badges[:3]]
-            
             ranking_data.append({
-                'user': u,
-                'score': score,
-                'unit': unit,
-                'badges': display_badges
+                "user": u,
+                "score": score,
+                "badge_count": len(u.earned_badges[:3]),
             })
-            
-    # 按照分数从高到低排序
-    ranking_data.sort(key=lambda x: x['score'], reverse=True)
-    
-    # 赋予排名编号，并找出当前用户在榜单中的具体信息
-    my_rank_info = None
-    for i, data in enumerate(ranking_data):
-        data['rank'] = i + 1
-        if data['user'].id == current_user.id:
-            my_rank_info = data
-            
-    # 计算距离上一名的分差（用于刺激用户“再写一篇”或“再专注一次”）
+
+    ranking_data.sort(key=lambda x: x["score"], reverse=True)
+
+    rows = []
+    my_rank = None
+    top_three = []
+
+    for index, data in enumerate(ranking_data, start=1):
+        user = data["user"]
+        row = {
+            "rank": index,
+            "user_id": user.id,
+            "name": user.real_name or user.username,
+            "username": user.username,
+            "initial": (user.real_name or user.username or "?")[:1].upper(),
+            "class_name": user.student_class.name if user.student_class else "",
+            "score": data["score"],
+            "unit": metric_meta["unit"],
+            "badge_count": data["badge_count"],
+            "is_current_user": user.id == current_user.id,
+            "profile_url": url_for("public_profile", user_id=user.id),
+        }
+        rows.append(row)
+        if index <= 3:
+            top_three.append(row)
+        if row["is_current_user"]:
+            my_rank = row
+
     gap_to_next = 0
-    if my_rank_info and my_rank_info['rank'] > 1:
-        next_person = ranking_data[my_rank_info['rank'] - 2]
-        gap_to_next = round(next_person['score'] - my_rank_info['score'], 1)
-        
-    return render_template("leaderboard.html", 
-                           ranking_data=ranking_data, 
-                           metric=metric, 
-                           period=period, 
-                           my_rank_info=my_rank_info,
-                           gap_to_next=gap_to_next)
+    if my_rank and my_rank["rank"] > 1:
+        gap_to_next = round(rows[my_rank["rank"] - 2]["score"] - my_rank["score"], 1)
+
+    return {
+        "metric": metric,
+        "period": period,
+        "label": metric_meta["label"],
+        "icon": metric_meta["icon"],
+        "description": metric_meta["description"],
+        "unit": metric_meta["unit"],
+        "period_label": LEADERBOARD_PERIODS[period],
+        "rows": rows,
+        "top_three": top_three,
+        "top_score": rows[0]["score"] if rows else 0,
+        "total_records": len(rows),
+        "my_rank": my_rank,
+        "gap_to_next": gap_to_next,
+    }
+
+
+@app.route("/leaderboard")
+@login_required
+def leaderboard():
+    metric = request.args.get("metric", "duration")
+    period = request.args.get("period", "all")
+    if metric not in LEADERBOARD_METRICS:
+        metric = "duration"
+    if period not in LEADERBOARD_PERIODS:
+        period = "all"
+
+    users = User.query.all()
+    now = now_utc8()
+    weekly_start = now - timedelta(days=now.weekday())
+    weekly_start = weekly_start.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    leaderboard_payload = {}
+    for period_key in LEADERBOARD_PERIODS:
+        leaderboard_payload[period_key] = {}
+        for metric_key in LEADERBOARD_METRICS:
+            leaderboard_payload[period_key][metric_key] = build_leaderboard_snapshot(
+                users,
+                metric_key,
+                period_key,
+                weekly_start,
+            )
+
+    return render_template(
+        "leaderboard.html",
+        leaderboard_payload=leaderboard_payload,
+        leaderboard_metrics=LEADERBOARD_METRICS,
+        leaderboard_periods=LEADERBOARD_PERIODS,
+        initial_metric=metric,
+        initial_period=period,
+    )
 
 # ==========================================
 # ✨ 全局便签 (Sticky Notes) 接口

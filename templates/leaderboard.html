@@ -4,404 +4,760 @@
 
 {% block extra_css %}
 <style>
-    /* ==========================================
-       FWA 极简网格野兽派风格 (Brutalist / Grid UI)
-       ========================================== */
     body {
-        background-color: #f5f5f5 !important; 
-        color: #1a1a1a;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        background:
+            radial-gradient(circle at top left, rgba(241, 226, 111, 0.22), transparent 24%),
+            radial-gradient(circle at top right, rgba(130, 213, 187, 0.16), transparent 20%),
+            linear-gradient(180deg, #f8f4e8 0%, #f4eddc 100%) !important;
+        color: #725d42;
     }
 
-    /* 隐藏原生滚动条 */
-    .scrollbar-hide::-webkit-scrollbar { display: none; }
-    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
-    .custom-scroll::-webkit-scrollbar-track { background: transparent; border-left: 1px solid rgba(0,0,0,0.05); }
-    .custom-scroll::-webkit-scrollbar-thumb { background: #ccc; }
-    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #999; }
-
-    /* 横线纹理背景 */
-    .stripe-pattern {
-        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px);
+    .leaderboard-page {
+        padding: 1rem 0 3rem;
+        min-height: calc(100vh - 4rem);
     }
 
-    /* 极简网格容器与边框 */
-    .grid-border { border-color: rgba(0,0,0,0.1); }
-    .border-b-solid { border-bottom: 1px solid rgba(0,0,0,0.1); }
-    .border-r-solid { border-right: 1px solid rgba(0,0,0,0.1); }
-
-    /* 极简列表项悬浮 */
-    .list-item-brutal { transition: background-color 0.2s; border-bottom: 1px solid rgba(0,0,0,0.05); }
-    .list-item-brutal:hover { background-color: #fafafa; }
-    .list-item-brutal.active { background-color: #111; color: #fff; border-color: #111; }
-    .list-item-brutal.active * { color: #fff; }
-
-    /* 极简表格 */
-    .brutal-table { width: 100%; border-collapse: collapse; }
-    .brutal-table th {
-        text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; font-weight: 800;
-        color: #888; padding: 1rem 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.1); text-align: left;
-        background: #fff; position: sticky; top: 0; z-index: 10;
-    }
-    .brutal-table td {
-        padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.05); vertical-align: middle;
-    }
-    .brutal-table tr:hover td { background-color: #fafafa; }
-
-    /* Top 3 专属排版 */
-    .rank-1 td { background-color: #fff9e6 !important; }
-    .rank-2 td { background-color: #f0f4f8 !important; }
-    .rank-3 td { background-color: #fff5eb !important; }
-
-    .rank-number { font-family: monospace; font-weight: 900; font-size: 1.5rem; color: #111; }
-    .rank-1 .rank-number { color: #d97706; font-size: 2rem; }
-    .rank-2 .rank-number { color: #64748b; font-size: 1.75rem; }
-    .rank-3 .rank-number { color: #b45309; font-size: 1.5rem; }
-
-    /* 底部悬浮我的数据栏 */
-    .my-stats-bar {
-        background: #fff; border-top: 1px solid rgba(0,0,0,0.1);
-        box-shadow: 0 -10px 20px rgba(0,0,0,0.02);
+    .lb-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
     }
 
-    html.dark .leaderboard-page .grid-border { border-color: rgba(255, 255, 255, 0.12); }
-
-    html.dark .leaderboard-page .stripe-pattern {
-        background-image: repeating-linear-gradient(to bottom, transparent, transparent 3px, rgba(255,255,255,0.06) 3px, rgba(255,255,255,0.06) 4px);
+    .lb-panel {
+        border: 2px solid #ebe2d3;
+        border-radius: 28px;
+        background: rgba(251, 248, 241, 0.94);
+        box-shadow: 0 14px 28px rgba(61, 52, 40, 0.07);
     }
 
-    html.dark .leaderboard-page .custom-scroll::-webkit-scrollbar-track {
-        border-left-color: rgba(255, 255, 255, 0.1);
+    .lb-toolbar {
+        padding: 1rem 1.15rem;
     }
 
-    html.dark .leaderboard-page .custom-scroll::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.25);
+    .lb-toolbar-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
     }
 
-    html.dark .leaderboard-page .custom-scroll::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.4);
+    .lb-title {
+        margin: 0;
+        color: #725d42;
+        font-size: clamp(1.75rem, 3vw, 2.4rem);
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: -0.04em;
     }
 
-    html.dark .lb-shell,
-    html.dark .lb-sidebar,
+    .lb-subtitle {
+        margin: 0.35rem 0 0;
+        color: #9f927d;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .lb-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.38rem 0.8rem;
+        border-radius: 999px;
+        background: #f0e8d8;
+        color: #948672;
+        font-size: 0.78rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .lb-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 0.85rem;
+    }
+
+    @keyframes lb-stripe-slide {
+        from {
+            background-position: 0 0;
+        }
+        to {
+            background-position: -28.28px 0;
+        }
+    }
+
+    .lb-control-group {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+    }
+
+    .lb-control-group .animal-btn {
+        min-width: 88px;
+        border-width: 3px;
+        border-color: #d8cab0;
+        background: #fffaf0;
+        color: #7b6447;
+        box-shadow: 0 4px 0 0 #cbbba1;
+    }
+
+    .lb-control-group .animal-btn:hover:not(.lb-btn--active) {
+        background: #fffdf7;
+        border-color: #c7b79d;
+        color: #6d583f;
+    }
+
+    .lb-control-group .animal-btn.lb-btn--active {
+        border-color: #4de2da;
+        background: #0ec4b6;
+        background-image: repeating-linear-gradient(
+            -45deg,
+            #0ec4b6,
+            #0ec4b6 10px,
+            #01b0a7 10px,
+            #01b0a7 20px
+        );
+        background-size: 28.28px 28.28px;
+        color: #ffffff;
+        box-shadow: 0 4px 0 0 #0c9b93;
+        animation: lb-stripe-slide 1s linear infinite;
+    }
+
+    .lb-control-group .animal-btn.lb-btn--active i {
+        color: #ffffff;
+    }
+
+    .lb-metric-btn {
+        min-width: 96px;
+    }
+
+    .lb-stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.85rem;
+    }
+
+    .lb-stat {
+        padding: 0.9rem 1rem;
+        border: 2px solid #ebe2d3;
+        border-radius: 22px;
+        background: rgba(251, 248, 241, 0.94);
+        box-shadow: 0 10px 24px rgba(61, 52, 40, 0.06);
+    }
+
+    .lb-stat-label {
+        color: #a89a85;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+    }
+
+    .lb-stat-value {
+        margin-top: 0.35rem;
+        color: #725d42;
+        font-size: 1.9rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .lb-stat-note {
+        margin-top: 0.3rem;
+        color: #9f927d;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        min-height: 1.2em;
+    }
+
+    .lb-board {
+        overflow: hidden;
+    }
+
+    .lb-board-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.15rem 0.8rem;
+        border-bottom: 1px solid #ece3d5;
+    }
+
+    .lb-board-title {
+        margin: 0;
+        color: #725d42;
+        font-size: 1.35rem;
+        font-weight: 900;
+        line-height: 1.1;
+    }
+
+    .lb-board-copy {
+        margin: 0.22rem 0 0;
+        color: #9f927d;
+        font-size: 0.84rem;
+        line-height: 1.45;
+    }
+
+    .lb-podium {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .lb-podium-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.42rem 0.65rem;
+        border-radius: 999px;
+        background: #fffdf7;
+        border: 1px solid #ede2d2;
+        color: #8d7f6c;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .lb-podium-rank {
+        width: 26px;
+        height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        color: #725d42;
+        background: #f8df9c;
+        font-size: 0.78rem;
+        font-weight: 900;
+        flex-shrink: 0;
+    }
+
+    .lb-podium-rank--2 { background: #dce4ef; }
+    .lb-podium-rank--3 { background: #f4d7c2; }
+
+    .lb-table-scroll {
+        max-height: min(62vh, 700px);
+        overflow: auto;
+    }
+
+    .lb-board .animal-table {
+        background: #fcf8ea;
+    }
+
+    .lb-board .animal-table__header-cell {
+        background: #f7efd7;
+    }
+
+    .lb-board .animal-table__row {
+        background: rgba(255, 251, 241, 0.88);
+    }
+
+    .lb-board .animal-table__row--striped {
+        background: rgba(246, 238, 214, 0.9);
+    }
+
+    .lb-board .animal-table__row:hover {
+        background-color: rgba(247, 241, 227, 0.98);
+        background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(255, 255, 255, 0.08),
+            rgba(255, 255, 255, 0.08) 10px,
+            rgba(233, 221, 193, 0.18) 10px,
+            rgba(233, 221, 193, 0.18) 20px
+        );
+        background-size: 28.28px 28.28px;
+    }
+
+    .lb-rank-cell {
+        width: 78px;
+        text-align: center;
+    }
+
+    .lb-rank-badge {
+        width: 40px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        color: #725d42;
+        background: #f0e8d8;
+        font-size: 0.92rem;
+        font-weight: 900;
+    }
+
+    .lb-rank-badge--1 { background: #f8df9c; }
+    .lb-rank-badge--2 { background: #dce4ef; }
+    .lb-rank-badge--3 { background: #f4d7c2; }
+
+    .lb-user {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+    }
+
+    .lb-avatar {
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 15px;
+        color: #fff;
+        background: linear-gradient(135deg, #a58a63 0%, #725d42 100%);
+        font-size: 0.95rem;
+        font-weight: 900;
+        flex-shrink: 0;
+    }
+
+    .lb-user-name {
+        color: #725d42;
+        font-size: 0.95rem;
+        font-weight: 800;
+        text-decoration: none;
+    }
+
+    .lb-user-name:hover {
+        color: var(--animal-primary-color);
+    }
+
+    .lb-user-sub {
+        margin-top: 0.16rem;
+        color: #a89a85;
+        font-size: 0.8rem;
+    }
+
+    .lb-class-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        background: #f4ecdd;
+        color: #8f826f;
+        font-size: 0.76rem;
+        font-weight: 700;
+    }
+
+    .lb-score-cell {
+        text-align: right;
+    }
+
+    .lb-score-value {
+        color: #725d42;
+        font-size: 1.2rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .lb-score-unit {
+        display: block;
+        margin-top: 0.18rem;
+        color: #a89a85;
+        font-size: 0.76rem;
+        font-weight: 700;
+    }
+
+    .lb-empty {
+        padding: 2.5rem 1rem;
+        text-align: center;
+        color: #9f927d;
+        font-size: 0.92rem;
+    }
+
+    @media (max-width: 1040px) {
+        .lb-stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 700px) {
+        .leaderboard-page {
+            padding-top: 0.65rem;
+        }
+
+        .lb-toolbar,
+        .lb-board-head {
+            padding-left: 0.9rem;
+            padding-right: 0.9rem;
+        }
+
+        .lb-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .lb-board-head {
+            flex-direction: column;
+        }
+
+        .lb-podium {
+            justify-content: flex-start;
+        }
+
+        .lb-rank-cell {
+            width: 64px;
+        }
+    }
+
+    html.dark body {
+        background:
+            radial-gradient(circle at top left, rgba(241, 226, 111, 0.12), transparent 24%),
+            radial-gradient(circle at top right, rgba(130, 213, 187, 0.08), transparent 20%),
+            linear-gradient(180deg, #111110 0%, #171614 100%) !important;
+    }
+
     html.dark .lb-panel,
-    html.dark .my-stats-bar {
-        background: rgba(14, 14, 14, 0.92) !important;
-        border-color: rgba(255, 255, 255, 0.12) !important;
-        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42) !important;
+    html.dark .lb-stat,
+    html.dark .lb-podium-item {
+        background: rgba(24, 24, 24, 0.95) !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3) !important;
     }
 
-    html.dark .lb-panel-header {
-        background: rgba(18, 18, 18, 0.95) !important;
-    }
-
-    html.dark .lb-table-wrap {
-        background: rgba(16, 16, 16, 0.92);
-    }
-
-    html.dark .lb-period-switch {
-        background: rgba(15, 15, 15, 0.86) !important;
-    }
-
-    html.dark .lb-period-btn {
-        color: #d1d5db !important;
-    }
-
-    html.dark .lb-period-btn:hover {
+    html.dark .lb-chip,
+    html.dark .lb-class-pill {
         background: rgba(255, 255, 255, 0.08) !important;
+        color: #b7b0a4 !important;
+    }
+
+    html.dark .lb-title,
+    html.dark .lb-board-title,
+    html.dark .lb-stat-value,
+    html.dark .lb-user-name,
+    html.dark .lb-score-value {
         color: #f3f4f6 !important;
     }
 
-    .lb-period-btn-active {
-        background: #111;
-        color: #fff;
+    html.dark .lb-subtitle,
+    html.dark .lb-board-copy,
+    html.dark .lb-stat-note,
+    html.dark .lb-stat-label,
+    html.dark .lb-user-sub,
+    html.dark .lb-score-unit,
+    html.dark .lb-podium-item {
+        color: #b7b0a4 !important;
     }
 
-    html.dark .lb-period-btn-active {
-        background: #f97316 !important;
-        color: #fff !important;
+    html.dark .lb-control-group .animal-btn {
+        border-color: rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.04);
+        color: #ddd6ca;
+        box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.24);
     }
 
-    html.dark .list-item-brutal {
-        border-bottom-color: rgba(255, 255, 255, 0.08);
-        background: transparent;
+    html.dark .lb-control-group .animal-btn:hover:not(.lb-btn--active) {
+        background: rgba(255, 255, 255, 0.08);
+        color: #f3f4f6;
     }
 
-    html.dark .list-item-brutal:hover {
+    html.dark .lb-control-group .animal-btn.lb-btn--active {
+        color: #ffffff;
+        box-shadow: 0 4px 0 0 #0a817a;
+    }
+
+    html.dark .lb-board .animal-table {
+        background: rgba(22, 22, 22, 0.96);
+    }
+
+    html.dark .lb-board .animal-table__header-cell {
+        background: rgba(34, 34, 34, 0.98);
+    }
+
+    html.dark .lb-board .animal-table__row {
+        background: rgba(255, 255, 255, 0.015);
+    }
+
+    html.dark .lb-board .animal-table__row--striped {
         background: rgba(255, 255, 255, 0.05);
     }
 
-    html.dark .list-item-brutal.active {
-        background: rgba(249, 115, 22, 0.18);
-        border-color: rgba(249, 115, 22, 0.6);
-    }
-
-    html.dark .list-item-brutal.active * {
-        color: #fff !important;
-    }
-
-    html.dark .brutal-table th {
-        color: #9ca3af;
-        border-bottom-color: rgba(255, 255, 255, 0.12);
-        background: rgba(18, 18, 18, 0.95);
-    }
-
-    html.dark .brutal-table td {
-        border-bottom-color: rgba(255, 255, 255, 0.08);
-    }
-
-    html.dark .brutal-table tr:hover td {
-        background-color: rgba(255, 255, 255, 0.06);
-    }
-
-    html.dark .rank-1 td { background-color: rgba(245, 158, 11, 0.16) !important; }
-    html.dark .rank-2 td { background-color: rgba(148, 163, 184, 0.16) !important; }
-    html.dark .rank-3 td { background-color: rgba(217, 119, 6, 0.14) !important; }
-
-    html.dark .rank-number { color: #e5e7eb; }
-    html.dark .rank-1 .rank-number { color: #fbbf24; }
-    html.dark .rank-2 .rank-number { color: #cbd5e1; }
-    html.dark .rank-3 .rank-number { color: #fb923c; }
-
-    html.dark .lb-class-pill {
-        border-color: rgba(255, 255, 255, 0.2) !important;
-        color: #cbd5e1 !important;
-        background: rgba(255, 255, 255, 0.05) !important;
-    }
-
-    html.dark .lb-empty-row {
-        background: rgba(14, 14, 14, 0.92) !important;
-    }
-
-    html.dark .leaderboard-page .text-stone-900,
-    html.dark .leaderboard-page .text-stone-800 {
-        color: #f3f4f6 !important;
-    }
-
-    html.dark .leaderboard-page .text-stone-500,
-    html.dark .leaderboard-page .text-stone-400,
-    html.dark .leaderboard-page .text-stone-300 {
-        color: #9ca3af !important;
-    }
-
-    html.dark .lb-cta {
-        background: #f97316 !important;
-        color: #fff !important;
-    }
-
-    html.dark .lb-cta:hover {
-        background: #fb923c !important;
+    html.dark .lb-board .animal-table__row:hover {
+        background-color: rgba(255, 255, 255, 0.08);
+        background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(255, 255, 255, 0.04),
+            rgba(255, 255, 255, 0.04) 10px,
+            rgba(255, 255, 255, 0.09) 10px,
+            rgba(255, 255, 255, 0.09) 20px
+        );
     }
 </style>
 {% endblock %}
 
 {% block content %}
-
-<div class="w-full min-h-screen pt-4 pb-20 leaderboard-page">
-    <div class="max-w-[1400px] mx-auto px-4 md:px-8 xl:px-12">
-
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 border-b grid-border pb-6">
-            <div>
-                <span class="text-[9px] text-stone-400 uppercase tracking-widest font-bold block mb-2">SYSTEM RANKING ENGINE</span>
-                <h1 class="text-4xl md:text-5xl font-light text-stone-900 tracking-tight leading-none uppercase">
-                    Leaderboard
-                </h1>
-            </div>
-            
-            <div class="flex border grid-border p-1 bg-white mt-6 md:mt-0 lb-period-switch">
-                <a href="{{ url_for('leaderboard', metric=metric, period='weekly') }}" 
-                   class="px-6 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors lb-period-btn {% if period == 'weekly' %}lb-period-btn-active{% else %}text-stone-500 hover:bg-stone-50{% endif %}">
-                   This Week
-                </a>
-                <a href="{{ url_for('leaderboard', metric=metric, period='all') }}" 
-                   class="px-6 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors lb-period-btn {% if period == 'all' %}lb-period-btn-active{% else %}text-stone-500 hover:bg-stone-50{% endif %}">
-                   All Time
-                </a>
-            </div>
-        </div>
-
-        <div class="flex flex-col lg:flex-row bg-white border grid-border shadow-[0_20px_50px_rgba(0,0,0,0.03)] rounded-sm overflow-hidden h-[calc(100vh-14rem)] min-h-[600px] lb-shell">
-            
-            <div class="w-full lg:w-[280px] xl:w-[320px] flex flex-col border-b lg:border-b-0 lg:border-r grid-border bg-white z-10 shrink-0 lb-sidebar">
-                
-                <div class="h-24 md:h-32 border-b grid-border relative stripe-pattern p-6 flex flex-col justify-end">
-                    <p class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">SELECT METRIC</p>
-                    <p class="text-2xl font-light text-stone-800 uppercase tracking-tight mt-1">Categories</p>
-                </div>
-
-                <div class="flex-1 overflow-y-auto custom-scroll flex flex-row lg:flex-col">
-                    
-                    <a href="{{ url_for('leaderboard', metric='duration', period=period) }}" class="list-item-brutal flex-1 lg:flex-none p-5 flex flex-col gap-3 cursor-pointer group {% if metric == 'duration' %}active{% endif %}">
-                        <div class="flex items-center justify-between">
-                            <i class="fas fa-stopwatch text-lg {% if metric == 'duration' %}text-white{% else %}text-stone-400 group-hover:text-stone-800{% endif %}"></i>
-                            <i class="fas fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 transition-opacity {% if metric == 'duration' %}opacity-100{% endif %}"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold uppercase tracking-wider mb-1">肝帝榜 (Duration)</h3>
-                            <p class="text-[10px] opacity-60 leading-relaxed line-clamp-2 hidden lg:block">累计专注时长排名，致敬每一个深夜亮起的屏幕。</p>
-                        </div>
-                    </a>
-
-                    <a href="{{ url_for('leaderboard', metric='pomo', period=period) }}" class="list-item-brutal flex-1 lg:flex-none p-5 flex flex-col gap-3 cursor-pointer group {% if metric == 'pomo' %}active{% endif %}">
-                        <div class="flex items-center justify-between">
-                            <i class="fas fa-clock text-lg {% if metric == 'pomo' %}text-white{% else %}text-stone-400 group-hover:text-stone-800{% endif %}"></i>
-                            <i class="fas fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 transition-opacity {% if metric == 'pomo' %}opacity-100{% endif %}"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold uppercase tracking-wider mb-1">番茄榜 (Pomodoro)</h3>
-                            <p class="text-[10px] opacity-60 leading-relaxed line-clamp-2 hidden lg:block">统计完成的番茄钟数量，真正的效率达人聚集地。</p>
-                        </div>
-                    </a>
-
-                    <a href="{{ url_for('leaderboard', metric='contribution', period=period) }}" class="list-item-brutal flex-1 lg:flex-none p-5 flex flex-col gap-3 cursor-pointer group {% if metric == 'contribution' %}active{% endif %}">
-                        <div class="flex items-center justify-between">
-                            <i class="fas fa-pen-nib text-lg {% if metric == 'contribution' %}text-white{% else %}text-stone-400 group-hover:text-stone-800{% endif %}"></i>
-                            <i class="fas fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 transition-opacity {% if metric == 'contribution' %}opacity-100{% endif %}"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold uppercase tracking-wider mb-1">贡献榜 (Contribute)</h3>
-                            <p class="text-[10px] opacity-60 leading-relaxed line-clamp-2 hidden lg:block">基于笔记创作与Wiki编辑的综合得分，知识的沉淀者。</p>
-                        </div>
-                    </a>
-
-                    <a href="{{ url_for('leaderboard', metric='streak', period=period) }}" class="list-item-brutal flex-1 lg:flex-none p-5 flex flex-col gap-3 cursor-pointer group {% if metric == 'streak' %}active{% endif %}">
-                        <div class="flex items-center justify-between">
-                            <i class="fas fa-fire text-lg {% if metric == 'streak' %}text-white{% else %}text-stone-400 group-hover:text-stone-800{% endif %}"></i>
-                            <i class="fas fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 transition-opacity {% if metric == 'streak' %}opacity-100{% endif %}"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold uppercase tracking-wider mb-1">毅力榜 (Streak)</h3>
-                            <p class="text-[10px] opacity-60 leading-relaxed line-clamp-2 hidden lg:block">连续坚持打卡天数，水滴石穿，贵在持之以恒。</p>
-                        </div>
-                    </a>
-                    
-                </div>
-            </div>
-
-            <div class="flex-1 flex flex-col relative z-0 bg-[#fafafa] lb-panel">
-                
-                <div class="h-16 border-b grid-border px-6 flex items-center justify-between bg-white shrink-0 lb-panel-header">
-                    <div class="flex items-center gap-4">
-                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                        <span class="text-[10px] font-bold text-stone-500 uppercase tracking-widest">LIVE DATA FEED</span>
+<div class="w-full leaderboard-page">
+    <div class="max-w-[1400px] mx-auto px-4 md:px-6 xl:px-8">
+        <div class="lb-stack">
+            <section class="lb-panel lb-toolbar">
+                <div class="lb-toolbar-top">
+                    <div>
+                        <h1 class="lb-title">巅峰竞技场</h1>
+                        <p class="lb-subtitle" id="lbSubtitle">一个更轻量的排行榜视图，切换榜单不会刷新页面。</p>
                     </div>
-                    <div class="text-[10px] font-mono text-stone-400">
-                        TOTAL RECORDS: {{ ranking_data|length }}
-                    </div>
+                    <span class="lb-chip" id="lbCurrentChip">
+                        <i class="fas fa-trophy"></i>
+                        实时榜单
+                    </span>
                 </div>
 
-                <div class="flex-1 overflow-y-auto custom-scroll relative lb-table-wrap">
-                    <table class="brutal-table">
-                        <thead>
-                            <tr>
-                                <th class="w-20 text-center">RANK</th>
-                                <th>USER IDENTIFIER</th>
-                                <th class="hidden md:table-cell">DEPARTMENT / CLASS</th>
-                                <th class="text-right pr-8">METRIC SCORE</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for data in ranking_data %}
-                            <tr class="group {% if data.rank == 1 %}rank-1{% elif data.rank == 2 %}rank-2{% elif data.rank == 3 %}rank-3{% endif %}">
-                                
-                                <td class="text-center">
-                                    <div class="rank-number">{{ '%02d' % data.rank }}</div>
-                                </td>
-                                
-                                <td>
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-10 h-10 bg-[#111] text-white flex items-center justify-center font-bold text-xs shadow-sm cursor-pointer hover:bg-primary transition-colors" onclick="window.location.href='{{ url_for('public_profile', user_id=data.user.id) }}'">
-                                            {{ (data.user.real_name or data.user.username)[0]|upper }}
-                                        </div>
-                                        <div class="flex flex-col">
-                                            <span class="font-bold text-stone-800 text-sm uppercase tracking-wide cursor-pointer hover:text-primary transition-colors" onclick="window.location.href='{{ url_for('public_profile', user_id=data.user.id) }}'">
-                                                {{ data.user.real_name or data.user.username }}
-                                            </span>
-                                            <span class="text-[10px] text-stone-400 font-mono mt-0.5">@{{ data.user.username }}</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                
-                                <td class="hidden md:table-cell">
-                                    {% if data.user.student_class %}
-                                        <span class="border border-stone-300 text-stone-500 text-[9px] font-bold px-2 py-1 uppercase tracking-widest bg-white lb-class-pill">
-                                            {{ data.user.student_class.name }}
-                                        </span>
-                                    {% else %}
-                                        <span class="text-stone-300">-</span>
-                                    {% endif %}
-                                </td>
-                                
-                                <td class="text-right pr-8">
-                                    <div class="flex flex-col items-end justify-center">
-                                        <span class="font-light font-mono text-2xl text-stone-900 leading-none tracking-tighter">
-                                            {{ data.score }}
-                                        </span>
-                                        <span class="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-1">
-                                            {{ data.unit }}
-                                        </span>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="4" class="text-center py-32 bg-white lb-empty-row">
-                                    <p class="font-bold text-stone-300 uppercase tracking-widest text-sm">NO DATA AVAILABLE IN THIS SECTOR</p>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                {% if my_rank_info %}
-                <div class="my-stats-bar h-20 shrink-0 flex items-center justify-between px-6 lg:px-8 z-20">
-                    <div class="flex items-center gap-6">
-                        <div class="flex flex-col items-center justify-center border-r grid-border pr-6">
-                            <span class="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1">YOUR RANK</span>
-                            <span class="text-2xl font-black font-mono leading-none text-[#111]">{{ '%02d' % my_rank_info.rank }}</span>
-                        </div>
-                        
-                        <div class="flex flex-col">
-                            <div class="flex items-baseline gap-2">
-                                <span class="font-bold text-stone-800 text-sm uppercase">SCORE:</span>
-                                <span class="font-mono text-xl font-light text-stone-900">{{ my_rank_info.score }}</span> 
-                                <span class="text-[9px] text-stone-400 font-bold uppercase tracking-widest">{{ my_rank_info.unit }}</span>
-                            </div>
-                            
-                            {% if my_rank_info.rank > 1 %}
-                            <span class="text-[10px] text-stone-500 font-medium mt-1 flex items-center gap-1.5 uppercase tracking-wide">
-                                <span class="w-1.5 h-1.5 bg-red-500 animate-pulse"></span>
-                                <strong class="font-mono font-bold text-stone-800">{{ gap_to_next }}</strong> TO NEXT RANK
-                            </span>
-                            {% else %}
-                            <span class="text-[10px] text-amber-600 font-bold mt-1 uppercase tracking-wide">
-                                ABSOLUTE DOMINANCE
-                            </span>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="hidden sm:block">
-                        {% if metric == 'pomo' %}
-                        <button onclick="app.pomodoro.handleClick()" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors lb-cta">
-                            START FOCUS &rarr;
+                <div class="lb-controls">
+                    <div class="lb-control-group" id="lbPeriodButtons">
+                        {% for period_key, period_label in leaderboard_periods.items() %}
+                        <button
+                            type="button"
+                            class="animal-btn animal-btn--middle lb-period-btn"
+                            data-period="{{ period_key }}">
+                            {{ period_label }}
                         </button>
-                        {% elif metric == 'duration' or metric == 'streak' %}
-                        <a href="{{ url_for('index') }}" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors lb-cta">
-                            READ WIKI &rarr;
-                        </a>
-                        {% elif metric == 'contribution' %}
-                        <a href="{{ url_for('new_note') }}" class="bg-[#111] text-white text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 hover:bg-primary transition-colors lb-cta">
-                            CREATE NOTE &rarr;
-                        </a>
-                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="lb-control-group" id="lbMetricButtons">
+                        {% for metric_key, metric_meta in leaderboard_metrics.items() %}
+                        <button
+                            type="button"
+                            class="animal-btn animal-btn--middle lb-metric-btn"
+                            data-metric="{{ metric_key }}">
+                            <i class="fas {{ metric_meta.icon }}"></i>
+                            {{ metric_meta.label }}
+                        </button>
+                        {% endfor %}
                     </div>
                 </div>
-                {% endif %}
+            </section>
 
-            </div>
+            <section class="lb-stats">
+                <div class="lb-stat">
+                    <div class="lb-stat-label">我的排名</div>
+                    <div class="lb-stat-value" id="lbMyRank">-</div>
+                    <div class="lb-stat-note" id="lbMyRankNote"></div>
+                </div>
+                <div class="lb-stat">
+                    <div class="lb-stat-label">当前第一名</div>
+                    <div class="lb-stat-value" id="lbTopScore">-</div>
+                    <div class="lb-stat-note" id="lbTopScoreNote"></div>
+                </div>
+                <div class="lb-stat">
+                    <div class="lb-stat-label">上榜人数</div>
+                    <div class="lb-stat-value" id="lbTotalRecords">0</div>
+                    <div class="lb-stat-note" id="lbTotalRecordsNote"></div>
+                </div>
+                <div class="lb-stat">
+                    <div class="lb-stat-label">当前维度</div>
+                    <div class="lb-stat-value" id="lbMetricLabel">-</div>
+                    <div class="lb-stat-note" id="lbMetricNote"></div>
+                </div>
+            </section>
+
+            <section class="lb-panel lb-board">
+                <div class="lb-board-head">
+                    <div>
+                        <h2 class="lb-board-title" id="lbBoardTitle">排行榜</h2>
+                        <p class="lb-board-copy" id="lbBoardCopy">加载中...</p>
+                    </div>
+                    <div class="lb-podium" id="lbPodium"></div>
+                </div>
+
+                <div class="animal-table-wrap">
+                    <div class="animal-table-wrap__scroller lb-table-scroll">
+                        <table class="animal-table">
+                            <thead>
+                                <tr class="animal-table__header-row">
+                                    <th class="animal-table__header-cell lb-rank-cell">排名</th>
+                                    <th class="animal-table__header-cell">用户</th>
+                                    <th class="animal-table__header-cell">班级</th>
+                                    <th class="animal-table__header-cell" style="text-align: right;">成绩</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lbTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (() => {
+        const payload = {{ leaderboard_payload|tojson }};
+        const state = {
+            metric: {{ initial_metric|tojson }},
+            period: {{ initial_period|tojson }},
+        };
+
+        const periodButtons = Array.from(document.querySelectorAll("[data-period]"));
+        const metricButtons = Array.from(document.querySelectorAll("[data-metric]"));
+        const subtitle = document.getElementById("lbSubtitle");
+        const currentChip = document.getElementById("lbCurrentChip");
+        const myRank = document.getElementById("lbMyRank");
+        const myRankNote = document.getElementById("lbMyRankNote");
+        const topScore = document.getElementById("lbTopScore");
+        const topScoreNote = document.getElementById("lbTopScoreNote");
+        const totalRecords = document.getElementById("lbTotalRecords");
+        const totalRecordsNote = document.getElementById("lbTotalRecordsNote");
+        const metricLabel = document.getElementById("lbMetricLabel");
+        const metricNote = document.getElementById("lbMetricNote");
+        const boardTitle = document.getElementById("lbBoardTitle");
+        const boardCopy = document.getElementById("lbBoardCopy");
+        const podium = document.getElementById("lbPodium");
+        const tableBody = document.getElementById("lbTableBody");
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function formatScore(value) {
+            const numeric = Number(value);
+            if (Number.isInteger(numeric)) {
+                return String(numeric);
+            }
+            return String(numeric);
+        }
+
+        function setActiveButtons() {
+            periodButtons.forEach((button) => {
+                const isActive = button.dataset.period === state.period;
+                button.classList.toggle("animal-btn--primary", isActive);
+                button.classList.toggle("animal-btn--default", !isActive);
+                button.classList.toggle("lb-btn--active", isActive);
+            });
+
+            metricButtons.forEach((button) => {
+                const isActive = button.dataset.metric === state.metric;
+                button.classList.toggle("animal-btn--primary", isActive);
+                button.classList.toggle("animal-btn--default", !isActive);
+                button.classList.toggle("lb-btn--active", isActive);
+            });
+        }
+
+        function renderPodium(rows) {
+            if (!rows.length) {
+                podium.innerHTML = "";
+                return;
+            }
+
+            podium.innerHTML = rows.map((row) => `
+                <span class="lb-podium-item">
+                    <span class="lb-podium-rank ${row.rank === 2 ? "lb-podium-rank--2" : row.rank === 3 ? "lb-podium-rank--3" : ""}">
+                        ${row.rank}
+                    </span>
+                    <span>${escapeHtml(row.name)}</span>
+                </span>
+            `).join("");
+        }
+
+        function renderRows(rows) {
+            if (!rows.length) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="animal-table__cell">
+                            <div class="lb-empty">当前榜单还没有可展示的数据。</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = rows.map((row, index) => `
+                <tr class="animal-table__row ${index % 2 === 1 ? "animal-table__row--striped" : ""}">
+                    <td class="animal-table__cell lb-rank-cell">
+                        <span class="lb-rank-badge ${row.rank === 1 ? "lb-rank-badge--1" : row.rank === 2 ? "lb-rank-badge--2" : row.rank === 3 ? "lb-rank-badge--3" : ""}">
+                            ${String(row.rank).padStart(2, "0")}
+                        </span>
+                    </td>
+                    <td class="animal-table__cell">
+                        <div class="lb-user">
+                            <span class="lb-avatar">${escapeHtml(row.initial)}</span>
+                            <div>
+                                <a href="${escapeHtml(row.profile_url)}" class="lb-user-name">${escapeHtml(row.name)}</a>
+                                <div class="lb-user-sub">@${escapeHtml(row.username)}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="animal-table__cell">
+                        ${row.class_name ? `<span class="lb-class-pill">${escapeHtml(row.class_name)}</span>` : `<span class="lb-user-sub">未分班</span>`}
+                    </td>
+                    <td class="animal-table__cell lb-score-cell">
+                        <span class="lb-score-value">${escapeHtml(formatScore(row.score))}</span>
+                        <span class="lb-score-unit">${escapeHtml(row.unit)}</span>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function syncUrl() {
+            const url = new URL(window.location.href);
+            url.searchParams.set("metric", state.metric);
+            url.searchParams.set("period", state.period);
+            window.history.replaceState({}, "", `${url.pathname}?${url.searchParams.toString()}`);
+        }
+
+        function render() {
+            const data = payload[state.period][state.metric];
+            const leader = data.top_three[0] || null;
+            const me = data.my_rank;
+
+            setActiveButtons();
+
+            subtitle.textContent = "一个更轻量的排行榜视图，切换榜单不会刷新页面。";
+            currentChip.innerHTML = `<i class="fas ${data.icon}"></i>${data.period_label} · ${data.label}`;
+            metricLabel.textContent = data.label;
+            metricNote.textContent = `${data.period_label} · ${data.description}`;
+            totalRecords.textContent = String(data.total_records);
+            totalRecordsNote.textContent = "只显示有成绩的用户，以及你自己的当前成绩。";
+
+            if (leader) {
+                topScore.textContent = `${formatScore(leader.score)}`;
+                topScoreNote.textContent = `${leader.name} · ${leader.unit}`;
+            } else {
+                topScore.textContent = "-";
+                topScoreNote.textContent = "暂无第一名";
+            }
+
+            if (me) {
+                myRank.textContent = `#${me.rank}`;
+                myRankNote.textContent = me.rank === 1
+                    ? "你现在正排在第一位"
+                    : `距离上一名还差 ${formatScore(data.gap_to_next)} ${me.unit}`;
+            } else {
+                myRank.textContent = "未上榜";
+                myRankNote.textContent = "先去积累一点成绩吧";
+            }
+
+            boardTitle.textContent = `${data.label} · ${data.period_label}`;
+            boardCopy.textContent = `${data.description}，点击上方按钮即可切换，不会刷新整页。`;
+
+            renderPodium(data.top_three);
+            renderRows(data.rows);
+            syncUrl();
+        }
+
+        periodButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                if (state.period === button.dataset.period) return;
+                state.period = button.dataset.period;
+                render();
+            });
+        });
+
+        metricButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                if (state.metric === button.dataset.metric) return;
+                state.metric = button.dataset.metric;
+                render();
+            });
+        });
+
+        render();
+    })();
+</script>
 {% endblock %}

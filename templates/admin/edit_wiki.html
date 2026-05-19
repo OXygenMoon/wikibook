@@ -8,6 +8,35 @@
     .drag-handle { cursor: grab; }
     .drag-handle:active { cursor: grabbing; }
     #auto-save-indicator { transition: all 0.3s ease; }
+    .wiki-icon-preview {
+        width: 180px;
+        height: 180px;
+        border-radius: 2rem;
+        overflow: hidden;
+        position: relative;
+        background:
+            linear-gradient(135deg, rgba(255,255,255,0.42), transparent 45%),
+            var(--wiki-icon-preview-color, #8ccfb9);
+        box-shadow: inset 0 -6px 0 rgba(0,0,0,0.08);
+    }
+    .wiki-icon-preview img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform-origin: center center;
+    }
+    .wiki-icon-fallback {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: white;
+        font-size: 3.75rem;
+        font-weight: 900;
+        letter-spacing: -0.06em;
+    }
     
     /* 💡 修复：移除了全局的 width: 100% 和 height，改由 Tailwind 控制 */
     input[type="color"] {
@@ -126,10 +155,72 @@
         document.getElementById(id + '-val').innerText = value;
     }
 
+    function updateWikiIconPreview() {
+        const preview = document.getElementById('wikiIconPreviewImage');
+        if (!preview) return;
+        const scale = parseFloat(document.getElementById('icon_scale').value || '1');
+        const posX = parseFloat(document.getElementById('icon_position_x').value || '50');
+        const posY = parseFloat(document.getElementById('icon_position_y').value || '50');
+
+        preview.style.transform = `scale(${scale})`;
+        preview.style.objectPosition = `${posX}% ${posY}%`;
+
+        const scaleVal = document.getElementById('icon-scale-val');
+        const posXVal = document.getElementById('icon-pos-x-val');
+        const posYVal = document.getElementById('icon-pos-y-val');
+        if (scaleVal) scaleVal.innerText = scale.toFixed(2);
+        if (posXVal) posXVal.innerText = Math.round(posX);
+        if (posYVal) posYVal.innerText = Math.round(posY);
+    }
+
+    function syncWikiIconState(hasImage) {
+        const preview = document.getElementById('wikiIconPreviewImage');
+        const fallback = document.getElementById('wikiIconFallback');
+        const removeInput = document.getElementById('remove_icon');
+        const clearButton = document.getElementById('clearWikiIconButton');
+        if (!preview || !fallback || !removeInput) return;
+
+        preview.classList.toggle('hidden', !hasImage);
+        fallback.classList.toggle('hidden', hasImage);
+        if (clearButton) clearButton.disabled = !hasImage;
+    }
+
+    function previewWikiIcon(input) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+
+        const preview = document.getElementById('wikiIconPreviewImage');
+        const removeInput = document.getElementById('remove_icon');
+        if (!preview || !removeInput) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            preview.src = event.target.result;
+            removeInput.value = '0';
+            syncWikiIconState(true);
+            updateWikiIconPreview();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function clearWikiIcon() {
+        const preview = document.getElementById('wikiIconPreviewImage');
+        const uploadInput = document.getElementById('wiki_icon_upload');
+        const removeInput = document.getElementById('remove_icon');
+        if (!preview || !uploadInput || !removeInput) return;
+
+        preview.src = '';
+        uploadInput.value = '';
+        removeInput.value = '1';
+        syncWikiIconState(false);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         initSortables();
         const checked = document.querySelector('input[name="visibility"]:checked');
         if(checked) togglePermissions(checked.value);
+        syncWikiIconState(!!document.getElementById('wikiIconPreviewImage')?.getAttribute('src'));
+        updateWikiIconPreview();
     });
 </script>
 {% endblock %}
@@ -144,7 +235,7 @@
         <a href="{{ url_for('wiki_detail', wiki_id=wiki.id) }}" class="btn btn-sm btn-ghost bg-base-200 rounded-xl">返回 Wiki</a>
     </div>
 
-    <form method="post" class="space-y-6">
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
         <div class="card bg-white dark:bg-base-100 shadow-xl rounded-[2rem] p-6 lg:p-10 space-y-10">
             
             <div class="bg-base-200/30 rounded-3xl p-6 border border-base-300">
@@ -199,6 +290,65 @@
                  <h2 class="text-xl font-bold mb-6 flex items-center gap-2"><i class="fas fa-palette text-pink-500"></i> 外观与质感设置</h2>
                  
                  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div class="md:col-span-2 bg-white dark:bg-base-200 p-5 rounded-2xl shadow-sm border border-base-300">
+                         <div class="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6 items-start">
+                             <div class="space-y-4">
+                                 <div class="wiki-icon-preview mx-auto lg:mx-0" style="--wiki-icon-preview-color: {{ wiki.bg_color or '#8ccfb9' }};">
+                                     <img
+                                         id="wikiIconPreviewImage"
+                                         src="{{ wiki.icon_url or '' }}"
+                                         alt="Wiki 图标预览"
+                                         class="{% if not wiki.icon_url %}hidden{% endif %}">
+                                     <div id="wikiIconFallback" class="wiki-icon-fallback {% if wiki.icon_url %}hidden{% endif %}">
+                                         {{ wiki.title[:1]|upper if wiki.title else 'W' }}
+                                     </div>
+                                 </div>
+                                 <input type="hidden" name="remove_icon" id="remove_icon" value="0" />
+                                 <div class="space-y-2">
+                                     <label class="label pt-0 pb-1"><span class="label-text font-bold text-base-content/80">上传 Wiki 图标</span></label>
+                                     <input id="wiki_icon_upload" type="file" name="icon_file" accept="image/png, image/jpeg, image/gif, image/webp, image/svg+xml" class="file-input file-input-bordered w-full rounded-xl" onchange="previewWikiIcon(this)" />
+                                     <div class="flex gap-2">
+                                         <button type="button" class="btn btn-sm rounded-xl" onclick="document.getElementById('wiki_icon_upload').click()">重新选择</button>
+                                         <button type="button" id="clearWikiIconButton" class="btn btn-sm btn-ghost text-error rounded-xl" onclick="clearWikiIcon()">清除当前图标</button>
+                                     </div>
+                                 </div>
+                             </div>
+
+                             <div class="space-y-5">
+                                 <div>
+                                     <h3 class="font-bold text-base mb-1">图标裁切与摆放</h3>
+                                     <p class="text-sm opacity-60 leading-6">上传后可以直接调节图标缩放比例，以及在容器中的左右、上下位置。保存后首页和 Wiki 页面会使用这套图标设置。</p>
+                                 </div>
+
+                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                     <div class="form-control">
+                                         <label class="label pt-0 pb-2 flex justify-between">
+                                             <span class="label-text font-bold text-base-content/80">缩放</span>
+                                         <span class="label-text-alt font-mono bg-base-200 px-2 py-0.5 rounded"><span id="icon-scale-val">{{ '%.2f'|format(wiki.icon_scale if wiki.icon_scale is not none else 1.0) }}</span>x</span>
+                                     </label>
+                                         <input id="icon_scale" type="range" name="icon_scale" min="0.50" max="3.00" step="0.01" value="{{ wiki.icon_scale if wiki.icon_scale is not none else 1.0 }}" class="range range-xs range-primary" oninput="updateWikiIconPreview()" />
+                                     </div>
+
+                                     <div class="form-control">
+                                         <label class="label pt-0 pb-2 flex justify-between">
+                                             <span class="label-text font-bold text-base-content/80">左右位置</span>
+                                             <span class="label-text-alt font-mono bg-base-200 px-2 py-0.5 rounded"><span id="icon-pos-x-val">{{ (wiki.icon_position_x if wiki.icon_position_x is not none else 50)|round|int }}</span>%</span>
+                                         </label>
+                                         <input id="icon_position_x" type="range" name="icon_position_x" min="0" max="100" step="1" value="{{ wiki.icon_position_x if wiki.icon_position_x is not none else 50 }}" class="range range-xs range-secondary" oninput="updateWikiIconPreview()" />
+                                     </div>
+
+                                     <div class="form-control">
+                                         <label class="label pt-0 pb-2 flex justify-between">
+                                             <span class="label-text font-bold text-base-content/80">上下位置</span>
+                                             <span class="label-text-alt font-mono bg-base-200 px-2 py-0.5 rounded"><span id="icon-pos-y-val">{{ (wiki.icon_position_y if wiki.icon_position_y is not none else 50)|round|int }}</span>%</span>
+                                         </label>
+                                         <input id="icon_position_y" type="range" name="icon_position_y" min="0" max="100" step="1" value="{{ wiki.icon_position_y if wiki.icon_position_y is not none else 50 }}" class="range range-xs range-accent" oninput="updateWikiIconPreview()" />
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
+
                      <div class="space-y-4">
                          <div class="form-control">
                              <label class="label pt-0 pb-1"><span class="label-text font-bold text-base-content/80">主背景色</span></label>

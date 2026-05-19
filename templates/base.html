@@ -686,6 +686,114 @@
 
 
 
+
+        /* ---------------------------------------------------- */
+        /* --- 新贴纸底部半露预览入口 (Badge Edge Preview) --- */
+        /* ---------------------------------------------------- */
+        .badge-edge-preview-container {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 185;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            pointer-events: none;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            overflow: visible;
+        }
+
+        .badge-edge-preview-container.hidden {
+            display: none;
+        }
+
+        .badge-edge-preview {
+            --badge-preview-size: 86px;
+            position: relative;
+            width: var(--badge-preview-size);
+            height: var(--badge-preview-size);
+            border: 0;
+            padding: 0;
+            background: transparent;
+            cursor: pointer;
+            pointer-events: auto;
+            transform: translateY(62%) scale(0.86);
+            opacity: 0;
+            filter: none;
+            transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease;
+            overflow: visible;
+        }
+
+        .badge-edge-preview-container.is-visible .badge-edge-preview {
+            opacity: 1;
+            transform: translateY(50%) scale(0.92);
+            animation: badgeEdgeFloat 2.8s ease-in-out infinite;
+        }
+
+        .badge-edge-preview:hover {
+            transform: translateY(50%) scale(0.92) !important;
+        }
+
+        .badge-edge-preview__card {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            display: grid;
+            place-items: center;
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+            overflow: visible;
+        }
+
+        .dark .badge-edge-preview__card {
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+        }
+
+        .badge-edge-preview__img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            position: relative;
+            z-index: 4;
+            filter: none;
+        }
+
+        .badge-edge-preview__text {
+            position: relative;
+            z-index: 4;
+            font-size: 3rem;
+            line-height: 1;
+            filter: none;
+        }
+
+        .badge-edge-preview__hint {
+            display: none;
+        }
+
+        @keyframes badgeEdgeFloat {
+            0%, 100% { margin-bottom: 0; }
+            50% { margin-bottom: 8px; }
+        }
+
+
+        @media (prefers-reduced-motion: reduce) {
+            .badge-edge-preview-container.is-visible .badge-edge-preview {
+                animation: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .badge-edge-preview {
+                --badge-preview-size: 76px;
+            }
+
+        }
+
+
         /* ---------------------------------------------------- */
 
         /* --- 全局便签 (Sticky Notes) 专属样式 --- */
@@ -3412,6 +3520,17 @@
 
 
 
+
+    <div id="badge-edge-preview-container" class="badge-edge-preview-container hidden">
+        <button id="badge-edge-preview" class="badge-edge-preview" type="button" title="查看新获得的贴纸" aria-label="查看新获得的贴纸" onclick="app.badges.openPreview()">
+            <span class="badge-edge-preview__card">
+                <img id="badge-edge-preview-img" src="" alt="新获得的贴纸" class="badge-edge-preview__img hidden">
+                <span id="badge-edge-preview-text" class="badge-edge-preview__text hidden"></span>
+            </span>
+            
+        </button>
+    </div>
+
     <button id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" 
 
             class="fixed bottom-10 right-10 animal-btn animal-btn--primary animal-btn--large animal-btn--circle shadow-xl shadow-primary/30 z-[150] opacity-0 pointer-events-none translate-y-10 transition-all duration-500 hover:-translate-y-1 hover:scale-110">
@@ -4353,17 +4472,245 @@ toast: {
 
             badges: {
 
-                queue: [], isShowing: false,
+                queue: [],
+                queuedIds: new Set(),
+                isShowing: false,
+                activePreview: null,
+                currentModalBadge: null,
+                storageKey: 'wikibook_badge_preview_state_{{ current_user.id }}',
+                storageVersion: 2,
 
-                init() { setTimeout(() => this.checkNew(), 1500); },
+                init() {
+                    this.previewContainer = document.getElementById('badge-edge-preview-container');
+                    this.previewImg = document.getElementById('badge-edge-preview-img');
+                    this.previewText = document.getElementById('badge-edge-preview-text');
 
-                checkNew() { fetch('/api/badges/unnotified').then(r => r.json()).then(data => { if (data && data.length > 0) { this.queue.push(...data); this.showNext(); } }).catch(console.error); },
+                    // 先恢复本地未领取预览，保证切换子页面后立刻出现，不等心跳接口返回。
+                    this.restoreState();
+                    if (this.activePreview) {
+                        this.renderPreview(this.activePreview, { persist: false });
+                    }
 
-                showNext() { if (this.isShowing || this.queue.length === 0) return; this.isShowing = true; const badge = this.queue.shift(); this.renderModal(badge); },
+                    setTimeout(() => this.checkNew(), this.activePreview ? 350 : 1500);
+                },
 
-                renderModal(badge) { document.getElementById('new-badge-name').textContent = badge.name; document.getElementById('new-badge-desc').textContent = badge.description; const imgEl = document.getElementById('new-badge-icon-img'); const textEl = document.getElementById('new-badge-icon-text'); if (badge.is_image) { imgEl.src = badge.icon; imgEl.classList.remove('hidden'); textEl.classList.add('hidden'); } else { textEl.textContent = badge.icon; textEl.classList.remove('hidden'); imgEl.classList.add('hidden'); } document.getElementById('new-badge-date').textContent = badge.earned_at; document.getElementById('new-badge-serial').textContent = badge.serial_number; document.getElementById('new-badge-username').textContent = badge.user_name; document.getElementById('new-badge-avatar').textContent = badge.avatar_char; const gradientEl = document.getElementById('new-badge-gradient'); let colorClasses = "bg-gradient-to-bl from-stone-400 to-stone-200"; if (badge.rarity === 'rare') colorClasses = "bg-gradient-to-bl from-[#18293d] to-[#3b82f6]"; else if (badge.rarity === 'epic') colorClasses = "bg-gradient-to-bl from-purple-600 to-fuchsia-400"; else if (badge.rarity === 'legendary') colorClasses = "bg-gradient-to-bl from-amber-500 to-yellow-300"; gradientEl.className = `absolute top-0 right-0 w-64 h-64 opacity-90 transform translate-x-20 -translate-y-20 rotate-12 -z-10 shadow-inner transition-colors duration-700 ${colorClasses}`; const modal = document.getElementById('new_badge_modal'); const box = document.getElementById('new_badge_modal_box'); modal.showModal(); requestAnimationFrame(() => { box.classList.remove('scale-95', 'opacity-0'); box.classList.add('scale-100', 'opacity-100'); }); },
+                normalizeKey(badge) {
+                    return String(badge?.user_badge_id || badge?.serial_number || `${badge?.name || 'badge'}-${badge?.earned_at || ''}`);
+                },
 
-                closeModal() { const modal = document.getElementById('new_badge_modal'); const box = document.getElementById('new_badge_modal_box'); box.classList.remove('scale-100', 'opacity-100'); box.classList.add('scale-95', 'opacity-0'); setTimeout(() => { modal.close(); this.isShowing = false; setTimeout(() => this.showNext(), 500); }, 400); }
+                safeParseState(raw) {
+                    if (!raw) return null;
+                    try {
+                        const state = JSON.parse(raw);
+                        if (!state || state.version !== this.storageVersion) return null;
+                        return state;
+                    } catch (error) {
+                        return null;
+                    }
+                },
+
+                restoreState() {
+                    const state = this.safeParseState(localStorage.getItem(this.storageKey));
+                    if (!state) {
+                        this.clearState();
+                        return;
+                    }
+
+                    this.activePreview = state.activePreview || null;
+                    this.queue = Array.isArray(state.queue) ? state.queue : [];
+                    this.queuedIds = new Set();
+
+                    if (this.activePreview) {
+                        this.activePreview._queueKey = this.activePreview._queueKey || this.normalizeKey(this.activePreview);
+                        this.queuedIds.add(this.activePreview._queueKey);
+                    }
+
+                    this.queue = this.queue.filter(Boolean).map(badge => {
+                        badge._queueKey = badge._queueKey || this.normalizeKey(badge);
+                        this.queuedIds.add(badge._queueKey);
+                        return badge;
+                    });
+                },
+
+                persistState() {
+                    const state = {
+                        version: this.storageVersion,
+                        activePreview: this.activePreview,
+                        queue: this.queue
+                    };
+
+                    try {
+                        if (!state.activePreview && state.queue.length === 0) {
+                            localStorage.removeItem(this.storageKey);
+                        } else {
+                            localStorage.setItem(this.storageKey, JSON.stringify(state));
+                        }
+                    } catch (error) {
+                        // localStorage 在极端隐私模式下可能不可写，不影响主流程。
+                    }
+                },
+
+                clearState() {
+                    try {
+                        localStorage.removeItem(this.storageKey);
+                    } catch (error) {}
+                    this.queue = [];
+                    this.activePreview = null;
+                    this.queuedIds = new Set();
+                },
+
+                checkNew() {
+                    fetch('/api/badges/unnotified')
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!Array.isArray(data) || data.length === 0) return;
+
+                            data.forEach(badge => this.enqueue(badge));
+                            this.showNextPreview();
+                        })
+                        .catch(console.error);
+                },
+
+                enqueue(badge) {
+                    const key = this.normalizeKey(badge);
+
+                    // 后端在用户点击/关闭前不会立刻标记已通知，心跳和跨页面加载可能重复拉取同一枚贴纸。
+                    // 这里用 activePreview + queue 的持久化键去重，避免同一张贴纸重复出现。
+                    if (this.queuedIds.has(key)) return;
+
+                    badge._queueKey = key;
+                    this.queuedIds.add(key);
+                    this.queue.push(badge);
+                    this.persistState();
+                },
+
+                showNextPreview() {
+                    if (this.isShowing || this.activePreview || this.queue.length === 0) return;
+
+                    this.activePreview = this.queue.shift();
+                    this.persistState();
+                    this.renderPreview(this.activePreview);
+                },
+
+                renderPreview(badge, options = {}) {
+                    if (!this.previewContainer || !this.previewImg || !this.previewText || !badge) return;
+
+                    if (badge.is_image) {
+                        this.previewImg.src = badge.icon;
+                        this.previewImg.classList.remove('hidden');
+                        this.previewText.classList.add('hidden');
+                    } else {
+                        this.previewText.textContent = badge.icon || '✨';
+                        this.previewText.classList.remove('hidden');
+                        this.previewImg.classList.add('hidden');
+                        this.previewImg.removeAttribute('src');
+                    }
+
+                    this.previewContainer.classList.remove('hidden');
+                    requestAnimationFrame(() => this.previewContainer.classList.add('is-visible'));
+
+                    if (options.persist !== false) this.persistState();
+                },
+
+                hidePreview() {
+                    if (!this.previewContainer) return;
+
+                    this.previewContainer.classList.remove('is-visible');
+                    setTimeout(() => {
+                        if (!this.activePreview) {
+                            this.previewContainer.classList.add('hidden');
+                        }
+                    }, 360);
+                },
+
+                openPreview() {
+                    if (!this.activePreview || this.isShowing) return;
+
+                    const badge = this.activePreview;
+                    this.hidePreview();
+                    this.activePreview = null;
+                    this.persistState();
+                    this.isShowing = true;
+                    this.renderModal(badge);
+                },
+
+                renderModal(badge) {
+                    this.currentModalBadge = badge;
+
+                    document.getElementById('new-badge-name').textContent = badge.name;
+                    document.getElementById('new-badge-desc').textContent = badge.description;
+
+                    const imgEl = document.getElementById('new-badge-icon-img');
+                    const textEl = document.getElementById('new-badge-icon-text');
+
+                    if (badge.is_image) {
+                        imgEl.src = badge.icon;
+                        imgEl.classList.remove('hidden');
+                        textEl.classList.add('hidden');
+                    } else {
+                        textEl.textContent = badge.icon || '✨';
+                        textEl.classList.remove('hidden');
+                        imgEl.classList.add('hidden');
+                        imgEl.removeAttribute('src');
+                    }
+
+                    document.getElementById('new-badge-date').textContent = badge.earned_at;
+                    document.getElementById('new-badge-serial').textContent = badge.serial_number;
+                    document.getElementById('new-badge-username').textContent = badge.user_name;
+                    document.getElementById('new-badge-avatar').textContent = badge.avatar_char;
+
+                    const gradientEl = document.getElementById('new-badge-gradient');
+                    let colorClasses = "bg-gradient-to-bl from-stone-400 to-stone-200";
+                    if (badge.rarity === 'rare') colorClasses = "bg-gradient-to-bl from-[#18293d] to-[#3b82f6]";
+                    else if (badge.rarity === 'epic') colorClasses = "bg-gradient-to-bl from-purple-600 to-fuchsia-400";
+                    else if (badge.rarity === 'legendary') colorClasses = "bg-gradient-to-bl from-amber-500 to-yellow-300";
+
+                    gradientEl.className = `absolute top-0 right-0 w-64 h-64 opacity-90 transform translate-x-20 -translate-y-20 rotate-12 -z-10 shadow-inner transition-colors duration-700 ${colorClasses}`;
+
+                    const modal = document.getElementById('new_badge_modal');
+                    const box = document.getElementById('new_badge_modal_box');
+
+                    modal.showModal();
+                    requestAnimationFrame(() => {
+                        box.classList.remove('scale-95', 'opacity-0');
+                        box.classList.add('scale-100', 'opacity-100');
+                    });
+                },
+
+                markCurrentNotified() {
+                    const badge = this.currentModalBadge;
+                    if (!badge || !badge.user_badge_id) return Promise.resolve();
+
+                    return fetch(`/api/badges/${badge.user_badge_id}/mark_notified`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'}
+                    }).catch(console.error);
+                },
+
+                closeModal() {
+                    const modal = document.getElementById('new_badge_modal');
+                    const box = document.getElementById('new_badge_modal_box');
+                    const closedBadge = this.currentModalBadge;
+
+                    box.classList.remove('scale-100', 'opacity-100');
+                    box.classList.add('scale-95', 'opacity-0');
+
+                    setTimeout(() => {
+                        modal.close();
+
+                        this.markCurrentNotified().finally(() => {
+                            if (closedBadge && closedBadge._queueKey) {
+                                this.queuedIds.delete(closedBadge._queueKey);
+                            }
+
+                            this.currentModalBadge = null;
+                            this.isShowing = false;
+                            this.persistState();
+
+                            setTimeout(() => this.showNextPreview(), 350);
+                        });
+                    }, 400);
+                }
 
             }
 

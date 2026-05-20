@@ -857,6 +857,7 @@ DEFAULT_PHONE_APPS = [
     {"name": "广场", "description": "浏览精选 Wiki 与公开知识库。", "icon_class": "animal-phone__app-icon--critterpedia", "bg_color": "#f7cd67", "action_type": "link", "target_endpoint": "index", "sort_order": 30},
     {"name": "Book", "description": "进入笔记与个人知识本。", "icon_class": "animal-phone__app-icon--diy", "bg_color": "#e59266", "action_type": "link", "target_endpoint": "book_index", "sort_order": 40},
     {"name": "贴纸墙", "description": "打开大家的学习贴纸墙。", "icon_class": "animal-phone__app-icon--design", "bg_color": "#f8a6b2", "action_type": "link", "target_endpoint": "sticker_walls_view", "sort_order": 50},
+    {"name": "贴纸库", "description": "翻阅你的成就贴纸与系列进度。", "icon_class": "fas fa-book-open", "bg_color": "#82d5bb", "action_type": "link", "target_endpoint": "my_achievement_book", "internal_key": "achievement_book", "sort_order": 55},
     {"name": "排行榜", "description": "查看学习、番茄与贡献榜。", "icon_class": "animal-phone__app-icon--map", "bg_color": "#82d5bb", "action_type": "link", "target_endpoint": "leaderboard", "sort_order": 60},
     {"name": "公告栏", "description": "阅读系统公告与活动信息。", "icon_class": "animal-phone__app-icon--variant", "bg_color": "#8ac68a", "action_type": "link", "target_endpoint": "announcements_view", "sort_order": 70},
     {"name": "任务栏", "description": "查看委托任务和悬赏。", "icon_class": "animal-phone__app-icon--helicopter", "bg_color": "#fc736d", "action_type": "link", "target_endpoint": "bulletin_view", "sort_order": 80},
@@ -945,6 +946,7 @@ def format_badge_condition(badge):
         
     ctype = badge.condition_type
     val = badge.condition_value
+    target_id = getattr(badge, "target_id", None)
     
     if ctype == 'manual':
         return '管理员手动发放'
@@ -980,6 +982,42 @@ def format_badge_condition(badge):
         return f'笔记累计被阅读 {val} 次'
     elif ctype == 'pomo_count':
         return f'累计完成番茄钟 {val} 个'
+    elif ctype == 'user_level':
+        return f'用户等级达到 Lv.{val}'
+    elif ctype == 'wiki_specific_duration':
+        wiki_title = None
+        if target_id:
+            wiki = Wiki.query.get(target_id)
+            wiki_title = wiki.title if wiki else None
+        if wiki_title:
+            return f'在《{wiki_title}》中累计学习 {val} 分钟'
+        return f'在指定 Wiki 中累计学习 {val} 分钟'
+    elif ctype == 'assignment_complete':
+        assignment_title = None
+        if target_id:
+            assignment = Assignment.query.get(target_id)
+            assignment_title = assignment.title if assignment else None
+        if assignment_title:
+            return f'完成任务《{assignment_title}》'
+        return '完成指定任务'
+    elif ctype == 'assignment_stars':
+        assignment_title = None
+        if target_id:
+            assignment = Assignment.query.get(target_id)
+            assignment_title = assignment.title if assignment else None
+        if assignment_title:
+            return f'在任务《{assignment_title}》中获得至少 {val} 颗星'
+        return f'在指定任务中获得至少 {val} 颗星'
+    elif ctype == 'assignment_grade':
+        assignment_title = None
+        grade_map = {6: 'S+', 5: 'S', 4: 'A', 3: 'B', 2: 'C', 1: 'D'}
+        grade_text = grade_map.get(val, f'等级 {val}')
+        if target_id:
+            assignment = Assignment.query.get(target_id)
+            assignment_title = assignment.title if assignment else None
+        if assignment_title:
+            return f'在任务《{assignment_title}》中达到 {grade_text} 及以上'
+        return f'在指定任务中达到 {grade_text} 及以上'
     else:
         return f'{ctype}: {val}'
 
@@ -3347,23 +3385,69 @@ def achievement_book(user_id):
     earned_badge_ids = [ub.badge_id for ub in user_badges]
     
     # 获取未获得的徽章
-    all_badges = Badge.query.all()
+    all_badges = Badge.query.order_by(Badge.category.asc(), Badge.id.asc()).all()
     unearned_badges = [b for b in all_badges if b.id not in earned_badge_ids]
     
     # 获取所有分类（去重）
-    categories = db.session.query(Badge.category).distinct().all()
+    categories = db.session.query(Badge.category).filter(Badge.category.isnot(None)).distinct().all()
     # categories is a list of tuples: [('一般',), ('学习',), ...]
-    category_list = [c[0] for c in categories if c[0]]
+    category_list = sorted(
+        [c[0] for c in categories if c[0]],
+        key=lambda name: (name != '一般', name)
+    )
     
     # Total Users for Global Rarity
     total_users = User.query.count() or 1
+
+    def serialize_badge_item(badge, earned_record=None):
+        is_image = is_image_icon(badge.icon)
+        earned_at = earned_record.earned_at if earned_record else None
+        return {
+            "id": badge.id,
+            "name": badge.name,
+            "description": badge.description or "",
+            "category": badge.category or "一般",
+            "rarity": badge.rarity or "common",
+            "isSecret": bool(badge.is_secret),
+            "isHidden": bool(badge.is_hidden),
+            "isUnlocked": earned_record is not None,
+            "unlockDate": earned_at.strftime('%Y.%m.%d') if earned_at else "",
+            "unlockTimestamp": earned_at.isoformat() if earned_at else "",
+            "isImage": is_image,
+            "iconUrl": badge_icon_url(badge.icon) if is_image else "",
+            "iconText": "" if is_image else badge.icon,
+            "issuer": badge.issuer or "WikiBook",
+            "serialNumber": earned_record.serial_number if earned_record else "",
+            "conditionText": format_badge_condition(badge),
+        }
+
+    achievement_payload = {
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "avatarInitial": (user.username[:1] if user.username else "?").upper(),
+        },
+        "categories": category_list,
+        "achievements": (
+            [serialize_badge_item(ub.badge, ub) for ub in user_badges] +
+            [serialize_badge_item(badge) for badge in unearned_badges]
+        ),
+    }
+    achievement_payload_json = json.dumps(achievement_payload, ensure_ascii=False)
     
     return render_template("user/achievement_book.html", 
                          user=user,
                          user_badges=user_badges,
                          unearned_badges=unearned_badges,
                          categories=category_list,
-                         total_users=total_users)
+                         total_users=total_users,
+                         achievement_payload=achievement_payload,
+                         achievement_payload_json=achievement_payload_json)
+
+@app.route("/my/achievement_book")
+@login_required
+def my_achievement_book():
+    return redirect(url_for("achievement_book", user_id=current_user.id))
 
 @app.route("/user/<int:user_id>/follow", methods=["POST"])
 @login_required

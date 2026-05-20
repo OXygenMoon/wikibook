@@ -5,690 +5,1613 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-    /* --- 1. 全局与基础样式 --- */
-    :root {
-        --primary-warm: #f59e0b;
-        --bg-warm: #fffbeb;
-    }
-    
-    .hide-scrollbar::-webkit-scrollbar { display: none; }
-    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-    /* 动画定义 */
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    @keyframes gradient-flow {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+    #achievement-book-container {
+        font-family: var(--animal-font-family);
+        color: #725d42;
     }
 
-    @keyframes progress { 
-        0% { stroke-dasharray: 0 100; } 
+    .achievement-page {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 2.5rem 1rem 4rem;
     }
 
-    /* --- 2. 列表项样式 --- */
-    .badge-list-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        background: #ffffff;
-        border-radius: 1rem;
-        border: 1px solid #f3f4f6;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
+    .achievement-shell {
         position: relative;
         overflow: hidden;
-    }
-    
-    .badge-list-item:hover {
-        transform: translateY(-2px) scale(1.01);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-    }
-    
-    .badge-list-item:active {
-        transform: scale(0.98);
-    }
-
-    .badge-list-item.locked {
-        opacity: 0.7;
-        background: #fafaf9;
-    }
-    .badge-list-item.locked .badge-icon-wrapper {
-        filter: grayscale(100%) contrast(0.8);
-        opacity: 0.6;
+        border: 2px solid #e8e2d6;
+        border-radius: 42px;
+        background:
+            radial-gradient(circle at top left, rgba(130, 213, 187, 0.24), transparent 30%),
+            radial-gradient(circle at right 18%, rgba(245, 195, 28, 0.18), transparent 26%),
+            linear-gradient(180deg, #fffdf8 0%, #f8f3e7 100%);
+        box-shadow: 0 28px 60px rgba(61, 52, 40, 0.12);
+        padding: 2rem;
     }
 
-    .badge-icon-wrapper {
-        width: 4rem; height: 4rem;
-        flex-shrink: 0;
-        border-radius: 1rem;
-        display: flex; align-items: center; justify-content: center;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        overflow: hidden;
-        transition: transform 0.3s ease;
+    .achievement-backdrop {
+        position: absolute;
+        border-radius: 999px;
+        filter: blur(6px);
+        opacity: 0.35;
+        pointer-events: none;
     }
 
-    /* --- 3. 稀有度视觉系统 (修复了原代码未应用的问题) --- */
-    
-    /* 稀有度标签基础 */
-    .rarity-badge {
-        font-size: 0.65rem;
-        padding: 2px 8px;
-        border-radius: 99px;
-        color: white;
+    .achievement-backdrop--one {
+        width: 240px;
+        height: 240px;
+        top: -72px;
+        right: -60px;
+        background: rgba(130, 213, 187, 0.55);
+    }
+
+    .achievement-backdrop--two {
+        width: 220px;
+        height: 220px;
+        bottom: 18%;
+        left: -80px;
+        background: rgba(245, 195, 28, 0.32);
+    }
+
+    .achievement-backdrop--three {
+        width: 180px;
+        height: 180px;
+        bottom: -45px;
+        right: 18%;
+        background: rgba(229, 146, 102, 0.28);
+    }
+
+    .achievement-hero {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: stretch;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: 1.75rem;
+        border: 2px solid #eadfcf;
+        border-radius: 34px;
+        background: rgba(255, 252, 244, 0.92);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    .hero-copy {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .hero-intro {
+        min-width: 0;
+    }
+
+    .hero-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.35rem 0.9rem;
+        border-radius: 999px;
+        background: #fff5cf;
+        color: #8a6a26;
+        font-size: 0.78rem;
         font-weight: 800;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        background-size: 200% 200%;
-        animation: gradient-flow 4s ease infinite;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        display: inline-block;
-        margin-left: 8px;
-        vertical-align: middle;
     }
 
-    /* 普通 (Common) */
-    .rarity-common .rarity-badge {
-        background-image: linear-gradient(135deg, #94a3b8, #64748b);
-    }
-    /* 列表项边框颜色 - 仅在解锁时显示 */
-    .badge-list-item.unlocked.rarity-common { border-left: 4px solid #cbd5e1; }
-
-    /* 稀有 (Rare) */
-    .rarity-rare .rarity-badge {
-        background-image: linear-gradient(135deg, #3b82f6, #2563eb);
-    }
-    .badge-list-item.unlocked.rarity-rare { 
-        border-left: 4px solid #3b82f6;
-        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
+    .hero-title {
+        margin-top: 0.9rem;
+        font-size: clamp(2rem, 4vw, 3.2rem);
+        line-height: 1.02;
+        font-weight: 900;
+        color: #6f5330;
     }
 
-    /* 史诗 (Epic) */
-    .rarity-epic .rarity-badge {
-        background-image: linear-gradient(135deg, #d946ef, #7e22ce);
-    }
-    .badge-list-item.unlocked.rarity-epic { 
-        border-left: 4px solid #d946ef;
-        background: linear-gradient(to right, #fdf4ff, #fff);
-    }
-
-    /* 传说 (Legendary) */
-    .rarity-legendary .rarity-badge {
-        background-image: linear-gradient(135deg, #f59e0b, #d97706, #fbbf24);
-        animation: gradient-flow 2s linear infinite;
-    }
-    .badge-list-item.unlocked.rarity-legendary { 
-        border: 1px solid #fcd34d;
-        border-left: 4px solid #f59e0b;
-        background: linear-gradient(to right, #fffbeb, #fff);
-        box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.15);
+    .hero-description {
+        max-width: 42rem;
+        margin-top: 0.85rem;
+        color: #8c7c64;
+        font-size: 1rem;
+        line-height: 1.75;
     }
 
+    .hero-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+        margin-top: 1.2rem;
+    }
 
+    .hero-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 38px;
+        padding: 0 1rem;
+        border: 2px solid #eadfcf;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.92);
+        color: #7a6548;
+        font-size: 0.92rem;
+        font-weight: 700;
+    }
 
-    .sticker-hero-container {
-        flex: 1;
-        min-height: 300px;
+    .hero-pill strong {
+        color: #19c8b9;
+    }
+
+    .hero-progress-panel {
+        flex: 0 0 300px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: radial-gradient(circle at center, #fdfbf7 0%, #fff 70%);
-        position: relative;
+        padding: 1.25rem;
+        border: 2px solid #eadfcf;
+        border-radius: 28px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(252, 246, 233, 0.95));
     }
 
-    .sticker-img-large {
-        filter: drop-shadow(0 8px 16px rgba(0,0,0,0.1));
-        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .sticker-img-large:hover {
-        transform: scale(1.1) rotate(3deg);
-    }
-
-    .sticker-info-section {
-        padding: 1.5rem 2rem 2rem;
-        background: #fff;
-        position: relative;
-        z-index: 10;
-    }
-    
-    /* 底部元数据网格 */
-    .meta-grid {
+    .hero-progress-inner {
+        width: 100%;
         display: grid;
-        grid-template-columns: 1fr 1fr auto;
         gap: 1rem;
-        border-top: 1px solid #f3f4f6;
-        padding-top: 1.5rem;
-        margin-top: 1.5rem;
     }
-    
-    .meta-item {
+
+    .hero-progress-top {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .progress-ring {
+        --progress-value: 0%;
+        width: 108px;
+        height: 108px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: conic-gradient(#19c8b9 var(--progress-value), #ebdfcc 0);
+        box-shadow: inset 0 0 0 8px rgba(255, 255, 255, 0.4);
+    }
+
+    .progress-ring__inner {
+        width: 78px;
+        height: 78px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: #fffaf0;
+        text-align: center;
+        box-shadow: inset 0 1px 3px rgba(61, 52, 40, 0.08);
+    }
+
+    .progress-ring__value {
+        display: block;
+        font-size: 1.3rem;
+        font-weight: 900;
+        color: #6f5330;
+        line-height: 1;
+    }
+
+    .progress-ring__label {
+        margin-top: 0.2rem;
+        display: block;
+        font-size: 0.72rem;
+        color: #a08c70;
+        font-weight: 700;
+    }
+
+    .hero-progress-meta h2 {
+        margin: 0;
+        font-size: 0.9rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #a08c70;
+    }
+
+    .hero-progress-count {
+        margin-top: 0.35rem;
+        font-size: 2rem;
+        font-weight: 900;
+        color: #6f5330;
+        line-height: 1;
+    }
+
+    .hero-progress-count span {
+        color: #19c8b9;
+    }
+
+    .hero-progress-note {
+        margin-top: 0.4rem;
+        color: #9b8a72;
+        font-size: 0.92rem;
+        line-height: 1.6;
+    }
+
+    .section-heading {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-top: 1.8rem;
+        margin-bottom: 1rem;
+        padding: 0 0.25rem;
+    }
+
+    .section-heading h2 {
+        font-size: 1.45rem;
+        font-weight: 900;
+        color: #6f5330;
+        line-height: 1.1;
+    }
+
+    .section-heading p {
+        margin-top: 0.3rem;
+        color: #97856d;
+        font-size: 0.95rem;
+    }
+
+    .section-heading__meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.45rem 0.85rem;
+        border-radius: 999px;
+        border: 2px solid #eadfcf;
+        background: rgba(255, 255, 255, 0.75);
+        color: #8e7b61;
+        font-size: 0.82rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .series-overview-grid {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 0.8rem;
+    }
+
+    @keyframes achievement-stripe-slide {
+        from {
+            background-position: 0 0;
+        }
+        to {
+            background-position: -28.28px 0;
+        }
+    }
+
+    .series-card {
+        position: relative;
+        overflow: hidden;
+        border: 2px solid #eadfcf;
+        border-radius: 24px;
+        background: linear-gradient(180deg, var(--series-soft, #eefaf6), #fffdf8);
+        box-shadow: 0 14px 30px rgba(61, 52, 40, 0.08);
+        text-align: left;
+        padding: 0.9rem 0.95rem 0.85rem;
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+
+    .series-card:hover,
+    .series-card.is-active {
+        transform: translateY(-4px);
+        border-color: var(--series-accent, #19c8b9);
+        box-shadow: 0 18px 34px var(--series-glow, rgba(25, 200, 185, 0.2));
+    }
+
+    .series-card.is-active {
+        background-color: #0ec4b6;
+        background-image: repeating-linear-gradient(
+            -45deg,
+            #0ec4b6,
+            #0ec4b6 10px,
+            #01b0a7 10px,
+            #01b0a7 20px
+        );
+        background-size: 28.28px 28.28px;
+        animation: achievement-stripe-slide 1s linear infinite;
+        border-color: #4de2da;
+        box-shadow: 0 18px 34px rgba(12, 155, 147, 0.22);
+    }
+
+    .series-card.is-active .series-card__pill,
+    .series-card.is-active .series-card__rate,
+    .series-card.is-active .series-card__title,
+    .series-card.is-active .series-card__count {
+        color: #fffdf7;
+    }
+
+    .series-card.is-active .series-card__pill {
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+    .series-card.is-active .progress-bar {
+        background: rgba(255, 255, 255, 0.24);
+    }
+
+    .series-card::after {
+        content: "";
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        width: 54px;
+        height: 54px;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 70%);
+        pointer-events: none;
+    }
+
+    .series-card__top {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .series-card__pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.22rem 0.58rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--series-accent, #19c8b9);
+        font-size: 0.7rem;
+        font-weight: 800;
+    }
+
+    .series-card__rate {
+        color: #9b8a72;
+        font-size: 0.92rem;
+        font-weight: 900;
+    }
+
+    .series-card__title {
+        position: relative;
+        z-index: 1;
+        margin-top: 0.7rem;
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: #6f5330;
+        line-height: 1.15;
+    }
+
+    .series-card__count {
+        position: relative;
+        z-index: 1;
+        margin-top: 0.32rem;
+        color: #8c7c64;
+        font-size: 0.9rem;
+        font-weight: 800;
+        line-height: 1.4;
+    }
+
+    .progress-bar {
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(117, 100, 72, 0.12);
+    }
+
+    .progress-bar > span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--series-accent, #19c8b9), #f5c31c);
+    }
+
+    .series-card .progress-bar {
+        position: relative;
+        z-index: 1;
+        margin-top: 0.7rem;
+    }
+
+    .detail-section {
+        position: relative;
+        z-index: 1;
+        margin-top: 1.2rem;
+        overflow: hidden;
+        border: 2px solid #eadfcf;
+        border-radius: 28px;
+        background: rgba(255, 252, 245, 0.86);
+        box-shadow: 0 18px 38px rgba(61, 52, 40, 0.08);
+    }
+
+    .detail-tabs-scroller {
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .detail-tabs-scroller::-webkit-scrollbar {
+        display: none;
+    }
+
+    .detail-tabs-wrap {
+        min-width: max-content;
+        border-bottom: 2px solid #eadfcf;
+    }
+
+    .detail-tabs-wrap .animal-tabs__item {
+        white-space: nowrap;
+    }
+
+    .detail-pane {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .detail-panel {
+        border: 2px solid #eadfcf;
+        border-radius: 24px;
+        background: linear-gradient(180deg, var(--series-soft, #eefaf6), rgba(255, 255, 255, 0.95));
+        padding: 0.95rem 1rem;
+    }
+
+    .detail-panel__header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .detail-panel__kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.22rem 0.58rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.78);
+        color: var(--series-accent, #19c8b9);
+        font-size: 0.68rem;
+        font-weight: 800;
+    }
+
+    .detail-panel__title {
+        margin-top: 0.55rem;
+        font-size: clamp(1.25rem, 2.5vw, 1.7rem);
+        font-weight: 900;
+        color: #6f5330;
+    }
+
+    .detail-panel__text {
+        margin-top: 0.35rem;
+        color: #8f7c62;
+        font-size: 0.88rem;
+        line-height: 1.6;
+        max-width: 42rem;
+    }
+
+    .detail-panel__side {
+        min-width: 190px;
+        display: grid;
+        gap: 0.55rem;
+    }
+
+    .detail-side-card {
+        padding: 0.72rem 0.82rem;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 2px solid rgba(234, 223, 207, 0.9);
+    }
+
+    .detail-side-card__label {
+        color: #9a896f;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .detail-side-card__value {
+        margin-top: 0.28rem;
+        color: #6f5330;
+        font-size: 1.05rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .detail-side-card__hint {
+        margin-top: 0.22rem;
+        color: #8e7c62;
+        font-size: 0.76rem;
+        line-height: 1.4;
+    }
+
+    .detail-actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .sticker-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+        gap: 1rem;
+    }
+
+    .sticker-tile {
+        position: relative;
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
-    }
-    
-    .meta-label { font-size: 0.75rem; color: #9ca3af; font-weight: 500; }
-    .meta-value { font-size: 0.875rem; color: #1f2937; font-weight: 700; font-family: ui-monospace, SFMono-Regular, monospace; }
-
-    /* 分享按钮 */
-    .share-btn-large {
-        width: 100%;
-        background-color: #0ea5e9;
-        color: white;
-        border-radius: 16px;
+        gap: 0.95rem;
+        min-height: 264px;
         padding: 1rem;
-        font-weight: 600;
-        font-size: 1rem;
-        border: none;
-        margin-top: 1.5rem;
-        cursor: pointer;
-        transition: background 0.2s, transform 0.1s;
-        box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);
+        border: 2px solid #eadfcf;
+        border-radius: 28px;
+        background: linear-gradient(180deg, #fffef9 0%, var(--tile-soft, #f7f3e7) 100%);
+        box-shadow: 0 12px 24px rgba(61, 52, 40, 0.08);
+        text-align: left;
+        transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, filter 0.22s ease;
     }
-    .share-btn-large:hover { background-color: #0284c7; transform: translateY(-1px); }
-    .share-btn-large:active { transform: translateY(1px); }
 
-    /* 关闭按钮 */
-    .close-btn-round {
-        position: absolute;
-        top: 1.5rem;
-        right: 1.5rem;
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.8);
-        backdrop-filter: blur(4px);
-        color: #4b5563;
+    .sticker-tile:hover {
+        transform: translateY(-4px);
+        border-color: var(--tile-accent, #19c8b9);
+        box-shadow: 0 18px 34px rgba(61, 52, 40, 0.12);
+    }
+
+    .sticker-tile.is-locked {
+        border-style: dashed;
+        background: linear-gradient(180deg, #f7f2e9 0%, #f1ebdf 100%);
+        filter: grayscale(1);
+        opacity: 0.84;
+    }
+
+    .sticker-tile__status {
         display: flex;
         align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+    }
+
+    .status-pill,
+    .rarity-pill,
+    .secret-pill {
+        display: inline-flex;
+        align-items: center;
         justify-content: center;
-        cursor: pointer;
-        z-index: 50;
-        transition: all 0.2s;
-        border: 1px solid rgba(0,0,0,0.05);
-        font-size: 1.2rem;
-    }
-    .close-btn-round:hover { background: #fff; transform: rotate(90deg); }
-
-    /* 之前遗漏在 style 标签外的样式修复 */
-    .circular-chart { display: block; margin: 0 auto; max-width: 100%; max-height: 250px; }
-    .circle-bg { fill: none; stroke: #fed7aa; stroke-width: 3.8; } 
-    .circle { 
-        fill: none; 
-        stroke-width: 2.8; 
-        stroke-linecap: round; 
-        transition: stroke-dasharray 1s ease-out; /* 使用 transition 代替 animation 以便动态更新 */
+        min-height: 28px;
+        padding: 0 0.78rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        white-space: nowrap;
     }
 
-    html.dark #achievement-book-container {
-        background: #0f1115 !important;
+    .status-pill {
+        background: rgba(255, 255, 255, 0.88);
+        border: 2px solid rgba(234, 223, 207, 0.9);
+        color: #7d674b;
     }
-    html.dark #achievement-book-container .badge-list-item {
-        background: #1a1f27;
-        border-color: rgba(255, 255, 255, 0.14);
-        color: #e5e7eb;
+
+    .status-pill.is-unlocked {
+        color: #2f8a4c;
+        border-color: rgba(111, 186, 44, 0.25);
+        background: rgba(230, 249, 221, 0.9);
     }
-    html.dark #achievement-book-container .badge-list-item.locked {
-        background: #171b22;
+
+    .status-pill.is-locked {
+        color: #9a8669;
     }
-    html.dark #achievement-book-container .badge-icon-wrapper {
-        background: #11161d;
-        border-color: rgba(255, 255, 255, 0.16);
+
+    .secret-pill {
+        padding: 0 0.65rem;
+        background: rgba(183, 125, 238, 0.16);
+        color: #8b5cb8;
     }
-    html.dark #achievement-book-container .sticker-hero-container {
-        background: radial-gradient(circle at center, #151b24 0%, #11161d 70%);
+
+    .sticker-tile__icon {
+        display: grid;
+        place-items: center;
+        width: 96px;
+        height: 96px;
+        margin: 0 auto;
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 2px solid rgba(234, 223, 207, 0.9);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
     }
-    html.dark #achievement-book-container .sticker-info-section {
-        background: #1a1f27;
+
+    .sticker-tile__icon img {
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
     }
-    html.dark #achievement-book-container .meta-grid {
-        border-top-color: rgba(255, 255, 255, 0.14);
+
+    .sticker-tile__icon .icon-text {
+        font-size: 3rem;
+        line-height: 1;
     }
-    html.dark #achievement-book-container .meta-label {
-        color: #a3a3a3;
+
+    .sticker-tile__icon .icon-font {
+        font-size: 3rem;
+        line-height: 1;
+        color: #6f5330;
     }
-    html.dark #achievement-book-container .meta-value {
-        color: #f3f4f6;
+
+    .sticker-tile__body {
+        display: grid;
+        gap: 0.65rem;
+        flex: 1 1 auto;
     }
-    html.dark #achievement-book-container .close-btn-round {
-        background: rgba(17, 22, 29, 0.8);
-        color: #d1d5db;
-        border-color: rgba(255, 255, 255, 0.16);
+
+    .sticker-tile__title {
+        color: #6f5330;
+        font-size: 1.04rem;
+        font-weight: 900;
+        line-height: 1.35;
     }
-    html.dark #achievement-book-container .close-btn-round:hover {
-        background: #1f2732;
+
+    .sticker-tile__desc,
+    .sticker-tile__meta {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
-    html.dark #achievement-book-container .circle-bg {
-        stroke: #334155;
+
+    .sticker-tile__desc {
+        color: #8e7c62;
+        font-size: 0.88rem;
+        line-height: 1.65;
+        -webkit-line-clamp: 2;
+        min-height: 2.9rem;
+    }
+
+    .sticker-tile__meta {
+        color: #7e6b51;
+        font-size: 0.84rem;
+        font-weight: 700;
+        line-height: 1.55;
+        -webkit-line-clamp: 2;
+        min-height: 2.6rem;
+        margin-top: auto;
+    }
+
+    .rarity-pill {
+        background: var(--rarity-soft, rgba(196, 184, 158, 0.16));
+        color: var(--rarity-color, #9a896f);
+    }
+
+    .detail-empty {
+        display: grid;
+        place-items: center;
+        padding: 3rem 1rem 1rem;
+        color: #9a886e;
+        text-align: center;
+    }
+
+    .detail-empty__icon {
+        width: 90px;
+        height: 90px;
+        display: grid;
+        place-items: center;
+        margin: 0 auto 1rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.86);
+        border: 2px solid #eadfcf;
+        font-size: 2rem;
+    }
+
+    .detail-empty h3 {
+        font-size: 1.15rem;
+        font-weight: 900;
+        color: #6f5330;
+    }
+
+    .detail-empty p {
+        margin-top: 0.45rem;
+        font-size: 0.9rem;
+        line-height: 1.7;
+    }
+
+    .achievement-modal {
+        width: min(760px, calc(100vw - 24px));
+    }
+
+    .achievement-modal .animal-modal__surface {
+        background: linear-gradient(180deg, #fffdf7 0%, #f7f1e1 100%);
+        color: #725d42;
+    }
+
+    .modal-series {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.35rem 0.82rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.75);
+        color: #7d674b;
+        font-size: 0.76rem;
+        font-weight: 800;
+    }
+
+    .modal-capture {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .modal-hero {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .modal-icon-box {
+        display: grid;
+        place-items: center;
+        width: 150px;
+        height: 150px;
+        border-radius: 36px;
+        border: 2px solid rgba(234, 223, 207, 0.92);
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    .modal-icon-box img {
+        width: 112px;
+        height: 112px;
+        object-fit: contain;
+    }
+
+    .modal-icon-box .icon-text,
+    .modal-icon-box .icon-font {
+        font-size: 4.5rem;
+        line-height: 1;
+    }
+
+    .modal-copy h3 {
+        margin-top: 0.75rem;
+        font-size: clamp(1.8rem, 4vw, 2.4rem);
+        font-weight: 900;
+        line-height: 1.08;
+        color: #6f5330;
+    }
+
+    .modal-copy p {
+        margin-top: 0.7rem;
+        color: #8f7c62;
+        font-size: 0.95rem;
+        line-height: 1.8;
+    }
+
+    .modal-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-top: 0.85rem;
+    }
+
+    .modal-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.9rem;
+    }
+
+    .modal-info-card {
+        min-height: 108px;
+        padding: 1rem;
+        border-radius: 24px;
+        border: 2px solid rgba(234, 223, 207, 0.95);
+        background: rgba(255, 255, 255, 0.85);
+    }
+
+    .modal-info-card__label {
+        color: #9b886f;
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .modal-info-card__value {
+        margin-top: 0.5rem;
+        color: #6f5330;
+        font-size: 1rem;
+        font-weight: 800;
+        line-height: 1.7;
+        word-break: break-word;
+    }
+
+    .modal-capture-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-top: 0.2rem;
+        color: #8e7b61;
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .modal-owner {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+    }
+
+    .modal-owner__avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #82d5bb, #f5c31c);
+        color: #fff;
+        font-weight: 900;
+    }
+
+    .modal-owner__issuer {
+        color: #aa9272;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+    html.dark #achievement-book-container,
+    html.dark #achievement-book-container .hero-title,
+    html.dark #achievement-book-container .section-heading h2,
+    html.dark #achievement-book-container .detail-panel__title,
+    html.dark #achievement-book-container .sticker-tile__title,
+    html.dark #achievement-book-container .modal-copy h3,
+    html.dark #achievement-book-container .detail-empty h3 {
+        color: #f4ecdd;
+    }
+
+    html.dark #achievement-book-container .achievement-shell,
+    html.dark #achievement-book-container .achievement-hero,
+    html.dark #achievement-book-container .detail-section,
+    html.dark #achievement-book-container .detail-panel,
+    html.dark #achievement-book-container .series-card,
+    html.dark #achievement-book-container .sticker-tile,
+    html.dark #achievement-book-container .hero-progress-panel,
+    html.dark #achievement-book-container .detail-side-card,
+    html.dark #achievement-book-container .modal-info-card,
+    html.dark #achievement-book-container .achievement-modal .animal-modal__surface {
+        background-color: rgba(28, 24, 18, 0.92);
+        border-color: rgba(255, 244, 225, 0.1);
+        box-shadow: none;
+    }
+
+    html.dark #achievement-book-container .hero-pill,
+    html.dark #achievement-book-container .status-pill,
+    html.dark #achievement-book-container .sticker-tile__icon,
+    html.dark #achievement-book-container .modal-icon-box,
+    html.dark #achievement-book-container .modal-series,
+    html.dark #achievement-book-container .detail-side-card {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 244, 225, 0.12);
+    }
+
+    html.dark #achievement-book-container .hero-description,
+    html.dark #achievement-book-container .section-heading p,
+    html.dark #achievement-book-container .hero-progress-note,
+    html.dark #achievement-book-container .series-card__summary,
+    html.dark #achievement-book-container .series-card__foot,
+    html.dark #achievement-book-container .detail-panel__text,
+    html.dark #achievement-book-container .detail-side-card__hint,
+    html.dark #achievement-book-container .sticker-tile__desc,
+    html.dark #achievement-book-container .sticker-tile__meta,
+    html.dark #achievement-book-container .modal-copy p,
+    html.dark #achievement-book-container .modal-capture-footer,
+    html.dark #achievement-book-container .detail-empty p {
+        color: rgba(244, 236, 221, 0.72);
+    }
+
+    @media (max-width: 960px) {
+        .achievement-shell {
+            padding: 1.1rem;
+            border-radius: 32px;
+        }
+
+        .achievement-hero,
+        .modal-hero,
+        .detail-panel__header {
+            grid-template-columns: 1fr;
+            flex-direction: column;
+        }
+
+        .hero-progress-panel,
+        .detail-panel__side {
+            width: 100%;
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .achievement-page {
+            padding: 1rem 0.65rem 3rem;
+        }
+
+        .achievement-hero {
+            padding: 1rem;
+        }
+
+        .hero-copy {
+            gap: 0.85rem;
+        }
+
+        .hero-title {
+            font-size: 1.9rem;
+        }
+
+        .hero-progress-top {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .series-overview-grid,
+        .sticker-grid,
+        .modal-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-hero {
+            display: grid;
+        }
+
+        .modal-icon-box {
+            width: 124px;
+            height: 124px;
+        }
+
+        .modal-icon-box img {
+            width: 92px;
+            height: 92px;
+        }
     }
 </style>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 {% endblock %}
 
 {% block content %}
-<div id="achievement-book-container" class="max-w-[1400px] mx-auto px-4 sm:px-6 py-8 min-h-screen bg-[#fdfcf8]">
-    
-    <div class="bg-base-100 rounded-3xl shadow-sm border border-orange-100 p-6 md:p-8 mb-8 relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-80 h-80 bg-orange-50 rounded-full blur-3xl opacity-60 -mr-20 -mt-20 pointer-events-none"></div>
-        <div class="absolute bottom-0 left-0 w-64 h-64 bg-amber-50 rounded-full blur-3xl opacity-60 -ml-16 -mb-16 pointer-events-none"></div>
+<div id="achievement-book-container">
+    <div class="achievement-page">
+        <div class="achievement-shell animal-cursor">
+            <div class="achievement-backdrop achievement-backdrop--one"></div>
+            <div class="achievement-backdrop achievement-backdrop--two"></div>
+            <div class="achievement-backdrop achievement-backdrop--three"></div>
 
-        <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-            <div class="flex items-start gap-5 w-full md:w-auto">
-                <a href="{{ url_for('public_profile', user_id=user.id) }}" class="btn btn-circle btn-ghost bg-stone-50 hover:bg-orange-100 text-base-content/80 hover:text-orange-600 transition-all border-none">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
+            <section class="achievement-hero">
+                <div class="hero-copy">
+                    <a href="{{ url_for('public_profile', user_id=user.id) }}" class="animal-btn animal-btn--default animal-btn--middle animal-btn--circle" aria-label="返回个人主页">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div class="hero-intro">
+                        <div class="hero-kicker">
+                            <i class="fas fa-leaf"></i>
+                            Sticker Archive
+                        </div>
+                        <h1 class="hero-title">成就贴纸簿</h1>
+                        <p class="hero-description">
+                            先看总进度，再进入每个系列慢慢翻。已获得的贴纸会优先排在前面，并显示获得时间；未获得的会以灰色虚线展示，点开就能查看获得条件。
+                        </p>
+                        <div class="hero-pills">
+                            <div class="hero-pill">
+                                <i class="fas fa-star"></i>
+                                共 <strong id="hero-total-count">0</strong> 枚贴纸
+                            </div>
+                            <div class="hero-pill">
+                                <i class="fas fa-layer-group"></i>
+                                <strong id="hero-series-count">0</strong> 个系列
+                            </div>
+                            <div class="hero-pill">
+                                <i class="fas fa-medal"></i>
+                                已解锁 <strong id="hero-unlocked-count">0</strong> 枚
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hero-progress-panel">
+                    <div class="hero-progress-inner">
+                        <div class="hero-progress-top">
+                            <div class="progress-ring" id="overall-progress-ring">
+                                <div class="progress-ring__inner">
+                                    <span class="progress-ring__value" id="overall-progress-rate">0%</span>
+                                    <span class="progress-ring__label">完成度</span>
+                                </div>
+                            </div>
+                            <div class="hero-progress-meta">
+                                <h2>总获取进度</h2>
+                                <div class="hero-progress-count">
+                                    <span id="overall-progress-unlocked">0</span> / <span id="overall-progress-total">0</span>
+                                </div>
+                                <p class="hero-progress-note" id="overall-progress-note">
+                                    还差 0 枚贴纸就能集齐整个图鉴。
+                                </p>
+                            </div>
+                        </div>
+                        <div class="progress-bar"><span id="overall-progress-bar" style="width: 0%;"></span></div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="section-heading">
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-black text-base-content tracking-tight flex items-center gap-3 flex-wrap">
-                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-500">成就图鉴</span>
-                        <span class="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full font-bold align-top mt-1 border border-orange-200 shadow-sm">
-                            共 <span id="total-badge-count">0</span> 枚
-                        </span>
-                    </h1>
-                    <p class="text-base-content/80 mt-3 text-sm md:text-base max-w-lg font-medium leading-relaxed">
-                        记录每一个闪光时刻。收集徽章，点亮属于你的荣誉星空。
-                    </p>
+                    <h2>系列总览</h2>
+                    <p>每个系列都会显示单独进度，点进去就能看该系列的贴纸墙。</p>
+                </div>
+                <div class="section-heading__meta">
+                    <i class="fas fa-book-open"></i>
+                    选择一个系列开始浏览
                 </div>
             </div>
 
-            <div class="flex items-center gap-6 bg-base-100/80 backdrop-blur-md p-4 pr-8 rounded-2xl border border-orange-100 shadow-sm">
-                <div class="relative w-16 h-16">
-                    <svg viewBox="0 0 36 36" class="circular-chart text-amber-500 transform -rotate-90">
-                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" id="progress-circle" stroke="currentColor" />
-                    </svg>
-                    <div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-amber-600">
-                        <span id="completion-rate">0%</span>
+            <section id="series-overview-grid" class="series-overview-grid"></section>
+
+            <section id="detail-section" class="detail-section animal-tabs">
+                <div class="detail-tabs-scroller">
+                    <div id="detail-series-tabs" class="animal-tabs__list detail-tabs-wrap"></div>
+                </div>
+                <div class="animal-tabs__content">
+                    <div class="detail-pane">
+                        <div id="detail-series-panel"></div>
+                        <div class="detail-actions">
+                            <button id="back-to-overview" class="animal-btn animal-btn--default animal-btn--middle">
+                                <span class="animal-btn__icon"><i class="fas fa-arrow-up"></i></span>
+                                返回系列总览
+                            </button>
+                        </div>
+                        <div id="series-sticker-grid" class="sticker-grid"></div>
+                        <div id="detail-empty" class="detail-empty hidden">
+                            <div>
+                                <div class="detail-empty__icon"><i class="fas fa-leaf"></i></div>
+                                <h3>这个系列暂时还没有贴纸</h3>
+                                <p>可以先切换到其他系列看看，或者等新的贴纸加入图鉴。</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <div class="text-[10px] text-base-content/50 uppercase font-bold tracking-wider mb-1">当前进度</div>
-                    <div class="text-2xl font-black text-base-content leading-none">
-                        <span id="unlocked-count" class="text-amber-600">0</span>
-                        <span class="text-stone-300 text-lg font-normal mx-0.5">/</span>
-                        <span id="total-count" class="text-base-content/50 text-lg font-normal">0</span>
-                    </div>
-                </div>
-            </div>
+            </section>
         </div>
-    </div>
-
-    <div class="sticky top-2 z-30 bg-[#fdfcf8]/95 backdrop-blur-md py-3 -mx-4 px-4 md:mx-0 md:px-0 mb-6 rounded-xl md:static md:bg-transparent md:backdrop-blur-none transition-all">
-        <div class="flex justify-start md:justify-center overflow-x-auto hide-scrollbar pb-2 md:pb-0">
-            <div class="bg-base-100 p-1.5 rounded-2xl shadow-sm border border-base-300 flex gap-1" id="category-tabs">
-                </div>
-        </div>
-    </div>
-
-    <div class="flex justify-between items-end mb-4 px-2 max-w-3xl mx-auto w-full">
-        <h2 class="text-lg font-bold text-base-content flex items-center gap-2">
-            <i class="fas fa-layer-group text-base-content/50 text-sm"></i> 贴纸库
-        </h2>
-        <span class="text-xs text-base-content/50 font-medium bg-base-100 px-2 py-1 rounded-md border border-base-300 shadow-sm">
-            显示 <span id="list-display-count" class="text-base-content/80 font-bold">0</span> 张
-        </span>
-    </div>
-
-    <div id="achievements-list" class="flex flex-col gap-3 pb-20 max-w-3xl mx-auto">
-        </div>
-    
-    <div id="empty-state" class="hidden flex-col items-center justify-center py-24 text-center">
-        <div class="w-24 h-24 bg-stone-50 rounded-full flex items-center justify-center mb-4 text-stone-200 text-4xl border border-base-300">
-            <i class="fas fa-search"></i>
-        </div>
-        <h3 class="text-lg font-bold text-base-content/80">没有找到相关成就</h3>
-        <p class="text-base-content/50 text-sm mt-1">尝试切换其他分类看看吧</p>
     </div>
 </div>
 
-<dialog id="badge-modal" class="modal bg-black/50 backdrop-blur-md z-[200]">
-    <div class="modal-box w-11/12 max-w-[400px] bg-white dark:bg-base-200 rounded-[2rem] p-6 md:p-8 relative overflow-hidden shadow-2xl text-left border border-white/50 dark:border-base-content/10 hide-scrollbar" id="badge-modal-box">
-        
-        <div id="modal-gradient" class="absolute -top-20 -right-20 w-80 h-80 opacity-60 rounded-full blur-3xl -z-10 transition-colors duration-500"></div>
-        <div class="absolute top-0 right-0 w-[150%] h-[150%] bg-white/40 dark:bg-base-100/40 transform -rotate-12 translate-x-1/3 -translate-y-1/4 z-0 pointer-events-none"></div>
-
-        <div id="share-capture-area" class="relative z-10 w-full bg-transparent">
-            
-            <div class="w-[60%] pr-2 min-h-[100px]">
-                <p class="mb-2 flex items-center gap-1.5 drop-shadow-sm">
-                    <span id="modal-rarity-tag"></span>
-                </p>
-                <h3 id="modal-title" class="text-2xl md:text-3xl font-black text-stone-800 dark:text-white mb-2 leading-tight tracking-tight drop-shadow-sm break-all line-clamp-2"></h3>
-                <p id="modal-desc" class="text-stone-500 dark:text-stone-400 font-medium mb-6 leading-relaxed text-xs break-all line-clamp-3"></p>
-            </div>
-            
-            <div class="absolute right-0 top-6 w-28 h-28 md:w-32 md:h-32 drop-shadow-xl hover:scale-110 transition-transform duration-500 flex items-center justify-center pointer-events-none z-20 origin-center -rotate-6 hover:rotate-0" id="modal-sticker-img-container"></div>
-
-            <div class="mt-4 flex flex-col gap-4 pt-5 border-t border-stone-100 dark:border-stone-700/50">
-                <div class="flex items-end gap-6 text-stone-400 dark:text-stone-500 text-[10px] font-mono">
-                    <div>
-                        <p class="mb-0.5 tracking-widest uppercase opacity-70">收集日期</p>
-                        <p id="modal-date" class="font-bold text-stone-600 dark:text-stone-300 text-xs tracking-wider">--.--.--</p>
-                    </div>
-                    <div class="pl-4 border-l border-stone-200 dark:border-stone-700">
-                        <p class="mb-0.5 tracking-widest uppercase opacity-70">贴纸编号</p>
-                        <p id="modal-serial" class="font-bold text-stone-600 dark:text-stone-300 text-xs tracking-wider">--</p>
-                    </div>
+<div id="badge-modal" class="animal-modal-mask hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="animal-modal achievement-modal">
+        <div class="animal-modal__surface">
+            <div class="animal-modal__header">
+                <div>
+                    <div id="modal-series" class="modal-series"></div>
+                    <div class="modal-pills" id="modal-pills"></div>
                 </div>
-                <div class="flex items-center justify-between w-full mt-1 pt-4 border-t border-stone-50 dark:border-stone-800/50">
-                    <div class="flex items-center gap-2 bg-stone-50 dark:bg-base-300 py-1.5 px-2.5 rounded-full border border-stone-200/50 dark:border-stone-600 shadow-sm">
-                        <div class="w-6 h-6 rounded-full bg-gradient-to-br from-[#f8d8d8] to-[#e0e8f5] grid place-items-center text-stone-700 dark:text-stone-300 font-extrabold text-[10px] overflow-hidden shadow-inner">
-                            <span id="modal-avatar">{{ user.username[0] | upper }}</span>
+                <button id="modal-close" type="button" class="animal-modal__close" aria-label="关闭详情">×</button>
+            </div>
+            <div class="animal-modal__body">
+                <div id="share-capture-area" class="modal-capture">
+                    <div class="modal-hero">
+                        <div id="modal-icon-box" class="modal-icon-box"></div>
+                        <div class="modal-copy">
+                            <h3 id="modal-title"></h3>
+                            <p id="modal-description"></p>
                         </div>
-                        <span id="modal-username" class="text-stone-600 dark:text-stone-300 font-bold text-[10px] tracking-wide pr-1">{{ user.username }}</span>
                     </div>
-                    <div class="flex items-center gap-1.5 font-bold text-stone-400 dark:text-stone-500 italic text-[11px] tracking-tighter cursor-default">
-                        <div class="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-[#00a8ff] to-[#18293d] shadow-sm"></div>
-                        <span id="modal-issuer">WikiBook</span>
+                    <div class="modal-grid">
+                        <div class="modal-info-card">
+                            <div class="modal-info-card__label">获得条件</div>
+                            <div class="modal-info-card__value" id="modal-condition"></div>
+                        </div>
+                        <div class="modal-info-card">
+                            <div class="modal-info-card__label">获得时间</div>
+                            <div class="modal-info-card__value" id="modal-unlock-date"></div>
+                        </div>
+                        <div class="modal-info-card">
+                            <div class="modal-info-card__label">贴纸编号</div>
+                            <div class="modal-info-card__value" id="modal-serial-number"></div>
+                        </div>
+                        <div class="modal-info-card">
+                            <div class="modal-info-card__label">发行方</div>
+                            <div class="modal-info-card__value" id="modal-issuer"></div>
+                        </div>
+                    </div>
+                    <div class="modal-capture-footer">
+                        <div class="modal-owner">
+                            <div class="modal-owner__avatar" id="modal-avatar">{{ user.username[0] | upper }}</div>
+                            <div>
+                                <div>{{ user.username }}</div>
+                                <div class="modal-owner__issuer">WikiBook 成就收藏</div>
+                            </div>
+                        </div>
+                        <div id="modal-footer-note">解锁时间会在贴纸入册后永久记录。</div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="mt-8 flex gap-3 relative z-10">
-            <button onclick="generateShareCard()" class="flex-1 bg-[#0ea5e9] hover:bg-[#0284c7] text-white rounded-xl py-3 h-auto min-h-0 text-sm font-bold shadow-md shadow-sky-500/20 transition-colors btn" id="share-btn">
-                <i class="fas fa-share-nodes mr-1.5"></i>保存分享卡片
-            </button>
-            <form method="dialog" class="m-0">
-                <button class="btn h-auto min-h-0 py-3 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-base-300 dark:hover:bg-base-100 border-none text-stone-500 dark:text-stone-400 font-bold">
-                    关闭
+            <div class="animal-modal__footer">
+                <button id="share-btn" type="button" class="animal-modal__footer-btn animal-modal__footer-btn--primary">
+                    保存分享卡片
                 </button>
-            </form>
+                <button id="modal-dismiss" type="button" class="animal-modal__footer-btn">关闭</button>
+            </div>
         </div>
-        
-        <form method="dialog" class="absolute top-4 right-4 z-30 m-0">
-            <button class="btn btn-circle btn-sm btn-ghost bg-black/5 dark:bg-white/10 text-stone-500 dark:text-white hover:text-stone-900 dark:hover:bg-white/20 transition-all shadow-sm backdrop-blur-md">✕</button>
-        </form>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
-</dialog>
+</div>
 
 <script>
-    // --- 稀有度映射 ---
-    const RARITY_MAP = {
-        'common': '普通',
-        'rare': '稀有',
-        'epic': '史诗',
-        'legendary': '传说'
+    const SERVER_DATA = {{ achievement_payload_json|default('{"user":{"avatarInitial":"?"},"categories":[],"achievements":[]}', true)|safe }};
+
+    const RARITY_LABELS = {
+        common: "普通",
+        rare: "稀有",
+        epic: "史诗",
+        legendary: "传说"
     };
 
-    // --- 数据注入 ---
-    // 使用 tojson 过滤器（如果在 Flask 环境），或者更加安全的手动构造
-    const SERVER_DATA = {
-        categories: [
-            { id: 'all', name: '全部' },
-            {% for cat in categories %}
-            { id: '{{ cat }}', name: '{{ cat }}' }{{ "," if not loop.last }}
-            {% endfor %}
-        ],
-        achievements: [
-            // 已获得
-            {% for ub in user_badges %}
-            {
-                "id": {{ ub.badge.id }}, 
-                "name": "{{ ub.badge.name|replace('"', '\\"') }}",
-                "description": "{{ ub.badge.description|replace('"', '\\"')|replace('\n', ' ') }}",
-                "category": "{{ ub.badge.category or '一般' }}",
-                "rarity": "{{ ub.badge.rarity or 'common' }}",
-                "isSecret": {{ 'true' if ub.badge.is_secret else 'false' }},
-                "isUnlocked": true, 
-                "unlockDate": "{{ ub.earned_at.strftime('%Y.%m.%d') }}",
-                "isImage": {{ 'true' if ub.badge.icon|is_image_icon else 'false' }},
-                "iconUrl": "{{ ub.badge.icon|badge_icon_url }}",
-                "iconText": "{{ ub.badge.icon if not ub.badge.icon|is_image_icon else '' }}",
-                "issuer": "{{ ub.badge.issuer or 'WikiBook' }}",
-                "serialNumber": "{{ ub.serial_number or 'SF-????' }}"
-            },
-            {% endfor %}
-            // 未获得 (注意加上逗号，如果有已获得徽章)
-            {% if user_badges and unearned_badges %},{% endif %}
-            {% for b in unearned_badges %}
-            {
-                "id": {{ b.id }}, 
-                "name": "{{ b.name|replace('"', '\\"') }}",
-                "description": "{{ b.description|replace('"', '\\"')|replace('\n', ' ') }}",
-                "category": "{{ b.category or '一般' }}",
-                "rarity": "{{ b.rarity or 'common' }}",
-                "isSecret": {{ 'true' if b.is_secret else 'false' }},
-                "isUnlocked": false, 
-                "unlockDate": null,
-                "isImage": {{ 'true' if b.icon|is_image_icon else 'false' }},
-                "iconUrl": "{{ b.icon|badge_icon_url }}",
-                "iconText": "{{ b.icon if not b.icon|is_image_icon else '' }}",
-                "issuer": "{{ b.issuer or 'WikiBook' }}",
-                "serialNumber": null
-            }{{ "," if not loop.last }}
-            {% endfor %}
-        ]
+    const RARITY_STYLES = {
+        common: { color: "#9a896f", soft: "rgba(196, 184, 158, 0.18)" },
+        rare: { color: "#5d8df6", soft: "rgba(136, 157, 240, 0.18)" },
+        epic: { color: "#b566f0", soft: "rgba(183, 125, 238, 0.18)" },
+        legendary: { color: "#df8b33", soft: "rgba(245, 195, 28, 0.22)" }
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const listContainer = document.getElementById('achievements-list');
-        const tabsContainer = document.getElementById('category-tabs');
-        const emptyState = document.getElementById('empty-state');
-        const modal = document.getElementById('badge-modal');
-        
-        let currentFilter = 'all';
-        
-        initStats();
-        renderTabs();
-        renderList('all');
+    const SERIES_PALETTES = [
+        { accent: "#19c8b9", soft: "#ebfaf7", glow: "rgba(25, 200, 185, 0.22)" },
+        { accent: "#f5c31c", soft: "#fff7d8", glow: "rgba(245, 195, 28, 0.22)" },
+        { accent: "#e59266", soft: "#fff0e8", glow: "rgba(229, 146, 102, 0.22)" },
+        { accent: "#889df0", soft: "#eef1ff", glow: "rgba(136, 157, 240, 0.2)" },
+        { accent: "#8ac68a", soft: "#edf8ec", glow: "rgba(138, 198, 138, 0.22)" },
+        { accent: "#b77dee", soft: "#f4ebff", glow: "rgba(183, 125, 238, 0.2)" },
+        { accent: "#f8a6b2", soft: "#fff0f3", glow: "rgba(248, 166, 178, 0.2)" },
+        { accent: "#d1da49", soft: "#fbfce1", glow: "rgba(209, 218, 73, 0.22)" }
+    ];
 
-        function initStats() {
-            const total = SERVER_DATA.achievements.length;
-            const unlocked = SERVER_DATA.achievements.filter(a => a.isUnlocked).length;
-            const rate = total === 0 ? 0 : Math.round((unlocked / total) * 100);
-            
-            document.getElementById('total-badge-count').innerText = total;
-            document.getElementById('unlocked-count').innerText = unlocked;
-            document.getElementById('total-count').innerText = total;
-            document.getElementById('completion-rate').innerText = `${rate}%`;
-            
-            // 动画设置进度
-            setTimeout(() => {
-                document.getElementById('progress-circle').setAttribute('stroke-dasharray', `${rate}, 100`);
-            }, 300);
+    const state = {
+        selectedSeries: null,
+        activeModalId: null
+    };
+
+    const elements = {};
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function sanitizeIconClasses(value) {
+        return String(value || "")
+            .split(/\s+/)
+            .filter((token) => /^fa[srlbd]?$/.test(token) || /^fa-[\w-]+$/.test(token))
+            .join(" ");
+    }
+
+    function isFontIcon(value) {
+        const className = sanitizeIconClasses(value);
+        return Boolean(className);
+    }
+
+    function rarityWeight(rarity) {
+        return {
+            legendary: 0,
+            epic: 1,
+            rare: 2,
+            common: 3
+        }[rarity] ?? 4;
+    }
+
+    function getProgress(total, unlocked) {
+        if (!total) return 0;
+        return Math.round((unlocked / total) * 100);
+    }
+
+    function getPalette(index) {
+        return SERIES_PALETTES[index % SERIES_PALETTES.length];
+    }
+
+    function seriesKey(name) {
+        return name || "未分类";
+    }
+
+    function normalizeSeriesNames() {
+        const names = [];
+        const seen = new Set();
+        (SERVER_DATA.categories || []).forEach((name) => {
+            const normalized = seriesKey(name);
+            if (!seen.has(normalized)) {
+                seen.add(normalized);
+                names.push(normalized);
+            }
+        });
+        (SERVER_DATA.achievements || []).forEach((item) => {
+            const normalized = seriesKey(item.category);
+            if (!seen.has(normalized)) {
+                seen.add(normalized);
+                names.push(normalized);
+            }
+        });
+        return names;
+    }
+
+    function getSortedAchievements(items) {
+        return [...items].sort((a, b) => {
+            if (a.isUnlocked !== b.isUnlocked) {
+                return a.isUnlocked ? -1 : 1;
+            }
+            if (a.isUnlocked && b.isUnlocked) {
+                return (b.unlockTimestamp || "").localeCompare(a.unlockTimestamp || "");
+            }
+            const rarityCompare = rarityWeight(a.rarity) - rarityWeight(b.rarity);
+            if (rarityCompare !== 0) return rarityCompare;
+            return a.id - b.id;
+        });
+    }
+
+    function getSeriesList() {
+        const names = normalizeSeriesNames();
+        return names.map((name, index) => {
+            const items = getSortedAchievements(
+                (SERVER_DATA.achievements || []).filter((item) => seriesKey(item.category) === name)
+            );
+            const unlocked = items.filter((item) => item.isUnlocked).length;
+            const latestUnlocked = items.find((item) => item.isUnlocked);
+            return {
+                id: name,
+                name,
+                items,
+                unlocked,
+                total: items.length,
+                progress: getProgress(items.length, unlocked),
+                latestUnlocked,
+                palette: getPalette(index)
+            };
+        });
+    }
+
+    function getSelectedSeries(seriesList) {
+        if (!seriesList.length) return null;
+        if (!state.selectedSeries) {
+            state.selectedSeries = seriesList[0].id;
+        }
+        const found = seriesList.find((series) => series.id === state.selectedSeries);
+        if (found) return found;
+        state.selectedSeries = seriesList[0].id;
+        return seriesList[0];
+    }
+
+    function setSeries(seriesId, shouldScroll = false) {
+        state.selectedSeries = seriesId;
+        render();
+        if (shouldScroll && elements.detailSection) {
+            elements.detailSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    }
+
+    function renderAchievementIcon(item, large = false) {
+        if (item.isImage && item.iconUrl) {
+            const sizeClass = large ? "" : "";
+            return `<img src="${escapeHtml(item.iconUrl)}" alt="${escapeHtml(item.name)}" class="${sizeClass}">`;
+        }
+        if (isFontIcon(item.iconText)) {
+            return `<i class="${escapeHtml(sanitizeIconClasses(item.iconText))} icon-font" aria-hidden="true"></i>`;
+        }
+        return `<span class="icon-text">${escapeHtml(item.iconText || "🏅")}</span>`;
+    }
+
+    function renderHero(seriesList) {
+        const total = SERVER_DATA.achievements.length;
+        const unlocked = SERVER_DATA.achievements.filter((item) => item.isUnlocked).length;
+        const progress = getProgress(total, unlocked);
+        const remaining = Math.max(total - unlocked, 0);
+
+        elements.heroTotalCount.textContent = total;
+        elements.heroSeriesCount.textContent = seriesList.length;
+        elements.heroUnlockedCount.textContent = unlocked;
+        elements.overallProgressUnlocked.textContent = unlocked;
+        elements.overallProgressTotal.textContent = total;
+        elements.overallProgressRate.textContent = `${progress}%`;
+        elements.overallProgressRing.style.setProperty("--progress-value", `${progress}%`);
+        elements.overallProgressBar.style.width = `${progress}%`;
+        elements.overallProgressNote.textContent = total
+            ? `还差 ${remaining} 枚贴纸就能集齐整个图鉴。`
+            : "当前还没有配置贴纸，等第一枚上线后这里会自动更新。";
+    }
+
+    function renderSeriesOverview(seriesList) {
+        if (!seriesList.length) {
+            elements.seriesOverviewGrid.innerHTML = `
+                <div class="detail-empty">
+                    <div>
+                        <div class="detail-empty__icon"><i class="fas fa-leaf"></i></div>
+                        <h3>还没有任何系列</h3>
+                        <p>等管理员配置好成就贴纸后，这里会自动出现系列进度卡片。</p>
+                    </div>
+                </div>
+            `;
+            return;
         }
 
-        function renderTabs() {
-            tabsContainer.innerHTML = SERVER_DATA.categories.map(cat => `
-                <button onclick="filterAchievements('${cat.id}')" 
-                    class="px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap ${cat.id === 'all' ? 'bg-amber-500 text-white shadow-md shadow-orange-200' : 'text-base-content/80 hover:bg-stone-50 hover:text-base-content'}" 
-                    data-id="${cat.id}">
-                    ${cat.name}
+        const selectedSeries = getSelectedSeries(seriesList);
+        elements.seriesOverviewGrid.innerHTML = seriesList.map((series) => {
+            return `
+                <button
+                    type="button"
+                    class="series-card ${selectedSeries && selectedSeries.id === series.id ? "is-active" : ""}"
+                    data-series-id="${escapeHtml(series.id)}"
+                    style="--series-accent:${series.palette.accent}; --series-soft:${series.palette.soft}; --series-glow:${series.palette.glow};"
+                >
+                    <div class="series-card__top">
+                        <span class="series-card__pill">
+                            <i class="fas fa-leaf"></i>
+                            系列进度
+                        </span>
+                        <span class="series-card__rate">${series.progress}%</span>
+                    </div>
+                    <div class="series-card__title">${escapeHtml(series.name)}</div>
+                    <div class="series-card__count">已获得 ${series.unlocked} / ${series.total}</div>
+                    <div class="progress-bar"><span style="width:${series.progress}%;"></span></div>
                 </button>
-            `).join('');
+            `;
+        }).join("");
+    }
+
+    function renderSeriesTabs(seriesList) {
+        const selectedSeries = getSelectedSeries(seriesList);
+        elements.detailSeriesTabs.innerHTML = seriesList.map((series, index) => `
+            <button
+                type="button"
+                class="animal-tabs__item ${selectedSeries && selectedSeries.id === series.id ? "animal-tabs__item--active animal-tabs__item--active-shadow" : ""}"
+                data-series-id="${escapeHtml(series.id)}"
+            >
+                <span class="animal-tabs__icon"><i class="fas fa-leaf"></i></span>
+                <span class="animal-tabs__label">${escapeHtml(series.name)}</span>
+                ${index === 0 ? '<span class="animal-tabs__leaf animal-tabs__leaf--static"></span>' : ''}
+            </button>
+        `).join("");
+    }
+
+    function renderDetailPanel(series) {
+        if (!series) {
+            elements.detailSeriesPanel.innerHTML = "";
+            return;
         }
 
-        window.filterAchievements = function(categoryId) {
-            currentFilter = categoryId;
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                const isActive = btn.dataset.id === categoryId;
-                btn.className = isActive 
-                    ? 'px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap bg-amber-500 text-white shadow-md shadow-orange-200 transform scale-105'
-                    : 'px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 tab-btn whitespace-nowrap text-base-content/80 hover:bg-stone-50 hover:text-base-content';
-            });
-            renderList(categoryId);
-        };
+        const remaining = Math.max(series.total - series.unlocked, 0);
+        const latestText = series.latestUnlocked
+            ? `最近获得：${escapeHtml(series.latestUnlocked.unlockDate)}`
+            : "还没有获得贴纸";
 
-        window.openBadgeDetail = function(id) {
-            const item = SERVER_DATA.achievements.find(a => a.id === id);
-            if (!item) return;
-
-            // 1. 基础信息
-            const isUnknown = item.isSecret && !item.isUnlocked;
-            document.getElementById('modal-title').innerText = isUnknown ? "???" : item.name;
-            document.getElementById('modal-desc').innerText = isUnknown ? "继续探索以揭示此成就的获取方式" : (item.description || '暂无描述');
-            
-            // 2. 稀有度颜色及标签
-            const rarityText = RARITY_MAP[item.rarity] || '普通';
-            const rarityContainer = document.getElementById('modal-rarity-tag');
-            const gradientBg = document.getElementById('modal-gradient');
-            
-            if (!isUnknown) {
-                rarityContainer.innerText = `✨ ${rarityText}`;
-                rarityContainer.className = `text-[10px] px-2 py-0.5 rounded-full shadow-sm rarity-${item.rarity} text-black font-bold`;
-                
-                // 💡 更新背景光晕的样式 (移除了原本生成矩形的属性)
-                let colorClasses = "from-stone-400 to-stone-200";
-                if (item.rarity === 'rare') colorClasses = "from-[#18293d] to-[#3b82f6]";
-                else if (item.rarity === 'epic') colorClasses = "from-purple-600 to-fuchsia-400";
-                else if (item.rarity === 'legendary') colorClasses = "from-amber-500 to-yellow-300";
-                
-                gradientBg.className = `absolute -top-20 -right-20 w-80 h-80 opacity-60 rounded-full blur-3xl -z-10 transition-colors duration-500 bg-gradient-to-bl ${colorClasses}`;
-            } else {
-                rarityContainer.innerText = "🔒 未知";
-                rarityContainer.className = "text-[10px] bg-stone-200 text-stone-500 px-2 py-0.5 rounded-full font-bold";
-                gradientBg.className = "absolute -top-20 -right-20 w-80 h-80 opacity-50 rounded-full blur-3xl -z-10 bg-gradient-to-bl from-stone-300 to-stone-100";
-            }
-
-            document.getElementById('modal-issuer').innerText = item.issuer;
-            document.getElementById('modal-date').innerText = item.isUnlocked ? item.unlockDate : '--.--.--';
-            document.getElementById('modal-serial').innerText = item.isUnlocked ? (item.serialNumber || 'SF-????') : '--';
-
-            // 3. 图片展示 (确保兼容新容器)
-            const imgContainer = document.getElementById('modal-sticker-img-container');
-            if (item.isImage && !isUnknown) {
-                imgContainer.innerHTML = `<img src="${item.iconUrl}" class="max-w-full max-h-full object-contain filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.2)] ${item.isUnlocked ? '' : 'grayscale opacity-50 blur-sm'}" crossOrigin="anonymous">`;
-            } else {
-                const icon = isUnknown ? '❓' : (item.iconText || '🏅');
-                imgContainer.innerHTML = `<span class="text-[5rem] drop-shadow-lg leading-none ${item.isUnlocked ? '' : 'grayscale opacity-40'}">${icon}</span>`;
-            }
-
-            // 4. 按钮状态
-            const btn = document.getElementById('share-btn');
-            if (item.isUnlocked) {
-                btn.style.display = 'flex';
-            } else {
-                btn.style.display = 'none';
-            }
-
-            // 显示
-            const modalBox = document.getElementById('badge-modal-box');
-            modalBox.classList.remove('scale-100', 'opacity-100');
-            modalBox.classList.add('scale-95', 'opacity-0');
-            
-            const modal = document.getElementById('badge-modal');
-            modal.showModal();
-            
-            requestAnimationFrame(() => {
-                modalBox.classList.remove('scale-95', 'opacity-0');
-                modalBox.classList.add('scale-100', 'opacity-100');
-            });
-        };
-
-        window.generateShareCard = function() {
-            const btn = document.getElementById('share-btn');
-            const originalText = btn.innerHTML;
-            
-            // Loading state
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
-            btn.disabled = true;
-
-            // 选择只截图上半部分的卡片内容区域
-            const element = document.getElementById('share-capture-area');
-            
-            html2canvas(element, {
-                backgroundColor: '#ffffff',
-                scale: 2, // 高清
-                useCORS: true,
-                logging: false,
-                allowTaint: true
-            }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = `my-badge-${Date.now()}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-                
-                // Restore state
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }).catch(err => {
-                console.error(err);
-                alert('图片生成失败，请稍后重试');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            });
-        };
-
-        function renderList(filter) {
-            listContainer.innerHTML = '';
-            
-            const items = SERVER_DATA.achievements
-                .filter(item => filter === 'all' || item.category === filter)
-                .sort((a, b) => {
-                    // 1. 已获得在前
-                    if (a.isUnlocked && !b.isUnlocked) return -1;
-                    if (!a.isUnlocked && b.isUnlocked) return 1;
-                    // 2. 获得的按时间倒序
-                    if (a.isUnlocked && b.isUnlocked) {
-                        return b.unlockDate.localeCompare(a.unlockDate);
-                    }
-                    // 3. 未获得的按稀有度 (简单按ID排序保持稳定)
-                    return a.id - b.id;
-                });
-
-            document.getElementById('list-display-count').innerText = items.length;
-
-            if (items.length === 0) {
-                emptyState.classList.remove('hidden'); emptyState.classList.add('flex');
-            } else {
-                emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
-            }
-            
-            // 使用 DocumentFragment 优化性能
-            const fragment = document.createDocumentFragment();
-
-            items.forEach((item, index) => {
-                const el = document.createElement('div');
-                // 关键修复：添加 rarity-class 到列表项容器
-                el.className = `badge-list-item ${item.isUnlocked ? 'unlocked' : 'locked'} rarity-${item.rarity} animate-card`;
-                el.style.animationDelay = `${index * 0.05}s`; // 瀑布流动画
-                el.onclick = () => window.openBadgeDetail(item.id);
-                
-                const isUnknown = item.isSecret && !item.isUnlocked;
-                
-                const iconHtml = (item.isImage && !isUnknown)
-                    ? `<img src="${item.iconUrl}" class="w-10 h-10 object-contain" loading="lazy">`
-                    : `<span class="text-2xl">${isUnknown ? '❓' : (item.iconText || '🏅')}</span>`;
-
-                const dateText = item.isUnlocked ? item.unlockDate : '未解锁';
-                const nameText = isUnknown ? '???' : item.name;
-                const rarityText = RARITY_MAP[item.rarity];
-                
-                // 只有解锁的才显示稀有度标签
-                const rarityTag = item.isUnlocked 
-                    ? `<span class="rarity-badge text-[10px] ml-2 scale-90 origin-left opacity-80">${rarityText}</span>` 
-                    : '';
-
-                el.innerHTML = `
-                    <div class="badge-icon-wrapper">
-                        ${iconHtml}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center">
-                            <h3 class="font-bold text-base-content text-base truncate">${nameText}</h3>
-                            ${rarityTag}
+        elements.detailSeriesPanel.innerHTML = `
+            <div class="detail-panel" style="--series-accent:${series.palette.accent}; --series-soft:${series.palette.soft};">
+                <div class="detail-panel__header">
+                    <div>
+                        <div class="detail-panel__kicker">
+                            <i class="fas fa-bookmark"></i>
+                            Series Detail
                         </div>
-                        <p class="text-xs text-base-content/50 font-mono mt-1 flex items-center gap-1">
-                            ${item.isUnlocked ? '<i class="far fa-calendar-check text-green-500"></i>' : '<i class="fas fa-lock text-stone-300"></i>'}
-                            ${dateText}
-                        </p>
+                        <div class="detail-panel__title">${escapeHtml(series.name)}</div>
+                        <div class="detail-panel__text">
+                            ${latestText}。已获得优先展示，未获得点击查看条件。
+                        </div>
                     </div>
-                    <div class="text-stone-300 pl-2">
-                        <i class="fas fa-chevron-right text-xs"></i>
+                    <div class="detail-panel__side">
+                        <div class="detail-side-card">
+                            <div class="detail-side-card__label">当前进度</div>
+                            <div class="detail-side-card__value">${series.unlocked} / ${series.total}</div>
+                            <div class="detail-side-card__hint">还差 ${remaining} 张就能完成这个系列。</div>
+                        </div>
+                        <div class="detail-side-card">
+                            <div class="detail-side-card__label">完成比例</div>
+                            <div class="detail-side-card__value">${series.progress}%</div>
+                            <div class="progress-bar" style="margin-top:0.7rem;"><span style="width:${series.progress}%;"></span></div>
+                        </div>
                     </div>
-                `;
-                fragment.appendChild(el);
-            });
-            
-            listContainer.appendChild(fragment);
+                </div>
+            </div>
+        `;
+    }
+
+    function renderStickerGrid(series) {
+        if (!series || !series.items.length) {
+            elements.seriesStickerGrid.innerHTML = "";
+            elements.detailEmpty.classList.remove("hidden");
+            return;
         }
+
+        elements.detailEmpty.classList.add("hidden");
+        elements.seriesStickerGrid.innerHTML = series.items.map((item) => {
+            const rarity = RARITY_STYLES[item.rarity] || RARITY_STYLES.common;
+            const metaText = item.isUnlocked
+                ? `获得时间：${escapeHtml(item.unlockDate)}`
+                : `点击查看获得条件：${escapeHtml(item.conditionText || "继续探索即可解锁")}`;
+
+            return `
+                <button
+                    type="button"
+                    class="sticker-tile ${item.isUnlocked ? "" : "is-locked"}"
+                    data-achievement-id="${item.id}"
+                    style="--tile-accent:${series.palette.accent}; --tile-soft:${series.palette.soft}; --rarity-color:${rarity.color}; --rarity-soft:${rarity.soft};"
+                >
+                    <div class="sticker-tile__status">
+                        <span class="status-pill ${item.isUnlocked ? "is-unlocked" : "is-locked"}">
+                            <i class="fas ${item.isUnlocked ? "fa-check-circle" : "fa-lock"}"></i>
+                            ${item.isUnlocked ? "已获得" : "未获得"}
+                        </span>
+                        <span class="rarity-pill">${escapeHtml(RARITY_LABELS[item.rarity] || "普通")}</span>
+                    </div>
+                    <div class="sticker-tile__icon">
+                        ${renderAchievementIcon(item)}
+                    </div>
+                    <div class="sticker-tile__body">
+                        <div class="sticker-tile__title">${escapeHtml(item.name)}</div>
+                        <div class="sticker-tile__desc">${escapeHtml(item.description || "这枚贴纸还没有补充说明。")}</div>
+                        <div class="sticker-tile__meta">${metaText}</div>
+                        ${item.isSecret ? '<span class="secret-pill">隐藏成就</span>' : ''}
+                    </div>
+                </button>
+            `;
+        }).join("");
+    }
+
+    function openModal(itemId) {
+        const item = (SERVER_DATA.achievements || []).find((entry) => entry.id === Number(itemId));
+        if (!item) return;
+
+        state.activeModalId = item.id;
+        const rarity = RARITY_STYLES[item.rarity] || RARITY_STYLES.common;
+
+        elements.modalSeries.innerHTML = `
+            <i class="fas fa-layer-group"></i>
+            ${escapeHtml(seriesKey(item.category))}
+        `;
+        elements.modalPills.innerHTML = `
+            <span class="status-pill ${item.isUnlocked ? "is-unlocked" : "is-locked"}">
+                <i class="fas ${item.isUnlocked ? "fa-check-circle" : "fa-lock"}"></i>
+                ${item.isUnlocked ? "已获得" : "未获得"}
+            </span>
+            <span class="rarity-pill" style="--rarity-color:${rarity.color}; --rarity-soft:${rarity.soft};">${escapeHtml(RARITY_LABELS[item.rarity] || "普通")}</span>
+            ${item.isSecret ? '<span class="secret-pill">隐藏成就</span>' : ''}
+        `;
+        elements.modalTitle.textContent = item.name;
+        elements.modalDescription.textContent = item.description || "这枚贴纸还没有补充说明。";
+        elements.modalCondition.textContent = item.conditionText || "继续探索即可解锁。";
+        elements.modalUnlockDate.textContent = item.isUnlocked ? item.unlockDate : "尚未获得";
+        elements.modalSerialNumber.textContent = item.isUnlocked ? (item.serialNumber || "待生成") : "获得后生成";
+        elements.modalIssuer.textContent = item.issuer || "WikiBook";
+        elements.modalFooterNote.textContent = item.isUnlocked
+            ? "这枚贴纸已经入册，可以保存分享卡片。"
+            : "解锁后会自动记录时间，并开放分享卡片导出。";
+        elements.modalIconBox.innerHTML = renderAchievementIcon(item, true);
+        elements.modalAvatar.textContent = (SERVER_DATA.user.avatarInitial || "?").slice(0, 1);
+        elements.shareBtn.classList.toggle("hidden", !item.isUnlocked);
+        elements.badgeModal.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeModal() {
+        state.activeModalId = null;
+        elements.badgeModal.classList.add("hidden");
+        document.body.style.overflow = "";
+    }
+
+    function generateShareCard() {
+        if (!state.activeModalId) return;
+
+        const currentItem = (SERVER_DATA.achievements || []).find((item) => item.id === state.activeModalId);
+        if (!currentItem || !currentItem.isUnlocked) return;
+
+        const originalText = elements.shareBtn.textContent;
+        elements.shareBtn.disabled = true;
+        elements.shareBtn.textContent = "生成中...";
+
+        html2canvas(elements.shareCaptureArea, {
+            backgroundColor: "#fffdf7",
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            allowTaint: true
+        }).then((canvas) => {
+            const link = document.createElement("a");
+            link.download = `achievement-${currentItem.id}-${Date.now()}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        }).catch(() => {
+            alert("分享卡片生成失败，请稍后再试。");
+        }).finally(() => {
+            elements.shareBtn.disabled = false;
+            elements.shareBtn.textContent = originalText;
+        });
+    }
+
+    function render() {
+        const seriesList = getSeriesList();
+        renderHero(seriesList);
+        renderSeriesOverview(seriesList);
+        renderSeriesTabs(seriesList);
+        const selectedSeries = getSelectedSeries(seriesList);
+        renderDetailPanel(selectedSeries);
+        renderStickerGrid(selectedSeries);
+    }
+
+    function bindEvents() {
+        elements.seriesOverviewGrid.addEventListener("click", (event) => {
+            const trigger = event.target.closest("[data-series-id]");
+            if (!trigger) return;
+            setSeries(trigger.dataset.seriesId, true);
+        });
+
+        elements.detailSeriesTabs.addEventListener("click", (event) => {
+            const trigger = event.target.closest("[data-series-id]");
+            if (!trigger) return;
+            setSeries(trigger.dataset.seriesId, false);
+        });
+
+        elements.seriesStickerGrid.addEventListener("click", (event) => {
+            const trigger = event.target.closest("[data-achievement-id]");
+            if (!trigger) return;
+            openModal(trigger.dataset.achievementId);
+        });
+
+        elements.backToOverview.addEventListener("click", () => {
+            elements.seriesOverviewGrid.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        elements.modalClose.addEventListener("click", closeModal);
+        elements.modalDismiss.addEventListener("click", closeModal);
+        elements.shareBtn.addEventListener("click", generateShareCard);
+
+        elements.badgeModal.addEventListener("click", (event) => {
+            if (event.target === elements.badgeModal) {
+                closeModal();
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && !elements.badgeModal.classList.contains("hidden")) {
+                closeModal();
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        elements.heroTotalCount = document.getElementById("hero-total-count");
+        elements.heroSeriesCount = document.getElementById("hero-series-count");
+        elements.heroUnlockedCount = document.getElementById("hero-unlocked-count");
+        elements.overallProgressUnlocked = document.getElementById("overall-progress-unlocked");
+        elements.overallProgressTotal = document.getElementById("overall-progress-total");
+        elements.overallProgressRate = document.getElementById("overall-progress-rate");
+        elements.overallProgressRing = document.getElementById("overall-progress-ring");
+        elements.overallProgressBar = document.getElementById("overall-progress-bar");
+        elements.overallProgressNote = document.getElementById("overall-progress-note");
+        elements.seriesOverviewGrid = document.getElementById("series-overview-grid");
+        elements.detailSection = document.getElementById("detail-section");
+        elements.detailSeriesTabs = document.getElementById("detail-series-tabs");
+        elements.detailSeriesPanel = document.getElementById("detail-series-panel");
+        elements.seriesStickerGrid = document.getElementById("series-sticker-grid");
+        elements.detailEmpty = document.getElementById("detail-empty");
+        elements.backToOverview = document.getElementById("back-to-overview");
+        elements.badgeModal = document.getElementById("badge-modal");
+        elements.modalSeries = document.getElementById("modal-series");
+        elements.modalPills = document.getElementById("modal-pills");
+        elements.modalTitle = document.getElementById("modal-title");
+        elements.modalDescription = document.getElementById("modal-description");
+        elements.modalCondition = document.getElementById("modal-condition");
+        elements.modalUnlockDate = document.getElementById("modal-unlock-date");
+        elements.modalSerialNumber = document.getElementById("modal-serial-number");
+        elements.modalIssuer = document.getElementById("modal-issuer");
+        elements.modalFooterNote = document.getElementById("modal-footer-note");
+        elements.modalIconBox = document.getElementById("modal-icon-box");
+        elements.modalAvatar = document.getElementById("modal-avatar");
+        elements.modalClose = document.getElementById("modal-close");
+        elements.modalDismiss = document.getElementById("modal-dismiss");
+        elements.shareBtn = document.getElementById("share-btn");
+        elements.shareCaptureArea = document.getElementById("share-capture-area");
+
+        bindEvents();
+        render();
     });
 </script>
 {% endblock %}

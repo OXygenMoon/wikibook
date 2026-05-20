@@ -861,11 +861,15 @@ DEFAULT_PHONE_APPS = [
     {"name": "公告栏", "description": "阅读系统公告与活动信息。", "icon_class": "animal-phone__app-icon--variant", "bg_color": "#8ac68a", "action_type": "link", "target_endpoint": "announcements_view", "sort_order": 70},
     {"name": "任务栏", "description": "查看委托任务和悬赏。", "icon_class": "animal-phone__app-icon--helicopter", "bg_color": "#fc736d", "action_type": "link", "target_endpoint": "bulletin_view", "sort_order": 80},
     {"name": "退出", "description": "退出当前账号。", "icon_class": "animal-phone__app-icon--chat", "bg_color": "#d1da49", "action_type": "link", "target_endpoint": "logout", "sort_order": 90},
+    {"name": "便签", "description": "在手机里查看和编辑你的随手便签。", "icon_class": "fas fa-sticky-note", "bg_color": "#f6c85f", "action_type": "internal", "internal_key": "sticky_notes", "sort_order": 100},
+    {"name": "番茄钟", "description": "在手机里开启专注计时、查看今日番茄。", "icon_class": "fas fa-hourglass-half", "bg_color": "#ef7b73", "action_type": "internal", "internal_key": "pomodoro", "sort_order": 110},
 ]
 
 PHONE_INTERNAL_APP_META = {
     "app_store": {"title": "App Store", "subtitle": "安装在这台小手机里的功能目录"},
     "profile_card": {"title": "我的名片", "subtitle": "在手机内查看个人摘要"},
+    "sticky_notes": {"title": "便签", "subtitle": "随手记下灵感、待办和碎片想法"},
+    "pomodoro": {"title": "番茄钟", "subtitle": "把专注节奏装进这台小手机"},
 }
 
 def seed_default_phone_apps():
@@ -874,6 +878,28 @@ def seed_default_phone_apps():
     for data in DEFAULT_PHONE_APPS:
         db.session.add(PhoneApp(**data))
     db.session.commit()
+
+def ensure_builtin_phone_apps():
+    builtin_keys = [data.get("internal_key") for data in DEFAULT_PHONE_APPS if data.get("internal_key")]
+    if not builtin_keys:
+        return
+
+    existing_keys = {
+        key for (key,) in db.session.query(PhoneApp.internal_key)
+        .filter(PhoneApp.internal_key.in_(builtin_keys))
+        .all()
+    }
+
+    created = False
+    for data in DEFAULT_PHONE_APPS:
+        internal_key = data.get("internal_key")
+        if not internal_key or internal_key in existing_keys:
+            continue
+        db.session.add(PhoneApp(**data))
+        created = True
+
+    if created:
+        db.session.commit()
 
 def resolve_phone_app_url(phone_app):
     if not phone_app:
@@ -1102,6 +1128,7 @@ def ensure_db():
                 db.session.add(s)
                 db.session.commit()
             seed_default_phone_apps()
+            ensure_builtin_phone_apps()
         _db_initialized = True
 
 @app.route("/")

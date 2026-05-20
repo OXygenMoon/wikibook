@@ -397,8 +397,8 @@
         }
 
         .user-phone-scale {
-            width: calc(527px * var(--user-phone-scale, 0.54));
-            height: calc(788px * var(--user-phone-scale, 0.54));
+            width: calc(527px * var(--user-phone-scale, 0.6));
+            height: calc(788px * var(--user-phone-scale, 0.6));
             position: relative;
             overflow: visible;
         }
@@ -409,48 +409,113 @@
             right: 0;
             width: 527px;
             height: 788px;
-            transform: scale(var(--user-phone-scale, 0.54));
             transform-origin: top right;
             filter: drop-shadow(0 20px 42px rgba(0, 0, 0, 0.22));
+            will-change: transform;
+            backface-visibility: hidden;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: geometricPrecision;
+        }
+
+        @supports (zoom: 1) {
+            .user-phone-panel {
+                zoom: var(--user-phone-scale, 0.6);
+                transform: none;
+            }
+        }
+
+        @supports not (zoom: 1) {
+            .user-phone-panel {
+                transform: translateZ(0) scale(var(--user-phone-scale, 0.6));
+            }
         }
 
         .user-phone-panel .animal-phone__device {
+            display: flex;
+            flex-direction: column;
             border: 8px solid rgba(255, 255, 255, 0.8);
             border-radius: 104px;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.65), 0 14px 42px rgba(0, 0, 0, 0.14);
         }
 
+        .user-phone-panel .animal-phone__statusbar {
+            flex: 0 0 auto;
+            padding: 18px 34px 6px;
+            gap: 12px;
+        }
+
+        .user-phone-panel .animal-phone__screen {
+            flex: 1 1 auto;
+            min-height: 0;
+            height: auto;
+        }
+
         .user-phone-panel .animal-phone__home {
             position: relative;
-            padding-top: 28px;
-            padding-bottom: 28px;
+            height: 100%;
+            padding-top: 24px;
+            padding-bottom: 22px;
             background:
                 radial-gradient(circle at top left, rgba(255, 230, 148, 0.24), transparent 26%),
                 linear-gradient(180deg, #f8f4e8 0%, #f5efdf 100%);
         }
 
-        .user-phone-panel .animal-phone__date-display {
-            padding-bottom: 18px;
+        .user-phone-status-meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            margin-left: auto;
+            color: #d3cebf;
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+        }
+
+        .user-phone-status-meta-time {
+            color: #d8d1c1;
+        }
+
+        .user-phone-panel .animal-phone__signal-icons {
+            flex: 0 0 auto;
         }
 
         .user-phone-panel .animal-phone__day-text {
-            height: 48px;
-            margin-top: 12px;
-            font-size: 42px;
+            height: auto;
+            margin-top: 0;
+            font-size: 40px;
+            line-height: 1.05;
         }
 
         .user-phone-panel .animal-phone__apps {
-            flex: 0 0 auto;
-            gap: 34px 32px;
-            padding: 8px;
+            width: 100%;
+            align-content: center;
+            justify-items: center;
+            gap: 22px 12px;
+            padding: 14px 26px 0;
         }
 
         .user-phone-panel .animal-phone__app {
-            width: 123px;
-            height: 123px;
-            border-radius: 34px;
+            width: 136px;
+            min-height: 142px;
+            display: grid;
+            grid-template-rows: 108px minmax(24px, auto);
+            justify-items: center;
+            align-content: start;
+            gap: 10px;
             border: 0;
+            border-radius: 0;
+            background: transparent !important;
             cursor: pointer;
+        }
+
+        .user-phone-panel .animal-phone__app--offset {
+            overflow: visible;
+        }
+
+        .user-phone-panel .animal-phone__app--offset .user-phone-app-tile {
+            overflow: hidden;
         }
 
         .user-phone-clockline {
@@ -476,42 +541,63 @@
             text-decoration: none;
         }
 
-        .user-phone-app-link .animal-phone__app-icon {
+        .user-phone-app-tile {
+            width: 108px;
+            height: 108px;
+            border-radius: 32px;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);
+        }
+
+        .user-phone-app-link .animal-phone__app-icon,
+        .user-phone-app-link .user-phone-fa-icon,
+        .user-phone-app-link .user-phone-upload-icon {
             pointer-events: none;
+            transform: translateZ(0);
+        }
+
+        .user-phone-app-tile .animal-phone__app-icon {
+            width: 100%;
+            height: 100%;
+            background-size: 70% auto;
         }
 
         .user-phone-fa-icon {
             display: grid;
             place-items: center;
+            width: 100%;
+            height: 100%;
             color: rgba(255, 252, 235, 0.96);
-            font-size: 52px;
+            font-size: 50px;
             text-shadow: 0 3px 0 rgba(93, 64, 55, 0.14);
         }
 
         .user-phone-upload-icon {
-            width: 72%;
-            height: 72%;
+            width: 78%;
+            height: 78%;
             object-fit: contain;
-            pointer-events: none;
+            image-rendering: -webkit-optimize-contrast;
         }
 
         .user-phone-app-label {
-            position: absolute;
-            left: 50%;
-            bottom: -30px;
-            transform: translateX(-50%);
+            display: block;
+            width: 100%;
             color: #6c5645;
-            font-size: 15px;
+            font-size: 18px;
             font-weight: 900;
-            white-space: nowrap;
+            line-height: 1.15;
+            text-align: center;
+            word-break: break-word;
             pointer-events: none;
-            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
         }
 
         .user-phone-footer {
-            width: calc(100% - 84px);
-            margin-top: 8px;
-            padding: 12px 24px;
+            width: calc(100% - 60px);
+            margin-top: 10px;
+            padding: 10px 22px;
             border: 2px solid rgba(216, 198, 168, 0.72);
             border-radius: 30px;
             background: rgba(255, 251, 240, 0.84);
@@ -534,11 +620,336 @@
         }
 
         .user-phone-panel .animal-phone__page-indicator {
-            margin-top: 12px;
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-top: auto;
         }
 
         .user-phone-home-layer {
-            display: contents;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+        }
+
+        .user-phone-identity-row {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 16px;
+            width: 100%;
+            padding: 0 34px;
+        }
+
+        .user-phone-study-inline {
+            color: #9b8a72;
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        .user-phone-view-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .user-phone-view-hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 18px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(216, 198, 168, 0.48);
+        }
+
+        .user-phone-view-title {
+            color: #725c4e;
+            font-size: 24px;
+            font-weight: 1000;
+            line-height: 1;
+        }
+
+        .user-phone-view-subtitle {
+            margin-top: 4px;
+            color: #9b8a72;
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.45;
+        }
+
+        .user-phone-view-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 54px;
+            height: 36px;
+            padding: 0 12px;
+            border-radius: 999px;
+            background: rgba(29, 185, 173, 0.12);
+            color: #1ca79a;
+            font-size: 15px;
+            font-weight: 1000;
+        }
+
+        .user-phone-note-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .user-phone-note-card {
+            padding: 14px;
+            border-radius: 24px;
+            border: 1px solid rgba(216, 198, 168, 0.44);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+        }
+
+        .user-phone-note-card.note-theme-yellow { background: rgba(253, 230, 138, 0.62); }
+        .user-phone-note-card.note-theme-pink { background: rgba(251, 207, 232, 0.62); }
+        .user-phone-note-card.note-theme-blue { background: rgba(191, 219, 254, 0.62); }
+        .user-phone-note-card.note-theme-green { background: rgba(187, 247, 208, 0.62); }
+
+        .user-phone-note-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .user-phone-note-colors {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-phone-note-colors .note-color-dot {
+            width: 12px;
+            height: 12px;
+        }
+
+        .user-phone-note-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .user-phone-note-action {
+            width: 30px;
+            height: 30px;
+            border: 0;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            color: rgba(84, 63, 42, 0.76);
+            background: rgba(255, 255, 255, 0.45);
+            transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+        }
+
+        .user-phone-note-action:hover {
+            background: rgba(255, 255, 255, 0.7);
+            color: #725c4e;
+            transform: translateY(-1px);
+        }
+
+        .user-phone-note-action.is-danger:hover {
+            color: #d15151;
+            background: rgba(255, 255, 255, 0.78);
+        }
+
+        .user-phone-note-body {
+            width: 100%;
+            min-height: 92px;
+            margin-top: 12px;
+            border: 0;
+            resize: vertical;
+            outline: 0;
+            background: transparent;
+            color: #6f5534;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.55;
+        }
+
+        .user-phone-note-body::placeholder {
+            color: rgba(111, 85, 52, 0.42);
+        }
+
+        .user-phone-note-empty {
+            padding: 24px 20px;
+            text-align: center;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.62);
+            border: 1px dashed rgba(216, 198, 168, 0.68);
+            color: #9b8a72;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.7;
+        }
+
+        .user-phone-pomo-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .user-phone-pomo-ring {
+            display: grid;
+            place-items: center;
+            width: 220px;
+            aspect-ratio: 1;
+            margin: 0 auto;
+            border-radius: 999px;
+            background:
+                radial-gradient(circle at center, rgba(255, 255, 255, 0.95) 0 56%, transparent 57%),
+                conic-gradient(#ef7b73 0deg, rgba(239, 123, 115, 0.24) 0deg 360deg);
+            border: 1px solid rgba(216, 198, 168, 0.5);
+            box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.65);
+        }
+
+        .user-phone-pomo-ring.is-resting {
+            background:
+                radial-gradient(circle at center, rgba(255, 255, 255, 0.95) 0 56%, transparent 57%),
+                conic-gradient(#47b881 0deg, rgba(71, 184, 129, 0.22) 0deg 360deg);
+        }
+
+        .user-phone-pomo-ring.is-idle {
+            background:
+                radial-gradient(circle at center, rgba(255, 255, 255, 0.95) 0 56%, transparent 57%),
+                conic-gradient(rgba(29, 185, 173, 0.22) 0deg, rgba(29, 185, 173, 0.1) 360deg);
+        }
+
+        .user-phone-pomo-core {
+            text-align: center;
+            color: #725c4e;
+        }
+
+        .user-phone-pomo-state {
+            font-size: 14px;
+            font-weight: 900;
+            letter-spacing: 0.8px;
+        }
+
+        .user-phone-pomo-time {
+            margin-top: 4px;
+            font-size: 44px;
+            font-weight: 1000;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .user-phone-pomo-caption {
+            margin-top: 6px;
+            color: #9b8a72;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .user-phone-pomo-stats {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .user-phone-pomo-stat {
+            padding: 14px 16px;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.68);
+            border: 1px solid rgba(216, 198, 168, 0.48);
+        }
+
+        .user-phone-pomo-stat-label {
+            color: #9b8a72;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .user-phone-pomo-stat-value {
+            margin-top: 4px;
+            color: #725c4e;
+            font-size: 24px;
+            font-weight: 1000;
+            line-height: 1;
+        }
+
+        .user-phone-pomo-actions {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+        }
+
+        .user-phone-pomo-btn {
+            min-height: 52px;
+            border: 0;
+            border-radius: 999px;
+            font-size: 15px;
+            font-weight: 1000;
+            transition: transform 0.18s ease, filter 0.18s ease;
+        }
+
+        .user-phone-pomo-btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.02);
+        }
+
+        .user-phone-pomo-btn--primary {
+            background: linear-gradient(180deg, #1cc9bb, #17b8aa);
+            color: #fff;
+        }
+
+        .user-phone-pomo-btn--secondary {
+            width: 52px;
+            background: rgba(255, 255, 255, 0.72);
+            color: #725c4e;
+            border: 1px solid rgba(216, 198, 168, 0.56);
+        }
+
+        .user-phone-pages {
+            width: 100%;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .user-phone-pages-track {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: 100%;
+            height: 100%;
+            transition: transform 0.28s ease;
+            will-change: transform;
+        }
+
+        .user-phone-apps-page {
+            flex: 0 0 100%;
+            min-width: 0;
+        }
+
+        .user-phone-panel .animal-phone__page {
+            appearance: none;
+            border: 0;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            border-radius: 999px;
+            background: rgba(200, 198, 190, 0.95);
+            box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.55);
+            cursor: pointer;
+            transition: transform 0.18s ease, background-color 0.18s ease;
+        }
+
+        .user-phone-panel .animal-phone__page.is-active {
+            background: #1db9ad;
+            transform: scale(1.08);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.42);
         }
 
         .user-phone-internal-screen {
@@ -3233,6 +3644,11 @@
                                 <div class="animal-phone__device">
                                     <div class="animal-phone__statusbar">
                                         <span class="animal-phone__status-time" id="user-phone-status-time">00:00</span>
+                                        <div class="user-phone-status-meta">
+                                            <span id="user-phone-monthday">1月1日</span>
+                                            <span id="user-phone-weekday">星期一</span>
+                                            <span id="user-phone-meta-time" class="user-phone-status-meta-time">00:00</span>
+                                        </div>
                                         <div class="animal-phone__signal-icons">
                                             <span class="animal-phone__wifi"></span>
                                         </div>
@@ -3241,56 +3657,56 @@
                                     <div class="animal-phone__screen">
                                         <div class="animal-phone__home">
                                             <div class="user-phone-home-layer">
-                                                <div class="animal-phone__date-display">
-                                                    <div class="animal-phone__date-header">
-                                                        <span class="user-phone-date-line">
-                                                            <span id="user-phone-monthday">1月1日</span>
-                                                            <span class="user-phone-weekday-inline" id="user-phone-day-text">星期一</span>
-                                                        </span>
-                                                        <div class="user-phone-clockline">
-                                                            <span id="user-phone-hours">00</span>
-                                                            <span class="animal-phone__blink">:</span>
-                                                            <span id="user-phone-minutes">00</span>
-                                                        </div>
-                                                        <span class="animal-phone__location"></span>
-                                                    </div>
+                                                <div class="user-phone-identity-row">
                                                     <span class="animal-phone__day-text">{{ current_user.username }}</span>
+                                                    <span class="user-phone-study-inline">今日学习 {{ current_user.study_time_today_human }}</span>
                                                 </div>
 
-                                                {% set user_phone_apps = get_phone_apps() %}
-                                                <div class="animal-phone__apps">
-                                                    {% for phone_app in user_phone_apps %}
-                                                        {% set phone_app_tag = 'button' if phone_app.action_type == 'internal' else 'a' %}
-                                                        <{{ phone_app_tag }}
-                                                            {% if phone_app.action_type == 'internal' %}
-                                                                type="button"
-                                                                data-phone-app-open="{{ phone_app.internal_key or 'app_store' }}"
-                                                                data-phone-app-title="{{ phone_app.name }}"
-                                                            {% else %}
-                                                                href="{{ phone_app_url(phone_app) }}"
-                                                            {% endif %}
-                                                            class="animal-phone__app user-phone-app-link {% if phone_app.icon_class == 'animal-phone__app-icon--miles' %}animal-phone__app--offset{% endif %}"
-                                                            style="background: {{ phone_app.bg_color or '#82d5bb' }}"
-                                                            title="{{ phone_app.description or phone_app.name }}">
-                                                            {% if phone_app.icon_url %}
-                                                                <img src="{{ phone_app.icon_url }}" class="user-phone-upload-icon" alt="{{ phone_app.name }}">
-                                                            {% elif phone_app.is_builtin_icon %}
-                                                                <span class="animal-phone__app-icon {{ phone_app.icon_class }} {% if phone_app.icon_class == 'animal-phone__app-icon--miles' %}animal-phone__app-icon--offset{% endif %}"></span>
-                                                            {% else %}
-                                                                <i class="animal-phone__app-icon user-phone-fa-icon {{ phone_app.icon_class or 'fas fa-cube' }}"></i>
-                                                            {% endif %}
-                                                            <span class="user-phone-app-label">{{ phone_app.name }}</span>
-                                                        </{{ phone_app_tag }}>
-                                                    {% endfor %}
-                                                </div>
-
-                                                <div class="user-phone-footer">
-                                                    <div class="user-phone-footer-name">{{ current_user.username }}</div>
-                                                    <div class="user-phone-footer-meta">今日学习 {{ current_user.study_time_today_human }}</div>
+                                                {% set user_phone_apps = get_phone_apps(0) %}
+                                                {% set phone_page_count = ((user_phone_apps|length - 1) // 9) + 1 if user_phone_apps else 1 %}
+                                                <div class="user-phone-pages">
+                                                    <div class="user-phone-pages-track" data-phone-pages-track>
+                                                        {% for page_index in range(phone_page_count) %}
+                                                            <div class="animal-phone__apps user-phone-apps-page" data-phone-page="{{ page_index }}">
+                                                                {% for phone_app in user_phone_apps[page_index * 9:(page_index + 1) * 9] %}
+                                                                    {% set phone_app_tag = 'button' if phone_app.action_type == 'internal' else 'a' %}
+                                                                    <{{ phone_app_tag }}
+                                                                        {% if phone_app.action_type == 'internal' %}
+                                                                            type="button"
+                                                                            data-phone-app-open="{{ phone_app.internal_key or 'app_store' }}"
+                                                                            data-phone-app-title="{{ phone_app.name }}"
+                                                                        {% else %}
+                                                                            href="{{ phone_app_url(phone_app) }}"
+                                                                        {% endif %}
+                                                                        class="animal-phone__app user-phone-app-link {% if phone_app.icon_class == 'animal-phone__app-icon--miles' %}animal-phone__app--offset{% endif %}"
+                                                                        title="{{ phone_app.description or phone_app.name }}">
+                                                                        <span class="user-phone-app-tile" style="background: {{ phone_app.bg_color or '#82d5bb' }}">
+                                                                            {% if phone_app.icon_url %}
+                                                                                <img src="{{ phone_app.icon_url }}" class="user-phone-upload-icon" alt="{{ phone_app.name }}">
+                                                                            {% elif phone_app.is_builtin_icon %}
+                                                                                <span class="animal-phone__app-icon {{ phone_app.icon_class }} {% if phone_app.icon_class == 'animal-phone__app-icon--miles' %}animal-phone__app-icon--offset{% endif %}"></span>
+                                                                            {% else %}
+                                                                                <i class="animal-phone__app-icon user-phone-fa-icon {{ phone_app.icon_class or 'fas fa-cube' }}"></i>
+                                                                            {% endif %}
+                                                                        </span>
+                                                                        <span class="user-phone-app-label">{{ phone_app.name }}</span>
+                                                                    </{{ phone_app_tag }}>
+                                                                {% endfor %}
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
                                                 </div>
 
                                                 <div class="animal-phone__page-indicator">
-                                                    <span class="animal-phone__page"></span>
+                                                    {% for page_index in range(phone_page_count) %}
+                                                        <button
+                                                            type="button"
+                                                            class="animal-phone__page{% if loop.first %} is-active{% endif %}"
+                                                            data-phone-page-dot="{{ page_index }}"
+                                                            aria-label="第 {{ page_index + 1 }} 页"
+                                                            aria-current="{{ 'true' if loop.first else 'false' }}">
+                                                        </button>
+                                                    {% endfor %}
                                                 </div>
                                             </div>
 
@@ -3330,6 +3746,54 @@
                                                             <div class="mt-5 text-3xl font-black text-[#725c4e]">{{ current_user.username }}</div>
                                                             <div class="mt-2 text-sm font-bold text-[#9b8a72]">今日学习 {{ current_user.study_time_today_human }}</div>
                                                             <a href="{{ url_for('user_profile') }}" class="mt-6 inline-flex px-5 py-3 rounded-full bg-[#725c4e] text-white text-sm font-black">打开完整主页</a>
+                                                        </div>
+                                                    </div>
+                                                    <div class="user-phone-internal-app" data-phone-app-key="sticky_notes">
+                                                        <div class="user-phone-view-shell">
+                                                            <div class="user-phone-view-hero">
+                                                                <div>
+                                                                    <div class="user-phone-view-title">便签板</div>
+                                                                    <div class="user-phone-view-subtitle">在手机里整理灵感、待办和一闪而过的念头。</div>
+                                                                </div>
+                                                                <button type="button" class="user-phone-pomo-btn user-phone-pomo-btn--secondary" onclick="app.phoneViews.stickyNotes.create()" aria-label="新建便签">
+                                                                    <i class="fas fa-plus"></i>
+                                                                </button>
+                                                            </div>
+                                                            <div id="phone-sticky-list" class="user-phone-note-grid"></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="user-phone-internal-app" data-phone-app-key="pomodoro">
+                                                        <div class="user-phone-pomo-shell">
+                                                            <div class="user-phone-view-hero">
+                                                                <div>
+                                                                    <div class="user-phone-view-title">专注中控</div>
+                                                                    <div class="user-phone-view-subtitle">开始、放弃、休息都在这里，和顶部番茄钟保持同步。</div>
+                                                                </div>
+                                                                <div id="phone-pomo-count-chip" class="user-phone-view-chip">0 次</div>
+                                                            </div>
+                                                            <div id="phone-pomo-ring" class="user-phone-pomo-ring is-idle">
+                                                                <div class="user-phone-pomo-core">
+                                                                    <div id="phone-pomo-state" class="user-phone-pomo-state">IDLE</div>
+                                                                    <div id="phone-pomo-time" class="user-phone-pomo-time">45:00</div>
+                                                                    <div id="phone-pomo-caption" class="user-phone-pomo-caption">准备开始下一次专注</div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="user-phone-pomo-stats">
+                                                                <div class="user-phone-pomo-stat">
+                                                                    <div class="user-phone-pomo-stat-label">专注时长</div>
+                                                                    <div id="phone-pomo-work-value" class="user-phone-pomo-stat-value">45 分</div>
+                                                                </div>
+                                                                <div class="user-phone-pomo-stat">
+                                                                    <div class="user-phone-pomo-stat-label">休息时长</div>
+                                                                    <div id="phone-pomo-rest-value" class="user-phone-pomo-stat-value">15 分</div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="user-phone-pomo-actions">
+                                                                <button type="button" id="phone-pomo-primary" class="user-phone-pomo-btn user-phone-pomo-btn--primary">开始专注</button>
+                                                                <button type="button" class="user-phone-pomo-btn user-phone-pomo-btn--secondary" onclick="app.pomodoro.openSettings()" aria-label="番茄钟设置">
+                                                                    <i class="fas fa-sliders-h"></i>
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -3959,7 +4423,7 @@
 
             <div id="new-badge-gradient" class="absolute top-0 right-0 w-56 h-56 opacity-80 transform translate-x-12 -translate-y-12 rotate-12 -z-10 shadow-inner transition-colors duration-500"></div>
 
-            <div class="absolute top-0 right-0 w-full h-full bg-white dark:bg-base-100 opacity-40 transform -rotate-[30deg] translate-x-24 -translate-y-10 z-0 pointer-events-none"></div>
+            <div class="absolute -top-10 right-[-3.5rem] w-72 h-72 rounded-full bg-white/35 dark:bg-white/10 blur-3xl z-0 pointer-events-none"></div>
 
 
 
@@ -4225,18 +4689,22 @@
             const userPhoneInternalTitle = document.getElementById('user-phone-internal-title');
             const userPhoneInternalSubtitle = document.getElementById('user-phone-internal-subtitle');
             const userPhoneInternalApps = userPhonePopover?.querySelectorAll('.user-phone-internal-app') || [];
+            const phoneInternalMeta = {{ phone_internal_app_meta | tojson }};
+            const userPhonePagesTrack = userPhonePopover?.querySelector('[data-phone-pages-track]');
+            const userPhonePages = userPhonePopover?.querySelectorAll('[data-phone-page]') || [];
+            const userPhonePageDots = userPhonePopover?.querySelectorAll('[data-phone-page-dot]') || [];
             const statusTime = document.getElementById('user-phone-status-time');
-            const phoneHours = document.getElementById('user-phone-hours');
-            const phoneMinutes = document.getElementById('user-phone-minutes');
             const phoneMonthday = document.getElementById('user-phone-monthday');
-            const phoneDayText = document.getElementById('user-phone-day-text');
+            const phoneWeekday = document.getElementById('user-phone-weekday');
+            const phoneMetaTime = document.getElementById('user-phone-meta-time');
             let userPhoneClockTimer = null;
             let isUserPhoneOpen = false;
+            let currentUserPhonePage = 0;
 
             function updateUserPhoneScale() {
                 if (!userPhoneScale) return;
                 const scale = Math.min(
-                    0.58,
+                    0.62,
                     (window.innerWidth - 36) / 527,
                     (window.innerHeight - 110) / 788
                 );
@@ -4273,12 +4741,12 @@
 
                 rect = userPhonePopover.getBoundingClientRect();
                 const availableScale = Math.min(
-                    0.58,
-                    (window.innerWidth - viewportPadding * 2) / rect.width * parseFloat(getComputedStyle(userPhoneScale).getPropertyValue('--user-phone-scale') || '0.54'),
-                    (window.innerHeight - viewportPadding * 2) / rect.height * parseFloat(getComputedStyle(userPhoneScale).getPropertyValue('--user-phone-scale') || '0.54')
+                    0.62,
+                    (window.innerWidth - viewportPadding * 2) / rect.width * parseFloat(getComputedStyle(userPhoneScale).getPropertyValue('--user-phone-scale') || '0.6'),
+                    (window.innerHeight - viewportPadding * 2) / rect.height * parseFloat(getComputedStyle(userPhoneScale).getPropertyValue('--user-phone-scale') || '0.6')
                 );
 
-                if (availableScale < parseFloat(getComputedStyle(userPhoneScale).getPropertyValue('--user-phone-scale') || '0.54')) {
+                if (availableScale < parseFloat(getComputedStyle(userPhoneScale).getPropertyValue('--user-phone-scale') || '0.6')) {
                     userPhoneScale.style.setProperty('--user-phone-scale', Math.max(0.34, availableScale).toFixed(3));
                     userPhonePopover.style.setProperty('--user-phone-shift-x', '0px');
                     userPhonePopover.style.setProperty('--user-phone-shift-y', '0px');
@@ -4315,10 +4783,24 @@
                 });
             }
 
+            function setUserPhonePage(pageIndex) {
+                if (!userPhonePagesTrack || !userPhonePages.length) return;
+                const maxPageIndex = userPhonePages.length - 1;
+                const safePageIndex = Math.max(0, Math.min(pageIndex, maxPageIndex));
+                currentUserPhonePage = safePageIndex;
+                userPhonePagesTrack.style.transform = `translateX(-${safePageIndex * 100}%)`;
+                userPhonePageDots.forEach((dot, index) => {
+                    const isActive = index === safePageIndex;
+                    dot.classList.toggle('is-active', isActive);
+                    dot.setAttribute('aria-current', isActive ? 'true' : 'false');
+                });
+            }
+
             function openInternalPhoneApp(appKey, appTitle) {
                 if (!userPhonePanel) return;
 
                 const safeKey = appKey || 'app_store';
+                const appMeta = phoneInternalMeta?.[safeKey] || {};
                 const targetPanel = userPhonePopover?.querySelector(`.user-phone-internal-app[data-phone-app-key="${safeKey}"]`);
                 userPhoneInternalApps.forEach((appPanel) => {
                     appPanel.classList.toggle('is-active', appPanel === targetPanel);
@@ -4330,13 +4812,16 @@
                 }
 
                 if (userPhoneInternalTitle) {
-                    userPhoneInternalTitle.textContent = appTitle || 'App';
+                    userPhoneInternalTitle.textContent = appTitle || appMeta.title || 'App';
                 }
                 if (userPhoneInternalSubtitle) {
-                    userPhoneInternalSubtitle.textContent = safeKey === 'app_store' ? '安装在这台小手机里的功能目录' : '手机内打开';
+                    userPhoneInternalSubtitle.textContent = appMeta.subtitle || '手机内打开';
                 }
 
                 userPhonePanel.classList.add('is-app-open');
+                if (app.phoneViews && typeof app.phoneViews.open === 'function') {
+                    app.phoneViews.open(safeKey);
+                }
             }
 
             function updateUserPhoneClock() {
@@ -4348,17 +4833,14 @@
                 if (statusTime) {
                     statusTime.textContent = `${String(hours24).padStart(2, '0')}:${minutes}`;
                 }
-                if (phoneHours) {
-                    phoneHours.textContent = String(hours24).padStart(2, '0');
-                }
-                if (phoneMinutes) {
-                    phoneMinutes.textContent = minutes;
-                }
                 if (phoneMonthday) {
                     phoneMonthday.textContent = `${now.getMonth() + 1}月${now.getDate()}日`;
                 }
-                if (phoneDayText) {
-                    phoneDayText.textContent = weekdays[now.getDay()];
+                if (phoneWeekday) {
+                    phoneWeekday.textContent = weekdays[now.getDay()];
+                }
+                if (phoneMetaTime) {
+                    phoneMetaTime.textContent = `${String(hours24).padStart(2, '0')}:${minutes}`;
                 }
             }
 
@@ -4391,6 +4873,7 @@
             function openUserPhone() {
                 if (!userPhonePopover) return;
                 updateUserPhoneScale();
+                setUserPhonePage(0);
                 startUserPhoneClock();
                 isUserPhoneOpen = true;
                 userPhonePopover.classList.add('is-open');
@@ -4429,10 +4912,42 @@
                     });
                 });
 
+                userPhonePageDots.forEach((dot) => {
+                    dot.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setUserPhonePage(Number(dot.dataset.phonePageDot || 0));
+                    });
+                });
+
                 userPhoneBack?.addEventListener('click', (event) => {
                     event.preventDefault();
                     event.stopPropagation();
                     closeInternalPhoneApp();
+                });
+
+                let touchStartX = null;
+                let touchStartY = null;
+                userPhonePagesTrack?.addEventListener('touchstart', (event) => {
+                    if (userPhonePanel?.classList.contains('is-app-open')) return;
+                    const touch = event.touches[0];
+                    touchStartX = touch?.clientX ?? null;
+                    touchStartY = touch?.clientY ?? null;
+                }, { passive: true });
+
+                userPhonePagesTrack?.addEventListener('touchend', (event) => {
+                    if (touchStartX === null || touchStartY === null || userPhonePanel?.classList.contains('is-app-open')) {
+                        touchStartX = null;
+                        touchStartY = null;
+                        return;
+                    }
+                    const touch = event.changedTouches[0];
+                    const deltaX = (touch?.clientX ?? 0) - touchStartX;
+                    const deltaY = (touch?.clientY ?? 0) - touchStartY;
+                    touchStartX = null;
+                    touchStartY = null;
+                    if (Math.abs(deltaX) < 36 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+                    setUserPhonePage(currentUserPhonePage + (deltaX < 0 ? 1 : -1));
                 });
 
                 document.addEventListener('click', (event) => {
@@ -4503,6 +5018,8 @@
 
                 this.stickyNotes.init();
                 
+                this.phoneViews.init();
+
                 this.bookmarks.init();
 
                 this.reports.init();
@@ -4518,6 +5035,252 @@
 
 // ==========================================
             // 💡 1. 大纲生成逻辑 (修复点击不跳转问题)
+            phoneViews: {
+                open(appKey) {
+                    if (appKey === 'sticky_notes') {
+                        this.stickyNotes.refresh();
+                    } else if (appKey === 'pomodoro') {
+                        this.pomodoro.render();
+                    }
+                },
+
+                init() {
+                    this.stickyNotes.init();
+                    this.pomodoro.init();
+                },
+
+                stickyNotes: {
+                    container: null,
+                    saveTimers: new Map(),
+
+                    init() {
+                        this.container = document.getElementById('phone-sticky-list');
+                    },
+
+                    refresh() {
+                        if (!this.container) return;
+                        fetch('/api/sticky_notes')
+                            .then((response) => response.json())
+                            .then((notes) => this.render(notes))
+                            .catch((error) => {
+                                console.error(error);
+                                this.render([]);
+                            });
+                    },
+
+                    render(notes) {
+                        if (!this.container) return;
+                        if (!notes.length) {
+                            this.container.innerHTML = `
+                                <div class="user-phone-note-empty">
+                                    还没有便签。<br>点右上角的 <strong>+</strong> 先贴第一张吧。
+                                </div>
+                            `;
+                            return;
+                        }
+
+                        this.container.innerHTML = notes.map((note) => `
+                            <div class="user-phone-note-card note-theme-${note.color}" data-phone-note-id="${note.id}">
+                                <div class="user-phone-note-head">
+                                    <div class="user-phone-note-colors">
+                                        <button type="button" class="note-color-dot bg-[#fde047]" onclick="app.phoneViews.stickyNotes.changeColor(${note.id}, 'yellow')"></button>
+                                        <button type="button" class="note-color-dot bg-[#f9a8d4]" onclick="app.phoneViews.stickyNotes.changeColor(${note.id}, 'pink')"></button>
+                                        <button type="button" class="note-color-dot bg-[#93c5fd]" onclick="app.phoneViews.stickyNotes.changeColor(${note.id}, 'blue')"></button>
+                                        <button type="button" class="note-color-dot bg-[#86efac]" onclick="app.phoneViews.stickyNotes.changeColor(${note.id}, 'green')"></button>
+                                    </div>
+                                    <div class="user-phone-note-actions">
+                                        <button type="button" class="user-phone-note-action" onclick="app.phoneViews.stickyNotes.toBook(${note.id})" aria-label="沉淀为 Book 笔记">
+                                            <i class="fas fa-book text-xs"></i>
+                                        </button>
+                                        <button type="button" class="user-phone-note-action is-danger" onclick="app.phoneViews.stickyNotes.remove(${note.id})" aria-label="删除便签">
+                                            <i class="fas fa-times text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea class="user-phone-note-body custom-scroll" placeholder="记录灵感、待办或一句提醒..." oninput="app.phoneViews.stickyNotes.updateContent(${note.id}, this.value)">${this.escapeHtml(note.content || '')}</textarea>
+                            </div>
+                        `).join('');
+                    },
+
+                    escapeHtml(text) {
+                        return String(text)
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;');
+                    },
+
+                    syncDesktopNote(id, mutate) {
+                        const desktopNote = document.querySelector(`#sticky-notes-container .sticky-note[data-id="${id}"]`);
+                        if (!desktopNote) return;
+                        mutate(desktopNote);
+                    },
+
+                    create() {
+                        fetch('/api/sticky_notes', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ color: 'yellow' })
+                        }).then((response) => response.json()).then((data) => {
+                            if (!data.success) {
+                                if (app.toast) app.toast.show(data.error || '新建便签失败', 'warning');
+                                return;
+                            }
+                            if (app.stickyNotes && typeof app.stickyNotes.renderNote === 'function') {
+                                app.stickyNotes.renderNote(data.note);
+                            }
+                            this.refresh();
+                        }).catch((error) => {
+                            console.error(error);
+                            if (app.toast) app.toast.show('网络错误，新建便签失败', 'error');
+                        });
+                    },
+
+                    remove(id) {
+                        fetch(`/api/sticky_notes/${id}`, { method: 'DELETE' })
+                            .then(() => {
+                                this.syncDesktopNote(id, (desktopNote) => desktopNote.remove());
+                                this.refresh();
+                            })
+                            .catch((error) => {
+                                console.error(error);
+                                if (app.toast) app.toast.show('删除失败，请稍后重试', 'error');
+                            });
+                    },
+
+                    updateContent(id, value) {
+                        const timer = this.saveTimers.get(id);
+                        if (timer) clearTimeout(timer);
+                        this.saveTimers.set(id, setTimeout(() => {
+                            fetch(`/api/sticky_notes/${id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ content: value })
+                            }).catch(console.error);
+                            this.syncDesktopNote(id, (desktopNote) => {
+                                const textarea = desktopNote.querySelector('.note-body');
+                                if (textarea) textarea.value = value;
+                            });
+                        }, 350));
+                    },
+
+                    changeColor(id, color) {
+                        fetch(`/api/sticky_notes/${id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ color })
+                        }).then(() => {
+                            this.syncDesktopNote(id, (desktopNote) => {
+                                desktopNote.className = `sticky-note note-theme-${color} pointer-events-auto`;
+                            });
+                            const card = this.container?.querySelector(`[data-phone-note-id="${id}"]`);
+                            if (card) {
+                                card.className = `user-phone-note-card note-theme-${color}`;
+                                card.setAttribute('data-phone-note-id', String(id));
+                            }
+                        }).catch(console.error);
+                    },
+
+                    toBook(id) {
+                        const card = this.container?.querySelector(`[data-phone-note-id="${id}"]`);
+                        const textarea = card?.querySelector('.user-phone-note-body');
+                        const content = textarea?.value || '';
+                        if (!content.trim()) {
+                            if (app.toast) app.toast.show('便签还是空的，先写点内容吧。', 'warning');
+                            return;
+                        }
+                        fetch('/book/notes/quick_create', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: '便签灵感归档 - ' + new Date().toLocaleString(),
+                                content
+                            })
+                        }).then((response) => response.json()).then((data) => {
+                            if (!data.success) {
+                                if (app.toast) app.toast.show('生成失败: ' + (data.error || '未知错误'), 'error');
+                                return;
+                            }
+                            if (app.toast) app.toast.show('已沉淀成 Book 笔记。', 'success');
+                            this.remove(id);
+                            setTimeout(() => {
+                                window.location.href = '/book/notes/' + data.note_id;
+                            }, 700);
+                        }).catch((error) => {
+                            console.error(error);
+                            if (app.toast) app.toast.show('网络错误，生成失败', 'error');
+                        });
+                    }
+                },
+
+                pomodoro: {
+                    ring: null,
+                    stateText: null,
+                    timeText: null,
+                    captionText: null,
+                    countChip: null,
+                    workValue: null,
+                    restValue: null,
+                    primaryButton: null,
+
+                    init() {
+                        this.ring = document.getElementById('phone-pomo-ring');
+                        this.stateText = document.getElementById('phone-pomo-state');
+                        this.timeText = document.getElementById('phone-pomo-time');
+                        this.captionText = document.getElementById('phone-pomo-caption');
+                        this.countChip = document.getElementById('phone-pomo-count-chip');
+                        this.workValue = document.getElementById('phone-pomo-work-value');
+                        this.restValue = document.getElementById('phone-pomo-rest-value');
+                        this.primaryButton = document.getElementById('phone-pomo-primary');
+                        this.primaryButton?.addEventListener('click', () => app.pomodoro.handleClick());
+                    },
+
+                    render() {
+                        if (!this.ring || !this.stateText || !this.timeText || !this.captionText || !app.pomodoro) return;
+
+                        const pomo = app.pomodoro;
+                        const remaining = Math.max(0, pomo.endTime - Date.now());
+                        const workDuration = pomo.workDurationMinutes || 45;
+                        const restDuration = pomo.restDurationMinutes || 15;
+                        const totalDuration = pomo.state === 'REST' ? pomo.restDuration : pomo.workDuration;
+                        const progress = pomo.state === 'IDLE' || !totalDuration ? 360 : Math.max(6, (remaining / totalDuration) * 360);
+                        const accent = pomo.state === 'REST' ? '#47b881' : pomo.state === 'WORK' ? '#ef7b73' : '#1db9ad';
+                        const accentSoft = pomo.state === 'REST' ? 'rgba(71, 184, 129, 0.18)' : pomo.state === 'WORK' ? 'rgba(239, 123, 115, 0.18)' : 'rgba(29, 185, 173, 0.14)';
+
+                        this.ring.classList.toggle('is-idle', pomo.state === 'IDLE');
+                        this.ring.classList.toggle('is-resting', pomo.state === 'REST');
+                        this.ring.style.background = `radial-gradient(circle at center, rgba(255, 255, 255, 0.95) 0 56%, transparent 57%), conic-gradient(${accent} 0deg ${progress}deg, ${accentSoft} ${progress}deg 360deg)`;
+
+                        if (this.countChip) this.countChip.textContent = `${pomo.currentCount || 0} 次`;
+                        if (this.workValue) this.workValue.textContent = `${workDuration} 分`;
+                        if (this.restValue) this.restValue.textContent = `${restDuration} 分`;
+
+                        if (pomo.state === 'WORK') {
+                            this.stateText.textContent = 'FOCUS';
+                            this.timeText.textContent = this.formatDuration(remaining);
+                            this.captionText.textContent = '专注进行中，点下面可以放弃本轮。';
+                            if (this.primaryButton) this.primaryButton.textContent = '放弃本轮';
+                        } else if (pomo.state === 'REST') {
+                            this.stateText.textContent = 'REST';
+                            this.timeText.textContent = this.formatDuration(remaining);
+                            this.captionText.textContent = '身体和眼睛一起休息，点下面可跳过。';
+                            if (this.primaryButton) this.primaryButton.textContent = '跳过休息';
+                        } else {
+                            this.stateText.textContent = 'READY';
+                            this.timeText.textContent = `${String(workDuration).padStart(2, '0')}:00`;
+                            this.captionText.textContent = '准备开始下一次专注冲刺。';
+                            if (this.primaryButton) this.primaryButton.textContent = '开始专注';
+                        }
+                    },
+
+                    formatDuration(ms) {
+                        const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+                        const minutes = Math.floor(totalSeconds / 60);
+                        const seconds = totalSeconds % 60;
+                        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    }
+                }
+            },
+
             // ==========================================
             generateTOC() {
                 const contentDiv = document.querySelector('.prose') || document.querySelector('.markdown-body'); 
@@ -5544,6 +6307,10 @@ toast: {
 
                         content.innerHTML = `<i class="fas fa-coffee text-emerald-500"></i><span class="font-mono font-black text-[13px] w-[28px] text-center">${timeStr}</span>`;
 
+                    }
+
+                    if (app.phoneViews && app.phoneViews.pomodoro && typeof app.phoneViews.pomodoro.render === 'function') {
+                        app.phoneViews.pomodoro.render();
                     }
 
                 }

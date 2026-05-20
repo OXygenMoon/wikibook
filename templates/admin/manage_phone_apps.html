@@ -120,14 +120,14 @@
         <label class="form-control">
             <span class="label-text font-bold mb-1">内嵌 App Key</span>
             <input name="internal_key" list="phone-internal-keys" class="input input-bordered rounded-xl" value="{{ phone_app.internal_key if is_edit else '' }}" placeholder="例如：app_store">
-            <span class="label-text-alt opacity-60 mt-1">当行为类型为“手机内打开”时使用。当前内置：app_store、profile_card。</span>
+            <span class="label-text-alt opacity-60 mt-1">当行为类型为“手机内打开”时使用。当前内置：{{ internal_app_meta.keys() | list | join('、') }}。</span>
         </label>
 
         <div class="flex justify-between items-center pt-2">
             {% if is_edit %}
                 <span class="text-xs font-bold opacity-40">ID #{{ phone_app.id }} · {{ phone_app.action_type }}</span>
             {% else %}
-                <span class="text-xs font-bold opacity-40">新 App 会出现在排序后的前 9 个启用项中。</span>
+                <span class="text-xs font-bold opacity-40">新 App 会按排序加入手机桌面，超过 9 个后自动分页显示。</span>
             {% endif %}
             <button class="btn btn-primary rounded-full px-6 font-black text-white">
                 <i class="fas fa-save"></i> {{ '保存' if is_edit else '创建 App' }}
@@ -161,7 +161,7 @@
             <h1 class="text-4xl font-black tracking-tight text-stone-800 dark:text-stone-100 flex items-center gap-3">
                 <i class="fas fa-store text-primary"></i> 手机 App Store 管理
             </h1>
-            <p class="mt-2 text-base-content/60 font-medium">管理右上角手机里的 3x3 App：上传图标、写描述、配置跳转或手机内打开。</p>
+            <p class="mt-2 text-base-content/60 font-medium">管理右上角手机里的 App：每页 3x3，超过 9 个后会自动分页；可上传图标、写描述、配置跳转或手机内打开。</p>
         </div>
         <form method="post" action="{{ url_for('reset_phone_apps_defaults') }}" onsubmit="return confirm('确定恢复默认 3x3？这会删除当前所有手机 App 配置。')">
             <button class="btn btn-ghost rounded-full bg-base-100/70 border border-base-200">
@@ -175,7 +175,7 @@
             <div class="sticky top-28">
                 <div class="mb-3">
                     <h2 class="text-xl font-black text-base-content">创建新 App</h2>
-                    <p class="text-sm text-base-content/50">排序进入前 9 且启用后，会显示在手机桌面。</p>
+                    <p class="text-sm text-base-content/50">启用后会按排序显示在手机桌面里，超过 9 个自动进入下一页。</p>
                 </div>
                 {{ app_form() }}
             </div>
@@ -192,7 +192,7 @@
                     <div class="stat-value text-success">{{ phone_apps|selectattr('enabled')|list|length }}</div>
                 </div>
                 <div class="stat bg-white/80 dark:bg-base-200/80 rounded-2xl border border-base-200">
-                    <div class="stat-title">手机桌面容量</div>
+                    <div class="stat-title">每页容量</div>
                     <div class="stat-value">9</div>
                 </div>
             </div>

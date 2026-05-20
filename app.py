@@ -6666,8 +6666,11 @@ def mark_report_read():
 @app.route('/api/reports/test_reset/<report_type>', methods=['POST'])
 @login_required
 def test_reset_report(report_type):
-    # 可选：如果你想只允许管理员调试，可以加上下面这句
-    # if not current_user.is_admin: abort(403)
+    if not current_user.is_admin:
+        abort(403)
+
+    if report_type not in {'daily', 'weekly', 'monthly'}:
+        return jsonify({"success": False, "error": "invalid_report_type"}), 400
     
     status = UserActiveStatus.query.get(current_user.id)
     if not status:

@@ -948,43 +948,341 @@
             overflow: visible !important; 
         }
 
-/* ---------------------------------------------------- */
-        /* --- 🌟 星露谷手帐级动态结算面板样式 --- */
         /* ---------------------------------------------------- */
+        /* --- 🧾 Animal Island 风格学习收货单 --- */
+        /* ---------------------------------------------------- */
+        .report-modal {
+            background:
+                radial-gradient(circle at 50% 18%, rgba(255, 246, 190, 0.18), transparent 24rem),
+                rgba(21, 43, 32, 0.7) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        .report-modal-box {
+            width: min(92vw, 430px) !important;
+            max-width: 430px !important;
+            overflow: visible !important;
+        }
+
         .report-receipt {
-            background-color: #fdfbf7;
-            background-image: radial-gradient(#e5e7eb 1.5px, transparent 1.5px);
-            background-size: 24px 24px;
-            border: 1px solid #e7e5e4;
+            --receipt-accent: var(--ai-sea, #19c8b9);
+            --receipt-accent-deep: #15978c;
+            --receipt-accent-soft: rgba(25, 200, 185, 0.12);
+            --receipt-ribbon: #ffe6bf;
             position: relative;
+            isolation: isolate;
             overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+            padding: 1.35rem 1.25rem 1.25rem;
+            color: var(--ai-soil, #725d42);
+            background:
+                radial-gradient(circle, rgba(196, 184, 158, 0.28) 1.5px, transparent 1.5px),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 248, 240, 0.98));
+            background-color: var(--ai-paper, #f8f8f0) !important;
+            background-size: 22px 22px, 100% 100%;
+            border: 3px solid #fffaf0 !important;
+            border-radius: 28px !important;
+            box-shadow:
+                0 5px 0 rgba(114, 93, 66, 0.22),
+                0 24px 50px rgba(38, 34, 26, 0.24) !important;
         }
-        .tape-effect {
-            position: absolute; top: -12px; left: 50%; transform: translateX(-50%) rotate(-2deg);
-            width: 120px; height: 30px; background: rgba(253, 186, 116, 0.5);
-            backdrop-filter: blur(4px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); z-index: 10;
+
+        .report-receipt::before,
+        .report-receipt::after {
+            content: "";
+            position: absolute;
+            z-index: 0;
+            border-radius: 999px;
+            opacity: 0.85;
+            pointer-events: none;
         }
+
+        .report-receipt > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .report-receipt::before {
+            width: 8.5rem;
+            height: 8.5rem;
+            right: -4.4rem;
+            top: 4.6rem;
+            background: var(--receipt-accent-soft);
+        }
+
+        .report-receipt::after {
+            width: 6.5rem;
+            height: 6.5rem;
+            left: -3.8rem;
+            bottom: 5.5rem;
+            background: rgba(255, 204, 0, 0.12);
+        }
+
+        .report-receipt--daily {
+            --receipt-accent: #19c8b9;
+            --receipt-accent-deep: #168e84;
+            --receipt-accent-soft: rgba(25, 200, 185, 0.14);
+            --receipt-ribbon: #ffe4bf;
+        }
+
+        .report-receipt--weekly {
+            --receipt-accent: #6fba2c;
+            --receipt-accent-deep: #4f8d1f;
+            --receipt-accent-soft: rgba(111, 186, 44, 0.14);
+            --receipt-ribbon: #dbf3b8;
+        }
+
+        .report-receipt--monthly {
+            --receipt-accent: #889df0;
+            --receipt-accent-deep: #5c6fd6;
+            --receipt-accent-soft: rgba(136, 157, 240, 0.16);
+            --receipt-ribbon: #dfe6ff;
+        }
+
+        .receipt-tape {
+            position: absolute;
+            top: -13px;
+            left: 50%;
+            z-index: 4;
+            width: 132px;
+            height: 32px;
+            transform: translateX(-50%) rotate(-1.5deg);
+            background:
+                linear-gradient(90deg, transparent 0 10px, rgba(255,255,255,0.35) 10px 14px, transparent 14px 26px),
+                var(--receipt-ribbon);
+            border: 1px solid rgba(114, 93, 66, 0.12);
+            box-shadow: 0 3px 0 rgba(114, 93, 66, 0.08);
+        }
+
         .receipt-header {
-            text-align: center; padding: 2.5rem 1.5rem 1.5rem;
-            border-bottom: 2px dashed #e7e5e4; margin-bottom: 1.5rem;
+            position: relative;
+            text-align: center;
+            padding: 1.9rem 0.75rem 1.15rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px dashed rgba(114, 93, 66, 0.18);
         }
+
+        .receipt-type-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 5.4rem;
+            height: 2rem;
+            padding: 0 1rem;
+            margin-bottom: 0.75rem;
+            color: #fff;
+            font-size: 0.78rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            border-radius: 999px;
+            background: var(--receipt-accent);
+            border: 2px solid #fff9e9;
+            box-shadow: 0 3px 0 rgba(114, 93, 66, 0.18);
+        }
+
+        .receipt-title {
+            margin: 0;
+            color: var(--ai-soil, #725d42);
+            font-weight: 900;
+            font-size: clamp(1.45rem, 6vw, 2rem);
+            line-height: 1.12;
+            letter-spacing: 0;
+        }
+
+        .receipt-subtitle {
+            margin-top: 0.45rem;
+            color: var(--ai-soil-soft, #9f927d);
+            font-size: 0.68rem;
+            font-weight: 900;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        .receipt-rating-stamp {
+            position: absolute;
+            right: -0.15rem;
+            bottom: -1.1rem;
+            display: grid;
+            place-items: center;
+            width: 3.55rem;
+            height: 3.55rem;
+            color: var(--receipt-accent-deep);
+            font-size: 1.5rem;
+            font-weight: 900;
+            line-height: 1;
+            border-radius: 50%;
+            border: 3px solid currentColor;
+            background: rgba(255, 255, 255, 0.7);
+            transform: rotate(7deg);
+            box-shadow: 0 4px 0 rgba(114, 93, 66, 0.12);
+        }
+
+        .receipt-rating-stamp::before {
+            content: "RANK";
+            position: absolute;
+            top: 0.62rem;
+            font-size: 0.48rem;
+            letter-spacing: 0.08em;
+            opacity: 0.72;
+        }
+
+        .receipt-rating-stamp span {
+            transform: translateY(0.3rem);
+        }
+
         .receipt-stat-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; padding: 0 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.8rem;
         }
+
         .receipt-stat-box {
-            background: #ffffff; border: 1px solid #f3f4f6; border-radius: 1.25rem;
-            padding: 1.25rem 0.5rem; text-align: center; transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+            min-height: 8rem;
+            padding: 1rem 0.55rem 0.85rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.78) !important;
+            border: 2px solid rgba(196, 184, 158, 0.35) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 3px 0 rgba(114, 93, 66, 0.12) !important;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
         }
-        .receipt-stat-box:hover { 
-            transform: translateY(-2px); 
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); 
-            border-color: #e5e7eb; 
+
+        .receipt-stat-box:hover {
+            transform: translateY(-2px);
+            border-color: color-mix(in srgb, var(--receipt-accent) 42%, white) !important;
+            box-shadow: 0 5px 0 rgba(114, 93, 66, 0.13), 0 12px 22px rgba(114, 93, 66, 0.12) !important;
         }
+
+        .receipt-stat-icon {
+            display: grid;
+            place-items: center;
+            width: 2.25rem;
+            height: 2.25rem;
+            margin: 0 auto 0.55rem;
+            color: #fff;
+            font-size: 1rem;
+            border-radius: 50%;
+            background: var(--receipt-accent);
+            border: 2px solid #fff9e9;
+            box-shadow: 0 3px 0 rgba(114, 93, 66, 0.13);
+        }
+
+        .receipt-stat-box:nth-child(2) .receipt-stat-icon { background: #ff8f35; }
+        .receipt-stat-box:nth-child(3) .receipt-stat-icon { background: #889df0; }
+        .receipt-stat-box:nth-child(4) .receipt-stat-icon { background: #19c8b9; }
+
+        .receipt-stat-value {
+            color: #2f2926;
+            font-family: ui-rounded, "Nunito", "Noto Sans SC", system-ui, sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .receipt-stat-label {
+            margin-top: 0.42rem;
+            color: var(--ai-soil-soft, #9f927d);
+            font-size: 0.68rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+        }
+
         .receipt-exp-area {
-            margin: 1.5rem 1.5rem 0; padding: 1.25rem; background: #fffbeb;
-            border-radius: 1.25rem; border: 1px dashed #fcd34d; text-align: center;
+            margin-top: 1rem;
+            padding: 1rem 1rem 1.05rem;
+            text-align: center;
+            background: linear-gradient(180deg, #fff7dd, #fffaf0) !important;
+            border: 2px dashed rgba(255, 174, 0, 0.62) !important;
+            border-radius: 18px !important;
+            box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.36);
+        }
+
+        .receipt-exp-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            color: #d78100;
+            font-size: 0.68rem;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+        }
+
+        .receipt-exp-value {
+            margin-top: 0.2rem;
+            color: #ff9f0a;
+            font-family: ui-rounded, "Nunito", "Noto Sans SC", system-ui, sans-serif;
+            font-size: 2.65rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .receipt-badges {
+            padding-top: 1rem;
+        }
+
+        .receipt-badges-title {
+            margin-bottom: 0.55rem;
+            color: var(--ai-soil-soft, #9f927d);
+            font-size: 0.68rem;
+            font-weight: 900;
+            letter-spacing: 0.12em;
+            text-align: center;
+        }
+
+        .receipt-badges-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.65rem;
+            min-height: 3.2rem;
+            padding: 0.7rem;
+            background: rgba(255, 255, 255, 0.72);
+            border: 2px solid rgba(196, 184, 158, 0.28);
+            border-radius: 18px;
+            box-shadow: 0 3px 0 rgba(114, 93, 66, 0.1);
+        }
+
+        .receipt-badge-item {
+            display: grid;
+            place-items: center;
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: 50%;
+            background: #fff8dc;
+            border: 2px solid #fff;
+            box-shadow: 0 3px 0 rgba(114, 93, 66, 0.12);
+        }
+
+        .receipt-footer {
+            padding-top: 1.25rem;
+        }
+
+        .receipt-footer .animal-btn {
+            height: 3.1rem;
+            border-radius: 16px !important;
+            font-size: 1rem;
+            font-weight: 900;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.22) !important;
+        }
+
+        @media (max-width: 380px) {
+            .report-receipt {
+                padding: 1.15rem 0.95rem 1rem;
+                border-radius: 24px !important;
+            }
+
+            .receipt-stat-grid {
+                gap: 0.65rem;
+            }
+
+            .receipt-stat-box {
+                min-height: 7.4rem;
+                padding-inline: 0.4rem;
+            }
+
+            .receipt-stat-value {
+                font-size: 1.75rem;
+            }
         }
 
     </style>
@@ -2223,6 +2521,55 @@
             color: white !important;
         }
 
+        #learning_report_modal.report-modal {
+            background:
+                radial-gradient(circle at 50% 18%, rgba(255, 246, 190, 0.18), transparent 24rem),
+                rgba(21, 43, 32, 0.7) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+        }
+
+        #learning_report_modal .report-modal-box {
+            width: min(92vw, 430px) !important;
+            max-width: 430px !important;
+            background: transparent !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+        }
+
+        #learning_report_modal .report-receipt {
+            background:
+                radial-gradient(circle, rgba(196, 184, 158, 0.28) 1.5px, transparent 1.5px),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 248, 240, 0.98)) !important;
+            background-color: var(--ai-paper, #f8f8f0) !important;
+            background-size: 22px 22px, 100% 100% !important;
+            border: 3px solid #fffaf0 !important;
+            border-radius: 28px !important;
+            box-shadow:
+                0 5px 0 rgba(114, 93, 66, 0.22),
+                0 24px 50px rgba(38, 34, 26, 0.24) !important;
+            color: var(--ai-soil, #725d42) !important;
+        }
+
+        #learning_report_modal .receipt-stat-box {
+            background: rgba(255, 255, 255, 0.78) !important;
+            border: 2px solid rgba(196, 184, 158, 0.35) !important;
+            box-shadow: 0 3px 0 rgba(114, 93, 66, 0.12) !important;
+        }
+
+        #learning_report_modal .receipt-exp-area {
+            background: linear-gradient(180deg, #fff7dd, #fffaf0) !important;
+            border: 2px dashed rgba(255, 174, 0, 0.62) !important;
+        }
+
+        html.dark #learning_report_modal.report-modal {
+            background:
+                radial-gradient(circle at 50% 18%, rgba(255, 204, 0, 0.14), transparent 24rem),
+                rgba(12, 18, 14, 0.74) !important;
+        }
+
         @media (max-width: 1399px) {
             body.animal-ui-theme .top-nav-shell {
                 top: 0.95rem;
@@ -2680,6 +3027,15 @@
         <a href="{{ url_for('manage_vinyls') }}" class="nav-menu-item">
             <i class="fas fa-record-vinyl w-4 text-center text-purple-500"></i> 唱片压制厂
         </a>
+    </li>
+    <div class="divider my-1 opacity-20"></div>
+    <li class="menu-title text-xs opacity-50 px-3 py-1">收货单测试</li>
+    <li>
+        <div class="grid grid-cols-3 gap-1 px-2 py-1">
+            <button type="button" onclick="app.reports.testTrigger('daily')" class="animal-btn animal-btn--small animal-btn--text min-h-0 h-7 px-0 text-xs font-black">日报</button>
+            <button type="button" onclick="app.reports.testTrigger('weekly')" class="animal-btn animal-btn--small animal-btn--text min-h-0 h-7 px-0 text-xs font-black">周报</button>
+            <button type="button" onclick="app.reports.testTrigger('monthly')" class="animal-btn animal-btn--small animal-btn--text min-h-0 h-7 px-0 text-xs font-black">月报</button>
+        </div>
     </li>
     <li><a href="{{ url_for('create_wiki') }}" class="nav-menu-item"><i class="fas fa-plus-square w-4 text-center"></i> 新建 Wiki</a></li>
 </ul>
@@ -3173,6 +3529,16 @@
                                         <li><a href="{{ url_for('manage_phone_apps') }}" class="py-2.5 rounded-lg"><i class="fas fa-store w-4 text-center text-sky-500"></i> 手机 App</a></li>
 
                                         <li><a href="{{ url_for('manage_badges') }}" class="py-2.5 rounded-lg"><i class="fas fa-medal w-4 text-center"></i> 徽章</a></li>
+
+                                        <div class="divider my-1 opacity-20"></div>
+                                        <li class="menu-title text-xs opacity-50 px-3 py-1">收货单测试</li>
+                                        <li>
+                                            <div class="grid grid-cols-3 gap-1 px-2 py-1">
+                                                <button type="button" onclick="app.reports.testTrigger('daily')" class="animal-btn animal-btn--small animal-btn--text min-h-0 h-7 px-0 text-xs font-black">日报</button>
+                                                <button type="button" onclick="app.reports.testTrigger('weekly')" class="animal-btn animal-btn--small animal-btn--text min-h-0 h-7 px-0 text-xs font-black">周报</button>
+                                                <button type="button" onclick="app.reports.testTrigger('monthly')" class="animal-btn animal-btn--small animal-btn--text min-h-0 h-7 px-0 text-xs font-black">月报</button>
+                                            </div>
+                                        </li>
 
                                         <li><a href="{{ url_for('create_wiki') }}" class="py-2.5 rounded-lg"><i class="fas fa-plus-square w-4 text-center"></i> 新建 Wiki</a></li>
 
@@ -3751,54 +4117,55 @@
 
     </dialog>
 
-<dialog id="learning_report_modal" class="modal bg-black/40 backdrop-blur-sm z-[500]">
-        <div class="modal-box p-0 max-w-sm bg-transparent shadow-none overflow-hidden relative">
-            <div class="report-receipt rounded-[2rem] relative mt-4 pb-6">
-                <div class="tape-effect"></div>
-                
+<dialog id="learning_report_modal" class="modal report-modal z-[500]">
+        <div class="modal-box report-modal-box p-0 bg-transparent shadow-none border-none relative">
+            <div id="report-receipt" class="report-receipt report-receipt--daily">
+                <div class="receipt-tape"></div>
+
                 <div class="receipt-header">
-                    <h3 id="report-title" class="text-2xl font-black tracking-tight text-stone-800 mb-1">📅 学习结算</h3>
-                    <p class="text-xs font-bold text-stone-400 tracking-widest uppercase">Learning Report</p>
+                    <div id="report-type-label" class="receipt-type-pill">DAILY</div>
+                    <h3 id="report-title" class="receipt-title">昨日出货单</h3>
+                    <p id="report-subtitle" class="receipt-subtitle">Learning Harvest</p>
+                    <div class="receipt-rating-stamp" aria-label="学习评级"><span id="report-rating">C</span></div>
                 </div>
                 
                 <div class="receipt-stat-grid">
                     <div class="receipt-stat-box">
-                        <div class="text-rose-400 mb-2 text-xl"><i class="fas fa-hourglass-half"></i></div>
-                        <div class="text-3xl font-black font-mono text-stone-800 leading-none mb-1"><span id="report-duration">0</span></div>
-                        <div class="text-[10px] text-stone-400 font-bold tracking-widest uppercase">专注(分钟)</div>
+                        <div class="receipt-stat-icon"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="receipt-stat-value"><span id="report-duration">0</span></div>
+                        <div class="receipt-stat-label">专注分钟</div>
                     </div>
                     <div class="receipt-stat-box">
-                        <div class="text-orange-400 mb-2 text-xl"><i class="fas fa-clock"></i></div>
-                        <div class="text-3xl font-black font-mono text-stone-800 leading-none mb-1"><span id="report-pomos">0</span></div>
-                        <div class="text-[10px] text-stone-400 font-bold tracking-widest uppercase">收获番茄</div>
+                        <div class="receipt-stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="receipt-stat-value"><span id="report-pomos">0</span></div>
+                        <div class="receipt-stat-label">收获番茄</div>
                     </div>
                     <div class="receipt-stat-box">
-                        <div class="text-indigo-400 mb-2 text-xl"><i class="fas fa-pen-nib"></i></div>
-                        <div class="text-3xl font-black font-mono text-stone-800 leading-none mb-1"><span id="report-notes">0</span></div>
-                        <div class="text-[10px] text-stone-400 font-bold tracking-widest uppercase">产出笔记</div>
+                        <div class="receipt-stat-icon"><i class="fas fa-pen-nib"></i></div>
+                        <div class="receipt-stat-value"><span id="report-notes">0</span></div>
+                        <div class="receipt-stat-label">产出笔记</div>
                     </div>
                     <div class="receipt-stat-box">
-                        <div class="text-cyan-500 mb-2 text-xl"><i class="fas fa-globe"></i></div>
-                        <div class="text-3xl font-black font-mono text-stone-800 leading-none mb-1"><span id="report-wiki">0</span></div>
-                        <div class="text-[10px] text-stone-400 font-bold tracking-widest uppercase">Wiki贡献</div>
+                        <div class="receipt-stat-icon"><i class="fas fa-globe"></i></div>
+                        <div class="receipt-stat-value"><span id="report-wiki">0</span></div>
+                        <div class="receipt-stat-label">Wiki 贡献</div>
                     </div>
                 </div>
 
                 <div class="receipt-exp-area">
-                    <div class="text-[10px] text-amber-600/70 font-bold uppercase tracking-widest mb-1 flex justify-center items-center gap-1">
-                        <i class="fas fa-bolt text-amber-500"></i> 综合源力产出 (EXP)
+                    <div class="receipt-exp-label">
+                        <i class="fas fa-bolt"></i> 综合源力产出 EXP
                     </div>
-                    <div class="text-4xl font-black font-mono text-amber-500 tracking-tighter"><span id="report-exp">0</span></div>
+                    <div class="receipt-exp-value"><span id="report-exp">0</span></div>
                 </div>
 
-                <div id="report-badges-section" class="hidden px-6 pt-6">
-                    <p class="text-[10px] text-stone-400 font-bold uppercase tracking-widest text-center mb-3">🏆 期间解锁新成就</p>
-                    <div id="report-badges-list" class="flex flex-wrap justify-center gap-3 bg-white p-3 rounded-2xl border border-stone-100 shadow-sm">
-                        </div>
+                <div id="report-badges-section" class="receipt-badges hidden">
+                    <p class="receipt-badges-title">期间解锁新成就</p>
+                    <div id="report-badges-list" class="receipt-badges-list"></div>
                 </div>
 
-                <div class="px-6 pt-8 mt-2">
-                    <button onclick="app.reports.confirm()" class="animal-btn animal-btn--block animal-btn--middle !bg-stone-800 hover:!bg-stone-700 !border-stone-800 !text-white rounded-xl h-12 shadow-lg shadow-stone-800/20 text-base border-none font-black transition-transform active:scale-95">
+                <div class="receipt-footer">
+                    <button onclick="app.reports.confirm()" class="animal-btn animal-btn--primary animal-btn--block animal-btn--middle">
                         开心收下
                     </button>
                 </div>
@@ -6241,7 +6608,22 @@ toast: {
                 },
                 renderAndShow(data) {
                     this.currentType = data.type;
+                    const receipt = document.getElementById('report-receipt');
+                    const typeMeta = {
+                        daily: { label: '每日收货', subtitle: 'Daily Learning Harvest' },
+                        weekly: { label: '每周收货', subtitle: 'Weekly Learning Harvest' },
+                        monthly: { label: '每月收货', subtitle: 'Monthly Learning Harvest' }
+                    }[data.type] || { label: '学习收货', subtitle: 'Learning Harvest' };
+
+                    if (receipt) {
+                        receipt.classList.remove('report-receipt--daily', 'report-receipt--weekly', 'report-receipt--monthly');
+                        receipt.classList.add(`report-receipt--${data.type || 'daily'}`);
+                    }
+
                     document.getElementById('report-title').innerText = data.title;
+                    document.getElementById('report-type-label').innerText = typeMeta.label;
+                    document.getElementById('report-subtitle').innerText = typeMeta.subtitle;
+                    document.getElementById('report-rating').innerText = data.stats.rating || 'C';
                     
                     // 动态数字滚动
                     this.animateValue('report-duration', 0, data.stats.duration, 1200);
@@ -6255,8 +6637,8 @@ toast: {
                     const badgeList = document.getElementById('report-badges-list');
                     if (data.stats.badges && data.stats.badges.length > 0) {
                         badgeList.innerHTML = data.stats.badges.map(b => {
-                            const icon = b.is_image ? `<img src="${b.icon}" class="w-10 h-10 object-contain drop-shadow-sm">` : `<span class="text-4xl drop-shadow-sm">${b.icon}</span>`;
-                            return `<div class="tooltip tooltip-bottom hover:scale-110 transition-transform" data-tip="${b.name}">${icon}</div>`;
+                            const icon = b.is_image ? `<img src="${b.icon}" class="w-9 h-9 object-contain drop-shadow-sm">` : `<span class="text-3xl drop-shadow-sm">${b.icon}</span>`;
+                            return `<div class="receipt-badge-item tooltip tooltip-bottom hover:scale-110 transition-transform" data-tip="${b.name}">${icon}</div>`;
                         }).join('');
                         badgeSec.classList.remove('hidden');
                     } else {
@@ -6294,12 +6676,20 @@ toast: {
                 testTrigger(type) {
                     if(app.toast) app.toast.show(`正在重置并伪造【${type}】时间线...`, 'info');
                     fetch(`/api/reports/test_reset/${type}`, { method: 'POST' })
-                    .then(r => r.json())
+                    .then(r => {
+                        if (!r.ok) throw new Error('report_test_failed');
+                        return r.json();
+                    })
                     .then(data => {
                         if (data.success) {
                             if(app.toast) app.toast.show('时间线穿梭成功！页面即将刷新。', 'success');
                             setTimeout(() => window.location.reload(), 800);
+                        } else if(app.toast) {
+                            app.toast.show('测试失败：当前账户暂无收货单状态记录', 'error');
                         }
+                    })
+                    .catch(() => {
+                        if(app.toast) app.toast.show('测试失败：仅管理员可以触发收货单测试', 'error');
                     });
                 }
             }

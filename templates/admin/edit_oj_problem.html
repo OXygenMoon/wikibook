@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}编辑 OJ 题目 - {{ problem.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .workbench-shell {
+        background:
+            radial-gradient(circle at top right, rgba(56,189,248,0.10), transparent 28%),
+            radial-gradient(circle at left center, rgba(16,185,129,0.10), transparent 24%),
+            linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+        border: 1px solid rgba(15,23,42,0.08);
+        border-radius: 2rem;
+        box-shadow: 0 24px 80px rgba(15,23,42,0.09);
+    }
+    html.dark .workbench-shell {
+        background:
+            radial-gradient(circle at top right, rgba(56,189,248,0.14), transparent 28%),
+            radial-gradient(circle at left center, rgba(16,185,129,0.10), transparent 24%),
+            linear-gradient(180deg, rgba(18,18,22,0.98), rgba(20,24,32,0.98));
+        border-color: rgba(255,255,255,0.08);
+        box-shadow: none;
+    }
+    .bench-card {
+        border: 1px dashed rgba(15,23,42,0.13);
+        border-radius: 1.5rem;
+        background: rgba(255,255,255,0.75);
+    }
+    html.dark .bench-card {
+        border-color: rgba(255,255,255,0.14);
+        background: rgba(24,24,27,0.72);
+    }
+    .EasyMDEContainer {
+        border-radius: 1.5rem !important;
+        overflow: hidden;
+        border: 1px solid rgba(15,23,42,0.08) !important;
+        box-shadow: 0 12px 32px rgba(15,23,42,0.06);
+    }
+    html.dark .EasyMDEContainer {
+        border-color: rgba(255,255,255,0.12) !important;
+        box-shadow: none;
+    }
+    .mono-editor {
+        min-height: 180px;
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        line-height: 1.65;
+    }
+    .file-row {
+        border: 1px solid rgba(15,23,42,0.08);
+        border-radius: 1.25rem;
+        background: rgba(255,255,255,0.82);
+    }
+    html.dark .file-row {
+        border-color: rgba(255,255,255,0.10);
+        background: rgba(31,41,55,0.38);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-10 flex flex-col gap-8">
+    <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+            <p class="text-xs font-black tracking-[0.32em] uppercase text-cyan-600 mb-2">Problem Workbench</p>
+            <h1 class="text-3xl md:text-4xl font-black text-stone-800 dark:text-stone-100">{{ problem.title }}</h1>
+            <p class="text-stone-500 dark:text-stone-400 mt-2">题目已经创建完成。现在这里是完整工作台：题面、测试数据、附加文件都在这一页协同维护。</p>
+        </div>
+        <div class="flex gap-3 flex-wrap">
+            <a href="{{ url_for('manage_oj_problems') }}" class="btn btn-ghost rounded-2xl">返回题库</a>
+        </div>
+    </div>
+
+    <form method="post" class="workbench-shell p-6 md:p-8 flex flex-col gap-8">
+        <div class="grid grid-cols-1 xl:grid-cols-[1.08fr,0.92fr] gap-8 items-start">
+            <div class="bench-card p-5 flex flex-col gap-5">
+                <div>
+                    <p class="text-xs font-black tracking-[0.26em] uppercase text-stone-400 mb-2">Core Meta</p>
+                    <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">基础信息</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">题目编号</span>
+                        <input type="text" name="problem_code" value="{{ problem.problem_code }}" class="input input-bordered rounded-2xl font-mono font-black text-lg uppercase" required>
+                        <span class="text-xs text-stone-400 mt-2">必填且唯一，例如 P1000、P1001、Q1001。</span>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">题目标题</span>
+                        <input type="text" name="title" value="{{ problem.title }}" class="input input-bordered rounded-2xl font-bold text-lg" required>
+                    </label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">Slug</span>
+                        <input type="text" name="slug" value="{{ problem.slug }}" class="input input-bordered rounded-2xl font-mono">
+                    </label>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">难度</span>
+                        <select name="difficulty" class="select select-bordered rounded-2xl">
+                            <option value="easy" {% if problem.difficulty == 'easy' %}selected{% endif %}>Easy</option>
+                            <option value="medium" {% if problem.difficulty == 'medium' %}selected{% endif %}>Medium</option>
+                            <option value="hard" {% if problem.difficulty == 'hard' %}selected{% endif %}>Hard</option>
+                        </select>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">可见性</span>
+                        <select name="is_visible" class="select select-bordered rounded-2xl">
+                            <option value="1" {% if problem.is_visible %}selected{% endif %}>公开</option>
+                            <option value="0" {% if not problem.is_visible %}selected{% endif %}>隐藏</option>
+                        </select>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">时限(ms)</span>
+                        <input type="number" name="time_limit_ms" value="{{ problem.time_limit_ms }}" min="100" class="input input-bordered rounded-2xl">
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">内存(MB)</span>
+                        <input type="number" name="memory_limit_mb" value="{{ problem.memory_limit_mb }}" min="16" class="input input-bordered rounded-2xl">
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">来源</span>
+                        <input type="text" name="source" value="{{ problem.source or '' }}" class="input input-bordered rounded-2xl">
+                    </label>
+                </div>
+                <label class="form-control">
+                    <span class="label-text font-bold mb-2">允许语言</span>
+                    <input type="text" name="allowed_languages" value="{{ problem.allowed_languages_text or 'python, cpp, c' }}" class="input input-bordered rounded-2xl">
+                </label>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">输入格式补充</span>
+                        <textarea name="input_spec_md" class="textarea textarea-bordered rounded-2xl min-h-[120px]">{{ problem.input_spec_md }}</textarea>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">输出格式补充</span>
+                        <textarea name="output_spec_md" class="textarea textarea-bordered rounded-2xl min-h-[120px]">{{ problem.output_spec_md }}</textarea>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">提示</span>
+                        <textarea name="hint_md" class="textarea textarea-bordered rounded-2xl min-h-[120px]">{{ problem.hint_md }}</textarea>
+                    </label>
+                </div>
+            </div>
+
+            <div class="bench-card p-5 flex flex-col gap-5">
+                <div>
+                    <p class="text-xs font-black tracking-[0.26em] uppercase text-stone-400 mb-2">Snapshot</p>
+                    <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">当前状态</h2>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-stone-400 mb-2">UID</div>
+                        <div class="text-3xl font-black text-stone-800 dark:text-stone-100 font-mono">{{ problem.uid_text }}</div>
+                    </div>
+                    <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-stone-400 mb-2">Code</div>
+                        <div class="text-3xl font-black text-stone-800 dark:text-stone-100 font-mono">{{ problem.problem_code }}</div>
+                    </div>
+                    <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-stone-400 mb-2">Testcases</div>
+                        <div class="text-3xl font-black text-stone-800 dark:text-stone-100">{{ problem.testcase_count }}</div>
+                    </div>
+                    <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-stone-400 mb-2">Data Files</div>
+                        <div class="text-3xl font-black text-stone-800 dark:text-stone-100">{{ data_files|length }}</div>
+                    </div>
+                    <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-stone-400 mb-2">Asset Files</div>
+                        <div class="text-3xl font-black text-stone-800 dark:text-stone-100">{{ asset_files|length }}</div>
+                    </div>
+                    <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.2em] text-stone-400 mb-2">Updated</div>
+                        <div class="text-sm font-bold text-stone-700 dark:text-stone-200">{{ problem.updated_at.strftime('%Y-%m-%d %H:%M') if problem.updated_at else '-' }}</div>
+                    </div>
+                </div>
+                <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4 text-sm leading-7 text-stone-500 dark:text-stone-400">
+                    推荐工作流：
+                    <br>1. 在上面维护题面和限制。
+                    <br>2. 在下面直接创建 `1.in`、`1.out` 等测试数据文件。
+                    <br>3. 需要时一键从文件对同步成测试点。
+                    <br>4. 图片、PDF、压缩包等资源放到附加文件区。
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-4">
+            <div>
+                <p class="text-xs font-black tracking-[0.26em] uppercase text-cyan-600 mb-2">Markdown Statement</p>
+                <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">题面编辑器</h2>
+            </div>
+            <textarea id="problem-statement-editor" name="statement_md">{{ problem.statement_md }}</textarea>
+        </div>
+
+        <div class="flex items-center justify-between gap-4 flex-wrap pt-4 border-t border-stone-200 dark:border-white/10">
+            <p class="text-sm text-stone-500 dark:text-stone-400 font-mono">uid={{ problem.uid_text }} / code={{ problem.problem_code }} / slug={{ problem.slug }}</p>
+            <button type="submit" class="btn btn-primary rounded-2xl px-8">保存题目基础配置</button>
+        </div>
+    </form>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <div class="workbench-shell p-6 md:p-8 flex flex-col gap-6">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                    <p class="text-xs font-black tracking-[0.28em] uppercase text-emerald-600 mb-2">Test Data</p>
+                    <h2 class="text-2xl font-black text-stone-800 dark:text-stone-100">测试数据工作区</h2>
+                    <p class="text-stone-500 dark:text-stone-400 mt-2">这里直接创建和编辑文本数据文件，比如 `1.in`、`1.out`、`config.yaml`。完成后可同步为测试点。</p>
+                </div>
+                <form method="post" action="{{ url_for('import_oj_problem_testcases_from_files', problem_id=problem.id) }}" class="flex gap-2 flex-wrap items-center">
+                    <select name="import_mode" class="select select-bordered rounded-2xl">
+                        <option value="append">追加同步</option>
+                        <option value="replace">覆盖同步</option>
+                    </select>
+                    <button type="submit" class="btn btn-outline rounded-2xl">从文件对同步测试点</button>
+                </form>
+            </div>
+
+            <div class="bench-card p-5">
+                <div class="mb-4">
+                    <p class="text-sm font-black text-stone-800 dark:text-stone-100">新建文本数据文件</p>
+                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">推荐命名：`1.in`、`1.out`、`2.in`、`2.out`。</p>
+                </div>
+                <form method="post" action="{{ url_for('create_text_oj_problem_file', problem_id=problem.id) }}" class="flex flex-col gap-4">
+                    <input type="text" name="filename" class="input input-bordered rounded-2xl font-mono" placeholder="例如：1.in" required>
+                    <textarea name="content" class="textarea textarea-bordered rounded-2xl mono-editor" placeholder="直接输入文件内容..."></textarea>
+                    <button type="submit" class="btn btn-primary rounded-2xl self-start">创建数据文件</button>
+                </form>
+            </div>
+
+            <div class="flex flex-col gap-4">
+                {% for asset in data_files %}
+                <details class="file-row p-5" {% if loop.first %}open{% endif %}>
+                    <summary class="cursor-pointer list-none flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                            <div class="font-bold text-stone-800 dark:text-stone-100">{{ asset.filename }}</div>
+                            <div class="text-xs text-stone-400 mt-1">{{ (asset.file_size / 1024)|round(1) }} KB · {{ asset.uploaded_at.strftime('%Y-%m-%d %H:%M') if asset.uploaded_at else '' }}</div>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <a href="{{ asset.file_path }}" target="_blank" class="btn btn-sm rounded-xl">查看原文件</a>
+                            <form method="post" action="{{ url_for('delete_oj_problem_file', problem_id=problem.id, file_id=asset.id) }}" onsubmit="return confirm('确认删除这个文件吗？');">
+                                <button type="submit" class="btn btn-sm btn-error btn-outline rounded-xl">删除</button>
+                            </form>
+                        </div>
+                    </summary>
+                    {% if asset.is_text_editable %}
+                    <form method="post" action="{{ url_for('update_text_oj_problem_file', problem_id=problem.id, file_id=asset.id) }}" class="mt-5 flex flex-col gap-4">
+                        <input type="text" name="filename" value="{{ asset.filename }}" class="input input-bordered rounded-2xl font-mono" required>
+                        <textarea name="content" class="textarea textarea-bordered rounded-2xl mono-editor">{{ file_contents.get(asset.id, '') }}</textarea>
+                        <button type="submit" class="btn btn-primary rounded-2xl self-start">保存这个数据文件</button>
+                    </form>
+                    {% endif %}
+                </details>
+                {% else %}
+                <div class="bench-card p-8 text-center text-stone-400">当前还没有测试数据文件。先创建 `1.in` / `1.out` 吧。</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="workbench-shell p-6 md:p-8 flex flex-col gap-6">
+            <div>
+                <p class="text-xs font-black tracking-[0.28em] uppercase text-fuchsia-600 mb-2">Assets</p>
+                <h2 class="text-2xl font-black text-stone-800 dark:text-stone-100">附加文件空间</h2>
+                <p class="text-stone-500 dark:text-stone-400 mt-2">这里放图片、PDF、压缩包，或者可在线编辑的说明性文本文件。题面里可以直接引用这些资源。</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bench-card p-5">
+                    <p class="text-sm font-black text-stone-800 dark:text-stone-100 mb-3">上传文件</p>
+                    <form method="post" action="{{ url_for('upload_oj_problem_files', problem_id=problem.id) }}" enctype="multipart/form-data" class="flex flex-col gap-4">
+                        <input type="file" name="files" multiple class="file-input file-input-bordered rounded-2xl">
+                        <button type="submit" class="btn btn-primary rounded-2xl self-start">上传到附加文件区</button>
+                    </form>
+                </div>
+                <div class="bench-card p-5">
+                    <p class="text-sm font-black text-stone-800 dark:text-stone-100 mb-3">在线新建文本文件</p>
+                    <form method="post" action="{{ url_for('create_text_oj_problem_file', problem_id=problem.id) }}" class="flex flex-col gap-4">
+                        <input type="text" name="filename" class="input input-bordered rounded-2xl font-mono" placeholder="例如：notes.md" required>
+                        <textarea name="content" class="textarea textarea-bordered rounded-2xl mono-editor" placeholder="直接输入文件内容..."></textarea>
+                        <button type="submit" class="btn btn-outline rounded-2xl self-start">创建文本附件</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-4">
+                {% for asset in asset_files %}
+                <details class="file-row p-5" {% if loop.first and not data_files %}open{% endif %}>
+                    <summary class="cursor-pointer list-none flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                            <div class="font-bold text-stone-800 dark:text-stone-100">{{ asset.filename }}</div>
+                            <div class="text-xs text-stone-400 mt-1">{{ (asset.file_size / 1024)|round(1) }} KB · {{ asset.uploaded_at.strftime('%Y-%m-%d %H:%M') if asset.uploaded_at else '' }}</div>
+                        </div>
+                        <div class="flex flex-col gap-1 text-xs min-w-[18rem]">
+                            <a href="{{ asset.file_path }}" target="_blank" class="font-mono text-cyan-600 break-all">{{ asset.file_path }}</a>
+                            <code class="whitespace-pre-wrap break-all">{{ asset.markdown_embed }}</code>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            <a href="{{ asset.file_path }}" target="_blank" class="btn btn-sm rounded-xl">打开</a>
+                            <form method="post" action="{{ url_for('delete_oj_problem_file', problem_id=problem.id, file_id=asset.id) }}" onsubmit="return confirm('确认删除这个文件吗？');">
+                                <button type="submit" class="btn btn-sm btn-error btn-outline rounded-xl">删除</button>
+                            </form>
+                        </div>
+                    </summary>
+                    {% if asset.is_text_editable %}
+                    <form method="post" action="{{ url_for('update_text_oj_problem_file', problem_id=problem.id, file_id=asset.id) }}" class="mt-5 flex flex-col gap-4">
+                        <input type="text" name="filename" value="{{ asset.filename }}" class="input input-bordered rounded-2xl font-mono" required>
+                        <textarea name="content" class="textarea textarea-bordered rounded-2xl mono-editor">{{ file_contents.get(asset.id, '') }}</textarea>
+                        <button type="submit" class="btn btn-primary rounded-2xl self-start">保存这个文本文件</button>
+                    </form>
+                    {% endif %}
+                </details>
+                {% else %}
+                <div class="bench-card p-8 text-center text-stone-400">当前还没有附加文件。可以上传图片、压缩包，或者新建 `notes.md` 这类文本附件。</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        new EasyMDE({
+            element: document.getElementById('problem-statement-editor'),
+            spellChecker: false,
+            status: ["lines", "words"],
+            sideBySideFullscreen: false,
+            renderingConfig: {
+                singleLineBreaks: false,
+                codeSyntaxHighlighting: true
+            },
+            previewClass: ["editor-preview", "prose", "max-w-none"],
+            placeholder: "在这里维护题面 Markdown..."
+        });
+    });
+</script>
+{% endblock %}

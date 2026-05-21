@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}OJ 提交记录{% endblock %}
+
+{% block extra_css %}
+<style>
+    .oj-submission-page {
+        background: linear-gradient(180deg, rgba(241,245,249,0.92), rgba(255,255,255,0.98));
+    }
+    html.dark .oj-submission-page {
+        background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(10,10,12,0.98));
+    }
+    .submission-panel {
+        border: 1px solid rgba(15,23,42,0.10);
+        border-radius: 8px;
+        background: rgba(255,255,255,0.9);
+    }
+    html.dark .submission-panel {
+        border-color: rgba(255,255,255,0.10);
+        background: rgba(24,24,27,0.86);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="oj-submission-page min-h-[calc(100vh-4rem)] pt-6 pb-16">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 flex flex-col gap-6">
+        <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+                <p class="text-xs font-black tracking-[0.3em] uppercase text-cyan-600 mb-2">Judge Records</p>
+                <h1 class="text-3xl md:text-4xl font-black text-stone-900 dark:text-stone-100">
+                    {% if current_user.is_admin %}全站 OJ 提交{% else %}我的 OJ 提交{% endif %}
+                </h1>
+            </div>
+            <a href="{{ url_for('oj_problem_list') }}" class="btn btn-outline rounded-lg">
+                <i class="fas fa-arrow-left"></i> 返回题库
+            </a>
+        </div>
+
+        <form method="get" class="submission-panel p-4 flex flex-col md:flex-row gap-3 md:items-end">
+            <label class="form-control md:w-64">
+                <span class="label-text font-bold mb-1">状态</span>
+                <select name="status" class="select select-bordered rounded-lg">
+                    <option value="">全部状态</option>
+                    {% for key, meta in {
+                        'queued': {'label': '排队中'},
+                        'running': {'label': '评测中'},
+                        'accepted': {'label': '通过'},
+                        'failed': {'label': '未通过'},
+                        'system_error': {'label': '系统错误'}
+                    }.items() %}
+                    <option value="{{ key }}" {% if status_filter == key %}selected{% endif %}>{{ meta.label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button type="submit" class="btn btn-primary rounded-lg">
+                <i class="fas fa-filter"></i> 筛选
+            </button>
+        </form>
+
+        <div class="submission-panel overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr class="text-xs uppercase tracking-widest text-stone-500">
+                            <th>ID</th>
+                            <th>题目</th>
+                            {% if current_user.is_admin %}<th>用户</th>{% endif %}
+                            <th>语言</th>
+                            <th>状态</th>
+                            <th>得分</th>
+                            <th>提交时间</th>
+                            <th class="text-right">详情</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in submissions %}
+                        {% set meta = oj_status_meta(task.status) %}
+                        <tr>
+                            <td class="font-mono font-bold text-stone-500">#{{ task.id }}</td>
+                            <td>
+                                {% if task.problem %}
+                                <a href="{{ url_for('oj_problem_detail', slug=task.problem.slug) }}" class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600">{{ task.problem.title }}</a>
+                                <div class="text-xs font-mono text-stone-400">{{ task.problem.slug }}</div>
+                                {% else %}
+                                <span class="text-stone-400">题目已删除</span>
+                                {% endif %}
+                            </td>
+                            {% if current_user.is_admin %}
+                            <td>{{ task.user.username if task.user else '未知用户' }}</td>
+                            {% endif %}
+                            <td class="font-mono">{{ task.language }}</td>
+                            <td><span class="badge {{ meta.badge }} badge-outline">{{ meta.label }}</span></td>
+                            <td class="font-mono">{{ task.total_score }}</td>
+                            <td class="text-sm text-stone-500">{{ task.created_at.strftime('%Y-%m-%d %H:%M') if task.created_at else '-' }}</td>
+                            <td class="text-right">
+                                <a href="{{ url_for('oj_submission_detail', task_id=task.id) }}" class="btn btn-sm rounded-lg">查看</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ 8 if current_user.is_admin else 7 }}" class="text-center py-14 text-stone-400">还没有提交记录。</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

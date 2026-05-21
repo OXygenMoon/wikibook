@@ -1,0 +1,98 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wikibook}
+      POSTGRES_USER: ${POSTGRES_USER:-wikibook}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wikibook}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wikibook} -d ${POSTGRES_DB:-wikibook}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bootstrap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["ops"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://wikibook:wikibook@postgres:5432/wikibook}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["flask", "--app", "app", "wikibook", "init-platform", "--with-schema"]
+    volumes:
+      - uploads_data:/app/static/uploads
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://wikibook:wikibook@postgres:5432/wikibook}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      GUNICORN_BIND: 0.0.0.0:${PORT:-5009}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["gunicorn", "--config", "gunicorn.conf.py", "app:app"]
+    ports:
+      - "${PORT:-5009}:${PORT:-5009}"
+    volumes:
+      - uploads_data:/app/static/uploads
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://wikibook:wikibook@postgres:5432/wikibook}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      JUDGE_RUNTIME_IMAGE: ${JUDGE_RUNTIME_IMAGE:-wikibook-judge-runtime:latest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "judge_worker.py"]
+    volumes:
+      - uploads_data:/app/static/uploads
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  judge-runtime:
+    build:
+      context: .
+      dockerfile: judge_runtime/Dockerfile
+    image: ${JUDGE_RUNTIME_IMAGE:-wikibook-judge-runtime:latest}
+    profiles: ["build"]
+
+volumes:
+  postgres_data:
+  uploads_data:

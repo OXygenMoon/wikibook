@@ -1,0 +1,15 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+instance/
+backups/
+flask_error.log
+.wikibook-local.pid
+.wikibook-local.log
+static/uploads/

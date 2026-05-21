@@ -2,7 +2,7 @@
 
 {% set is_book_mode = request.path.startswith('/book') %}
 
-{% set current_app = 'book' if is_book_mode else ('bulletin' if request.endpoint == 'bulletin_view' else ('sticker' if request.endpoint == 'sticker_walls_view' else ('leaderboard' if request.endpoint == 'leaderboard' else ('announcements' if request.endpoint == 'announcements_view' else 'square')))) %}
+{% set current_app = 'book' if is_book_mode else ('oj' if request.path.startswith('/oj') else ('bulletin' if request.endpoint == 'bulletin_view' else ('sticker' if request.endpoint == 'sticker_walls_view' else ('leaderboard' if request.endpoint == 'leaderboard' else ('announcements' if request.endpoint == 'announcements_view' else 'square'))))) %}
 
 
 
@@ -3091,6 +3091,8 @@
 
                 <a href="{{ url_for('leaderboard') }}" class="nav-pill-item {{ 'active' if current_app == 'leaderboard' else '' }}"><i class="fas fa-trophy"></i> 排行榜</a>
 
+                <a href="{{ url_for('oj_problem_list') }}" class="nav-pill-item {{ 'active' if current_app == 'oj' else '' }}"><i class="fas fa-code"></i> OJ题库</a>
+
                 <a href="{{ url_for('bulletin_view') }}" class="nav-pill-item {{ 'active' if current_app == 'bulletin' else '' }}"><i class="fas fa-thumbtack"></i> 任务栏</a>
                 <a href="{{ url_for('announcements_view') }}" class="nav-pill-item {{ 'active' if current_app == 'announcements' else '' }}"><i class="fas fa-bullhorn"></i> 公告栏</a>
                 <a href="{{ url_for('cyber_radio') }}" target="_blank" class="nav-pill-item tooltip tooltip-bottom" data-tip="在新标签页打开，无缝后台播放"><i class="fas fa-headphones-alt"></i> 赛博频段</a>
@@ -3918,6 +3920,8 @@
                         <li><a href="{{ url_for('sticker_walls_view') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'sticker' else '' }}"><i class="fas fa-border-all w-4 text-center"></i> 贴纸墙</a></li>
 
                         <li><a href="{{ url_for('leaderboard') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'leaderboard' else '' }}"><i class="fas fa-trophy w-4 text-center"></i> 巅峰风云榜</a></li>
+
+                        <li><a href="{{ url_for('oj_problem_list') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'oj' else '' }}"><i class="fas fa-code w-4 text-center"></i> OJ 题库</a></li>
 
 <li>
     <a href="{{ url_for('bulletin_view') }}" class="py-2.5 rounded-xl font-bold {{ 'text-primary bg-primary/5' if current_app == 'bulletin' else '' }}">

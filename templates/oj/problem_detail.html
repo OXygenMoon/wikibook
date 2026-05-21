@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}{{ problem.title }} - OJ 题库{% endblock %}
+
+{% block extra_css %}
+<style>
+    .problem-page {
+        background: linear-gradient(180deg, rgba(241,245,249,0.94), rgba(255,255,255,0.98));
+    }
+    html.dark .problem-page {
+        background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(10,10,12,0.98));
+    }
+    .problem-panel {
+        border: 1px solid rgba(15,23,42,0.10);
+        border-radius: 8px;
+        background: rgba(255,255,255,0.9);
+    }
+    html.dark .problem-panel {
+        border-color: rgba(255,255,255,0.10);
+        background: rgba(24,24,27,0.86);
+    }
+    .problem-prose {
+        max-width: none;
+        color: #334155;
+        line-height: 1.85;
+    }
+    html.dark .problem-prose {
+        color: #d4d4d8;
+    }
+    .problem-prose h1,
+    .problem-prose h2,
+    .problem-prose h3 {
+        color: #0f172a;
+        font-weight: 900;
+        margin-top: 1.8rem;
+        margin-bottom: 0.8rem;
+    }
+    html.dark .problem-prose h1,
+    html.dark .problem-prose h2,
+    html.dark .problem-prose h3 {
+        color: #f8fafc;
+    }
+    .problem-prose pre,
+    .sample-box pre {
+        background: #111827;
+        color: #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+    .meta-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(15,23,42,0.08);
+    }
+    html.dark .meta-line {
+        border-color: rgba(255,255,255,0.08);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="problem-page min-h-[calc(100vh-4rem)] pt-6 pb-16">
+    <div class="max-w-7xl mx-auto px-4 md:px-8">
+        <div class="flex items-center justify-between gap-4 flex-wrap mb-6">
+            <a href="{{ url_for('oj_problem_list') }}" class="btn btn-ghost rounded-lg">
+                <i class="fas fa-arrow-left"></i> 返回题库
+            </a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('edit_oj_problem', problem_id=problem.id) }}" class="btn btn-outline rounded-lg">
+                <i class="fas fa-edit"></i> 编辑题目
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-[1fr,20rem] gap-6 items-start">
+            <main class="problem-panel p-6 md:p-8">
+                <div class="border-b border-stone-200 dark:border-white/10 pb-6 mb-6">
+                    <div class="flex items-start justify-between gap-4 flex-wrap">
+                        <div>
+                            <p class="text-xs font-black tracking-[0.3em] uppercase text-cyan-600 mb-2">Problem {{ problem.problem_code }} · UID {{ problem.uid_text }}</p>
+                            <h1 class="text-3xl md:text-4xl font-black text-stone-900 dark:text-stone-100">{{ problem.title }}</h1>
+                        </div>
+                        {% if not problem.is_visible %}
+                        <span class="badge badge-ghost">隐藏题</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex gap-2 flex-wrap mt-5">
+                        <span class="badge badge-outline">{{ problem.difficulty }}</span>
+                        <span class="badge badge-outline">{{ problem.time_limit_ms }}ms</span>
+                        <span class="badge badge-outline">{{ problem.memory_limit_mb }}MB</span>
+                        {% if problem.source %}<span class="badge badge-outline">{{ problem.source }}</span>{% endif %}
+                    </div>
+                </div>
+
+                <section class="problem-prose">
+                    {{ statement_html|safe }}
+                </section>
+
+                {% if input_spec_html or output_spec_html or hint_html %}
+                <div class="flex flex-col gap-4 mt-8">
+                    {% if input_spec_html %}
+                    <section class="problem-panel p-4">
+                        <h2 class="text-lg font-black text-stone-900 dark:text-stone-100 mb-3">输入格式</h2>
+                        <div class="problem-prose text-sm">{{ input_spec_html|safe }}</div>
+                    </section>
+                    {% endif %}
+                    {% if output_spec_html %}
+                    <section class="problem-panel p-4">
+                        <h2 class="text-lg font-black text-stone-900 dark:text-stone-100 mb-3">输出格式</h2>
+                        <div class="problem-prose text-sm">{{ output_spec_html|safe }}</div>
+                    </section>
+                    {% endif %}
+                    {% if hint_html %}
+                    <section class="problem-panel p-4">
+                        <h2 class="text-lg font-black text-stone-900 dark:text-stone-100 mb-3">提示</h2>
+                        <div class="problem-prose text-sm">{{ hint_html|safe }}</div>
+                    </section>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <section class="mt-8">
+                    <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for case in sample_cases %}
+                        <div class="sample-box problem-panel p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-black text-stone-900 dark:text-stone-100">输入 {{ loop.index }}</h3>
+                                <span class="text-xs text-stone-400">score {{ case.score }}</span>
+                            </div>
+                            <pre>{{ case.input_data }}</pre>
+                        </div>
+                        <div class="sample-box problem-panel p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-black text-stone-900 dark:text-stone-100">输出 {{ loop.index }}</h3>
+                            </div>
+                            <pre>{{ case.expected_output }}</pre>
+                        </div>
+                        {% else %}
+                        <div class="problem-panel p-6 text-stone-400 md:col-span-2">这道题暂时没有公开样例。</div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                {% if visible_files %}
+                <section class="mt-8">
+                    <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">文件</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {% for file in visible_files %}
+                        <a href="{{ file.file_path }}" target="_blank" class="problem-panel p-4 hover:border-cyan-400 transition-colors">
+                            <div class="font-bold text-stone-900 dark:text-stone-100">{{ file.filename }}</div>
+                            <div class="text-xs text-stone-400 mt-1">{{ (file.file_size / 1024)|round(1) }} KB</div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
+            </main>
+
+            <aside class="problem-panel p-5 sticky top-24">
+                <h2 class="text-xl font-black text-stone-900 dark:text-stone-100 mb-4">题目信息</h2>
+                <div class="meta-line">
+                    <span class="text-stone-500">UID</span>
+                    <span class="font-mono font-bold">{{ problem.uid_text }}</span>
+                </div>
+                <div class="meta-line">
+                    <span class="text-stone-500">编号</span>
+                    <span class="font-mono font-bold">{{ problem.problem_code }}</span>
+                </div>
+                <div class="meta-line">
+                    <span class="text-stone-500">难度</span>
+                    <span class="font-bold">{{ problem.difficulty }}</span>
+                </div>
+                <div class="meta-line">
+                    <span class="text-stone-500">时间限制</span>
+                    <span class="font-bold">{{ problem.time_limit_ms }} ms</span>
+                </div>
+                <div class="meta-line">
+                    <span class="text-stone-500">内存限制</span>
+                    <span class="font-bold">{{ problem.memory_limit_mb }} MB</span>
+                </div>
+                <div class="meta-line">
+                    <span class="text-stone-500">语言</span>
+                    <span class="font-bold text-right">{{ problem.allowed_languages_text }}</span>
+                </div>
+                {% if current_user.is_admin %}
+                <div class="meta-line">
+                    <span class="text-stone-500">隐藏测试点</span>
+                    <span class="font-bold">{{ hidden_case_count }}</span>
+                </div>
+                {% endif %}
+                <div class="pt-5 flex flex-col gap-3">
+                    <a href="{{ url_for('submit_oj_problem', slug=problem.slug) }}" class="btn btn-primary rounded-lg">
+                        <i class="fas fa-paper-plane"></i> 提交代码
+                    </a>
+                    <a href="{{ url_for('oj_submission_list') }}" class="btn btn-outline rounded-lg">
+                        <i class="fas fa-list-check"></i> 提交记录
+                    </a>
+                </div>
+                {% if my_latest_task %}
+                {% set meta = oj_status_meta(my_latest_task.status) %}
+                <div class="mt-5 rounded-lg border border-stone-200 dark:border-white/10 p-4">
+                    <div class="text-xs text-stone-400 uppercase tracking-widest mb-2">最近提交</div>
+                    <a href="{{ url_for('oj_submission_detail', task_id=my_latest_task.id) }}" class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600">
+                        #{{ my_latest_task.id }}
+                    </a>
+                    <div class="flex items-center justify-between mt-3">
+                        <span class="badge {{ meta.badge }} badge-outline">{{ meta.label }}</span>
+                        <span class="text-sm font-mono">{{ my_latest_task.passed_count }}/{{ my_latest_task.total_count }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                {% if submission_history %}
+                <div class="mt-5">
+                    <div class="text-xs text-stone-400 uppercase tracking-widest mb-2">提交历史</div>
+                    <div class="flex flex-col gap-2">
+                        {% for task in submission_history %}
+                        {% set meta = oj_status_meta(task.status) %}
+                        <a href="{{ url_for('oj_submission_detail', task_id=task.id) }}" class="flex items-center justify-between rounded-lg bg-stone-50 dark:bg-white/5 px-3 py-2 hover:bg-cyan-50 dark:hover:bg-cyan-900/20">
+                            <span class="font-mono text-sm">#{{ task.id }}</span>
+                            <span class="badge {{ meta.badge }} badge-outline badge-sm">{{ meta.label }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+</div>
+{% endblock %}

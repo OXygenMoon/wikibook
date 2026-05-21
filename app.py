@@ -3,9 +3,11 @@ from datetime import datetime, timedelta, timezone
 import csv
 import io
 import openpyxl
+import click
 from flask import Flask, render_template, redirect, url_for, request, flash, abort, send_file, Response, make_response, jsonify,session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text, inspect
+from sqlalchemy.exc import OperationalError
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -16,20 +18,18 @@ from bs4 import BeautifulSoup
 import json
 import shutil
 import time
-from flask_migrate import Migrate
+from flask_migrate import Migrate, stamp as migrate_stamp
 from sqlalchemy import MetaData
 import re
 
 import logging
 import traceback
 
+from queue_service import enqueue_judge_task
+from wikibook_config import configure_app
+
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///wikibook.db")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static/uploads")
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB limit
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # Keep session for 30 days
+configure_app(app)
 
 
 # 💡 配置日志，将所有报错信息写入 flask_error.log 文件中
@@ -59,7 +59,7 @@ convention = {
 metadata = MetaData(naming_convention=convention)
 
 db = SQLAlchemy(app, metadata=metadata)
-migrate = Migrate(app, db, render_as_batch=True)
+migrate = Migrate(app, db, render_as_batch=app.config.get("DB_RENDER_AS_BATCH", False))
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
@@ -94,6 +94,15 @@ def badge_icon_url(s):
     return ""
 
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
+ALLOWED_PROBLEM_FILE_EXTENSIONS = {
+    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg",
+    ".yaml", ".yml", ".json", ".txt", ".md", ".pdf", ".csv", ".zip",
+    ".in", ".out", ".ans", ".log"
+}
+TEXT_EDITABLE_PROBLEM_FILE_EXTENSIONS = {
+    ".yaml", ".yml", ".json", ".txt", ".md", ".csv", ".in", ".out", ".ans", ".log"
+}
+TESTDATA_FILE_EXTENSIONS = {".in", ".out", ".ans", ".yaml", ".yml", ".json", ".txt", ".csv", ".log"}
 
 def is_allowed_image_file(filename):
     ext = os.path.splitext(filename or "")[1].lower()
@@ -123,6 +132,133 @@ def remove_uploaded_static_file(file_url, upload_subdir):
             os.remove(path)
         except OSError:
             pass
+
+
+def is_allowed_problem_file(filename):
+    ext = os.path.splitext(filename or "")[1].lower()
+    return ext in ALLOWED_PROBLEM_FILE_EXTENSIONS
+
+
+def save_problem_asset(file_storage, problem_id):
+    if not file_storage or not file_storage.filename:
+        raise ValueError("未选择文件")
+
+    original_filename = secure_filename(file_storage.filename)
+    if not original_filename:
+        raise ValueError("文件名无效")
+
+    if not is_allowed_problem_file(original_filename):
+        raise ValueError("不支持的文件类型")
+
+    ext = os.path.splitext(original_filename)[1].lower()
+    stored_filename = secure_filename(f"{uuid.uuid4().hex}{ext}")
+    relative_subdir = f"problem_assets/problem_{problem_id}"
+    absolute_dir = os.path.join(app.root_path, "static", "uploads", relative_subdir)
+    os.makedirs(absolute_dir, exist_ok=True)
+
+    absolute_path = os.path.join(absolute_dir, stored_filename)
+    file_storage.save(absolute_path)
+
+    return {
+        "filename": original_filename,
+        "stored_filename": stored_filename,
+        "file_path": f"/static/uploads/{relative_subdir}/{stored_filename}",
+        "file_size": os.path.getsize(absolute_path),
+        "content_type": file_storage.content_type or "",
+    }
+
+
+def remove_problem_asset_file(file_path):
+    prefix = "/static/uploads/problem_assets/"
+    if not file_path or not file_path.startswith(prefix):
+        return
+    relative_path = file_path[len(prefix):]
+    absolute_path = os.path.join(app.root_path, "static", "uploads", "problem_assets", relative_path)
+    if os.path.exists(absolute_path):
+        try:
+            os.remove(absolute_path)
+        except OSError:
+            pass
+
+
+def is_text_editable_problem_file(filename):
+    ext = os.path.splitext(filename or "")[1].lower()
+    return ext in TEXT_EDITABLE_PROBLEM_FILE_EXTENSIONS
+
+
+def problem_asset_absolute_path(file_path):
+    if not file_path or not file_path.startswith("/static/uploads/"):
+        raise ValueError("文件路径不合法")
+    return os.path.join(app.root_path, file_path.lstrip("/"))
+
+
+def create_text_problem_asset(problem_id, filename, content, uploaded_by_id):
+    sanitized_name = secure_filename((filename or "").strip())
+    if not sanitized_name:
+        raise ValueError("文件名不能为空")
+    if not is_allowed_problem_file(sanitized_name):
+        raise ValueError("不支持的文件类型")
+    if not is_text_editable_problem_file(sanitized_name):
+        raise ValueError("该文件类型不支持在线编辑")
+
+    ext = os.path.splitext(sanitized_name)[1].lower()
+    stored_filename = secure_filename(f"{uuid.uuid4().hex}{ext}")
+    relative_subdir = f"problem_assets/problem_{problem_id}"
+    absolute_dir = os.path.join(app.root_path, "static", "uploads", relative_subdir)
+    os.makedirs(absolute_dir, exist_ok=True)
+
+    absolute_path = os.path.join(absolute_dir, stored_filename)
+    with open(absolute_path, "w", encoding="utf-8") as file_handle:
+        file_handle.write(content or "")
+
+    return ProblemFile(
+        problem_id=problem_id,
+        filename=sanitized_name,
+        stored_filename=stored_filename,
+        file_path=f"/static/uploads/{relative_subdir}/{stored_filename}",
+        content_type="text/plain",
+        file_size=os.path.getsize(absolute_path),
+        uploaded_by_id=uploaded_by_id,
+    )
+
+
+def update_text_problem_asset(problem_file, filename, content):
+    sanitized_name = secure_filename((filename or "").strip())
+    if not sanitized_name:
+        raise ValueError("文件名不能为空")
+    if not is_allowed_problem_file(sanitized_name):
+        raise ValueError("不支持的文件类型")
+    if not is_text_editable_problem_file(sanitized_name):
+        raise ValueError("该文件类型不支持在线编辑")
+
+    absolute_path = problem_asset_absolute_path(problem_file.file_path)
+    old_ext = os.path.splitext(problem_file.stored_filename or "")[1].lower()
+    new_ext = os.path.splitext(sanitized_name)[1].lower()
+
+    if new_ext != old_ext:
+        new_stored_filename = secure_filename(f"{uuid.uuid4().hex}{new_ext}")
+        new_absolute_path = os.path.join(os.path.dirname(absolute_path), new_stored_filename)
+        os.replace(absolute_path, new_absolute_path)
+        problem_file.stored_filename = new_stored_filename
+        problem_file.file_path = "/".join(problem_file.file_path.split("/")[:-1] + [new_stored_filename])
+        absolute_path = new_absolute_path
+
+    with open(absolute_path, "w", encoding="utf-8") as file_handle:
+        file_handle.write(content or "")
+
+    problem_file.filename = sanitized_name
+    problem_file.content_type = "text/plain"
+    problem_file.file_size = os.path.getsize(absolute_path)
+
+
+def read_problem_asset_text(problem_file):
+    if not is_text_editable_problem_file(problem_file.filename):
+        return ""
+    absolute_path = problem_asset_absolute_path(problem_file.file_path)
+    if not os.path.exists(absolute_path):
+        return ""
+    with open(absolute_path, "r", encoding="utf-8") as file_handle:
+        return file_handle.read()
 
 app.jinja_env.filters["is_image_icon"] = is_image_icon
 app.jinja_env.filters["badge_icon_url"] = badge_icon_url
@@ -859,6 +995,7 @@ DEFAULT_PHONE_APPS = [
     {"name": "贴纸墙", "description": "打开大家的学习贴纸墙。", "icon_class": "animal-phone__app-icon--design", "bg_color": "#f8a6b2", "action_type": "link", "target_endpoint": "sticker_walls_view", "sort_order": 50},
     {"name": "贴纸库", "description": "翻阅你的成就贴纸与系列进度。", "icon_class": "fas fa-book-open", "bg_color": "#82d5bb", "action_type": "link", "target_endpoint": "my_achievement_book", "internal_key": "achievement_book", "sort_order": 55},
     {"name": "排行榜", "description": "查看学习、番茄与贡献榜。", "icon_class": "animal-phone__app-icon--map", "bg_color": "#82d5bb", "action_type": "link", "target_endpoint": "leaderboard", "sort_order": 60},
+    {"name": "OJ题库", "description": "浏览编程题目与样例数据。", "icon_class": "fas fa-code", "bg_color": "#5aa7d8", "action_type": "link", "target_endpoint": "oj_problem_list", "internal_key": "oj_problem_list", "sort_order": 65},
     {"name": "公告栏", "description": "阅读系统公告与活动信息。", "icon_class": "animal-phone__app-icon--variant", "bg_color": "#8ac68a", "action_type": "link", "target_endpoint": "announcements_view", "sort_order": 70},
     {"name": "任务栏", "description": "查看委托任务和悬赏。", "icon_class": "animal-phone__app-icon--helicopter", "bg_color": "#fc736d", "action_type": "link", "target_endpoint": "bulletin_view", "sort_order": 80},
     {"name": "退出", "description": "退出当前账号。", "icon_class": "animal-phone__app-icon--chat", "bg_color": "#d1da49", "action_type": "link", "target_endpoint": "logout", "sort_order": 90},
@@ -1146,28 +1283,6 @@ def backup_wiki(wiki_id):
         json.dump(data, json_file, indent=4, ensure_ascii=False)
 
     return backup_dir
-
-# 新增一个全局标志位，防止重复检查
-_db_initialized = False
-
-@app.before_request
-def ensure_db():
-    global _db_initialized
-    if not _db_initialized:
-        with app.app_context():
-            db.create_all()
-            try:
-                upgrade_db() # 确保每次启动应用都会自动检查并升级表结构
-            except Exception as e:
-                print(f"DB Upgrade error: {e}")
-                
-            if MarkdownStyle.query.first() is None:
-                s = MarkdownStyle(css_text="")
-                db.session.add(s)
-                db.session.commit()
-            seed_default_phone_apps()
-            ensure_builtin_phone_apps()
-        _db_initialized = True
 
 @app.route("/")
 def index():
@@ -6137,6 +6252,451 @@ class Submission(db.Model):
     stars_earned = db.Column(db.Integer, default=0) # 💡 学生获得的星级
 
 
+class JudgeTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=True)
+    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), nullable=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    language = db.Column(db.String(32), nullable=False, default='python')
+    source_code = db.Column(db.Text, nullable=False)
+    test_cases = db.Column(db.JSON, nullable=False, default=list)
+    status = db.Column(db.String(32), nullable=False, default='queued')  # queued, running, accepted, failed, system_error
+    queue_job_id = db.Column(db.String(64), nullable=True, index=True)
+    runtime_image = db.Column(db.String(255), nullable=True)
+    time_limit_ms = db.Column(db.Integer, nullable=False, default=2000)
+    memory_limit_mb = db.Column(db.Integer, nullable=False, default=256)
+    total_score = db.Column(db.Integer, nullable=False, default=0)
+    passed_count = db.Column(db.Integer, nullable=False, default=0)
+    total_count = db.Column(db.Integer, nullable=False, default=0)
+    result_summary = db.Column(db.JSON, nullable=True)
+    error_message = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    started_at = db.Column(db.DateTime, nullable=True)
+    finished_at = db.Column(db.DateTime, nullable=True)
+
+    submission = db.relationship('Submission', backref=db.backref('judge_tasks', lazy='dynamic'))
+    problem = db.relationship('Problem', backref=db.backref('judge_tasks', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('judge_tasks', lazy='dynamic'))
+
+
+class JudgeTaskResult(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('judge_task.id'), nullable=False)
+    case_index = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(32), nullable=False)
+    score = db.Column(db.Integer, nullable=False, default=0)
+    time_ms = db.Column(db.Integer, nullable=False, default=0)
+    memory_kb = db.Column(db.Integer, nullable=False, default=0)
+    input_data = db.Column(db.Text, nullable=True)
+    expected_output = db.Column(db.Text, nullable=True)
+    actual_output = db.Column(db.Text, nullable=True)
+    stderr_text = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+
+    task = db.relationship('JudgeTask', backref=db.backref('results', cascade='all, delete-orphan', lazy='dynamic'))
+
+
+class Problem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    problem_code = db.Column(db.String(40), nullable=False, unique=True, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(200), unique=True, nullable=False)
+    statement_md = db.Column(db.Text, nullable=False, default="")
+    input_spec_md = db.Column(db.Text, nullable=False, default="")
+    output_spec_md = db.Column(db.Text, nullable=False, default="")
+    hint_md = db.Column(db.Text, nullable=False, default="")
+    source = db.Column(db.String(200), nullable=True)
+    difficulty = db.Column(db.String(20), nullable=False, default="medium")
+    time_limit_ms = db.Column(db.Integer, nullable=False, default=2000)
+    memory_limit_mb = db.Column(db.Integer, nullable=False, default=256)
+    allowed_languages = db.Column(db.JSON, nullable=False, default=list)
+    is_visible = db.Column(db.Boolean, nullable=False, default=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
+
+    created_by = db.relationship('User', backref='created_problems', foreign_keys=[created_by_id])
+    test_cases = db.relationship(
+        'ProblemTestCase',
+        backref='problem',
+        cascade='all, delete-orphan',
+        order_by='ProblemTestCase.sort_order.asc()'
+    )
+
+    @property
+    def uid_text(self):
+        return f"{self.id:04d}"
+
+    @property
+    def testcase_count(self):
+        return len(self.test_cases)
+
+    @property
+    def sample_cases(self):
+        return [case for case in self.test_cases if case.case_type == 'sample']
+
+    @property
+    def hidden_cases(self):
+        return [case for case in self.test_cases if case.case_type == 'hidden']
+
+    @property
+    def allowed_languages_text(self):
+        return ", ".join(self.allowed_languages or [])
+
+
+class ProblemTestCase(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), nullable=False)
+    case_type = db.Column(db.String(20), nullable=False, default='hidden')  # sample, hidden
+    input_data = db.Column(db.Text, nullable=False, default="")
+    expected_output = db.Column(db.Text, nullable=False, default="")
+    score = db.Column(db.Integer, nullable=False, default=1)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+
+
+class ProblemFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    stored_filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    content_type = db.Column(db.String(120), nullable=True)
+    file_size = db.Column(db.Integer, nullable=False, default=0)
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=now_utc8)
+
+    problem = db.relationship('Problem', backref=db.backref('files', cascade='all, delete-orphan', lazy='dynamic'))
+    uploader = db.relationship('User', backref='uploaded_problem_files', foreign_keys=[uploaded_by_id])
+
+    @property
+    def extension(self):
+        return os.path.splitext(self.filename or "")[1].lower()
+
+    @property
+    def markdown_embed(self):
+        if self.extension in ALLOWED_IMAGE_EXTENSIONS:
+            return f"![{self.filename}]({self.file_path})"
+        return f"[{self.filename}]({self.file_path})"
+
+    @property
+    def is_text_editable(self):
+        return self.extension in TEXT_EDITABLE_PROBLEM_FILE_EXTENSIONS
+
+    @property
+    def is_testdata_file(self):
+        return self.extension in TESTDATA_FILE_EXTENSIONS
+
+
+def can_view_problem(problem, user):
+    if problem.is_visible:
+        return True
+    return bool(user.is_authenticated and user.is_admin)
+
+
+def get_problem_or_404_for_current_user(slug):
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    if not can_view_problem(problem, current_user):
+        abort(404)
+    return problem
+
+
+def normalize_problem_code(raw_code):
+    normalized = (raw_code or "").strip().upper()
+    normalized = re.sub(r"\s+", "", normalized)
+    return normalized
+
+
+def next_problem_code():
+    existing_codes = {
+        code for (code,) in db.session.query(Problem.problem_code).all()
+        if code
+    }
+    next_number = 1000
+    while True:
+        candidate = f"P{next_number}"
+        if candidate not in existing_codes:
+            return candidate
+        next_number += 1
+
+
+def validate_problem_code(raw_code, problem_id=None):
+    problem_code = normalize_problem_code(raw_code)
+    if not problem_code:
+        raise ValueError("题目编号不能为空")
+    if not re.match(r"^[A-Z][A-Z0-9_-]{1,39}$", problem_code):
+        raise ValueError("题目编号需以字母开头，只能包含字母、数字、下划线或短横线")
+
+    query = Problem.query.filter_by(problem_code=problem_code)
+    if problem_id is not None:
+        query = query.filter(Problem.id != problem_id)
+    if query.first():
+        raise ValueError(f"题目编号 {problem_code} 已存在")
+    return problem_code
+
+
+OJ_STATUS_META = {
+    'queued': {'label': '排队中', 'badge': 'badge-info'},
+    'running': {'label': '评测中', 'badge': 'badge-warning'},
+    'accepted': {'label': '通过', 'badge': 'badge-success'},
+    'failed': {'label': '未通过', 'badge': 'badge-error'},
+    'system_error': {'label': '系统错误', 'badge': 'badge-error'},
+}
+
+
+def oj_status_meta(status):
+    return OJ_STATUS_META.get(status or '', {'label': status or '未知', 'badge': 'badge-ghost'})
+
+
+app.jinja_env.globals["oj_status_meta"] = oj_status_meta
+
+
+def build_oj_judge_cases(problem):
+    return [
+        {
+            'input': testcase.input_data,
+            'expected_output': testcase.expected_output,
+            'score': testcase.score,
+            'case_type': testcase.case_type,
+        }
+        for testcase in problem.test_cases
+    ]
+
+
+def can_view_oj_judge_task(task, user):
+    return bool(user.is_authenticated and (user.is_admin or task.user_id == user.id))
+
+
+def get_oj_judge_task_or_404(task_id):
+    task = JudgeTask.query.filter(JudgeTask.problem_id.isnot(None), JudgeTask.id == task_id).first_or_404()
+    if not can_view_oj_judge_task(task, current_user):
+        abort(404)
+    return task
+
+
+def translate_python_error(stderr_text):
+    error_text = (stderr_text or "").strip()
+    if not error_text:
+        return ""
+
+    line_match = re.search(r'line\s+(\d+)', error_text)
+    line_hint = f"第 {line_match.group(1)} 行：" if line_match else ""
+
+    never_closed_match = re.search(r"SyntaxError:\s*'([^']+)'\s+was never closed", error_text)
+    if never_closed_match:
+        opener = never_closed_match.group(1)
+        closer_map = {"(": ")", "[": "]", "{": "}"}
+        closer = closer_map.get(opener, "")
+        if closer:
+            return f"语法错误：{line_hint}左括号 {opener} 没有闭合，请补上对应的右括号 {closer}。"
+        return f"语法错误：{line_hint}{opener} 没有闭合，请检查成对符号。"
+
+    if "unterminated string literal" in error_text or "EOL while scanning string literal" in error_text:
+        return f"语法错误：{line_hint}字符串没有闭合，请检查引号是否成对出现。"
+
+    if "expected ':'" in error_text:
+        return f"语法错误：{line_hint}这里缺少冒号 :，请检查 if、for、while、def、class 等语句结尾。"
+
+    if "Perhaps you forgot a comma" in error_text:
+        return f"语法错误：{line_hint}这里可能缺少逗号，请检查列表、函数参数或多个值之间的分隔。"
+
+    if "invalid syntax" in error_text:
+        return f"语法错误：{line_hint}这一行附近的写法不符合 Python 语法，请重点检查括号、冒号、逗号、引号和运算符。"
+
+    translations = [
+        ("SyntaxError", "语法错误：代码写法不符合 Python 语法，请检查括号、冒号、引号或语句结构。"),
+        ("IndentationError", "缩进错误：Python 对缩进很敏感，请检查空格层级是否一致。"),
+        ("NameError", "名称错误：使用了未定义的变量或函数，请检查变量名是否拼写正确、是否已经赋值。"),
+        ("TypeError", "类型错误：操作的数据类型不匹配，例如把字符串当数字计算，或函数参数类型不对。"),
+        ("ValueError", "值错误：数据格式不符合预期，例如把无法转换的内容转成整数。"),
+        ("IndexError", "下标越界：访问了列表、字符串等不存在的位置。"),
+        ("KeyError", "键不存在：访问了字典里不存在的键。"),
+        ("EOFError", "输入不足：程序还在等待输入，但测试数据已经读完。"),
+        ("ZeroDivisionError", "除零错误：程序中出现了除以 0 的运算。"),
+        ("ModuleNotFoundError", "模块不存在：判题环境中没有安装你导入的模块。"),
+        ("ImportError", "导入错误：模块或模块中的对象导入失败。"),
+        ("RecursionError", "递归过深：递归调用次数超过限制，可能需要改成循环或优化递归出口。"),
+    ]
+    for marker, message in translations:
+        if marker in error_text:
+            return message
+    return "Python 运行错误：程序运行时发生异常，请根据下方错误信息定位问题。"
+
+
+def build_oj_failure_feedback(task, results):
+    if task.status == 'accepted':
+        return None
+    if task.status in {'queued', 'running'}:
+        return None
+
+    first_failed = next((result for result in results if result.status != 'accepted'), None)
+    if first_failed and first_failed.status == 'wrong_answer':
+        return {
+            'title': 'Wrong Answer',
+            'message': '程序正常运行了，但输出结果和标准答案不一致。请重点检查输出格式、边界情况和算法逻辑。',
+            'detail': '',
+            'tone': 'warning',
+        }
+
+    if first_failed and first_failed.status == 'runtime_error':
+        detail = (first_failed.stderr_text or "").strip()
+        return {
+            'title': '运行错误',
+            'message': translate_python_error(detail) if task.language == 'python' else '程序运行时发生错误，请查看错误输出定位问题。',
+            'detail': detail,
+            'tone': 'error',
+        }
+
+    if first_failed and first_failed.status == 'time_limit_exceeded':
+        return {
+            'title': 'Time Limit Exceeded',
+            'message': '程序运行超时了。请检查是否存在死循环，或尝试优化算法复杂度。',
+            'detail': '',
+            'tone': 'warning',
+        }
+
+    if task.result_summary and task.result_summary.get('failure_reason') == 'compile_error':
+        detail = (task.error_message or "").strip()
+        return {
+            'title': '编译错误',
+            'message': '代码没有通过编译，请根据编译器输出检查语法、头文件或类型声明。',
+            'detail': detail,
+            'tone': 'error',
+        }
+
+    if task.status == 'system_error':
+        return {
+            'title': '系统错误',
+            'message': '判题服务遇到系统级错误，这通常不是代码答案本身的问题。',
+            'detail': (task.error_message or "").strip(),
+            'tone': 'error',
+        }
+
+    return {
+        'title': '未通过',
+        'message': '提交未通过，请查看左侧测试点状态和输出差异。',
+        'detail': (task.error_message or "").strip(),
+        'tone': 'warning',
+    }
+
+
+def normalize_language_list(raw_languages):
+    default_languages = ['python', 'cpp', 'c']
+    if not raw_languages:
+        return default_languages
+
+    parsed = []
+    seen = set()
+    for item in raw_languages.split(','):
+        lang = item.strip().lower()
+        if not lang or lang in seen:
+            continue
+        parsed.append(lang)
+        seen.add(lang)
+
+    return parsed or default_languages
+
+
+def build_problem_slug(title, problem_id=None):
+    base_slug = secure_filename((title or "").strip()).lower().strip('-')
+    if not base_slug:
+        base_slug = f"problem-{uuid.uuid4().hex[:8]}"
+
+    candidate = base_slug
+    suffix = 2
+    while True:
+        query = Problem.query.filter_by(slug=candidate)
+        if problem_id is not None:
+            query = query.filter(Problem.id != problem_id)
+        if query.first() is None:
+            return candidate
+        candidate = f"{base_slug}-{suffix}"
+        suffix += 1
+
+
+def collect_problem_testcases_from_form(form):
+    case_types = form.getlist('case_type')
+    inputs = form.getlist('case_input')
+    outputs = form.getlist('case_output')
+    scores = form.getlist('case_score')
+
+    testcases = []
+    row_count = max(len(case_types), len(inputs), len(outputs), len(scores))
+    for index in range(row_count):
+        case_type = (case_types[index] if index < len(case_types) else 'hidden').strip().lower() or 'hidden'
+        input_data = inputs[index] if index < len(inputs) else ''
+        expected_output = outputs[index] if index < len(outputs) else ''
+        score_raw = scores[index] if index < len(scores) else '1'
+
+        if not input_data.strip() and not expected_output.strip():
+            continue
+
+        try:
+            score = max(int(score_raw), 0)
+        except (TypeError, ValueError):
+            score = 1
+
+        if case_type not in {'sample', 'hidden'}:
+            case_type = 'hidden'
+
+        testcases.append(
+            {
+                'case_type': case_type,
+                'input_data': input_data,
+                'expected_output': expected_output,
+                'score': score,
+                'sort_order': len(testcases),
+            }
+        )
+
+    return testcases
+
+
+def ensure_oj_authoring_schema():
+    required_tables = {
+        'problem': Problem.__table__,
+        'problem_test_case': ProblemTestCase.__table__,
+        'problem_file': ProblemFile.__table__,
+    }
+    created_tables = []
+
+    with db.engine.begin() as connection:
+        existing_tables = set(inspect(connection).get_table_names())
+        for table_name, table in required_tables.items():
+            if table_name in existing_tables:
+                continue
+            table.create(bind=connection, checkfirst=True)
+            created_tables.append(table_name)
+
+        if 'problem' in existing_tables:
+            inspector = inspect(connection)
+            problem_columns = {column['name'] for column in inspector.get_columns('problem')}
+            if 'problem_code' not in problem_columns:
+                connection.execute(db.text("ALTER TABLE problem ADD COLUMN problem_code VARCHAR(40)"))
+            problem_rows = connection.execute(db.text("SELECT id, problem_code FROM problem ORDER BY id ASC")).fetchall()
+            for row in problem_rows:
+                if row.problem_code:
+                    continue
+                connection.execute(
+                    db.text("UPDATE problem SET problem_code = :problem_code WHERE id = :problem_id"),
+                    {"problem_code": f"P{999 + row.id}", "problem_id": row.id},
+                )
+            problem_indexes = {index['name'] for index in inspector.get_indexes('problem')}
+            if 'ix_problem_problem_code' not in problem_indexes:
+                connection.execute(db.text("CREATE UNIQUE INDEX IF NOT EXISTS ix_problem_problem_code ON problem (problem_code)"))
+
+        if 'judge_task' in existing_tables:
+            inspector = inspect(connection)
+            judge_task_columns = {column['name'] for column in inspector.get_columns('judge_task')}
+            if 'problem_id' not in judge_task_columns:
+                connection.execute(db.text("ALTER TABLE judge_task ADD COLUMN problem_id INTEGER"))
+            judge_task_indexes = {index['name'] for index in inspector.get_indexes('judge_task')}
+            if 'ix_judge_task_problem_id' not in judge_task_indexes:
+                connection.execute(db.text("CREATE INDEX IF NOT EXISTS ix_judge_task_problem_id ON judge_task (problem_id)"))
+
+    return created_tables
+
+
 def parse_assignment_tags(html_content, wiki_page_id):
     """
     支持“ID钢印”机制的终极解析器
@@ -6813,6 +7373,607 @@ def test_reset_report(report_type):
 def bulletin_view():
     return render_template("bulletin.html")
 
+
+# ==========================================
+# 🧩 OJ 题库：学生 / 教师可见视图
+# ==========================================
+@app.route('/oj/problems')
+@login_required
+def oj_problem_list():
+    ensure_oj_authoring_schema()
+
+    q = request.args.get('q', '').strip()
+    difficulty = request.args.get('difficulty', '').strip().lower()
+    visibility = request.args.get('visibility', 'visible').strip().lower()
+
+    query = Problem.query
+    if not current_user.is_admin:
+        query = query.filter_by(is_visible=True)
+    elif visibility == 'hidden':
+        query = query.filter_by(is_visible=False)
+    elif visibility == 'all':
+        pass
+    else:
+        query = query.filter_by(is_visible=True)
+
+    if q:
+        like = f"%{q}%"
+        query = query.filter(db.or_(Problem.problem_code.like(like), Problem.title.like(like), Problem.slug.like(like), Problem.source.like(like)))
+
+    if difficulty in {'easy', 'medium', 'hard'}:
+        query = query.filter_by(difficulty=difficulty)
+
+    problems = query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
+    stats_query = Problem.query if current_user.is_admin else Problem.query.filter_by(is_visible=True)
+    problem_stats = {
+        'total': stats_query.count(),
+        'easy': stats_query.filter_by(difficulty='easy').count(),
+        'medium': stats_query.filter_by(difficulty='medium').count(),
+        'hard': stats_query.filter_by(difficulty='hard').count(),
+    }
+
+    return render_template(
+        'oj/problem_list.html',
+        problems=problems,
+        q=q,
+        difficulty=difficulty,
+        visibility=visibility,
+        problem_stats=problem_stats,
+    )
+
+
+@app.route('/oj/problems/<slug>')
+@login_required
+def oj_problem_detail(slug):
+    ensure_oj_authoring_schema()
+    problem = get_problem_or_404_for_current_user(slug)
+
+    sample_cases = problem.sample_cases
+    hidden_case_count = len(problem.hidden_cases)
+    all_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.filename.asc()).all()
+    my_latest_task = JudgeTask.query.filter_by(
+        problem_id=problem.id,
+        user_id=current_user.id,
+    ).order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).first()
+    submission_history = JudgeTask.query.filter_by(
+        problem_id=problem.id,
+        user_id=current_user.id,
+    ).order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(5).all()
+
+    if current_user.is_admin:
+        visible_files = all_files
+    else:
+        visible_files = [problem_file for problem_file in all_files if not problem_file.is_testdata_file]
+
+    statement_html = markdown(problem.statement_md or "")
+    input_spec_html = markdown(problem.input_spec_md or "")
+    output_spec_html = markdown(problem.output_spec_md or "")
+    hint_html = markdown(problem.hint_md or "")
+
+    return render_template(
+        'oj/problem_detail.html',
+        problem=problem,
+        sample_cases=sample_cases,
+        hidden_case_count=hidden_case_count,
+        visible_files=visible_files,
+        statement_html=statement_html,
+        input_spec_html=input_spec_html,
+        output_spec_html=output_spec_html,
+        hint_html=hint_html,
+        my_latest_task=my_latest_task,
+        submission_history=submission_history,
+    )
+
+
+@app.route('/oj/problems/<slug>/submit', methods=['GET', 'POST'])
+@login_required
+def submit_oj_problem(slug):
+    ensure_oj_authoring_schema()
+    problem = get_problem_or_404_for_current_user(slug)
+
+    if request.method == 'GET':
+        return render_template('oj/problem_submit.html', problem=problem)
+
+    language = request.form.get('language', '').strip().lower()
+    source_code = request.form.get('source_code', '')
+    allowed_languages = problem.allowed_languages or ['python', 'cpp', 'c']
+
+    if language not in allowed_languages:
+        flash('这道题暂不支持所选语言。', 'error')
+        return redirect(url_for('oj_problem_detail', slug=problem.slug))
+
+    if not source_code.strip():
+        flash('请先填写代码再提交。', 'error')
+        return redirect(url_for('oj_problem_detail', slug=problem.slug))
+
+    test_cases = build_oj_judge_cases(problem)
+    if not test_cases:
+        flash('这道题还没有配置测试数据，暂时不能提交。', 'error')
+        return redirect(url_for('oj_problem_detail', slug=problem.slug))
+
+    task = JudgeTask(
+        problem_id=problem.id,
+        user_id=current_user.id,
+        language=language,
+        source_code=source_code,
+        test_cases=test_cases,
+        status='queued',
+        runtime_image=app.config.get('JUDGE_RUNTIME_IMAGE'),
+        time_limit_ms=problem.time_limit_ms,
+        memory_limit_mb=problem.memory_limit_mb,
+        total_count=len(test_cases),
+    )
+    db.session.add(task)
+    db.session.commit()
+
+    try:
+        job = enqueue_judge_task(task.id)
+        task.queue_job_id = job.id
+        task.status = 'queued'
+        db.session.commit()
+        flash('代码已提交，正在进入评测队列。', 'success')
+    except Exception as exc:
+        task.status = 'system_error'
+        task.finished_at = now_utc8()
+        task.error_message = f"提交已保存，但无法连接评测队列：{exc}"
+        task.result_summary = {
+            'status': 'system_error',
+            'error_message': str(exc),
+        }
+        db.session.commit()
+        flash('提交已保存，但评测队列暂不可用。请检查 Redis / Judge Worker。', 'warning')
+
+    return redirect(url_for('oj_submission_detail', task_id=task.id))
+
+
+@app.route('/oj/submissions')
+@login_required
+def oj_submission_list():
+    ensure_oj_authoring_schema()
+
+    query = JudgeTask.query.filter(JudgeTask.problem_id.isnot(None))
+    if not current_user.is_admin:
+        query = query.filter_by(user_id=current_user.id)
+
+    status_filter = request.args.get('status', '').strip().lower()
+    if status_filter in OJ_STATUS_META:
+        query = query.filter_by(status=status_filter)
+
+    submissions = query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(100).all()
+    return render_template(
+        'oj/submission_list.html',
+        submissions=submissions,
+        status_filter=status_filter,
+    )
+
+
+@app.route('/oj/submissions/<int:task_id>')
+@login_required
+def oj_submission_detail(task_id):
+    ensure_oj_authoring_schema()
+    task = get_oj_judge_task_or_404(task_id)
+    results = task.results.order_by(JudgeTaskResult.case_index.asc()).all()
+    failure_feedback = build_oj_failure_feedback(task, results)
+    return render_template('oj/submission_detail.html', task=task, results=results, failure_feedback=failure_feedback)
+
+
+@app.route('/api/oj/submissions/<int:task_id>')
+@login_required
+def oj_submission_status_api(task_id):
+    ensure_oj_authoring_schema()
+    task = get_oj_judge_task_or_404(task_id)
+    return jsonify({
+        'id': task.id,
+        'status': task.status,
+        'status_label': oj_status_meta(task.status)['label'],
+        'passed_count': task.passed_count,
+        'total_count': task.total_count,
+        'total_score': task.total_score,
+        'finished_at': task.finished_at.isoformat() if task.finished_at else None,
+        'error_message': task.error_message,
+    })
+
+
+# ==========================================
+# 🧠 管理员：OJ 题库管理
+# ==========================================
+@app.route('/admin/oj/problems', methods=['GET'])
+@login_required
+def manage_oj_problems():
+    if not current_user.is_admin:
+        abort(403)
+
+    created_tables = ensure_oj_authoring_schema()
+    if created_tables:
+        flash('检测到旧数据库，已自动补建 OJ 题库数据表。', 'success')
+
+    try:
+        problems = Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
+    except OperationalError:
+        db.session.rollback()
+        created_tables = ensure_oj_authoring_schema()
+        if created_tables:
+            flash('OJ 题库数据表已自动修复，请继续操作。', 'success')
+        problems = Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
+    return render_template('admin/manage_oj_problems.html', problems=problems)
+
+
+@app.route('/admin/oj/problems/new', methods=['GET', 'POST'])
+@login_required
+def create_oj_problem():
+    if not current_user.is_admin:
+        abort(403)
+
+    created_tables = ensure_oj_authoring_schema()
+    if created_tables:
+        flash('检测到旧数据库，已自动补建 OJ 题库数据表。', 'success')
+
+    draft = {
+        'problem_code': next_problem_code(),
+        'title': '',
+        'slug': '',
+        'difficulty': 'medium',
+        'time_limit_ms': 2000,
+        'memory_limit_mb': 256,
+        'allowed_languages': 'python,cpp,c',
+        'is_visible': '1',
+        'statement_md': """## 题目描述
+
+在这里写题目的核心描述。
+
+## 输入格式
+
+说明输入内容。
+
+## 输出格式
+
+说明输出内容。
+
+## 样例
+
+```input1
+1
+```
+
+```output1
+1
+```
+
+## 数据范围与提示
+
+补充数据规模、边界条件或提示信息。
+""",
+        'input_spec_md': '',
+        'output_spec_md': '',
+        'hint_md': '',
+        'source': '',
+    }
+
+    if request.method == 'POST':
+        draft = {
+            'problem_code': request.form.get('problem_code', '').strip(),
+            'title': request.form.get('title', '').strip(),
+            'slug': request.form.get('slug', '').strip(),
+            'difficulty': request.form.get('difficulty', 'medium').strip().lower() or 'medium',
+            'time_limit_ms': request.form.get('time_limit_ms', 2000, type=int) or 2000,
+            'memory_limit_mb': request.form.get('memory_limit_mb', 256, type=int) or 256,
+            'allowed_languages': request.form.get('allowed_languages', 'python,cpp,c').strip(),
+            'is_visible': request.form.get('is_visible', '1'),
+            'statement_md': request.form.get('statement_md', '').strip(),
+            'input_spec_md': request.form.get('input_spec_md', '').strip(),
+            'output_spec_md': request.form.get('output_spec_md', '').strip(),
+            'hint_md': request.form.get('hint_md', '').strip(),
+            'source': request.form.get('source', '').strip(),
+        }
+
+        if not draft['title']:
+            flash('题目标题不能为空', 'error')
+            return render_template('admin/create_oj_problem.html', draft=draft)
+
+        try:
+            problem_code = validate_problem_code(draft['problem_code'])
+        except ValueError as exc:
+            flash(str(exc), 'error')
+            return render_template('admin/create_oj_problem.html', draft=draft)
+
+        final_slug = build_problem_slug(draft['slug'] or draft['title'])
+        new_problem = Problem(
+            problem_code=problem_code,
+            title=draft['title'],
+            slug=final_slug,
+            difficulty=draft['difficulty'] if draft['difficulty'] in {'easy', 'medium', 'hard'} else 'medium',
+            time_limit_ms=max(draft['time_limit_ms'], 100),
+            memory_limit_mb=max(draft['memory_limit_mb'], 16),
+            allowed_languages=normalize_language_list(draft['allowed_languages']),
+            is_visible=draft['is_visible'] == '1',
+            created_by_id=current_user.id,
+            statement_md=draft['statement_md'],
+            input_spec_md=draft['input_spec_md'],
+            output_spec_md=draft['output_spec_md'],
+            hint_md=draft['hint_md'],
+            source=draft['source'] or None,
+        )
+        db.session.add(new_problem)
+        db.session.commit()
+        flash(f'OJ 题目《{new_problem.title}》已创建。接下来可以配置文件空间和测试数据。', 'success')
+        return redirect(url_for('edit_oj_problem', problem_id=new_problem.id))
+
+    return render_template('admin/create_oj_problem.html', draft=draft)
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_oj_problem(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    created_tables = ensure_oj_authoring_schema()
+    if created_tables:
+        flash('检测到旧数据库，已自动补建 OJ 题库数据表。', 'success')
+
+    problem = Problem.query.get_or_404(problem_id)
+
+    if request.method == 'POST':
+        raw_problem_code = request.form.get('problem_code', '').strip()
+        title = request.form.get('title', '').strip()
+        slug = request.form.get('slug', '').strip()
+
+        if not title:
+            flash('题目标题不能为空', 'error')
+            return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+        try:
+            problem.problem_code = validate_problem_code(raw_problem_code, problem_id=problem.id)
+        except ValueError as exc:
+            flash(str(exc), 'error')
+            return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+        problem.title = title
+        problem.slug = build_problem_slug(slug or title, problem_id=problem.id)
+        problem.statement_md = request.form.get('statement_md', '').strip()
+        problem.input_spec_md = request.form.get('input_spec_md', '').strip()
+        problem.output_spec_md = request.form.get('output_spec_md', '').strip()
+        problem.hint_md = request.form.get('hint_md', '').strip()
+        problem.source = request.form.get('source', '').strip() or None
+
+        difficulty = request.form.get('difficulty', 'medium').strip().lower()
+        problem.difficulty = difficulty if difficulty in {'easy', 'medium', 'hard'} else 'medium'
+        problem.time_limit_ms = max(request.form.get('time_limit_ms', 2000, type=int) or 2000, 100)
+        problem.memory_limit_mb = max(request.form.get('memory_limit_mb', 256, type=int) or 256, 16)
+        problem.allowed_languages = normalize_language_list(request.form.get('allowed_languages', 'python,cpp,c'))
+        problem.is_visible = request.form.get('is_visible') == '1'
+
+        db.session.commit()
+        flash(f'题目《{problem.title}》已更新。', 'success')
+        return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+    problem_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.uploaded_at.desc(), ProblemFile.id.desc()).all()
+    data_files = [problem_file for problem_file in problem_files if problem_file.is_testdata_file]
+    asset_files = [problem_file for problem_file in problem_files if not problem_file.is_testdata_file]
+    file_contents = {
+        problem_file.id: read_problem_asset_text(problem_file)
+        for problem_file in problem_files
+        if problem_file.is_text_editable
+    }
+    return render_template(
+        'admin/edit_oj_problem.html',
+        problem=problem,
+        problem_files=problem_files,
+        data_files=data_files,
+        asset_files=asset_files,
+        file_contents=file_contents,
+    )
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/files/text/create', methods=['POST'])
+@login_required
+def create_text_oj_problem_file(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    filename = request.form.get('filename', '').strip()
+    content = request.form.get('content', '')
+
+    try:
+        sanitized_name = secure_filename(filename)
+        if ProblemFile.query.filter_by(problem_id=problem.id, filename=sanitized_name).first():
+            raise ValueError("已存在同名文件")
+        problem_file = create_text_problem_asset(problem.id, filename, content, current_user.id)
+        db.session.add(problem_file)
+        db.session.commit()
+        flash(f'已创建文件：{problem_file.filename}', 'success')
+    except ValueError as exc:
+        db.session.rollback()
+        flash(f'创建文件失败：{exc}', 'error')
+
+    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/files/<int:file_id>/text', methods=['POST'])
+@login_required
+def update_text_oj_problem_file(problem_id, file_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    problem_file = ProblemFile.query.filter_by(id=file_id, problem_id=problem.id).first_or_404()
+    filename = request.form.get('filename', '').strip()
+    content = request.form.get('content', '')
+
+    try:
+        sanitized_name = secure_filename(filename)
+        exists = ProblemFile.query.filter_by(problem_id=problem.id, filename=sanitized_name).filter(ProblemFile.id != problem_file.id).first()
+        if exists:
+            raise ValueError("已存在同名文件")
+        update_text_problem_asset(problem_file, filename, content)
+        db.session.commit()
+        flash(f'已更新文件：{problem_file.filename}', 'success')
+    except ValueError as exc:
+        db.session.rollback()
+        flash(f'更新文件失败：{exc}', 'error')
+
+    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/files/upload', methods=['POST'])
+@login_required
+def upload_oj_problem_files(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+
+    files = request.files.getlist('files')
+    if not files:
+        flash('没有选择要上传的文件。', 'error')
+        return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+    uploaded_count = 0
+    for file_storage in files:
+        if not file_storage or not file_storage.filename:
+            continue
+        original_filename = secure_filename(file_storage.filename)
+        if ProblemFile.query.filter_by(problem_id=problem.id, filename=original_filename).first():
+            flash(f'已存在同名文件：{original_filename}', 'error')
+            continue
+        try:
+            saved_file = save_problem_asset(file_storage, problem.id)
+        except ValueError as exc:
+            flash(f'文件 {file_storage.filename} 上传失败：{exc}', 'error')
+            continue
+
+        db.session.add(
+            ProblemFile(
+                problem_id=problem.id,
+                filename=saved_file['filename'],
+                stored_filename=saved_file['stored_filename'],
+                file_path=saved_file['file_path'],
+                content_type=saved_file['content_type'],
+                file_size=saved_file['file_size'],
+                uploaded_by_id=current_user.id,
+            )
+        )
+        uploaded_count += 1
+
+    db.session.commit()
+
+    if uploaded_count:
+        flash(f'已上传 {uploaded_count} 个题目文件。', 'success')
+    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/files/<int:file_id>/delete', methods=['POST'])
+@login_required
+def delete_oj_problem_file(problem_id, file_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    problem_file = ProblemFile.query.filter_by(id=file_id, problem_id=problem.id).first_or_404()
+
+    remove_problem_asset_file(problem_file.file_path)
+    db.session.delete(problem_file)
+    db.session.commit()
+    flash(f'已删除文件：{problem_file.filename}', 'success')
+    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/files/import_testcases', methods=['POST'])
+@login_required
+def import_oj_problem_testcases_from_files(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    mode = request.form.get('import_mode', 'append').strip().lower()
+
+    files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.filename.asc()).all()
+    grouped_files = {}
+    for problem_file in files:
+        stem, ext = os.path.splitext(problem_file.filename)
+        ext = ext.lower()
+        if ext not in {'.in', '.out'}:
+            continue
+        grouped_files.setdefault(stem, {})[ext] = problem_file
+
+    paired_entries = []
+    for stem, pair in grouped_files.items():
+        if '.in' in pair and '.out' in pair:
+            paired_entries.append((stem, pair['.in'], pair['.out']))
+
+    if not paired_entries:
+        flash('没有找到可配对的 .in / .out 文件。', 'error')
+        return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+    paired_entries.sort(key=lambda item: item[0])
+
+    if mode == 'replace':
+        problem.test_cases.clear()
+        db.session.flush()
+
+    sort_order_start = len(problem.test_cases)
+    imported_count = 0
+
+    for _, input_file, output_file in paired_entries:
+        input_absolute_path = os.path.join(app.root_path, input_file.file_path.lstrip('/'))
+        output_absolute_path = os.path.join(app.root_path, output_file.file_path.lstrip('/'))
+
+        if not os.path.exists(input_absolute_path) or not os.path.exists(output_absolute_path):
+            continue
+
+        with open(input_absolute_path, 'r', encoding='utf-8') as input_handle:
+            input_data = input_handle.read()
+        with open(output_absolute_path, 'r', encoding='utf-8') as output_handle:
+            expected_output = output_handle.read()
+
+        problem.test_cases.append(
+            ProblemTestCase(
+                case_type='hidden',
+                input_data=input_data,
+                expected_output=expected_output,
+                score=1,
+                sort_order=sort_order_start + imported_count,
+            )
+        )
+        imported_count += 1
+
+    db.session.commit()
+
+    if imported_count:
+        action_text = '覆盖并导入' if mode == 'replace' else '追加导入'
+        flash(f'已{action_text} {imported_count} 组测试点。', 'success')
+    else:
+        flash('找到文件对了，但没有成功导入任何测试点。', 'error')
+
+    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/delete', methods=['POST'])
+@login_required
+def delete_oj_problem(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    created_tables = ensure_oj_authoring_schema()
+    if created_tables:
+        flash('检测到旧数据库，已自动补建 OJ 题库数据表。', 'success')
+
+    problem = Problem.query.get_or_404(problem_id)
+    title = problem.title
+    for problem_file in problem.files.all():
+        remove_problem_asset_file(problem_file.file_path)
+    db.session.delete(problem)
+    db.session.commit()
+    flash(f'OJ 题目《{title}》已删除。', 'success')
+    return redirect(url_for('manage_oj_problems'))
+
+
 # ==========================================
 # 🛠️ 管理员：作业发布控制台
 # ==========================================
@@ -7219,12 +8380,65 @@ def cyber_radio():
     return render_template('cyber_radio.html', all_vinyls=all_vinyls, earned_v_ids=earned_v_ids, condition_map=condition_map)
     
 
+def ensure_platform_seed_data():
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+    if MarkdownStyle.query.first() is None:
+        db.session.add(MarkdownStyle(css_text=""))
+        db.session.commit()
+
+    seed_default_phone_apps()
+    ensure_builtin_phone_apps()
+
+
+def initialize_platform(run_schema=False):
+    if run_schema:
+        db.create_all()
+        upgrade_db()
+        try:
+            migrate_stamp(revision="head")
+        except Exception as exc:
+            app.logger.warning(f"Unable to stamp migration head automatically: {exc}")
+    ensure_platform_seed_data()
+
+
+@app.cli.group("wikibook")
+def wikibook_cli():
+    """Operational commands for the Wikibook platform."""
+
+
+@wikibook_cli.command("init-platform")
+@click.option("--with-schema/--no-schema", default=False, help="Create/upgrade schema before seeding platform data.")
+def init_platform_command(with_schema):
+    """Prepare DB schema and baseline seed data."""
+    initialize_platform(run_schema=with_schema)
+    click.echo("Wikibook platform initialization complete.")
+
+
+@wikibook_cli.command("enqueue-judge-task")
+@click.argument("task_id", type=int)
+def enqueue_judge_task_command(task_id):
+    """Push an existing judge task into the Redis queue."""
+    task = JudgeTask.query.get(task_id)
+    if task is None:
+        raise click.ClickException(f"JudgeTask {task_id} does not exist.")
+
+    job = enqueue_judge_task(task_id)
+    task.queue_job_id = job.id
+    task.status = 'queued'
+    db.session.commit()
+    click.echo(f"Queued JudgeTask {task_id} as job {job.id}.")
+
 
 
 
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()
-        upgrade_db() # Run upgrade check
+        if app.config.get("AUTO_INIT_DB"):
+            initialize_platform(run_schema=True)
         
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5009")), debug=True)
+    app.run(
+        host=os.environ.get("HOST", "0.0.0.0"),
+        port=int(os.environ.get("PORT", "5009")),
+        debug=os.environ.get("FLASK_DEBUG", "false").lower() == "true",
+    )

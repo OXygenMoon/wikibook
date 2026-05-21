@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}新建 OJ 题目{% endblock %}
+
+{% block extra_css %}
+<style>
+    .create-shell {
+        background:
+            radial-gradient(circle at top right, rgba(59,130,246,0.10), transparent 28%),
+            radial-gradient(circle at left center, rgba(16,185,129,0.10), transparent 24%),
+            linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+        border: 1px solid rgba(15,23,42,0.08);
+        border-radius: 2rem;
+        box-shadow: 0 24px 80px rgba(15,23,42,0.09);
+    }
+    html.dark .create-shell {
+        background:
+            radial-gradient(circle at top right, rgba(59,130,246,0.16), transparent 28%),
+            radial-gradient(circle at left center, rgba(16,185,129,0.12), transparent 24%),
+            linear-gradient(180deg, rgba(18,18,22,0.98), rgba(20,24,32,0.98));
+        border-color: rgba(255,255,255,0.08);
+        box-shadow: none;
+    }
+    .meta-card {
+        border: 1px dashed rgba(15,23,42,0.12);
+        border-radius: 1.5rem;
+        background: rgba(255,255,255,0.72);
+    }
+    html.dark .meta-card {
+        border-color: rgba(255,255,255,0.14);
+        background: rgba(24,24,27,0.7);
+    }
+    .EasyMDEContainer {
+        border-radius: 1.5rem !important;
+        overflow: hidden;
+        border: 1px solid rgba(15,23,42,0.08) !important;
+        box-shadow: 0 12px 32px rgba(15,23,42,0.06);
+    }
+    html.dark .EasyMDEContainer {
+        border-color: rgba(255,255,255,0.12) !important;
+        box-shadow: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-10">
+    <div class="flex items-center justify-between gap-4 flex-wrap mb-8">
+        <div>
+            <p class="text-xs font-black tracking-[0.32em] uppercase text-cyan-600 mb-2">Problem Create</p>
+            <h1 class="text-3xl md:text-4xl font-black text-stone-800 dark:text-stone-100">新建 OJ 题目</h1>
+            <p class="text-stone-500 dark:text-stone-400 mt-2">第一步先把题目骨架和 Markdown 题面写好。创建成功后，再进入工作台配置测试数据和文件空间。</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{{ url_for('manage_oj_problems') }}" class="btn btn-ghost rounded-2xl">返回题库</a>
+        </div>
+    </div>
+
+    <form method="post" class="create-shell p-6 md:p-8 flex flex-col gap-8">
+        <div class="grid grid-cols-1 xl:grid-cols-[1.05fr,0.95fr] gap-8 items-start">
+            <div class="meta-card p-5 flex flex-col gap-5">
+                <div>
+                    <p class="text-xs font-black tracking-[0.26em] uppercase text-stone-400 mb-2">Basic Meta</p>
+                    <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">基础信息</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">题目编号</span>
+                        <input type="text" name="problem_code" value="{{ draft.problem_code }}" class="input input-bordered rounded-2xl font-mono font-black text-lg uppercase" placeholder="P1000" required>
+                        <span class="text-xs text-stone-400 mt-2">必填且唯一，例如 P1000、P1001、Q1001。</span>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">题目标题</span>
+                        <input type="text" name="title" value="{{ draft.title }}" class="input input-bordered rounded-2xl font-bold text-lg" required>
+                    </label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">Slug（可选）</span>
+                        <input type="text" name="slug" value="{{ draft.slug }}" class="input input-bordered rounded-2xl font-mono" placeholder="two-sum">
+                    </label>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">难度</span>
+                        <select name="difficulty" class="select select-bordered rounded-2xl">
+                            <option value="easy" {% if draft.difficulty == 'easy' %}selected{% endif %}>Easy</option>
+                            <option value="medium" {% if draft.difficulty == 'medium' %}selected{% endif %}>Medium</option>
+                            <option value="hard" {% if draft.difficulty == 'hard' %}selected{% endif %}>Hard</option>
+                        </select>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">可见性</span>
+                        <select name="is_visible" class="select select-bordered rounded-2xl">
+                            <option value="1" {% if draft.is_visible == '1' %}selected{% endif %}>公开</option>
+                            <option value="0" {% if draft.is_visible == '0' %}selected{% endif %}>隐藏</option>
+                        </select>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">时限(ms)</span>
+                        <input type="number" name="time_limit_ms" value="{{ draft.time_limit_ms }}" min="100" class="input input-bordered rounded-2xl">
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">内存(MB)</span>
+                        <input type="number" name="memory_limit_mb" value="{{ draft.memory_limit_mb }}" min="16" class="input input-bordered rounded-2xl">
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">来源</span>
+                        <input type="text" name="source" value="{{ draft.source }}" class="input input-bordered rounded-2xl">
+                    </label>
+                </div>
+                <label class="form-control">
+                    <span class="label-text font-bold mb-2">允许语言</span>
+                    <input type="text" name="allowed_languages" value="{{ draft.allowed_languages }}" class="input input-bordered rounded-2xl">
+                </label>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">输入格式（可选补充）</span>
+                        <textarea name="input_spec_md" class="textarea textarea-bordered rounded-2xl min-h-[110px]">{{ draft.input_spec_md }}</textarea>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">输出格式（可选补充）</span>
+                        <textarea name="output_spec_md" class="textarea textarea-bordered rounded-2xl min-h-[110px]">{{ draft.output_spec_md }}</textarea>
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">提示（可选）</span>
+                        <textarea name="hint_md" class="textarea textarea-bordered rounded-2xl min-h-[110px]">{{ draft.hint_md }}</textarea>
+                    </label>
+                </div>
+            </div>
+
+            <div class="meta-card p-5 h-full flex flex-col justify-between gap-4">
+                <div>
+                    <p class="text-xs font-black tracking-[0.26em] uppercase text-stone-400 mb-2">Workflow</p>
+                    <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">创建后会发生什么</h2>
+                </div>
+                <div class="text-sm leading-8 text-stone-500 dark:text-stone-400">
+                    1. 先保存题目基础信息和 Markdown 题面。
+                    <br>2. 创建成功后跳转到题目工作台。
+                    <br>3. 再在工作台里配置测试数据、创建 `1.in / 1.out`、上传图片和附件。
+                    <br>4. 如需从数据文件同步测试点，可以在工作台一键导入。
+                </div>
+                <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4 text-sm text-stone-500 dark:text-stone-400">
+                    建议在这里先把完整题面写好，尤其是样例、数据范围和说明。测试数据和文件空间留到下一步处理，编辑体验会更集中。
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-4">
+            <div>
+                <p class="text-xs font-black tracking-[0.26em] uppercase text-cyan-600 mb-2">Markdown Statement</p>
+                <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">题面编辑器</h2>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">支持 Markdown。创建成功后，如果要引用图片或文件，再去工作台里的文件空间插入资源。</p>
+            </div>
+            <textarea id="problem-statement-editor" name="statement_md">{{ draft.statement_md }}</textarea>
+        </div>
+
+        <div class="flex items-center justify-between gap-4 flex-wrap pt-4 border-t border-stone-200 dark:border-white/10">
+            <p class="text-sm text-stone-500 dark:text-stone-400 font-mono">create first, then unlock files + testdata workspace</p>
+            <button type="submit" class="btn btn-primary rounded-2xl px-8">创建题目并进入工作台</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        new EasyMDE({
+            element: document.getElementById('problem-statement-editor'),
+            spellChecker: false,
+            status: ["lines", "words"],
+            sideBySideFullscreen: false,
+            renderingConfig: {
+                singleLineBreaks: false,
+                codeSyntaxHighlighting: true
+            },
+            previewClass: ["editor-preview", "prose", "max-w-none"],
+            placeholder: "在这里编写题面 Markdown..."
+        });
+    });
+</script>
+{% endblock %}

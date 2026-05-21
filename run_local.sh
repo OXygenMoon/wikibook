@@ -86,6 +86,7 @@ start_service() {
     echo "Service failed to start. Recent logs:"
     tail -n 40 "${LOGFILE}" 2>/dev/null || true
     echo "If Python modules are missing, install dependencies first: pip install -r requirements.txt"
+    echo "If this is a fresh database, initialize it first: flask --app app wikibook init-platform --with-schema"
     rm -f "${PIDFILE}"
     exit 1
 }

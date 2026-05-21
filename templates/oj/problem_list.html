@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}OJ 题库{% endblock %}
+
+{% block extra_css %}
+<style>
+    .oj-page {
+        background: linear-gradient(180deg, rgba(241,245,249,0.9), rgba(255,255,255,0.98));
+    }
+    html.dark .oj-page {
+        background: linear-gradient(180deg, rgba(15,23,42,0.95), rgba(10,10,12,0.98));
+    }
+    .oj-toolbar {
+        border: 1px solid rgba(15,23,42,0.10);
+        border-radius: 8px;
+        background: rgba(255,255,255,0.88);
+    }
+    html.dark .oj-toolbar {
+        border-color: rgba(255,255,255,0.10);
+        background: rgba(24,24,27,0.86);
+    }
+    .problem-row {
+        border-bottom: 1px solid rgba(15,23,42,0.08);
+        transition: background-color 0.16s ease;
+    }
+    .problem-row:hover {
+        background: rgba(14,165,233,0.06);
+    }
+    html.dark .problem-row {
+        border-color: rgba(255,255,255,0.08);
+    }
+    .diff-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 4.25rem;
+        border-radius: 999px;
+        padding: 0.3rem 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="oj-page min-h-[calc(100vh-4rem)] pt-6 pb-16">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 flex flex-col gap-6">
+        <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+                <p class="text-xs font-black tracking-[0.3em] uppercase text-cyan-600 mb-2">Online Judge</p>
+                <h1 class="text-3xl md:text-4xl font-black text-stone-900 dark:text-stone-100">OJ 题库</h1>
+            </div>
+            {% if current_user.is_admin %}
+            <div class="flex gap-2 flex-wrap">
+                <a href="{{ url_for('oj_submission_list') }}" class="btn btn-ghost rounded-lg">
+                    <i class="fas fa-history"></i> 提交记录
+                </a>
+                <a href="{{ url_for('manage_oj_problems') }}" class="btn btn-outline rounded-lg">
+                    <i class="fas fa-sliders-h"></i> 管理题库
+                </a>
+                <a href="{{ url_for('create_oj_problem') }}" class="btn btn-primary rounded-lg">
+                    <i class="fas fa-plus"></i> 新建题目
+                </a>
+            </div>
+            {% else %}
+            <a href="{{ url_for('oj_submission_list') }}" class="btn btn-outline rounded-lg">
+                <i class="fas fa-history"></i> 我的提交
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="oj-toolbar p-4">
+                <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">Total</div>
+                <div class="text-2xl font-black text-stone-900 dark:text-stone-100">{{ problem_stats.total }}</div>
+            </div>
+            <div class="oj-toolbar p-4">
+                <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">Easy</div>
+                <div class="text-2xl font-black text-emerald-600">{{ problem_stats.easy }}</div>
+            </div>
+            <div class="oj-toolbar p-4">
+                <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">Medium</div>
+                <div class="text-2xl font-black text-amber-600">{{ problem_stats.medium }}</div>
+            </div>
+            <div class="oj-toolbar p-4">
+                <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">Hard</div>
+                <div class="text-2xl font-black text-rose-600">{{ problem_stats.hard }}</div>
+            </div>
+        </div>
+
+        <form method="get" class="oj-toolbar p-4 grid grid-cols-1 md:grid-cols-[1fr,12rem,12rem,auto] gap-3 items-end">
+            <label class="form-control">
+                <span class="label-text font-bold mb-1">搜索</span>
+                <input type="text" name="q" value="{{ q }}" class="input input-bordered rounded-lg" placeholder="编号、标题、Slug、来源">
+            </label>
+            <label class="form-control">
+                <span class="label-text font-bold mb-1">难度</span>
+                <select name="difficulty" class="select select-bordered rounded-lg">
+                    <option value="">全部难度</option>
+                    <option value="easy" {% if difficulty == 'easy' %}selected{% endif %}>Easy</option>
+                    <option value="medium" {% if difficulty == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="hard" {% if difficulty == 'hard' %}selected{% endif %}>Hard</option>
+                </select>
+            </label>
+            {% if current_user.is_admin %}
+            <label class="form-control">
+                <span class="label-text font-bold mb-1">可见性</span>
+                <select name="visibility" class="select select-bordered rounded-lg">
+                    <option value="visible" {% if visibility == 'visible' %}selected{% endif %}>公开题</option>
+                    <option value="hidden" {% if visibility == 'hidden' %}selected{% endif %}>隐藏题</option>
+                    <option value="all" {% if visibility == 'all' %}selected{% endif %}>全部</option>
+                </select>
+            </label>
+            {% endif %}
+            <button type="submit" class="btn btn-primary rounded-lg">
+                <i class="fas fa-search"></i> 筛选
+            </button>
+        </form>
+
+        <div class="oj-toolbar overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr class="text-xs uppercase tracking-widest text-stone-500">
+                            <th>UID</th>
+                            <th>编号</th>
+                            <th>题目</th>
+                            <th>难度</th>
+                            <th>限制</th>
+                            <th>语言</th>
+                            {% if current_user.is_admin %}<th>状态</th>{% endif %}
+                            <th class="text-right">入口</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for problem in problems %}
+                        <tr class="problem-row">
+                            <td class="font-mono font-bold text-stone-500">{{ problem.uid_text }}</td>
+                            <td class="font-mono font-black text-stone-900 dark:text-stone-100">{{ problem.problem_code }}</td>
+                            <td>
+                                <a href="{{ url_for('oj_problem_detail', slug=problem.slug) }}" class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600">
+                                    {{ problem.title }}
+                                </a>
+                                <div class="text-xs font-mono text-stone-400 mt-1">{{ problem.slug }}</div>
+                            </td>
+                            <td>
+                                <span class="diff-pill
+                                    {% if problem.difficulty == 'easy' %}bg-emerald-100 text-emerald-700
+                                    {% elif problem.difficulty == 'hard' %}bg-rose-100 text-rose-700
+                                    {% else %}bg-amber-100 text-amber-700{% endif %}">
+                                    {{ problem.difficulty }}
+                                </span>
+                            </td>
+                            <td class="text-sm text-stone-500">{{ problem.time_limit_ms }}ms / {{ problem.memory_limit_mb }}MB</td>
+                            <td class="text-sm text-stone-500">{{ problem.allowed_languages_text }}</td>
+                            {% if current_user.is_admin %}
+                            <td>
+                                {% if problem.is_visible %}
+                                <span class="badge badge-info badge-outline">公开</span>
+                                {% else %}
+                                <span class="badge badge-ghost">隐藏</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            <td class="text-right">
+                                <a href="{{ url_for('oj_problem_detail', slug=problem.slug) }}" class="btn btn-sm rounded-lg">查看</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ 8 if current_user.is_admin else 7 }}" class="text-center py-14 text-stone-400">当前没有匹配的题目。</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

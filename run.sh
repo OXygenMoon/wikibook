@@ -22,6 +22,7 @@ if [ -f "$PIDFILE" ]; then
 fi
 
 echo "Starting Wikibook service on port $PORT..."
+export GUNICORN_DAEMON=true
 ./venv/bin/gunicorn -c gunicorn.conf.py app:app
 
 if [ $? -eq 0 ]; then

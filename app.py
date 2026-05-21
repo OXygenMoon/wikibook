@@ -174,12 +174,54 @@ def save_problem_asset(file_storage, problem_id):
     }
 
 
+def save_oj_assignment_asset(file_storage, assignment_id):
+    if not file_storage or not file_storage.filename:
+        raise ValueError("未选择文件")
+
+    original_filename = secure_filename(file_storage.filename)
+    if not original_filename:
+        raise ValueError("文件名无效")
+
+    if not is_allowed_problem_file(original_filename):
+        raise ValueError("不支持的文件类型")
+
+    ext = os.path.splitext(original_filename)[1].lower()
+    stored_filename = secure_filename(f"{uuid.uuid4().hex}{ext}")
+    relative_subdir = f"oj_assignment_assets/assignment_{assignment_id}"
+    absolute_dir = os.path.join(app.root_path, "static", "uploads", relative_subdir)
+    os.makedirs(absolute_dir, exist_ok=True)
+
+    absolute_path = os.path.join(absolute_dir, stored_filename)
+    file_storage.save(absolute_path)
+
+    return {
+        "filename": original_filename,
+        "stored_filename": stored_filename,
+        "file_path": f"/static/uploads/{relative_subdir}/{stored_filename}",
+        "file_size": os.path.getsize(absolute_path),
+        "content_type": file_storage.content_type or "",
+    }
+
+
 def remove_problem_asset_file(file_path):
     prefix = "/static/uploads/problem_assets/"
     if not file_path or not file_path.startswith(prefix):
         return
     relative_path = file_path[len(prefix):]
     absolute_path = os.path.join(app.root_path, "static", "uploads", "problem_assets", relative_path)
+    if os.path.exists(absolute_path):
+        try:
+            os.remove(absolute_path)
+        except OSError:
+            pass
+
+
+def remove_oj_assignment_asset_file(file_path):
+    prefix = "/static/uploads/oj_assignment_assets/"
+    if not file_path or not file_path.startswith(prefix):
+        return
+    relative_path = file_path[len(prefix):]
+    absolute_path = os.path.join(app.root_path, "static", "uploads", "oj_assignment_assets", relative_path)
     if os.path.exists(absolute_path):
         try:
             os.remove(absolute_path)
@@ -6318,6 +6360,7 @@ class JudgeTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     submission_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=True)
     problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), nullable=True, index=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('oj_assignment.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     language = db.Column(db.String(32), nullable=False, default='python')
     source_code = db.Column(db.Text, nullable=False)
@@ -6338,6 +6381,7 @@ class JudgeTask(db.Model):
 
     submission = db.relationship('Submission', backref=db.backref('judge_tasks', lazy='dynamic'))
     problem = db.relationship('Problem', backref=db.backref('judge_tasks', lazy='dynamic'))
+    assignment = db.relationship('OJAssignment', backref=db.backref('judge_tasks', lazy='dynamic'))
     user = db.relationship('User', backref=db.backref('judge_tasks', lazy='dynamic'))
 
 
@@ -6448,6 +6492,131 @@ class ProblemFile(db.Model):
     @property
     def is_testdata_file(self):
         return self.extension in TESTDATA_FILE_EXTENSIONS
+
+
+oj_assignment_classes = db.Table(
+    'oj_assignment_classes',
+    db.Column('assignment_id', db.Integer, db.ForeignKey('oj_assignment.id'), primary_key=True),
+    db.Column('class_id', db.Integer, db.ForeignKey('class.id'), primary_key=True),
+)
+
+oj_assignment_groups = db.Table(
+    'oj_assignment_groups',
+    db.Column('assignment_id', db.Integer, db.ForeignKey('oj_assignment.id'), primary_key=True),
+    db.Column('group_id', db.Integer, db.ForeignKey('group.id'), primary_key=True),
+)
+
+oj_assignment_users = db.Table(
+    'oj_assignment_users',
+    db.Column('assignment_id', db.Integer, db.ForeignKey('oj_assignment.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+)
+
+oj_assignment_managers = db.Table(
+    'oj_assignment_managers',
+    db.Column('assignment_id', db.Integer, db.ForeignKey('oj_assignment.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+)
+
+
+class OJAssignment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description_md = db.Column(db.Text, nullable=True)
+    start_at = db.Column(db.DateTime, nullable=True)
+    end_at = db.Column(db.DateTime, nullable=True)
+    extension_days = db.Column(db.Integer, nullable=False, default=0)
+    visibility = db.Column(db.String(20), nullable=False, default='all')  # all, restricted
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
+
+    created_by = db.relationship('User', backref='created_oj_assignments', foreign_keys=[created_by_id])
+    allowed_classes = db.relationship('Class', secondary=oj_assignment_classes, lazy='subquery')
+    allowed_groups = db.relationship('Group', secondary=oj_assignment_groups, lazy='subquery')
+    allowed_users = db.relationship('User', secondary=oj_assignment_users, lazy='subquery')
+    managers = db.relationship('User', secondary=oj_assignment_managers, lazy='subquery')
+    problem_links = db.relationship(
+        'OJAssignmentProblem',
+        backref='assignment',
+        cascade='all, delete-orphan',
+        order_by='OJAssignmentProblem.sort_order.asc()',
+    )
+    files = db.relationship('OJAssignmentFile', backref='assignment', cascade='all, delete-orphan', lazy='dynamic')
+
+    @property
+    def problem_count(self):
+        return len(self.problem_links)
+
+    @property
+    def deadline_with_extension(self):
+        if not self.end_at:
+            return None
+        return self.end_at + timedelta(days=self.extension_days or 0)
+
+    @property
+    def target_text(self):
+        if self.visibility == 'all':
+            return '全部学生'
+        parts = []
+        parts.extend(cls.name for cls in self.allowed_classes)
+        parts.extend(group.name for group in self.allowed_groups)
+        parts.extend((user.real_name or user.username) for user in self.allowed_users)
+        return '、'.join(parts) or '未设置'
+
+    def is_manager(self, user):
+        if not user.is_authenticated:
+            return False
+        return bool(user.is_admin or user.id == self.created_by_id or user in self.managers)
+
+    def is_visible_to(self, user):
+        if not user.is_authenticated:
+            return False
+        if self.is_manager(user):
+            return True
+        if not self.is_active:
+            return False
+        if self.visibility == 'all':
+            return True
+        if user in self.allowed_users:
+            return True
+        if user.student_class and user.student_class in self.allowed_classes:
+            return True
+        return not set(user.groups).isdisjoint(set(self.allowed_groups))
+
+
+class OJAssignmentProblem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('oj_assignment.id'), nullable=False)
+    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), nullable=False)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+
+    problem = db.relationship('Problem')
+
+
+class OJAssignmentFile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('oj_assignment.id'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    stored_filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    content_type = db.Column(db.String(120), nullable=True)
+    file_size = db.Column(db.Integer, nullable=False, default=0)
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=now_utc8)
+
+    uploader = db.relationship('User', backref='uploaded_oj_assignment_files', foreign_keys=[uploaded_by_id])
+
+    @property
+    def extension(self):
+        return os.path.splitext(self.filename or "")[1].lower()
+
+    @property
+    def markdown_embed(self):
+        if self.extension in ALLOWED_IMAGE_EXTENSIONS:
+            return f"![{self.filename}]({self.file_path})"
+        return f"[{self.filename}]({self.file_path})"
 
 
 def can_view_problem(problem, user):
@@ -6928,6 +7097,13 @@ def ensure_oj_authoring_schema():
         'problem': Problem.__table__,
         'problem_test_case': ProblemTestCase.__table__,
         'problem_file': ProblemFile.__table__,
+        'oj_assignment': OJAssignment.__table__,
+        'oj_assignment_problem': OJAssignmentProblem.__table__,
+        'oj_assignment_file': OJAssignmentFile.__table__,
+        'oj_assignment_classes': oj_assignment_classes,
+        'oj_assignment_groups': oj_assignment_groups,
+        'oj_assignment_users': oj_assignment_users,
+        'oj_assignment_managers': oj_assignment_managers,
     }
     created_tables = []
 
@@ -6961,11 +7137,170 @@ def ensure_oj_authoring_schema():
             judge_task_columns = {column['name'] for column in inspector.get_columns('judge_task')}
             if 'problem_id' not in judge_task_columns:
                 connection.execute(db.text("ALTER TABLE judge_task ADD COLUMN problem_id INTEGER"))
+            if 'assignment_id' not in judge_task_columns:
+                connection.execute(db.text("ALTER TABLE judge_task ADD COLUMN assignment_id INTEGER"))
             judge_task_indexes = {index['name'] for index in inspector.get_indexes('judge_task')}
             if 'ix_judge_task_problem_id' not in judge_task_indexes:
                 connection.execute(db.text("CREATE INDEX IF NOT EXISTS ix_judge_task_problem_id ON judge_task (problem_id)"))
+            if 'ix_judge_task_assignment_id' not in judge_task_indexes:
+                connection.execute(db.text("CREATE INDEX IF NOT EXISTS ix_judge_task_assignment_id ON judge_task (assignment_id)"))
 
     return created_tables
+
+
+def get_visible_oj_assignments_for_user(user):
+    base_query = OJAssignment.query.order_by(OJAssignment.start_at.desc(), OJAssignment.created_at.desc(), OJAssignment.id.desc())
+    if not user.is_authenticated:
+        return []
+    if user.is_admin:
+        return base_query.all()
+    return [assignment for assignment in base_query.all() if assignment.is_visible_to(user)]
+
+
+def get_oj_assignment_or_404_visible(assignment_id):
+    assignment = OJAssignment.query.get_or_404(assignment_id)
+    if not assignment.is_visible_to(current_user):
+        abort(404)
+    return assignment
+
+
+def resolve_oj_assignment_targets(assignment, class_ids, group_ids, user_ids, manager_ids):
+    class_ids = {int(value) for value in class_ids if str(value).isdigit()}
+    group_ids = {int(value) for value in group_ids if str(value).isdigit()}
+    user_ids = {int(value) for value in user_ids if str(value).isdigit()}
+    manager_ids = {int(value) for value in manager_ids if str(value).isdigit()}
+
+    assignment.allowed_classes = Class.query.filter(Class.id.in_(class_ids)).order_by(Class.name.asc()).all() if class_ids else []
+    assignment.allowed_groups = Group.query.filter(Group.id.in_(group_ids)).order_by(Group.name.asc()).all() if group_ids else []
+    assignment.allowed_users = User.query.filter(User.id.in_(user_ids)).order_by(User.username.asc()).all() if user_ids else []
+    assignment.managers = User.query.filter(User.id.in_(manager_ids)).order_by(User.username.asc()).all() if manager_ids else []
+
+
+def resolve_oj_assignment_problem_links(assignment, raw_problem_ids):
+    parsed_ids = []
+    seen_ids = set()
+    for raw_value in raw_problem_ids:
+        if not str(raw_value).isdigit():
+            continue
+        problem_id = int(raw_value)
+        if problem_id in seen_ids:
+            continue
+        seen_ids.add(problem_id)
+        parsed_ids.append(problem_id)
+
+    problems = Problem.query.filter(Problem.id.in_(parsed_ids)).all() if parsed_ids else []
+    problem_map = {problem.id: problem for problem in problems}
+    assignment.problem_links.clear()
+    for sort_order, problem_id in enumerate(parsed_ids):
+        problem = problem_map.get(problem_id)
+        if not problem:
+            continue
+        assignment.problem_links.append(
+            OJAssignmentProblem(problem_id=problem.id, sort_order=sort_order)
+        )
+
+
+def build_oj_assignment_form_state(assignment=None):
+    return {
+        'title': assignment.title if assignment else '',
+        'description_md': assignment.description_md if assignment else '',
+        'start_at': assignment.start_at.strftime('%Y-%m-%dT%H:%M') if assignment and assignment.start_at else '',
+        'end_at': assignment.end_at.strftime('%Y-%m-%dT%H:%M') if assignment and assignment.end_at else '',
+        'extension_days': assignment.extension_days if assignment else 0,
+        'visibility': assignment.visibility if assignment else 'all',
+        'is_active': '1' if (assignment.is_active if assignment else True) else '0',
+        'selected_class_ids': [item.id for item in assignment.allowed_classes] if assignment else [],
+        'selected_group_ids': [item.id for item in assignment.allowed_groups] if assignment else [],
+        'selected_user_ids': [item.id for item in assignment.allowed_users] if assignment else [],
+        'selected_manager_ids': [item.id for item in assignment.managers] if assignment else [],
+        'selected_problem_ids': [link.problem_id for link in assignment.problem_links] if assignment else [],
+    }
+
+
+def get_assignment_for_problem_request(problem=None):
+    assignment_id = request.values.get('assignment_id', type=int)
+    if not assignment_id:
+        return None
+    assignment = get_oj_assignment_or_404_visible(assignment_id)
+    if problem is not None:
+        assignment_problem_ids = {link.problem_id for link in assignment.problem_links}
+        if problem.id not in assignment_problem_ids:
+            abort(404)
+    return assignment
+
+
+def assignment_problem_latest_status(assignment, user):
+    problem_ids = [link.problem_id for link in assignment.problem_links]
+    latest_by_problem = {}
+    accepted_problem_ids = set()
+    if not user.is_authenticated or not problem_ids:
+        return latest_by_problem, accepted_problem_ids
+
+    tasks = (
+        JudgeTask.query
+        .filter(
+            JudgeTask.user_id == user.id,
+            JudgeTask.problem_id.in_(problem_ids),
+            JudgeTask.assignment_id == assignment.id,
+        )
+        .order_by(JudgeTask.problem_id.asc(), JudgeTask.created_at.desc(), JudgeTask.id.desc())
+        .all()
+    )
+    for task in tasks:
+        if task.status == 'accepted':
+            accepted_problem_ids.add(task.problem_id)
+        latest_by_problem.setdefault(task.problem_id, task)
+    return latest_by_problem, accepted_problem_ids
+
+
+def oj_task_display_meta(task):
+    if not task:
+        return {'label': '未提交', 'badge': 'badge-ghost'}
+    if task.status == 'accepted':
+        return {'label': 'AC', 'badge': 'badge-success'}
+    if task.result_summary and task.result_summary.get('failure_reason') == 'compile_error':
+        return {'label': '编译错误', 'badge': 'badge-error'}
+
+    first_failed = task.results.order_by(JudgeTaskResult.case_index.asc()).filter(JudgeTaskResult.status != 'accepted').first()
+    if first_failed:
+        mapping = {
+            'wrong_answer': {'label': 'WA', 'badge': 'badge-error'},
+            'runtime_error': {'label': 'RE', 'badge': 'badge-error'},
+            'time_limit_exceeded': {'label': 'TLE', 'badge': 'badge-warning'},
+        }
+        return mapping.get(first_failed.status, {'label': first_failed.status, 'badge': 'badge-error'})
+
+    meta = oj_status_meta(task.status)
+    return {'label': meta['label'], 'badge': meta['badge']}
+
+
+def get_oj_assignment_participants(assignment):
+    if assignment.visibility == 'all':
+        return User.query.filter_by(is_admin=False).order_by(User.id.asc()).all()
+
+    users = {}
+    for user in assignment.allowed_users:
+        if not user.is_admin:
+            users[user.id] = user
+
+    for class_item in assignment.allowed_classes:
+        for user in class_item.users:
+            if not user.is_admin:
+                users[user.id] = user
+
+    for group_item in assignment.allowed_groups:
+        for user in group_item.users:
+            if not user.is_admin:
+                users[user.id] = user
+
+    return sorted(
+        users.values(),
+        key=lambda item: (
+            (item.student_class.name if item.student_class else 'zzzz'),
+            item.real_name or item.username,
+            item.username,
+        ),
+    )
 
 
 def parse_assignment_tags(html_content, wiki_page_id):
@@ -7687,7 +8022,10 @@ def oj_problem_list():
                 db.func.count(JudgeTask.id).label('attempts'),
                 db.func.sum(case((JudgeTask.status == 'accepted', 1), else_=0)).label('accepted'),
             )
-            .filter(JudgeTask.problem_id.in_(problem_ids))
+            .filter(
+                JudgeTask.problem_id.in_(problem_ids),
+                JudgeTask.assignment_id.is_(None),
+            )
             .group_by(JudgeTask.problem_id)
             .all()
         )
@@ -7711,6 +8049,7 @@ def oj_problem_list():
             .filter(
                 JudgeTask.problem_id.in_(problem_ids),
                 JudgeTask.user_id == current_user.id,
+                JudgeTask.assignment_id.is_(None),
             )
             .group_by(JudgeTask.problem_id)
             .all()
@@ -7753,19 +8092,21 @@ def oj_problem_list():
 @login_required
 def oj_problem_detail(slug):
     ensure_oj_authoring_schema()
-    problem = get_problem_or_404_for_current_user(slug)
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user) and not active_assignment:
+        abort(404)
 
     sample_cases = problem.sample_cases
     hidden_case_count = len(problem.hidden_cases)
     all_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.filename.asc()).all()
-    my_latest_task = JudgeTask.query.filter_by(
+    task_query = JudgeTask.query.filter_by(
         problem_id=problem.id,
         user_id=current_user.id,
-    ).order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).first()
-    submission_history = JudgeTask.query.filter_by(
-        problem_id=problem.id,
-        user_id=current_user.id,
-    ).order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(5).all()
+        assignment_id=active_assignment.id if active_assignment else None,
+    )
+    my_latest_task = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).first()
+    submission_history = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(5).all()
 
     if current_user.is_admin:
         visible_files = all_files
@@ -7789,6 +8130,7 @@ def oj_problem_detail(slug):
         hint_html=hint_html,
         my_latest_task=my_latest_task,
         submission_history=submission_history,
+        active_assignment=active_assignment,
     )
 
 
@@ -7796,17 +8138,26 @@ def oj_problem_detail(slug):
 @login_required
 def oj_problem_code(slug):
     ensure_oj_authoring_schema()
-    problem = get_problem_or_404_for_current_user(slug)
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user) and not active_assignment:
+        abort(404)
 
     statement_html = markdown(problem.statement_md or "")
     input_spec_html = markdown(problem.input_spec_md or "")
     output_spec_html = markdown(problem.output_spec_md or "")
     hint_html = markdown(problem.hint_md or "")
     sample_cases = problem.sample_cases
-    my_latest_task = JudgeTask.query.filter_by(
-        problem_id=problem.id,
-        user_id=current_user.id,
-    ).order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).first()
+    my_latest_task = (
+        JudgeTask.query
+        .filter_by(
+            problem_id=problem.id,
+            user_id=current_user.id,
+            assignment_id=active_assignment.id if active_assignment else None,
+        )
+        .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
+        .first()
+    )
 
     return render_template(
         'oj/problem_code.html',
@@ -7817,6 +8168,7 @@ def oj_problem_code(slug):
         output_spec_html=output_spec_html,
         hint_html=hint_html,
         my_latest_task=my_latest_task,
+        active_assignment=active_assignment,
     )
 
 
@@ -7824,7 +8176,10 @@ def oj_problem_code(slug):
 @login_required
 def oj_problem_syntax_check(slug):
     ensure_oj_authoring_schema()
-    get_problem_or_404_for_current_user(slug)
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user) and not active_assignment:
+        abort(404)
 
     payload = request.get_json(silent=True) or {}
     language = (payload.get('language') or '').strip().lower()
@@ -7871,7 +8226,10 @@ def oj_problem_syntax_check(slug):
 @login_required
 def oj_problem_python_completions(slug):
     ensure_oj_authoring_schema()
-    get_problem_or_404_for_current_user(slug)
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user) and not active_assignment:
+        abort(404)
 
     if jedi is None:
         return _jedi_unavailable_response()
@@ -7903,7 +8261,10 @@ def oj_problem_python_completions(slug):
 @login_required
 def oj_problem_python_hover(slug):
     ensure_oj_authoring_schema()
-    get_problem_or_404_for_current_user(slug)
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user) and not active_assignment:
+        abort(404)
 
     if jedi is None:
         return _jedi_unavailable_response()
@@ -7935,7 +8296,10 @@ def oj_problem_python_hover(slug):
 @login_required
 def oj_problem_python_signatures(slug):
     ensure_oj_authoring_schema()
-    get_problem_or_404_for_current_user(slug)
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user) and not active_assignment:
+        abort(404)
 
     if jedi is None:
         return _jedi_unavailable_response()
@@ -7978,10 +8342,13 @@ def oj_problem_python_signatures(slug):
 @login_required
 def submit_oj_problem(slug):
     ensure_oj_authoring_schema()
-    problem = get_problem_or_404_for_current_user(slug)
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user) and not active_assignment:
+        abort(404)
 
     if request.method == 'GET':
-        return render_template('oj/problem_submit.html', problem=problem)
+        return render_template('oj/problem_submit.html', problem=problem, active_assignment=active_assignment)
 
     language = request.form.get('language', '').strip().lower()
     source_code = request.form.get('source_code', '')
@@ -7989,19 +8356,20 @@ def submit_oj_problem(slug):
 
     if language not in allowed_languages:
         flash('这道题暂不支持所选语言。', 'error')
-        return redirect(url_for('oj_problem_detail', slug=problem.slug))
+        return redirect(url_for('oj_problem_detail', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None))
 
     if not source_code.strip():
         flash('请先填写代码再提交。', 'error')
-        return redirect(url_for('oj_problem_detail', slug=problem.slug))
+        return redirect(url_for('oj_problem_detail', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None))
 
     test_cases = build_oj_judge_cases(problem)
     if not test_cases:
         flash('这道题还没有配置测试数据，暂时不能提交。', 'error')
-        return redirect(url_for('oj_problem_detail', slug=problem.slug))
+        return redirect(url_for('oj_problem_detail', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None))
 
     task = JudgeTask(
         problem_id=problem.id,
+        assignment_id=active_assignment.id if active_assignment else None,
         user_id=current_user.id,
         language=language,
         source_code=source_code,
@@ -8060,6 +8428,20 @@ def oj_submission_list():
     if language_filter:
         query = query.filter_by(language=language_filter)
 
+    assignment_id_filter = request.args.get('assignment_id', type=int)
+    selected_assignment = None
+    if assignment_id_filter:
+        selected_assignment = OJAssignment.query.filter_by(id=assignment_id_filter).first()
+        if selected_assignment and selected_assignment.is_visible_to(current_user):
+            query = query.filter(JudgeTask.assignment_id == selected_assignment.id)
+            language_query = language_query.filter(JudgeTask.assignment_id == selected_assignment.id)
+        else:
+            selected_assignment = None
+            assignment_id_filter = None
+    else:
+        query = query.filter(JudgeTask.assignment_id.is_(None))
+        language_query = language_query.filter(JudgeTask.assignment_id.is_(None))
+
     user_filter = request.args.get('user', '').strip() if current_user.is_admin else ''
     if user_filter:
         like = f"%{user_filter}%"
@@ -8076,7 +8458,10 @@ def oj_submission_list():
     selected_problem = None
     if problem_id_filter:
         selected_problem = Problem.query.filter_by(id=problem_id_filter).first()
-        if selected_problem and can_view_problem(selected_problem, current_user):
+        problem_visible_in_assignment = bool(
+            selected_assignment and any(link.problem_id == problem_id_filter for link in selected_assignment.problem_links)
+        )
+        if selected_problem and (can_view_problem(selected_problem, current_user) or problem_visible_in_assignment):
             query = query.filter_by(problem_id=problem_id_filter)
         else:
             selected_problem = None
@@ -8098,6 +8483,8 @@ def oj_submission_list():
         'problem_filter': problem_filter,
         'problem_id_filter': problem_id_filter,
         'selected_problem': selected_problem,
+        'assignment_id_filter': assignment_id_filter,
+        'selected_assignment': selected_assignment,
         'available_languages': available_languages,
     }
 
@@ -8536,6 +8923,360 @@ def delete_oj_problem(problem_id):
     db.session.commit()
     flash(f'OJ 题目《{title}》已删除。', 'success')
     return redirect(url_for('manage_oj_problems'))
+
+
+@app.route('/oj/assignments')
+@login_required
+def oj_assignment_list():
+    ensure_oj_authoring_schema()
+    assignments = get_visible_oj_assignments_for_user(current_user)
+
+    assignment_data = []
+    for assignment in assignments:
+        latest_by_problem, accepted_problem_ids = assignment_problem_latest_status(assignment, current_user)
+        last_task = None
+        if latest_by_problem:
+            last_task = max(
+                latest_by_problem.values(),
+                key=lambda item: ((item.created_at or datetime.min), item.id),
+            )
+        assignment_data.append({
+            'assignment': assignment,
+            'accepted_count': len(accepted_problem_ids),
+            'problem_count': assignment.problem_count,
+            'attempted_count': len(latest_by_problem),
+            'last_task': last_task,
+        })
+
+    return render_template('oj/assignment_list.html', assignments=assignment_data)
+
+
+@app.route('/oj/assignments/<int:assignment_id>')
+@login_required
+def oj_assignment_detail(assignment_id):
+    ensure_oj_authoring_schema()
+    assignment = get_oj_assignment_or_404_visible(assignment_id)
+
+    latest_by_problem, accepted_problem_ids = assignment_problem_latest_status(assignment, current_user)
+    detail_rows = []
+    problem_ids = [link.problem_id for link in assignment.problem_links]
+    total_submissions = (
+        JudgeTask.query
+        .filter(
+            JudgeTask.user_id == current_user.id,
+            JudgeTask.problem_id.in_(problem_ids),
+        )
+        .count()
+    ) if problem_ids else 0
+    last_submission = None
+
+    for link in assignment.problem_links:
+        task = latest_by_problem.get(link.problem_id)
+        if task and (not last_submission or ((task.created_at or datetime.min), task.id) > ((last_submission.created_at or datetime.min), last_submission.id)):
+            last_submission = task
+        detail_rows.append({
+            'link': link,
+            'problem': link.problem,
+            'task': task,
+            'accepted': link.problem_id in accepted_problem_ids,
+            'display_meta': oj_task_display_meta(task),
+        })
+
+    assignment_submissions = (
+        JudgeTask.query
+        .filter(
+            JudgeTask.user_id == current_user.id,
+            JudgeTask.assignment_id == assignment.id,
+            JudgeTask.problem_id.in_(problem_ids),
+        )
+        .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
+        .limit(8)
+        .all()
+    ) if problem_ids else []
+
+    description_html = markdown(assignment.description_md or "暂无作业介绍。")
+    score_summary = {
+        'accepted_count': len(accepted_problem_ids),
+        'attempted_count': len(latest_by_problem),
+        'problem_count': assignment.problem_count,
+        'completion_percent': round((len(accepted_problem_ids) / assignment.problem_count) * 100, 1) if assignment.problem_count else 0,
+        'total_submissions': total_submissions,
+    }
+
+    return render_template(
+        'oj/assignment_detail.html',
+        assignment=assignment,
+        description_html=description_html,
+        detail_rows=detail_rows,
+        assignment_submissions=assignment_submissions,
+        score_summary=score_summary,
+        last_submission=last_submission,
+    )
+
+
+@app.route('/oj/assignments/<int:assignment_id>/scoreboard')
+@login_required
+def oj_assignment_scoreboard(assignment_id):
+    ensure_oj_authoring_schema()
+    assignment = get_oj_assignment_or_404_visible(assignment_id)
+    participants = get_oj_assignment_participants(assignment)
+    problem_links = list(assignment.problem_links)
+    problem_ids = [link.problem_id for link in problem_links]
+    participant_ids = [user.id for user in participants]
+
+    tasks = []
+    if problem_ids and participant_ids:
+        tasks = (
+            JudgeTask.query
+            .filter(
+                JudgeTask.assignment_id == assignment.id,
+                JudgeTask.user_id.in_(participant_ids),
+                JudgeTask.problem_id.in_(problem_ids),
+            )
+            .order_by(JudgeTask.user_id.asc(), JudgeTask.problem_id.asc(), JudgeTask.created_at.desc(), JudgeTask.id.desc())
+            .all()
+        )
+
+    latest_by_pair = {}
+    accepted_pairs = set()
+    for task in tasks:
+        if task.status == 'accepted':
+            accepted_pairs.add((task.user_id, task.problem_id))
+        latest_by_pair.setdefault((task.user_id, task.problem_id), task)
+
+    rows = []
+    for user in participants:
+        accepted_count = 0
+        submission_count = 0
+        cells = []
+        for link in problem_links:
+            pair_task = latest_by_pair.get((user.id, link.problem_id))
+            if pair_task:
+                submission_count += 1
+            meta = oj_task_display_meta(pair_task)
+            accepted = (user.id, link.problem_id) in accepted_pairs
+            if accepted:
+                accepted_count += 1
+            cells.append({
+                'problem': link.problem,
+                'task': pair_task,
+                'meta': meta,
+                'accepted': accepted,
+            })
+
+        rows.append({
+            'user': user,
+            'accepted_count': accepted_count,
+            'submission_count': submission_count,
+            'score': accepted_count * 100,
+            'cells': cells,
+        })
+
+    rows.sort(
+        key=lambda item: (
+            -item['accepted_count'],
+            -item['score'],
+            -item['submission_count'],
+            item['user'].real_name or item['user'].username,
+        )
+    )
+
+    last_score = None
+    current_rank = 0
+    for index, row in enumerate(rows, start=1):
+        score_key = (row['accepted_count'], row['score'], row['submission_count'])
+        if score_key != last_score:
+            current_rank = index
+            last_score = score_key
+        row['rank'] = current_rank
+
+    return render_template(
+        'oj/assignment_scoreboard.html',
+        assignment=assignment,
+        problem_links=problem_links,
+        rows=rows,
+    )
+
+
+@app.route('/admin/oj/assignments/new', methods=['GET', 'POST'])
+@login_required
+def create_oj_assignment():
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    form_state = build_oj_assignment_form_state()
+
+    if request.method == 'POST':
+        form_state = {
+            'title': request.form.get('title', '').strip(),
+            'description_md': request.form.get('description_md', '').strip(),
+            'start_at': request.form.get('start_at', '').strip(),
+            'end_at': request.form.get('end_at', '').strip(),
+            'extension_days': request.form.get('extension_days', 0, type=int) or 0,
+            'visibility': request.form.get('visibility', 'all').strip() or 'all',
+            'is_active': request.form.get('is_active', '1'),
+            'selected_class_ids': [int(value) for value in request.form.getlist('class_ids') if value.isdigit()],
+            'selected_group_ids': [int(value) for value in request.form.getlist('group_ids') if value.isdigit()],
+            'selected_user_ids': [int(value) for value in request.form.getlist('user_ids') if value.isdigit()],
+            'selected_manager_ids': [int(value) for value in request.form.getlist('manager_ids') if value.isdigit()],
+            'selected_problem_ids': [int(value) for value in request.form.getlist('problem_ids') if value.isdigit()],
+        }
+
+        if not form_state['title']:
+            flash('作业标题不能为空。', 'error')
+        elif not form_state['selected_problem_ids']:
+            flash('至少要选择一道 OJ 题目。', 'error')
+        else:
+            assignment = OJAssignment(
+                title=form_state['title'],
+                description_md=form_state['description_md'],
+                start_at=datetime.strptime(form_state['start_at'], '%Y-%m-%dT%H:%M') if form_state['start_at'] else None,
+                end_at=datetime.strptime(form_state['end_at'], '%Y-%m-%dT%H:%M') if form_state['end_at'] else None,
+                extension_days=max(int(form_state['extension_days'] or 0), 0),
+                visibility=form_state['visibility'] if form_state['visibility'] in {'all', 'restricted'} else 'all',
+                is_active=form_state['is_active'] == '1',
+                created_by_id=current_user.id,
+            )
+            resolve_oj_assignment_targets(
+                assignment,
+                form_state['selected_class_ids'],
+                form_state['selected_group_ids'],
+                form_state['selected_user_ids'],
+                form_state['selected_manager_ids'],
+            )
+            resolve_oj_assignment_problem_links(assignment, form_state['selected_problem_ids'])
+            db.session.add(assignment)
+            db.session.commit()
+            flash(f'作业《{assignment.title}》已创建。', 'success')
+            return redirect(url_for('edit_oj_assignment', assignment_id=assignment.id))
+
+    return render_template(
+        'admin/create_oj_assignment.html',
+        form_state=form_state,
+        classes=Class.query.order_by(Class.name.asc()).all(),
+        groups=Group.query.order_by(Group.name.asc()).all(),
+        users=User.query.order_by(User.username.asc()).all(),
+        problems=Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all(),
+        assignment=None,
+    )
+
+
+@app.route('/admin/oj/assignments/<int:assignment_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_oj_assignment(assignment_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    assignment = OJAssignment.query.get_or_404(assignment_id)
+    form_state = build_oj_assignment_form_state(assignment)
+
+    if request.method == 'POST':
+        form_state = {
+            'title': request.form.get('title', '').strip(),
+            'description_md': request.form.get('description_md', '').strip(),
+            'start_at': request.form.get('start_at', '').strip(),
+            'end_at': request.form.get('end_at', '').strip(),
+            'extension_days': request.form.get('extension_days', 0, type=int) or 0,
+            'visibility': request.form.get('visibility', 'all').strip() or 'all',
+            'is_active': request.form.get('is_active', '1'),
+            'selected_class_ids': [int(value) for value in request.form.getlist('class_ids') if value.isdigit()],
+            'selected_group_ids': [int(value) for value in request.form.getlist('group_ids') if value.isdigit()],
+            'selected_user_ids': [int(value) for value in request.form.getlist('user_ids') if value.isdigit()],
+            'selected_manager_ids': [int(value) for value in request.form.getlist('manager_ids') if value.isdigit()],
+            'selected_problem_ids': [int(value) for value in request.form.getlist('problem_ids') if value.isdigit()],
+        }
+
+        if not form_state['title']:
+            flash('作业标题不能为空。', 'error')
+        elif not form_state['selected_problem_ids']:
+            flash('至少要选择一道 OJ 题目。', 'error')
+        else:
+            assignment.title = form_state['title']
+            assignment.description_md = form_state['description_md']
+            assignment.start_at = datetime.strptime(form_state['start_at'], '%Y-%m-%dT%H:%M') if form_state['start_at'] else None
+            assignment.end_at = datetime.strptime(form_state['end_at'], '%Y-%m-%dT%H:%M') if form_state['end_at'] else None
+            assignment.extension_days = max(int(form_state['extension_days'] or 0), 0)
+            assignment.visibility = form_state['visibility'] if form_state['visibility'] in {'all', 'restricted'} else 'all'
+            assignment.is_active = form_state['is_active'] == '1'
+            resolve_oj_assignment_targets(
+                assignment,
+                form_state['selected_class_ids'],
+                form_state['selected_group_ids'],
+                form_state['selected_user_ids'],
+                form_state['selected_manager_ids'],
+            )
+            resolve_oj_assignment_problem_links(assignment, form_state['selected_problem_ids'])
+            db.session.commit()
+            flash(f'作业《{assignment.title}》已更新。', 'success')
+            return redirect(url_for('edit_oj_assignment', assignment_id=assignment.id))
+
+    return render_template(
+        'admin/create_oj_assignment.html',
+        form_state=form_state,
+        classes=Class.query.order_by(Class.name.asc()).all(),
+        groups=Group.query.order_by(Group.name.asc()).all(),
+        users=User.query.order_by(User.username.asc()).all(),
+        problems=Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all(),
+        assignment=assignment,
+        assignment_files=assignment.files.order_by(OJAssignmentFile.uploaded_at.desc(), OJAssignmentFile.id.desc()).all(),
+    )
+
+
+@app.route('/admin/oj/assignments/<int:assignment_id>/files/upload', methods=['POST'])
+@login_required
+def upload_oj_assignment_files(assignment_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    assignment = OJAssignment.query.get_or_404(assignment_id)
+    files = request.files.getlist('files')
+    uploaded_count = 0
+
+    for file_storage in files:
+        if not file_storage or not file_storage.filename:
+            continue
+        try:
+            saved_file = save_oj_assignment_asset(file_storage, assignment.id)
+        except ValueError as exc:
+            flash(f'文件 {file_storage.filename} 上传失败：{exc}', 'error')
+            continue
+
+        db.session.add(
+            OJAssignmentFile(
+                assignment_id=assignment.id,
+                filename=saved_file['filename'],
+                stored_filename=saved_file['stored_filename'],
+                file_path=saved_file['file_path'],
+                content_type=saved_file['content_type'],
+                file_size=saved_file['file_size'],
+                uploaded_by_id=current_user.id,
+            )
+        )
+        uploaded_count += 1
+
+    db.session.commit()
+    if uploaded_count:
+        flash(f'已上传 {uploaded_count} 个作业文件。', 'success')
+    return redirect(url_for('edit_oj_assignment', assignment_id=assignment.id) + '#assignment-files')
+
+
+@app.route('/admin/oj/assignments/<int:assignment_id>/files/<int:file_id>/delete', methods=['POST'])
+@login_required
+def delete_oj_assignment_file(assignment_id, file_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    assignment = OJAssignment.query.get_or_404(assignment_id)
+    assignment_file = OJAssignmentFile.query.filter_by(id=file_id, assignment_id=assignment.id).first_or_404()
+    remove_oj_assignment_asset_file(assignment_file.file_path)
+    db.session.delete(assignment_file)
+    db.session.commit()
+    flash(f'已删除文件：{assignment_file.filename}', 'success')
+    return redirect(url_for('edit_oj_assignment', assignment_id=assignment.id) + '#assignment-files')
 
 
 # ==========================================

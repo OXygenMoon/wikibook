@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}{{ assignment.title }} - OJ 作业{% endblock %}
+
+{% block extra_css %}
+<style>
+    .assignment-detail-page {
+        background: linear-gradient(180deg, rgba(241,245,249,0.94), rgba(255,255,255,0.99));
+    }
+    html.dark .assignment-detail-page {
+        background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(10,10,12,0.98));
+    }
+    .assignment-panel {
+        border: 1px solid rgba(15,23,42,0.1);
+        border-radius: 10px;
+        background: rgba(255,255,255,0.92);
+    }
+    html.dark .assignment-panel {
+        border-color: rgba(255,255,255,0.1);
+        background: rgba(24,24,27,0.88);
+    }
+    .assignment-prose {
+        max-width: none;
+        color: #334155;
+        line-height: 1.85;
+    }
+    html.dark .assignment-prose {
+        color: #d4d4d8;
+    }
+    .assignment-prose h1,
+    .assignment-prose h2,
+    .assignment-prose h3 {
+        color: #0f172a;
+        font-weight: 900;
+        margin-top: 1.8rem;
+        margin-bottom: 0.8rem;
+    }
+    html.dark .assignment-prose h1,
+    html.dark .assignment-prose h2,
+    html.dark .assignment-prose h3 {
+        color: #f8fafc;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="assignment-detail-page min-h-[calc(100vh-4rem)] pt-6 pb-16">
+    <div class="max-w-7xl mx-auto px-4 md:px-8">
+        <div class="flex items-center justify-between gap-4 flex-wrap mb-6">
+            <a href="{{ url_for('oj_assignment_list') }}" class="btn btn-outline rounded-lg">
+                <i class="fas fa-arrow-left"></i> 返回作业清单
+            </a>
+            <div class="flex gap-2 flex-wrap">
+                {% if detail_rows %}
+                <a href="{{ url_for('oj_problem_detail', slug=detail_rows[0].problem.slug, assignment_id=assignment.id) }}" class="btn btn-ghost rounded-lg">
+                    <i class="fas fa-book"></i> 返回题库
+                </a>
+                {% endif %}
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('edit_oj_assignment', assignment_id=assignment.id) }}" class="btn btn-primary rounded-lg">
+                    <i class="fas fa-edit"></i> 编辑作业
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-[1fr,20rem] gap-6 items-start">
+            <main class="flex flex-col gap-6">
+                <section class="assignment-panel p-6 md:p-8">
+                    <div class="flex items-start justify-between gap-4 flex-wrap">
+                        <div>
+                            <p class="text-xs font-black tracking-[0.3em] uppercase text-cyan-600 mb-2">Assignment {{ assignment.id }}</p>
+                            <h1 class="text-3xl md:text-4xl font-black text-stone-900 dark:text-stone-100">{{ assignment.title }}</h1>
+                            <p class="text-stone-500 dark:text-stone-400 mt-3">{{ assignment.target_text }}</p>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            {% if assignment.is_active %}
+                            <span class="badge badge-success badge-outline">进行中</span>
+                            {% else %}
+                            <span class="badge badge-ghost">已关闭</span>
+                            {% endif %}
+                            <span class="badge badge-outline">{{ score_summary.accepted_count }}/{{ score_summary.problem_count }} AC</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="assignment-panel p-6 md:p-8">
+                    <div class="text-stone-400 text-sm uppercase tracking-widest mb-4">作业介绍</div>
+                    <div class="assignment-prose prose max-w-none">{{ description_html|safe }}</div>
+                </section>
+
+                <section class="assignment-panel overflow-hidden">
+                    <div class="px-6 pt-6">
+                        <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100">题目清单</h2>
+                        <p class="text-stone-500 dark:text-stone-400 mt-2">状态基于你在这份作业中的最近提交。点击最后提交时间可以直达最新代码记录。</p>
+                    </div>
+                    <div class="overflow-x-auto mt-4">
+                        <table class="table">
+                            <thead>
+                                <tr class="text-xs uppercase tracking-widest text-stone-500">
+                                    <th>状态</th>
+                                    <th>最后提交于</th>
+                                    <th>题目</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in detail_rows %}
+                                {% set task = row.task %}
+                                {% set meta = row.display_meta %}
+                                <tr>
+                                    <td>
+                                        {% if row.accepted %}
+                                        <span class="badge badge-success badge-outline font-black">AC</span>
+                                        {% elif task %}
+                                        <span class="badge {{ meta.badge }} badge-outline font-black">{{ meta.label }}</span>
+                                        {% else %}
+                                        <span class="badge badge-ghost badge-outline">未提交</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if task %}
+                                        <a href="{{ url_for('oj_submission_detail', task_id=task.id) }}" class="font-mono text-stone-700 dark:text-stone-200 hover:text-cyan-600">
+                                            {{ task.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        </a>
+                                        {% else %}
+                                        <span class="text-stone-400">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('oj_problem_detail', slug=row.problem.slug, assignment_id=assignment.id) }}" class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600">
+                                            {{ row.problem.problem_code }} {{ row.problem.title }}
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+
+            <aside class="assignment-panel p-5 sticky top-24 flex flex-col gap-5">
+                <div class="flex flex-col gap-2">
+                    <a href="{{ url_for('oj_assignment_scoreboard', assignment_id=assignment.id) }}" class="btn btn-outline rounded-lg justify-start">
+                        <i class="fas fa-chart-column"></i> 成绩表
+                    </a>
+                    <a href="{{ url_for('oj_submission_list', assignment_id=assignment.id) }}" class="btn btn-outline rounded-lg justify-start">
+                        <i class="fas fa-flag"></i> 所有提交
+                    </a>
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('edit_oj_assignment', assignment_id=assignment.id) }}" class="btn btn-outline rounded-lg justify-start">
+                        <i class="fas fa-pen"></i> 编辑作业
+                    </a>
+                    <a href="{{ url_for('edit_oj_assignment', assignment_id=assignment.id) }}#assignment-files" class="btn btn-outline rounded-lg justify-start">
+                        <i class="fas fa-image"></i> 管理文件
+                    </a>
+                    {% endif %}
+                </div>
+
+                <div id="assignment-scoreboard">
+                    <div class="text-xs text-stone-400 uppercase tracking-widest mb-3">成绩表</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-3">
+                            <div class="text-xs text-emerald-600">通过题目</div>
+                            <div class="text-2xl font-black text-emerald-700 dark:text-emerald-300">{{ score_summary.accepted_count }}</div>
+                        </div>
+                        <div class="rounded-xl bg-cyan-50 dark:bg-cyan-900/20 p-3">
+                            <div class="text-xs text-cyan-600">完成度</div>
+                            <div class="text-2xl font-black text-cyan-700 dark:text-cyan-300">{{ score_summary.completion_percent }}%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-stone-200 dark:border-white/10 pt-4">
+                    <div class="text-xs text-stone-400 uppercase tracking-widest mb-3">本次作业</div>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-stone-500">题目</span>
+                            <span class="font-black">{{ score_summary.problem_count }}</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-stone-500">已尝试</span>
+                            <span class="font-black">{{ score_summary.attempted_count }}</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-stone-500">提交总数</span>
+                            <span class="font-black">{{ score_summary.total_submissions }}</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-stone-500">开始时间</span>
+                            <span class="font-black">{{ assignment.start_at.strftime('%Y-%m-%d %H:%M') if assignment.start_at else '-' }}</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-stone-500">截止时间</span>
+                            <span class="font-black">{{ assignment.end_at.strftime('%Y-%m-%d %H:%M') if assignment.end_at else '-' }}</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-stone-500">延长期限</span>
+                            <span class="font-black">{{ assignment.extension_days }} 天</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-stone-500">最近一次提交</span>
+                            {% if last_submission %}
+                            <a href="{{ url_for('oj_submission_detail', task_id=last_submission.id) }}" class="font-black hover:text-cyan-600">
+                                #{{ last_submission.id }}
+                            </a>
+                            {% else %}
+                            <span class="font-black">-</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {% if assignment_submissions %}
+                <div class="border-t border-stone-200 dark:border-white/10 pt-4">
+                    <div class="text-xs text-stone-400 uppercase tracking-widest mb-3">最近提交</div>
+                    <div class="flex flex-col gap-2">
+                        {% for task in assignment_submissions %}
+                        {% set meta = oj_status_meta(task.status) %}
+                        <a href="{{ url_for('oj_submission_detail', task_id=task.id) }}" class="rounded-lg bg-stone-50 dark:bg-white/5 px-3 py-2 hover:bg-cyan-50 dark:hover:bg-cyan-900/20">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="font-mono text-sm">#{{ task.id }}</span>
+                                <span class="badge {{ meta.badge }} badge-outline badge-sm">{{ meta.label }}</span>
+                            </div>
+                            <div class="text-xs text-stone-400 mt-1">{{ task.problem.problem_code if task.problem else '-' }} · {{ task.created_at.strftime('%m-%d %H:%M') }}</div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+</div>
+{% endblock %}

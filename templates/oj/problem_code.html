@@ -303,10 +303,10 @@
                 <span>题目描述</span>
             </div>
             <div class="flex items-center gap-2">
-                <a href="{{ url_for('oj_problem_detail', slug=problem.slug) }}" class="btn btn-ghost btn-sm rounded-lg">
-                    <i class="fas fa-arrow-left"></i> 返回题目
+                <a href="{{ url_for('oj_problem_detail', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None) }}" class="btn btn-ghost btn-sm rounded-lg">
+                    <i class="fas fa-arrow-left"></i> 返回{% if active_assignment %}作业{% else %}题目{% endif %}
                 </a>
-                <a href="{{ url_for('oj_submission_list') }}" class="btn btn-ghost btn-sm rounded-lg">
+                <a href="{{ url_for('oj_submission_list', assignment_id=active_assignment.id if active_assignment else None) }}" class="btn btn-ghost btn-sm rounded-lg">
                     <i class="fas fa-clock-rotate-left"></i> 提交记录
                 </a>
             </div>
@@ -374,7 +374,10 @@
         </div>
     </section>
 
-    <form method="post" action="{{ url_for('submit_oj_problem', slug=problem.slug) }}" class="workspace-panel editor-shell" id="online-code-form">
+    <form method="post" action="{{ url_for('submit_oj_problem', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None) }}" class="workspace-panel editor-shell" id="online-code-form">
+        {% if active_assignment %}
+        <input type="hidden" name="assignment_id" value="{{ active_assignment.id }}">
+        {% endif %}
         <div class="workspace-header">
             <div class="workspace-tab">
                 <i class="fas fa-code"></i>
@@ -444,11 +447,11 @@
         const completionDocLabel = document.getElementById('completion-doc-label');
         const completionDocDetail = document.getElementById('completion-doc-detail');
         const completionDocBody = document.getElementById('completion-doc-body');
-        const storagePrefix = 'oj-code-draft:{{ problem.slug }}:';
-        const syntaxCheckUrl = "{{ url_for('oj_problem_syntax_check', slug=problem.slug) }}";
-        const completionsUrl = "{{ url_for('oj_problem_python_completions', slug=problem.slug) }}";
-        const hoverUrl = "{{ url_for('oj_problem_python_hover', slug=problem.slug) }}";
-        const signaturesUrl = "{{ url_for('oj_problem_python_signatures', slug=problem.slug) }}";
+        const storagePrefix = 'oj-code-draft:{{ problem.slug }}:{{ active_assignment.id if active_assignment else "global" }}:';
+        const syntaxCheckUrl = "{{ url_for('oj_problem_syntax_check', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None) }}";
+        const completionsUrl = "{{ url_for('oj_problem_python_completions', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None) }}";
+        const hoverUrl = "{{ url_for('oj_problem_python_hover', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None) }}";
+        const signaturesUrl = "{{ url_for('oj_problem_python_signatures', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None) }}";
         const defaultSnippets = {
             python: 'import sys\\n\\n# 在这里开始编写你的解法\\n',
             cpp: '#include <bits/stdc++.h>\\nusing namespace std;\\n\\nint main() {\\n    ios::sync_with_stdio(false);\\n    cin.tie(nullptr);\\n\\n    return 0;\\n}\\n',

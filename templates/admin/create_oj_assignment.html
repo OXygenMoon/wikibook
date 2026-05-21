@@ -1,0 +1,625 @@
+{% extends "base.html" %}
+
+{% block title %}{% if assignment %}编辑 OJ 作业{% else %}新建 OJ 作业{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .create-shell {
+        background:
+            radial-gradient(circle at top right, rgba(59,130,246,0.10), transparent 28%),
+            radial-gradient(circle at left center, rgba(16,185,129,0.10), transparent 24%),
+            linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+        border: 1px solid rgba(15,23,42,0.08);
+        border-radius: 2rem;
+        box-shadow: 0 24px 80px rgba(15,23,42,0.09);
+    }
+    html.dark .create-shell {
+        background:
+            radial-gradient(circle at top right, rgba(59,130,246,0.16), transparent 28%),
+            radial-gradient(circle at left center, rgba(16,185,129,0.12), transparent 24%),
+            linear-gradient(180deg, rgba(18,18,22,0.98), rgba(20,24,32,0.98));
+        border-color: rgba(255,255,255,0.08);
+        box-shadow: none;
+    }
+    .meta-card {
+        border: 1px dashed rgba(15,23,42,0.12);
+        border-radius: 1.5rem;
+        background: rgba(255,255,255,0.72);
+    }
+    html.dark .meta-card {
+        border-color: rgba(255,255,255,0.14);
+        background: rgba(24,24,27,0.7);
+    }
+    .EasyMDEContainer {
+        border-radius: 1.5rem !important;
+        overflow: hidden;
+        border: 1px solid rgba(15,23,42,0.08) !important;
+        box-shadow: 0 12px 32px rgba(15,23,42,0.06);
+    }
+    html.dark .EasyMDEContainer {
+        border-color: rgba(255,255,255,0.12) !important;
+        box-shadow: none;
+    }
+    .token-picker {
+        position: relative;
+    }
+    .token-shell {
+        min-height: 4rem;
+        border: 1px solid rgba(15,23,42,0.12);
+        border-radius: 1.5rem;
+        background: rgba(255,255,255,0.9);
+        padding: 0.85rem 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        align-items: center;
+    }
+    html.dark .token-shell {
+        border-color: rgba(255,255,255,0.14);
+        background: rgba(24,24,27,0.82);
+    }
+    .token-shell:focus-within {
+        border-color: rgba(34,211,238,0.85);
+        box-shadow: 0 0 0 4px rgba(34,211,238,0.12);
+    }
+    .token-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(14,165,233,0.10);
+        color: #0f172a;
+        font-weight: 800;
+        font-size: 0.9rem;
+    }
+    html.dark .token-chip {
+        background: rgba(34,211,238,0.14);
+        color: #f8fafc;
+    }
+    .token-chip-list {
+        display: contents;
+    }
+    .token-chip-kind {
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #0891b2;
+    }
+    .token-chip-remove {
+        border: 0;
+        background: transparent;
+        padding: 0;
+        color: inherit;
+        cursor: pointer;
+        font-size: 0.85rem;
+        line-height: 1;
+    }
+    .token-input {
+        flex: 1 1 12rem;
+        min-width: 10rem;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        font-size: 0.98rem;
+        font-weight: 700;
+        color: #334155;
+        padding: 0.2rem 0;
+    }
+    html.dark .token-input {
+        color: #e4e4e7;
+    }
+    .token-placeholder {
+        color: #94a3b8;
+        font-weight: 600;
+    }
+    .token-dropdown {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: calc(100% + 0.55rem);
+        border: 1px solid rgba(15,23,42,0.12);
+        border-radius: 1rem;
+        background: rgba(255,255,255,0.98);
+        box-shadow: 0 18px 40px rgba(15,23,42,0.14);
+        overflow: hidden;
+        z-index: 40;
+        display: none;
+    }
+    html.dark .token-dropdown {
+        border-color: rgba(255,255,255,0.12);
+        background: rgba(24,24,27,0.98);
+        box-shadow: none;
+    }
+    .token-dropdown.is-open {
+        display: block;
+    }
+    .token-option {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        padding: 0.8rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        text-align: left;
+        cursor: pointer;
+    }
+    .token-option:hover,
+    .token-option.is-active {
+        background: rgba(14,165,233,0.08);
+    }
+    .token-option-main {
+        font-weight: 800;
+        color: #0f172a;
+    }
+    html.dark .token-option-main {
+        color: #f8fafc;
+    }
+    .token-option-sub {
+        color: #64748b;
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+    .token-helper {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.55rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set scope_picker_options = namespace(items=[]) %}
+{% for class_item in classes %}
+    {% set _ = scope_picker_options.items.append({
+        'id': class_item.id,
+        'kind': 'class',
+        'label': class_item.name,
+        'subtext': '班级',
+        'searches': [class_item.name]
+    }) %}
+{% endfor %}
+{% for group_item in groups %}
+    {% set _ = scope_picker_options.items.append({
+        'id': group_item.id,
+        'kind': 'group',
+        'label': group_item.name,
+        'subtext': '小组',
+        'searches': [group_item.name]
+    }) %}
+{% endfor %}
+{% set selected_scope_items = namespace(items=[]) %}
+{% for class_item in classes %}
+    {% if class_item.id in form_state.selected_class_ids %}
+        {% set _ = selected_scope_items.items.append({
+            'id': class_item.id,
+            'kind': 'class',
+            'label': class_item.name,
+            'subtext': '班级'
+        }) %}
+    {% endif %}
+{% endfor %}
+{% for group_item in groups %}
+    {% if group_item.id in form_state.selected_group_ids %}
+        {% set _ = selected_scope_items.items.append({
+            'id': group_item.id,
+            'kind': 'group',
+            'label': group_item.name,
+            'subtext': '小组'
+        }) %}
+    {% endif %}
+{% endfor %}
+
+{% set manager_picker_options = namespace(items=[]) %}
+{% for user in users %}
+    {% set display_name = user.real_name or user.username %}
+    {% set _ = manager_picker_options.items.append({
+        'id': user.id,
+        'kind': 'manager',
+        'label': display_name,
+        'subtext': '@' ~ user.username,
+        'searches': [display_name, user.username]
+    }) %}
+{% endfor %}
+{% set selected_manager_items = namespace(items=[]) %}
+{% for user in users %}
+    {% if user.id in form_state.selected_manager_ids %}
+        {% set _ = selected_manager_items.items.append({
+            'id': user.id,
+            'kind': 'manager',
+            'label': user.real_name or user.username,
+            'subtext': '@' ~ user.username
+        }) %}
+    {% endif %}
+{% endfor %}
+
+{% set problem_picker_options = namespace(items=[]) %}
+{% for problem in problems %}
+    {% set _ = problem_picker_options.items.append({
+        'id': problem.id,
+        'kind': 'problem',
+        'label': problem.problem_code ~ ' · ' ~ problem.title,
+        'subtext': problem.difficulty|upper,
+        'searches': [problem.problem_code, problem.title, problem.slug]
+    }) %}
+{% endfor %}
+{% set selected_problem_items = namespace(items=[]) %}
+{% for problem in problems %}
+    {% if problem.id in form_state.selected_problem_ids %}
+        {% set _ = selected_problem_items.items.append({
+            'id': problem.id,
+            'kind': 'problem',
+            'label': problem.problem_code ~ ' · ' ~ problem.title,
+            'subtext': problem.difficulty|upper
+        }) %}
+    {% endif %}
+{% endfor %}
+
+<div class="max-w-7xl mx-auto px-4 py-10">
+    <div class="flex items-center justify-between gap-4 flex-wrap mb-8">
+        <div>
+            <p class="text-xs font-black tracking-[0.32em] uppercase text-cyan-600 mb-2">OJ Assignment</p>
+            <h1 class="text-3xl md:text-4xl font-black text-stone-800 dark:text-stone-100">{% if assignment %}编辑 OJ 作业{% else %}新建 OJ 作业{% endif %}</h1>
+            <p class="text-stone-500 dark:text-stone-400 mt-2">这里负责下发 OJ 题单、设置权限范围、维护作业介绍与图片素材。</p>
+        </div>
+        <div class="flex gap-3">
+            {% if assignment %}
+            <a href="{{ url_for('oj_assignment_detail', assignment_id=assignment.id) }}" class="btn btn-ghost rounded-2xl">查看作业</a>
+            {% endif %}
+            <a href="{{ url_for('oj_assignment_list') }}" class="btn btn-outline rounded-2xl">返回作业清单</a>
+        </div>
+    </div>
+
+    <form method="post" class="create-shell p-6 md:p-8 flex flex-col gap-8">
+        <div class="grid grid-cols-1 xl:grid-cols-[1.05fr,0.95fr] gap-8 items-start">
+            <div class="meta-card p-5 flex flex-col gap-5">
+                <div>
+                    <p class="text-xs font-black tracking-[0.26em] uppercase text-stone-400 mb-2">Basic Meta</p>
+                    <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">基础信息</h2>
+                </div>
+
+                <label class="form-control">
+                    <span class="label-text font-bold mb-2">标题</span>
+                    <input type="text" name="title" value="{{ form_state.title }}" class="input input-bordered rounded-2xl font-bold text-lg" placeholder="例如：循环结构训练营（一）" required>
+                </label>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">开始时间</span>
+                        <input type="datetime-local" name="start_at" value="{{ form_state.start_at }}" class="input input-bordered rounded-2xl">
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">结束时间</span>
+                        <input type="datetime-local" name="end_at" value="{{ form_state.end_at }}" class="input input-bordered rounded-2xl">
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">最长延期（日）</span>
+                        <input type="number" name="extension_days" value="{{ form_state.extension_days }}" min="0" class="input input-bordered rounded-2xl">
+                    </label>
+                    <label class="form-control">
+                        <span class="label-text font-bold mb-2">状态</span>
+                        <select name="is_active" class="select select-bordered rounded-2xl">
+                            <option value="1" {% if form_state.is_active == '1' %}selected{% endif %}>启用</option>
+                            <option value="0" {% if form_state.is_active == '0' %}selected{% endif %}>关闭</option>
+                        </select>
+                    </label>
+                </div>
+
+                <label class="form-control">
+                    <span class="label-text font-bold mb-2">可见范围</span>
+                    <select name="visibility" class="select select-bordered rounded-2xl">
+                        <option value="all" {% if form_state.visibility == 'all' %}selected{% endif %}>全部学生</option>
+                        <option value="restricted" {% if form_state.visibility == 'restricted' %}selected{% endif %}>指定班级 / 小组</option>
+                    </select>
+                </label>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <span class="label-text font-bold mb-2">分配班级 / 小组</span>
+                        <div
+                            class="token-picker"
+                            data-token-picker
+                            data-placeholder="输入班级或小组名称，按前缀自动补全"
+                            data-options='{{ scope_picker_options.items|tojson }}'
+                            data-selected='{{ selected_scope_items.items|tojson }}'
+                            data-hidden-names='{{ {"class":"class_ids","group":"group_ids"}|tojson }}'
+                        ></div>
+                        <div class="token-helper">支持多个班级和多个小组，点击候选项即可加入。</div>
+                    </div>
+                    <div class="form-control">
+                        <span class="label-text font-bold mb-2">作业管理员</span>
+                        <div
+                            class="token-picker"
+                            data-token-picker
+                            data-placeholder="输入姓名或用户名"
+                            data-options='{{ manager_picker_options.items|tojson }}'
+                            data-selected='{{ selected_manager_items.items|tojson }}'
+                            data-hidden-names='{{ {"manager":"manager_ids"}|tojson }}'
+                        ></div>
+                        <div class="token-helper">支持多个管理员，输入真实姓名或用户名前缀即可筛选。</div>
+                    </div>
+                </div>
+
+                <div class="form-control">
+                    <span class="label-text font-bold mb-2">题目清单</span>
+                    <div
+                        class="token-picker"
+                        data-token-picker
+                        data-placeholder="输入题号或题目名称"
+                        data-options='{{ problem_picker_options.items|tojson }}'
+                        data-selected='{{ selected_problem_items.items|tojson }}'
+                        data-hidden-names='{{ {"problem":"problem_ids"}|tojson }}'
+                    ></div>
+                    <span class="text-xs text-stone-400 mt-2">支持多选，按题号或标题前缀筛选后点击补全。</span>
+                </div>
+            </div>
+
+            <div class="meta-card p-5 h-full flex flex-col gap-5">
+                <div>
+                    <p class="text-xs font-black tracking-[0.26em] uppercase text-stone-400 mb-2">Workflow</p>
+                    <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">使用说明</h2>
+                </div>
+                <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4 text-sm leading-7 text-stone-500 dark:text-stone-400">
+                    1. 作业介绍支持 Markdown，可以直接插入图片。
+                    <br>2. 如果要在介绍里展示图片，先保存作业，再到下方“文件空间”上传素材，随后复制 Markdown 链接。
+                    <br>3. 隐藏题也可以放进作业里，学生会通过作业入口访问到它。
+                </div>
+
+                {% if assignment %}
+                <div id="assignment-files" class="rounded-2xl border border-stone-200 dark:border-white/10 p-4 flex flex-col gap-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="text-lg font-black text-stone-800 dark:text-stone-100">文件空间</h3>
+                        <span class="text-xs text-stone-400">{{ assignment_files|length if assignment_files is defined else 0 }} 个文件</span>
+                    </div>
+                    <form method="post" action="{{ url_for('upload_oj_assignment_files', assignment_id=assignment.id) }}" enctype="multipart/form-data" class="flex gap-3 items-center flex-wrap">
+                        <input type="file" name="files" multiple class="file-input file-input-bordered rounded-2xl">
+                        <button type="submit" class="btn btn-secondary rounded-2xl">上传文件</button>
+                    </form>
+                    <div class="flex flex-col gap-3">
+                        {% for file in assignment_files %}
+                        <div class="rounded-2xl bg-stone-50 dark:bg-white/5 p-4 flex items-start justify-between gap-4">
+                            <div class="min-w-0">
+                                <div class="font-black text-stone-900 dark:text-stone-100 break-all">{{ file.filename }}</div>
+                                <div class="text-xs text-stone-400 mt-1">插入 Markdown：<code>{{ file.markdown_embed }}</code></div>
+                            </div>
+                            <form method="post" action="{{ url_for('delete_oj_assignment_file', assignment_id=assignment.id, file_id=file.id) }}">
+                                <button type="submit" class="btn btn-sm rounded-lg">删除</button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <div class="text-sm text-stone-400">还没有上传任何作业文件。</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="rounded-2xl bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-700 dark:text-amber-300">
+                    先创建作业，再启用文件空间上传图片和附件。
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-4">
+            <div>
+                <p class="text-xs font-black tracking-[0.26em] uppercase text-cyan-600 mb-2">Markdown Intro</p>
+                <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">作业介绍</h2>
+            </div>
+            <textarea id="assignment-description-editor" name="description_md">{{ form_state.description_md }}</textarea>
+        </div>
+
+        <div class="flex items-center justify-between gap-4 flex-wrap pt-4 border-t border-stone-200 dark:border-white/10">
+            <p class="text-sm text-stone-500 dark:text-stone-400 font-mono">assignment + permissions + problems + markdown intro</p>
+            <button type="submit" class="btn btn-primary rounded-2xl px-8">{% if assignment %}保存作业{% else %}创建作业{% endif %}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        new EasyMDE({
+            element: document.getElementById('assignment-description-editor'),
+            spellChecker: false,
+            status: ["lines", "words"],
+            sideBySideFullscreen: false,
+            renderingConfig: {
+                singleLineBreaks: false,
+                codeSyntaxHighlighting: true
+            },
+            previewClass: ["editor-preview", "prose", "max-w-none"],
+            placeholder: "在这里编写作业介绍 Markdown..."
+        });
+
+        const hiddenNameDefaults = {
+            class: 'class_ids',
+            group: 'group_ids',
+            manager: 'manager_ids',
+            problem: 'problem_ids'
+        };
+
+        document.querySelectorAll('[data-token-picker]').forEach((pickerRoot) => {
+            const options = JSON.parse(pickerRoot.dataset.options || '[]');
+            const selected = JSON.parse(pickerRoot.dataset.selected || '[]');
+            const hiddenNames = {
+                ...hiddenNameDefaults,
+                ...JSON.parse(pickerRoot.dataset.hiddenNames || '{}')
+            };
+            const placeholder = pickerRoot.dataset.placeholder || '输入后选择';
+
+            const shell = document.createElement('div');
+            shell.className = 'token-shell';
+            const chipContainer = document.createElement('div');
+            chipContainer.className = 'token-chip-list';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'token-input';
+            input.placeholder = placeholder;
+            const hiddenContainer = document.createElement('div');
+            hiddenContainer.className = 'hidden';
+            const dropdown = document.createElement('div');
+            dropdown.className = 'token-dropdown';
+
+            shell.appendChild(chipContainer);
+            shell.appendChild(input);
+            pickerRoot.appendChild(shell);
+            pickerRoot.appendChild(hiddenContainer);
+            pickerRoot.appendChild(dropdown);
+
+            shell.addEventListener('mousedown', (event) => {
+                if (event.target.closest('.token-chip-remove') || event.target.closest('.token-option')) {
+                    return;
+                }
+                event.preventDefault();
+                input.focus();
+            });
+
+            let items = selected.slice();
+            let activeIndex = 0;
+
+            function normalize(value) {
+                return String(value || '').trim().toLowerCase();
+            }
+
+            function hiddenNameFor(item) {
+                return hiddenNames[item.kind] || `${item.kind}_ids`;
+            }
+
+            function syncHiddenInputs() {
+                hiddenContainer.innerHTML = '';
+                items.forEach((item) => {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = hiddenNameFor(item);
+                    hidden.value = item.id;
+                    hiddenContainer.appendChild(hidden);
+                });
+            }
+
+            function removeItem(kind, id) {
+                items = items.filter((item) => !(item.kind === kind && String(item.id) === String(id)));
+                render();
+            }
+
+            function addItem(item) {
+                if (items.some((existing) => existing.kind === item.kind && String(existing.id) === String(item.id))) {
+                    input.value = '';
+                    renderDropdown();
+                    return;
+                }
+                items.push(item);
+                input.value = '';
+                render();
+                input.focus();
+            }
+
+            function filteredOptions() {
+                const keyword = normalize(input.value);
+                const selectedKeys = new Set(items.map((item) => `${item.kind}:${item.id}`));
+                const pool = options.filter((option) => !selectedKeys.has(`${option.kind}:${option.id}`));
+                if (!keyword) {
+                    return pool.slice(0, 8);
+                }
+                return pool.filter((option) => {
+                    const searches = (option.searches || [option.label]).map(normalize);
+                    return searches.some((entry) => entry.startsWith(keyword));
+                }).slice(0, 8);
+            }
+
+            function renderDropdown() {
+                const candidates = filteredOptions();
+                dropdown.innerHTML = '';
+                if (!candidates.length) {
+                    dropdown.classList.remove('is-open');
+                    return;
+                }
+
+                candidates.forEach((option, index) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = `token-option${index === activeIndex ? ' is-active' : ''}`;
+                    button.innerHTML = `
+                        <div>
+                            <div class="token-option-main">${option.label}</div>
+                            <div class="token-option-sub">${option.subtext || ''}</div>
+                        </div>
+                        <span class="token-chip-kind">${option.kind}</span>
+                    `;
+                    button.addEventListener('mousedown', (event) => {
+                        event.preventDefault();
+                        addItem(option);
+                    });
+                    dropdown.appendChild(button);
+                });
+
+                dropdown.classList.add('is-open');
+            }
+
+            function render() {
+                chipContainer.innerHTML = '';
+                items.forEach((item) => {
+                    const chip = document.createElement('span');
+                    chip.className = 'token-chip';
+                    chip.innerHTML = `
+                        <span class="token-chip-kind">${item.subtext || item.kind}</span>
+                        <span>${item.label}</span>
+                    `;
+                    const remove = document.createElement('button');
+                    remove.type = 'button';
+                    remove.className = 'token-chip-remove';
+                    remove.setAttribute('aria-label', `移除 ${item.label}`);
+                    remove.textContent = '×';
+                    remove.addEventListener('click', () => removeItem(item.kind, item.id));
+                    chip.appendChild(remove);
+                    chipContainer.appendChild(chip);
+                });
+                syncHiddenInputs();
+                activeIndex = 0;
+                renderDropdown();
+            }
+
+            input.addEventListener('input', () => {
+                activeIndex = 0;
+                renderDropdown();
+            });
+
+            input.addEventListener('keydown', (event) => {
+                const candidates = filteredOptions();
+                if (event.key === 'Backspace' && !input.value && items.length) {
+                    const last = items[items.length - 1];
+                    removeItem(last.kind, last.id);
+                    return;
+                }
+                if (!candidates.length) return;
+
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    activeIndex = (activeIndex + 1) % candidates.length;
+                    renderDropdown();
+                } else if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    activeIndex = (activeIndex - 1 + candidates.length) % candidates.length;
+                    renderDropdown();
+                } else if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addItem(candidates[activeIndex] || candidates[0]);
+                } else if (event.key === 'Escape') {
+                    dropdown.classList.remove('is-open');
+                }
+            });
+
+            input.addEventListener('focus', renderDropdown);
+            document.addEventListener('click', (event) => {
+                if (!pickerRoot.contains(event.target)) {
+                    dropdown.classList.remove('is-open');
+                }
+            });
+
+            render();
+        });
+    });
+</script>
+{% endblock %}

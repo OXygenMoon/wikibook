@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}{{ assignment.title }} - 作业成绩表{% endblock %}
+
+{% block extra_css %}
+<style>
+    .scoreboard-page {
+        background: linear-gradient(180deg, rgba(241,245,249,0.94), rgba(255,255,255,0.99));
+    }
+    html.dark .scoreboard-page {
+        background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(10,10,12,0.98));
+    }
+    .scoreboard-panel {
+        border: 1px solid rgba(15,23,42,0.10);
+        border-radius: 10px;
+        background: rgba(255,255,255,0.92);
+    }
+    html.dark .scoreboard-panel {
+        border-color: rgba(255,255,255,0.10);
+        background: rgba(24,24,27,0.88);
+    }
+    .scoreboard-table-wrapper {
+        overflow: auto;
+        max-height: calc(100vh - 18rem);
+    }
+    .scoreboard-table {
+        min-width: max(100%, 72rem);
+    }
+    .problem-col {
+        min-width: 9rem;
+    }
+    .cell-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        align-items: center;
+    }
+    .sticky-head thead th {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: #fef3c7;
+    }
+    html.dark .sticky-head thead th {
+        background: rgba(250, 204, 21, 0.16);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="scoreboard-page min-h-[calc(100vh-4rem)] pt-6 pb-16">
+    <div class="max-w-[1500px] mx-auto px-4 md:px-8 flex flex-col gap-6">
+        <div class="flex items-end justify-between gap-4 flex-wrap">
+            <div>
+                <p class="text-xs font-black tracking-[0.3em] uppercase text-cyan-600 mb-2">Assignment Scoreboard</p>
+                <h1 class="text-3xl md:text-4xl font-black text-stone-900 dark:text-stone-100">作业成绩表</h1>
+                <p class="text-stone-500 dark:text-stone-400 mt-2">{{ assignment.title }}</p>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                <a href="{{ url_for('oj_assignment_detail', assignment_id=assignment.id) }}" class="btn btn-outline rounded-lg">
+                    <i class="fas fa-arrow-left"></i> 返回作业
+                </a>
+                <a href="{{ url_for('oj_submission_list', assignment_id=assignment.id) }}" class="btn btn-ghost rounded-lg">
+                    <i class="fas fa-flag"></i> 当前作业提交
+                </a>
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('edit_oj_assignment', assignment_id=assignment.id) }}" class="btn btn-primary rounded-lg">
+                    <i class="fas fa-pen"></i> 编辑作业
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="scoreboard-panel p-4">
+                <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">参与人数</div>
+                <div class="text-2xl font-black text-stone-900 dark:text-stone-100">{{ rows|length }}</div>
+            </div>
+            <div class="scoreboard-panel p-4">
+                <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">题目数</div>
+                <div class="text-2xl font-black text-stone-900 dark:text-stone-100">{{ problem_links|length }}</div>
+            </div>
+            <div class="scoreboard-panel p-4">
+                <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">开始时间</div>
+                <div class="text-lg font-black text-stone-900 dark:text-stone-100">{{ assignment.start_at.strftime('%m-%d %H:%M') if assignment.start_at else '-' }}</div>
+            </div>
+            <div class="scoreboard-panel p-4">
+                <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">截止时间</div>
+                <div class="text-lg font-black text-stone-900 dark:text-stone-100">{{ assignment.end_at.strftime('%m-%d %H:%M') if assignment.end_at else '-' }}</div>
+            </div>
+        </div>
+
+        <div class="scoreboard-panel overflow-hidden">
+            <div class="px-5 py-4 border-b border-stone-200 dark:border-white/10">
+                <div class="text-sm text-stone-500 dark:text-stone-400">这里只统计当前这份作业中的提交，不会混入普通 OJ 题库提交。</div>
+            </div>
+            <div class="scoreboard-table-wrapper">
+                <table class="table scoreboard-table sticky-head">
+                    <thead>
+                        <tr class="text-xs uppercase tracking-widest text-stone-500">
+                            <th>排名</th>
+                            <th>用户</th>
+                            <th>班级</th>
+                            <th>分数</th>
+                            <th>AC</th>
+                            <th>已尝试</th>
+                            {% for link in problem_links %}
+                            <th class="problem-col">
+                                <a href="{{ url_for('oj_problem_detail', slug=link.problem.slug, assignment_id=assignment.id) }}" class="font-black hover:text-cyan-600">
+                                    {{ link.problem.problem_code }}
+                                </a>
+                                <div class="text-[11px] font-normal normal-case tracking-normal text-stone-400 mt-1">{{ link.problem.title }}</div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr>
+                            <td class="font-black text-stone-900 dark:text-stone-100">#{{ row.rank }}</td>
+                            <td>
+                                <div class="font-black text-stone-900 dark:text-stone-100">{{ row.user.real_name or row.user.username }}</div>
+                                <div class="text-xs text-stone-400">@{{ row.user.username }}</div>
+                            </td>
+                            <td class="text-sm text-stone-500">{{ row.user.student_class.name if row.user.student_class else '未分班' }}</td>
+                            <td class="font-black text-cyan-700 dark:text-cyan-300">{{ row.score }}</td>
+                            <td class="font-black text-emerald-700 dark:text-emerald-300">{{ row.accepted_count }}/{{ problem_links|length }}</td>
+                            <td class="font-black text-amber-700 dark:text-amber-300">{{ row.submission_count }}</td>
+                            {% for cell in row.cells %}
+                            <td class="problem-col">
+                                <div class="cell-stack">
+                                    {% if cell.task %}
+                                    <a href="{{ url_for('oj_submission_detail', task_id=cell.task.id) }}" class="badge {% if cell.accepted %}badge-success{% else %}{{ cell.meta.badge }}{% endif %} badge-outline font-black">
+                                        {% if cell.accepted %}AC{% else %}{{ cell.meta.label }}{% endif %}
+                                    </a>
+                                    <div class="text-xs text-stone-400">{{ cell.task.created_at.strftime('%m-%d %H:%M') }}</div>
+                                    {% else %}
+                                    <a href="{{ url_for('oj_problem_detail', slug=cell.problem.slug, assignment_id=assignment.id) }}" class="badge badge-ghost badge-outline">未提交</a>
+                                    <div class="text-xs text-stone-300">-</div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ 6 + problem_links|length }}" class="text-center py-14 text-stone-400">这份作业还没有可展示的成绩数据。</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

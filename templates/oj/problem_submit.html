@@ -41,10 +41,10 @@
 <div class="submit-page min-h-[calc(100vh-4rem)] pt-6 pb-16">
     <div class="max-w-7xl mx-auto px-4 md:px-8 flex flex-col gap-6">
         <div class="flex items-center justify-between gap-4 flex-wrap">
-            <a href="{{ url_for('oj_problem_detail', slug=problem.slug) }}" class="btn btn-ghost rounded-lg">
-                <i class="fas fa-arrow-left"></i> 返回题目
+            <a href="{{ url_for('oj_problem_detail', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None) }}" class="btn btn-ghost rounded-lg">
+                <i class="fas fa-arrow-left"></i> 返回{% if active_assignment %}作业题目{% else %}题目{% endif %}
             </a>
-            <a href="{{ url_for('oj_submission_list') }}" class="btn btn-outline rounded-lg">
+            <a href="{{ url_for('oj_submission_list', assignment_id=active_assignment.id if active_assignment else None) }}" class="btn btn-outline rounded-lg">
                 <i class="fas fa-history"></i> 提交记录
             </a>
         </div>
@@ -57,7 +57,10 @@
                     <p class="text-stone-500 dark:text-stone-400 mt-3">选择语言，粘贴代码，点击提交后才会进入评测队列。</p>
                 </div>
 
-                <form method="post" action="{{ url_for('submit_oj_problem', slug=problem.slug) }}" class="flex flex-col gap-5">
+                <form method="post" action="{{ url_for('submit_oj_problem', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None) }}" class="flex flex-col gap-5">
+                    {% if active_assignment %}
+                    <input type="hidden" name="assignment_id" value="{{ active_assignment.id }}">
+                    {% endif %}
                     <div class="grid grid-cols-1 md:grid-cols-[14rem,1fr] gap-4">
                         <label class="form-control">
                             <span class="label-text font-bold mb-2">语言</span>

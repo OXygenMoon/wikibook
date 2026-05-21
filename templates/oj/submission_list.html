@@ -19,6 +19,13 @@
         border-color: rgba(255,255,255,0.10);
         background: rgba(24,24,27,0.86);
     }
+    .submission-results {
+        position: relative;
+    }
+    .submission-results.is-loading {
+        opacity: 0.58;
+        pointer-events: none;
+    }
 </style>
 {% endblock %}
 
@@ -37,8 +44,37 @@
             </a>
         </div>
 
-        <form method="get" class="submission-panel p-4 flex flex-col md:flex-row gap-3 md:items-end">
-            <label class="form-control md:w-64">
+        <form method="get" action="{{ url_for('oj_submission_list') }}" id="submission-filter-form" class="submission-panel p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
+            {% if current_user.is_admin %}
+            <label class="form-control">
+                <span class="label-text font-bold mb-1">用户</span>
+                <input type="text" name="user" value="{{ user_filter }}" class="input input-bordered rounded-lg" placeholder="用户名、姓名或 UID">
+            </label>
+            {% endif %}
+            {% if problem_id_filter %}
+            <input type="hidden" name="problem_id" value="{{ problem_id_filter }}">
+            <div class="form-control" id="selected-problem-filter">
+                <span class="label-text font-bold mb-1">题目</span>
+                <div class="min-h-12 px-4 py-3 rounded-lg border border-base-300 bg-base-100 font-black text-stone-700 dark:text-stone-200">
+                    {{ selected_problem.problem_code }} · {{ selected_problem.title }}
+                </div>
+            </div>
+            {% else %}
+            <label class="form-control">
+                <span class="label-text font-bold mb-1">题目</span>
+                <input type="text" name="problem" value="{{ problem_filter }}" class="input input-bordered rounded-lg" placeholder="题号、标题或 Slug">
+            </label>
+            {% endif %}
+            <label class="form-control">
+                <span class="label-text font-bold mb-1">语言</span>
+                <select name="language" class="select select-bordered rounded-lg">
+                    <option value="">全部语言</option>
+                    {% for language in available_languages %}
+                    <option value="{{ language }}" {% if language_filter == language %}selected{% endif %}>{{ language }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="form-control">
                 <span class="label-text font-bold mb-1">状态</span>
                 <select name="status" class="select select-bordered rounded-lg">
                     <option value="">全部状态</option>
@@ -53,59 +89,113 @@
                     {% endfor %}
                 </select>
             </label>
-            <button type="submit" class="btn btn-primary rounded-lg">
-                <i class="fas fa-filter"></i> 筛选
-            </button>
+            <div class="flex gap-2">
+                <button type="submit" class="btn btn-primary rounded-lg flex-1">
+                    <i class="fas fa-filter"></i> 筛选
+                </button>
+                <a href="{{ url_for('oj_submission_list') }}" id="submission-filter-reset" class="btn btn-ghost rounded-lg">
+                    重置
+                </a>
+            </div>
         </form>
 
-        <div class="submission-panel overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="table">
-                    <thead>
-                        <tr class="text-xs uppercase tracking-widest text-stone-500">
-                            <th>ID</th>
-                            <th>题目</th>
-                            {% if current_user.is_admin %}<th>用户</th>{% endif %}
-                            <th>语言</th>
-                            <th>状态</th>
-                            <th>得分</th>
-                            <th>提交时间</th>
-                            <th class="text-right">详情</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for task in submissions %}
-                        {% set meta = oj_status_meta(task.status) %}
-                        <tr>
-                            <td class="font-mono font-bold text-stone-500">#{{ task.id }}</td>
-                            <td>
-                                {% if task.problem %}
-                                <a href="{{ url_for('oj_problem_detail', slug=task.problem.slug) }}" class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600">{{ task.problem.title }}</a>
-                                <div class="text-xs font-mono text-stone-400">{{ task.problem.slug }}</div>
-                                {% else %}
-                                <span class="text-stone-400">题目已删除</span>
-                                {% endif %}
-                            </td>
-                            {% if current_user.is_admin %}
-                            <td>{{ task.user.username if task.user else '未知用户' }}</td>
-                            {% endif %}
-                            <td class="font-mono">{{ task.language }}</td>
-                            <td><span class="badge {{ meta.badge }} badge-outline">{{ meta.label }}</span></td>
-                            <td class="font-mono">{{ task.total_score }}</td>
-                            <td class="text-sm text-stone-500">{{ task.created_at.strftime('%Y-%m-%d %H:%M') if task.created_at else '-' }}</td>
-                            <td class="text-right">
-                                <a href="{{ url_for('oj_submission_detail', task_id=task.id) }}" class="btn btn-sm rounded-lg">查看</a>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="{{ 8 if current_user.is_admin else 7 }}" class="text-center py-14 text-stone-400">还没有提交记录。</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div id="submission-results" class="submission-panel submission-results overflow-hidden" aria-live="polite">
+            {% include "oj/_submission_table.html" %}
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('submission-filter-form');
+        const results = document.getElementById('submission-results');
+        const reset = document.getElementById('submission-filter-reset');
+        if (!form || !results) return;
+
+        let activeController = null;
+        let debounceTimer = null;
+
+        const buildUrl = () => {
+            const formData = new FormData(form);
+            const params = new URLSearchParams();
+            formData.forEach((value, key) => {
+                const normalized = String(value || '').trim();
+                if (normalized) params.set(key, normalized);
+            });
+            const query = params.toString();
+            return `${form.action || window.location.pathname}${query ? `?${query}` : ''}`;
+        };
+
+        const loadSubmissions = async (url, pushState = true) => {
+            if (activeController) activeController.abort();
+            activeController = new AbortController();
+            results.classList.add('is-loading');
+
+            try {
+                const response = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: activeController.signal,
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const payload = await response.json();
+                results.innerHTML = payload.html || '';
+                if (pushState) window.history.pushState({ submissionFilterUrl: url }, '', url);
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error(error);
+                    results.insertAdjacentHTML('afterbegin', '<div class="p-4 text-rose-600 font-bold">筛选失败，请稍后重试。</div>');
+                }
+            } finally {
+                results.classList.remove('is-loading');
+            }
+        };
+
+        const scheduleLoad = () => {
+            window.clearTimeout(debounceTimer);
+            debounceTimer = window.setTimeout(() => loadSubmissions(buildUrl()), 260);
+        };
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            loadSubmissions(buildUrl());
+        });
+
+        form.addEventListener('change', (event) => {
+            if (event.target.matches('select')) {
+                loadSubmissions(buildUrl());
+            }
+        });
+
+        form.addEventListener('input', (event) => {
+            if (event.target.matches('input[type="text"]')) {
+                scheduleLoad();
+            }
+        });
+
+        if (reset) {
+            reset.addEventListener('click', (event) => {
+                event.preventDefault();
+                form.querySelectorAll('input[type="text"]').forEach((input) => { input.value = ''; });
+                form.querySelector('input[name="problem_id"]')?.remove();
+                const selectedProblem = document.getElementById('selected-problem-filter');
+                if (selectedProblem) {
+                    selectedProblem.outerHTML = [
+                        '<label class="form-control">',
+                        '<span class="label-text font-bold mb-1">题目</span>',
+                        '<input type="text" name="problem" value="" class="input input-bordered rounded-lg" placeholder="题号、标题或 Slug">',
+                        '</label>',
+                    ].join('');
+                }
+                form.querySelectorAll('select').forEach((select) => { select.value = ''; });
+                loadSubmissions(reset.href);
+            });
+        }
+
+        window.addEventListener('popstate', () => {
+            window.location.reload();
+        });
+    });
+</script>
 {% endblock %}

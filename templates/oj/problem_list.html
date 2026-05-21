@@ -19,6 +19,13 @@
         border-color: rgba(255,255,255,0.10);
         background: rgba(24,24,27,0.86);
     }
+    .problem-results {
+        position: relative;
+    }
+    .problem-results.is-loading {
+        opacity: 0.58;
+        pointer-events: none;
+    }
     .problem-row {
         border-bottom: 1px solid rgba(15,23,42,0.08);
         transition: background-color 0.16s ease;
@@ -26,8 +33,26 @@
     .problem-row:hover {
         background: rgba(14,165,233,0.06);
     }
+    .problem-row.is-accepted {
+        background: rgba(16, 185, 129, 0.12);
+    }
+    .problem-row.is-accepted:hover {
+        background: rgba(16, 185, 129, 0.18);
+    }
+    .problem-row.is-attempted {
+        background: rgba(244, 63, 94, 0.10);
+    }
+    .problem-row.is-attempted:hover {
+        background: rgba(244, 63, 94, 0.16);
+    }
     html.dark .problem-row {
         border-color: rgba(255,255,255,0.08);
+    }
+    html.dark .problem-row.is-accepted {
+        background: rgba(16, 185, 129, 0.18);
+    }
+    html.dark .problem-row.is-attempted {
+        background: rgba(244, 63, 94, 0.16);
     }
     .diff-pill {
         display: inline-flex;
@@ -89,10 +114,10 @@
             </div>
         </div>
 
-        <form method="get" class="oj-toolbar p-4 grid grid-cols-1 md:grid-cols-[1fr,12rem,12rem,auto] gap-3 items-end">
+        <form method="get" action="{{ url_for('oj_problem_list') }}" id="problem-filter-form" class="oj-toolbar p-4 grid grid-cols-1 md:grid-cols-[1fr,12rem,12rem,auto] gap-3 items-end">
             <label class="form-control">
                 <span class="label-text font-bold mb-1">搜索</span>
-                <input type="text" name="q" value="{{ q }}" class="input input-bordered rounded-lg" placeholder="编号、标题、Slug、来源">
+                <input type="text" name="q" value="{{ q }}" class="input input-bordered rounded-lg" placeholder="编号、题目、标签">
             </label>
             <label class="form-control">
                 <span class="label-text font-bold mb-1">难度</span>
@@ -118,64 +143,98 @@
             </button>
         </form>
 
-        <div class="oj-toolbar overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="table">
-                    <thead>
-                        <tr class="text-xs uppercase tracking-widest text-stone-500">
-                            <th>UID</th>
-                            <th>编号</th>
-                            <th>题目</th>
-                            <th>难度</th>
-                            <th>限制</th>
-                            <th>语言</th>
-                            {% if current_user.is_admin %}<th>状态</th>{% endif %}
-                            <th class="text-right">入口</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for problem in problems %}
-                        <tr class="problem-row">
-                            <td class="font-mono font-bold text-stone-500">{{ problem.uid_text }}</td>
-                            <td class="font-mono font-black text-stone-900 dark:text-stone-100">{{ problem.problem_code }}</td>
-                            <td>
-                                <a href="{{ url_for('oj_problem_detail', slug=problem.slug) }}" class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600">
-                                    {{ problem.title }}
-                                </a>
-                                <div class="text-xs font-mono text-stone-400 mt-1">{{ problem.slug }}</div>
-                            </td>
-                            <td>
-                                <span class="diff-pill
-                                    {% if problem.difficulty == 'easy' %}bg-emerald-100 text-emerald-700
-                                    {% elif problem.difficulty == 'hard' %}bg-rose-100 text-rose-700
-                                    {% else %}bg-amber-100 text-amber-700{% endif %}">
-                                    {{ problem.difficulty }}
-                                </span>
-                            </td>
-                            <td class="text-sm text-stone-500">{{ problem.time_limit_ms }}ms / {{ problem.memory_limit_mb }}MB</td>
-                            <td class="text-sm text-stone-500">{{ problem.allowed_languages_text }}</td>
-                            {% if current_user.is_admin %}
-                            <td>
-                                {% if problem.is_visible %}
-                                <span class="badge badge-info badge-outline">公开</span>
-                                {% else %}
-                                <span class="badge badge-ghost">隐藏</span>
-                                {% endif %}
-                            </td>
-                            {% endif %}
-                            <td class="text-right">
-                                <a href="{{ url_for('oj_problem_detail', slug=problem.slug) }}" class="btn btn-sm rounded-lg">查看</a>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="{{ 8 if current_user.is_admin else 7 }}" class="text-center py-14 text-stone-400">当前没有匹配的题目。</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div id="problem-results" class="oj-toolbar problem-results overflow-hidden" aria-live="polite">
+            {% include "oj/_problem_table.html" %}
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('problem-filter-form');
+        const results = document.getElementById('problem-results');
+        if (!form || !results) return;
+
+        let activeController = null;
+        let debounceTimer = null;
+
+        const buildUrl = () => {
+            const formData = new FormData(form);
+            const params = new URLSearchParams();
+            formData.forEach((value, key) => {
+                const normalized = String(value || '').trim();
+                if (normalized) params.set(key, normalized);
+            });
+            const query = params.toString();
+            return `${form.action || window.location.pathname}${query ? `?${query}` : ''}`;
+        };
+
+        const syncFormFromUrl = (url) => {
+            const parsed = new URL(url, window.location.origin);
+            form.querySelectorAll('input[name], select[name]').forEach((field) => {
+                field.value = parsed.searchParams.get(field.name) || '';
+            });
+        };
+
+        const loadProblems = async (url, pushState = true) => {
+            if (activeController) activeController.abort();
+            activeController = new AbortController();
+            results.classList.add('is-loading');
+
+            try {
+                const response = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: activeController.signal,
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const payload = await response.json();
+                results.innerHTML = payload.html || '';
+                if (pushState) window.history.pushState({ problemFilterUrl: url }, '', url);
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error(error);
+                    results.insertAdjacentHTML('afterbegin', '<div class="p-4 text-rose-600 font-bold">筛选失败，请稍后重试。</div>');
+                }
+            } finally {
+                results.classList.remove('is-loading');
+            }
+        };
+
+        const scheduleLoad = () => {
+            window.clearTimeout(debounceTimer);
+            debounceTimer = window.setTimeout(() => loadProblems(buildUrl()), 260);
+        };
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            loadProblems(buildUrl());
+        });
+
+        form.addEventListener('change', (event) => {
+            if (event.target.matches('select')) {
+                loadProblems(buildUrl());
+            }
+        });
+
+        form.addEventListener('input', (event) => {
+            if (event.target.matches('input[type="text"]')) {
+                scheduleLoad();
+            }
+        });
+
+        results.addEventListener('click', (event) => {
+            const link = event.target.closest('[data-problem-filter-link]');
+            if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            syncFormFromUrl(link.href);
+            loadProblems(link.href);
+        });
+
+        window.addEventListener('popstate', () => {
+            window.location.reload();
+        });
+    });
+</script>
 {% endblock %}

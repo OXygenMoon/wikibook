@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PIDFILE="${ROOT_DIR}/.wikibook-local.pid"
 LOGFILE="${ROOT_DIR}/.wikibook-local.log"
+JUDGE_SCRIPT="${ROOT_DIR}/run_judge_local.sh"
 
 load_env() {
     if [ -f "${ROOT_DIR}/.env" ]; then
@@ -91,6 +92,22 @@ start_service() {
     exit 1
 }
 
+start_judge_service() {
+    if [ "${SKIP_JUDGE:-0}" = "1" ]; then
+        echo "Skipping judge worker startup because SKIP_JUDGE=1."
+        return 0
+    fi
+
+    if [ ! -x "${JUDGE_SCRIPT}" ]; then
+        echo "Judge startup script is missing or not executable: ${JUDGE_SCRIPT}"
+        exit 1
+    fi
+
+    load_env
+    echo "Starting judge worker and dependencies..."
+    "${JUDGE_SCRIPT}" start
+}
+
 stop_service() {
     if ! is_running; then
         rm -f "${PIDFILE}"
@@ -129,10 +146,22 @@ stop_service() {
     echo "Service stopped."
 }
 
+stop_judge_service() {
+    if [ ! -x "${JUDGE_SCRIPT}" ]; then
+        echo "Judge startup script is missing or not executable: ${JUDGE_SCRIPT}"
+        return 0
+    fi
+
+    echo "Stopping judge worker..."
+    "${JUDGE_SCRIPT}" stop
+}
+
 restart_service() {
-    echo "Restarting Wikibook local service..."
+    echo "Restarting Wikibook local service and judge worker..."
+    stop_judge_service
     stop_service
     start_service
+    start_judge_service
 }
 
 show_status() {
@@ -147,22 +176,40 @@ show_status() {
     else
         echo "Wikibook local service is stopped."
     fi
+
+    echo
+    echo "Judge status:"
+    if [ -x "${JUDGE_SCRIPT}" ]; then
+        "${JUDGE_SCRIPT}" status
+    else
+        echo "Judge startup script is missing or not executable: ${JUDGE_SCRIPT}"
+    fi
 }
 
 show_logs() {
+    echo "== Wikibook local service logs =="
     if [ ! -f "${LOGFILE}" ]; then
         echo "No log file found yet at ${LOGFILE}."
-        return 0
+    else
+        tail -n 50 "${LOGFILE}"
     fi
 
-    tail -n 50 "${LOGFILE}"
+    echo
+    echo "== Judge worker logs =="
+    if [ -x "${JUDGE_SCRIPT}" ]; then
+        "${JUDGE_SCRIPT}" logs
+    else
+        echo "Judge startup script is missing or not executable: ${JUDGE_SCRIPT}"
+    fi
 }
 
 case "${1:-restart}" in
     start)
         start_service
+        start_judge_service
         ;;
     stop)
+        stop_judge_service
         stop_service
         ;;
     restart)

@@ -1,4 +1,5 @@
 import os
+import ast
 from datetime import datetime, timedelta, timezone
 import csv
 import io
@@ -6,7 +7,7 @@ import openpyxl
 import click
 from flask import Flask, render_template, redirect, url_for, request, flash, abort, send_file, Response, make_response, jsonify,session
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text, inspect
+from sqlalchemy import text, inspect, case
 from sqlalchemy.exc import OperationalError
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -27,6 +28,11 @@ import traceback
 
 from queue_service import enqueue_judge_task
 from wikibook_config import configure_app
+
+try:
+    import jedi
+except ImportError:
+    jedi = None
 
 app = Flask(__name__)
 configure_app(app)
@@ -5950,6 +5956,18 @@ LEADERBOARD_METRICS = {
         "unit": "天",
         "description": "连续打卡天数",
     },
+    "oj_ac": {
+        "label": "OJ AC榜",
+        "icon": "fa-check-circle",
+        "unit": "次",
+        "description": "OJ 通过题目数量",
+    },
+    "oj_attempts": {
+        "label": "OJ 尝试榜",
+        "icon": "fa-code",
+        "unit": "次",
+        "description": "OJ 提交尝试数量",
+    },
 }
 
 LEADERBOARD_PERIODS = {
@@ -5999,6 +6017,20 @@ def build_leaderboard_snapshot(users, metric, period, weekly_start):
                 pomo_query = pomo_query.filter(PomodoroRecord.completed_at >= start_date)
             score = pomo_query.count()
 
+        elif metric == "oj_ac":
+            judge_query = JudgeTask.query.filter_by(user_id=u.id, status="accepted")
+            judge_query = judge_query.filter(JudgeTask.problem_id.isnot(None))
+            if period == "weekly":
+                judge_query = judge_query.filter(JudgeTask.created_at >= start_date)
+            score = judge_query.with_entities(JudgeTask.problem_id).distinct().count()
+
+        elif metric == "oj_attempts":
+            judge_query = JudgeTask.query.filter_by(user_id=u.id)
+            judge_query = judge_query.filter(JudgeTask.problem_id.isnot(None))
+            if period == "weekly":
+                judge_query = judge_query.filter(JudgeTask.created_at >= start_date)
+            score = judge_query.count()
+
         if score > 0 or u.id == current_user.id:
             ranking_data.append({
                 "user": u,
@@ -6020,7 +6052,9 @@ def build_leaderboard_snapshot(users, metric, period, weekly_start):
             "name": user.real_name or user.username,
             "username": user.username,
             "initial": (user.real_name or user.username or "?")[:1].upper(),
+            "class_id": user.class_id,
             "class_name": user.student_class.name if user.student_class else "",
+            "group_ids": [group.id for group in user.groups],
             "score": data["score"],
             "unit": metric_meta["unit"],
             "badge_count": data["badge_count"],
@@ -6059,12 +6093,38 @@ def build_leaderboard_snapshot(users, metric, period, weekly_start):
 def leaderboard():
     metric = request.args.get("metric", "duration")
     period = request.args.get("period", "all")
+    scope = request.args.get("scope", "all")
     if metric not in LEADERBOARD_METRICS:
         metric = "duration"
     if period not in LEADERBOARD_PERIODS:
         period = "all"
 
     users = User.query.all()
+    groups = Group.query.order_by(Group.name.asc()).all()
+    leaderboard_scopes = {
+        "all": {
+            "label": "全部",
+            "icon": "fa-globe",
+            "description": "显示所有学生的排行",
+        }
+    }
+    if current_user.class_id:
+        leaderboard_scopes["class"] = {
+            "label": "本班",
+            "icon": "fa-users",
+            "class_id": current_user.class_id,
+            "description": current_user.student_class.name if current_user.student_class else "当前班级",
+        }
+    for group in groups:
+        leaderboard_scopes[f"group:{group.id}"] = {
+            "label": group.name,
+            "icon": "fa-user-friends",
+            "group_id": group.id,
+            "description": group.description or "自定义学生组",
+        }
+    if scope not in leaderboard_scopes:
+        scope = "all"
+
     now = now_utc8()
     weekly_start = now - timedelta(days=now.weekday())
     weekly_start = weekly_start.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -6087,6 +6147,8 @@ def leaderboard():
         leaderboard_periods=LEADERBOARD_PERIODS,
         initial_metric=metric,
         initial_period=period,
+        initial_scope=scope,
+        leaderboard_scopes=leaderboard_scopes,
     )
 
 # ==========================================
@@ -6446,6 +6508,215 @@ OJ_STATUS_META = {
 
 def oj_status_meta(status):
     return OJ_STATUS_META.get(status or '', {'label': status or '未知', 'badge': 'badge-ghost'})
+
+
+def _jedi_unavailable_response():
+    return jsonify({
+        'ok': False,
+        'message': 'Python 智能提示服务不可用：缺少 jedi 依赖。',
+        'items': [],
+    }), 503
+
+
+def _jedi_position(payload):
+    line = max(int(payload.get('line') or 1), 1)
+    column = max(int(payload.get('column') or 1) - 1, 0)
+    return line, column
+
+
+def _jedi_script(source_code):
+    return jedi.Script(source_code or '', path='solution.py')
+
+
+def _jedi_doc(name):
+    try:
+        doc = name.docstring(raw=False)
+    except Exception:
+        doc = ''
+    return doc.strip()
+
+
+OJ_PYTHON_DOC_HINTS = {
+    'print': '打印输出：最常用的输出函数，把内容显示到屏幕。sep 控制多个值之间的分隔符，end 控制输出结尾。',
+    'input': '读取一行输入：返回字符串，常用于读取 OJ 标准输入中的单行数据。',
+    'range': '生成整数序列：常用于 for 循环。range(n) 表示 0 到 n-1。',
+    'len': '获取长度：返回字符串、列表、元组、字典等对象中的元素数量。',
+    'map': '批量转换：常和 input().split() 配合，把一行输入转换成整数列表。',
+    'int': '转成整数：常用于把 input() 读入的字符串转换成数字。',
+    'float': '转成浮点数：把字符串或数字转换为小数。',
+    'bool': '转成布尔值：返回 True 或 False，常用于条件判断。',
+    'str': '转成字符串：常用于拼接输出或格式化结果。',
+    'list': '转成列表：常用于 list(map(int, input().split()))。',
+    'tuple': '转成元组：返回不可变序列，适合表示不会再修改的一组值。',
+    'dict': '创建字典：保存键值对，适合计数、映射和快速查询。',
+    'set': '创建集合：自动去重，支持交集、并集等集合运算。',
+    'sum': '求和：返回可迭代对象中所有数字的总和。',
+    'max': '最大值：返回多个值或序列中的最大元素。',
+    'min': '最小值：返回多个值或序列中的最小元素。',
+    'sorted': '排序：返回一个新的已排序列表，不修改原对象。',
+    'enumerate': '枚举序列：同时得到下标和值，常写作 for i, x in enumerate(a)。',
+    'zip': '打包序列：把多个序列按位置组合，常用于同时遍历多个列表。',
+    'abs': '绝对值：返回数字的非负大小。',
+    'all': '全部为真：可迭代对象中所有元素都为真时返回 True。',
+    'any': '任一为真：可迭代对象中至少一个元素为真时返回 True。',
+    'reversed': '反向迭代：返回一个从后往前遍历的迭代器。',
+    'split': '分割字符串：按分隔符把字符串拆成列表。OJ 中常用 input().split() 拆分一行输入。',
+    'append': '追加元素：把一个元素添加到列表末尾。',
+    'type': '查看类型：返回对象所属的类型。',
+    'try': '异常处理语句：尝试执行一段代码，并用 except 捕获可能出现的错误。',
+}
+
+OJ_PYTHON_DOC_DETAILS = {
+    'print': '打印输出',
+    'input': '读取输入',
+    'range': '整数序列',
+    'len': '获取长度',
+    'map': '批量转换',
+    'int': '转成整数',
+    'float': '转成浮点数',
+    'bool': '转成布尔值',
+    'str': '转成字符串',
+    'list': '转成列表',
+    'tuple': '元组',
+    'dict': '字典',
+    'set': '集合',
+    'sum': '求和',
+    'max': '最大值',
+    'min': '最小值',
+    'sorted': '排序',
+    'enumerate': '下标和值',
+    'zip': '组合遍历',
+    'abs': '绝对值',
+    'all': '全部为真',
+    'any': '任一为真',
+    'reversed': '反向迭代',
+    'split': '分割字符串',
+    'append': '列表追加',
+    'type': '查看类型',
+    'try': '异常处理',
+}
+
+OJ_PYTHON_SIGNATURE_HINTS = {
+    'print': {
+        'label': "print(*values, sep=' ', end='\\n', file=None, flush=False)",
+        'documentation': '打印输出：把一个或多个值输出到屏幕。sep 用来设置多个值之间的分隔符，end 用来设置输出结尾，默认会换行。',
+        'parameters': {
+            '*values: object': '要输出的一个或多个对象，会先被转换成字符串。',
+            'sep: Optional[str]=...': '多个输出值之间的分隔符，默认是一个空格。',
+            'end: Optional[str]=...': '输出结尾，默认是换行符。设为 "" 可以不换行。',
+            'file: Optional[SupportsWrite[str]]=...': '输出目标，OJ 中通常保持默认即可。',
+            'flush: bool=...': '是否立即刷新输出缓冲，OJ 中通常保持默认即可。',
+        },
+    },
+    'input': {
+        'label': 'input(prompt=None)',
+        'documentation': '读取一行输入并返回字符串。OJ 中常用 input() 读取一行，再配合 split()、int()、map() 处理数据。',
+    },
+    'int': {
+        'label': 'int(x=0, base=10)',
+        'documentation': '转换为整数。常见写法：int(input()) 读取一个整数，list(map(int, input().split())) 读取一行多个整数。base 表示字符串数字的进制。',
+    },
+    'float': {
+        'label': 'float(x=0.0)',
+        'documentation': '转换为浮点数，也就是小数。适合题目输入包含小数时使用。',
+    },
+    'str': {
+        'label': 'str(object="")',
+        'documentation': '转换为字符串。常用于拼接输出或把数字转换成文本。',
+    },
+    'len': {
+        'label': 'len(s)',
+        'documentation': '返回对象长度，例如字符串长度、列表元素个数、字典键值对数量。',
+    },
+    'range': {
+        'label': 'range(start, stop[, step])',
+        'documentation': '生成整数序列，常用于 for 循环。range(n) 生成 0 到 n-1；range(a, b) 生成 a 到 b-1。',
+    },
+    'map': {
+        'label': 'map(function, iterable, ...)',
+        'documentation': '把函数应用到序列的每个元素。OJ 常用：list(map(int, input().split()))，表示把一行输入拆分后全部转成整数。',
+    },
+    'list': {
+        'label': 'list(iterable=())',
+        'documentation': '创建列表。列表可以修改、追加和排序，适合保存一组数据。',
+    },
+    'tuple': {
+        'label': 'tuple(iterable=())',
+        'documentation': '创建元组。元组不可修改，适合表示固定的一组值。',
+    },
+    'dict': {
+        'label': 'dict(...)',
+        'documentation': '创建字典，用键值对保存数据。常用于计数、映射和快速查询。',
+    },
+    'set': {
+        'label': 'set(iterable=())',
+        'documentation': '创建集合。集合会自动去重，适合判断元素是否出现、求交集或并集。',
+    },
+    'sum': {
+        'label': 'sum(iterable, start=0)',
+        'documentation': '求和。返回序列中数字的总和，可选 start 作为初始值。',
+    },
+    'max': {
+        'label': 'max(iterable) 或 max(a, b, ...)',
+        'documentation': '返回最大值。可以传入一个序列，也可以传入多个值。',
+    },
+    'min': {
+        'label': 'min(iterable) 或 min(a, b, ...)',
+        'documentation': '返回最小值。可以传入一个序列，也可以传入多个值。',
+    },
+    'sorted': {
+        'label': 'sorted(iterable, key=None, reverse=False)',
+        'documentation': '返回新的已排序列表，不会修改原对象。reverse=True 表示降序。',
+    },
+    'enumerate': {
+        'label': 'enumerate(iterable, start=0)',
+        'documentation': '遍历时同时得到下标和值，例如：for i, x in enumerate(a):',
+    },
+    'zip': {
+        'label': 'zip(*iterables)',
+        'documentation': '把多个序列按位置配对。常用于同时遍历多个列表。',
+    },
+    'split': {
+        'label': 'split(sep=None, maxsplit=-1)',
+        'documentation': '把字符串按分隔符拆成列表。默认按空白字符拆分，OJ 常用 input().split() 读取一行多个数据。',
+    },
+    'append': {
+        'label': 'append(x)',
+        'documentation': '把元素 x 添加到列表末尾。这个方法会修改原列表，返回 None。',
+    },
+}
+
+
+def _oj_python_doc(name, fallback=''):
+    hint = OJ_PYTHON_DOC_HINTS.get(name)
+    if hint and fallback:
+        return f"{hint}\n\n---\n\n{fallback}"
+    return hint or fallback
+
+
+def _oj_python_detail(name, fallback=''):
+    return OJ_PYTHON_DOC_DETAILS.get(name) or fallback
+
+
+def _oj_python_signature_hint(name):
+    return OJ_PYTHON_SIGNATURE_HINTS.get(name) or {}
+
+
+def _oj_python_signature_label(signature):
+    hint = _oj_python_signature_hint(signature.name)
+    return hint.get('label') or signature.to_string()
+
+
+def _oj_python_signature_doc(signature):
+    hint = _oj_python_signature_hint(signature.name)
+    fallback = _jedi_doc(signature)
+    return hint.get('documentation') or _oj_python_doc(signature.name, fallback)
+
+
+def _oj_python_param_doc(signature, param):
+    hint = _oj_python_signature_hint(signature.name)
+    param_docs = hint.get('parameters') or {}
+    return param_docs.get(param.to_string()) or _jedi_doc(param)
 
 
 app.jinja_env.globals["oj_status_meta"] = oj_status_meta
@@ -7404,6 +7675,52 @@ def oj_problem_list():
         query = query.filter_by(difficulty=difficulty)
 
     problems = query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
+    problem_ids = [problem.id for problem in problems]
+    problem_submission_stats = {
+        problem_id: {'accepted': 0, 'attempts': 0}
+        for problem_id in problem_ids
+    }
+    if problem_ids:
+        rows = (
+            db.session.query(
+                JudgeTask.problem_id,
+                db.func.count(JudgeTask.id).label('attempts'),
+                db.func.sum(case((JudgeTask.status == 'accepted', 1), else_=0)).label('accepted'),
+            )
+            .filter(JudgeTask.problem_id.in_(problem_ids))
+            .group_by(JudgeTask.problem_id)
+            .all()
+        )
+        for problem_id, attempts, accepted in rows:
+            problem_submission_stats[problem_id] = {
+                'accepted': int(accepted or 0),
+                'attempts': int(attempts or 0),
+            }
+
+    my_problem_status = {
+        problem_id: {'accepted': False, 'attempted': False}
+        for problem_id in problem_ids
+    }
+    if problem_ids:
+        my_rows = (
+            db.session.query(
+                JudgeTask.problem_id,
+                db.func.count(JudgeTask.id).label('attempts'),
+                db.func.sum(case((JudgeTask.status == 'accepted', 1), else_=0)).label('accepted'),
+            )
+            .filter(
+                JudgeTask.problem_id.in_(problem_ids),
+                JudgeTask.user_id == current_user.id,
+            )
+            .group_by(JudgeTask.problem_id)
+            .all()
+        )
+        for problem_id, attempts, accepted in my_rows:
+            my_problem_status[problem_id] = {
+                'accepted': int(accepted or 0) > 0,
+                'attempted': int(attempts or 0) > 0,
+            }
+
     stats_query = Problem.query if current_user.is_admin else Problem.query.filter_by(is_visible=True)
     problem_stats = {
         'total': stats_query.count(),
@@ -7412,14 +7729,24 @@ def oj_problem_list():
         'hard': stats_query.filter_by(difficulty='hard').count(),
     }
 
-    return render_template(
-        'oj/problem_list.html',
-        problems=problems,
-        q=q,
-        difficulty=difficulty,
-        visibility=visibility,
-        problem_stats=problem_stats,
-    )
+    template_context = {
+        'problems': problems,
+        'q': q,
+        'difficulty': difficulty,
+        'visibility': visibility,
+        'problem_stats': problem_stats,
+        'problem_submission_stats': problem_submission_stats,
+        'my_problem_status': my_problem_status,
+    }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'ok': True,
+            'html': render_template('oj/_problem_table.html', **template_context),
+            'count': len(problems),
+        })
+
+    return render_template('oj/problem_list.html', **template_context)
 
 
 @app.route('/oj/problems/<slug>')
@@ -7463,6 +7790,188 @@ def oj_problem_detail(slug):
         my_latest_task=my_latest_task,
         submission_history=submission_history,
     )
+
+
+@app.route('/oj/problems/<slug>/code')
+@login_required
+def oj_problem_code(slug):
+    ensure_oj_authoring_schema()
+    problem = get_problem_or_404_for_current_user(slug)
+
+    statement_html = markdown(problem.statement_md or "")
+    input_spec_html = markdown(problem.input_spec_md or "")
+    output_spec_html = markdown(problem.output_spec_md or "")
+    hint_html = markdown(problem.hint_md or "")
+    sample_cases = problem.sample_cases
+    my_latest_task = JudgeTask.query.filter_by(
+        problem_id=problem.id,
+        user_id=current_user.id,
+    ).order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).first()
+
+    return render_template(
+        'oj/problem_code.html',
+        problem=problem,
+        sample_cases=sample_cases,
+        statement_html=statement_html,
+        input_spec_html=input_spec_html,
+        output_spec_html=output_spec_html,
+        hint_html=hint_html,
+        my_latest_task=my_latest_task,
+    )
+
+
+@app.route('/oj/problems/<slug>/syntax-check', methods=['POST'])
+@login_required
+def oj_problem_syntax_check(slug):
+    ensure_oj_authoring_schema()
+    get_problem_or_404_for_current_user(slug)
+
+    payload = request.get_json(silent=True) or {}
+    language = (payload.get('language') or '').strip().lower()
+    source_code = payload.get('source_code') or ''
+
+    if language != 'python':
+        return jsonify({
+            'ok': True,
+            'diagnostics': [],
+            'message': '当前仅对 Python 代码提供语法检查。',
+        })
+
+    if not source_code.strip():
+        return jsonify({
+            'ok': True,
+            'diagnostics': [],
+            'message': '输入代码后会自动检查 Python 语法。',
+        })
+
+    try:
+        ast.parse(source_code)
+    except SyntaxError as exc:
+        line = exc.lineno or 1
+        column = max((exc.offset or 1) - 1, 0)
+        return jsonify({
+            'ok': False,
+            'diagnostics': [{
+                'row': max(line - 1, 0),
+                'column': column,
+                'text': exc.msg or 'Python 语法错误',
+                'type': 'error',
+            }],
+            'message': f"第 {line} 行：{exc.msg or 'Python 语法错误'}",
+        })
+
+    return jsonify({
+        'ok': True,
+        'diagnostics': [],
+        'message': 'Python 语法检查通过。',
+    })
+
+
+@app.route('/oj/problems/<slug>/python-completions', methods=['POST'])
+@login_required
+def oj_problem_python_completions(slug):
+    ensure_oj_authoring_schema()
+    get_problem_or_404_for_current_user(slug)
+
+    if jedi is None:
+        return _jedi_unavailable_response()
+
+    payload = request.get_json(silent=True) or {}
+    source_code = payload.get('source_code') or ''
+    line, column = _jedi_position(payload)
+
+    try:
+        completions = _jedi_script(source_code).complete(line, column)
+    except Exception as exc:
+        return jsonify({'ok': False, 'message': str(exc), 'items': []}), 200
+
+    items = []
+    for completion in completions[:80]:
+        doc = _oj_python_doc(completion.name, _jedi_doc(completion))
+        items.append({
+            'label': completion.name,
+            'insert_text': completion.name,
+            'detail': _oj_python_detail(completion.name, completion.description),
+            'kind': completion.type,
+            'documentation': doc[:2400],
+        })
+
+    return jsonify({'ok': True, 'items': items})
+
+
+@app.route('/oj/problems/<slug>/python-hover', methods=['POST'])
+@login_required
+def oj_problem_python_hover(slug):
+    ensure_oj_authoring_schema()
+    get_problem_or_404_for_current_user(slug)
+
+    if jedi is None:
+        return _jedi_unavailable_response()
+
+    payload = request.get_json(silent=True) or {}
+    source_code = payload.get('source_code') or ''
+    line, column = _jedi_position(payload)
+
+    try:
+        names = _jedi_script(source_code).help(line, column)
+    except Exception as exc:
+        return jsonify({'ok': False, 'message': str(exc), 'items': []}), 200
+
+    items = []
+    for name in names[:4]:
+        doc = _oj_python_doc(name.name, _jedi_doc(name))
+        if not doc:
+            continue
+        items.append({
+            'name': name.name,
+            'detail': name.description,
+            'documentation': doc[:3200],
+        })
+
+    return jsonify({'ok': True, 'items': items})
+
+
+@app.route('/oj/problems/<slug>/python-signatures', methods=['POST'])
+@login_required
+def oj_problem_python_signatures(slug):
+    ensure_oj_authoring_schema()
+    get_problem_or_404_for_current_user(slug)
+
+    if jedi is None:
+        return _jedi_unavailable_response()
+
+    payload = request.get_json(silent=True) or {}
+    source_code = payload.get('source_code') or ''
+    line, column = _jedi_position(payload)
+
+    try:
+        signatures = _jedi_script(source_code).get_signatures(line, column)
+    except Exception as exc:
+        return jsonify({'ok': False, 'message': str(exc), 'signatures': []}), 200
+
+    signature_items = []
+    active_signature = 0
+    active_parameter = 0
+    for signature in signatures[:5]:
+        parameters = []
+        for param in signature.params:
+            parameters.append({
+                'label': param.to_string(),
+                'documentation': _oj_python_param_doc(signature, param)[:1200],
+            })
+        signature_items.append({
+            'label': _oj_python_signature_label(signature),
+            'documentation': _oj_python_signature_doc(signature)[:2400],
+            'parameters': parameters,
+        })
+        active_parameter = max(getattr(signature, 'index', 0) or 0, 0)
+
+    return jsonify({
+        'ok': True,
+        'activeSignature': active_signature,
+        'activeParameter': active_parameter,
+        'signatures': signature_items,
+    })
 
 
 @app.route('/oj/problems/<slug>/submit', methods=['GET', 'POST'])
@@ -7532,19 +8041,74 @@ def oj_submission_list():
     ensure_oj_authoring_schema()
 
     query = JudgeTask.query.filter(JudgeTask.problem_id.isnot(None))
+    language_query = db.session.query(JudgeTask.language).filter(JudgeTask.problem_id.isnot(None))
     if not current_user.is_admin:
         query = query.filter_by(user_id=current_user.id)
+        language_query = language_query.filter(JudgeTask.user_id == current_user.id)
+
+    available_languages = [
+        language
+        for (language,) in language_query.distinct().order_by(JudgeTask.language.asc()).all()
+        if language
+    ]
 
     status_filter = request.args.get('status', '').strip().lower()
     if status_filter in OJ_STATUS_META:
         query = query.filter_by(status=status_filter)
 
+    language_filter = request.args.get('language', '').strip()
+    if language_filter:
+        query = query.filter_by(language=language_filter)
+
+    user_filter = request.args.get('user', '').strip() if current_user.is_admin else ''
+    if user_filter:
+        like = f"%{user_filter}%"
+        user_clauses = [
+            User.username.like(like),
+            User.real_name.like(like),
+        ]
+        if user_filter.isdigit():
+            user_clauses.append(User.id == int(user_filter))
+        query = query.filter(JudgeTask.user.has(db.or_(*user_clauses)))
+
+    problem_filter = request.args.get('problem', '').strip()
+    problem_id_filter = request.args.get('problem_id', type=int)
+    selected_problem = None
+    if problem_id_filter:
+        selected_problem = Problem.query.filter_by(id=problem_id_filter).first()
+        if selected_problem and can_view_problem(selected_problem, current_user):
+            query = query.filter_by(problem_id=problem_id_filter)
+        else:
+            selected_problem = None
+            problem_id_filter = None
+    elif problem_filter:
+        like = f"%{problem_filter}%"
+        query = query.filter(JudgeTask.problem.has(db.or_(
+            Problem.problem_code.like(like),
+            Problem.title.like(like),
+            Problem.slug.like(like),
+        )))
+
     submissions = query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(100).all()
-    return render_template(
-        'oj/submission_list.html',
-        submissions=submissions,
-        status_filter=status_filter,
-    )
+    template_context = {
+        'submissions': submissions,
+        'status_filter': status_filter,
+        'language_filter': language_filter,
+        'user_filter': user_filter,
+        'problem_filter': problem_filter,
+        'problem_id_filter': problem_id_filter,
+        'selected_problem': selected_problem,
+        'available_languages': available_languages,
+    }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'ok': True,
+            'html': render_template('oj/_submission_table.html', **template_context),
+            'count': len(submissions),
+        })
+
+    return render_template('oj/submission_list.html', **template_context)
 
 
 @app.route('/oj/submissions/<int:task_id>')

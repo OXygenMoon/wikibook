@@ -198,6 +198,9 @@
                 </div>
                 {% endif %}
                 <div class="pt-5 flex flex-col gap-3">
+                    <a href="{{ url_for('oj_problem_code', slug=problem.slug) }}" class="btn btn-secondary rounded-lg">
+                        <i class="fas fa-code"></i> 在线编码
+                    </a>
                     <a href="{{ url_for('submit_oj_problem', slug=problem.slug) }}" class="btn btn-primary rounded-lg">
                         <i class="fas fa-paper-plane"></i> 提交代码
                     </a>

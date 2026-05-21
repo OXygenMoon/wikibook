@@ -134,6 +134,62 @@
         min-width: 96px;
     }
 
+    .lb-select {
+        position: relative;
+    }
+
+    .lb-select-btn {
+        min-width: 132px;
+        justify-content: space-between;
+        gap: 0.65rem;
+    }
+
+    .lb-select-menu {
+        position: absolute;
+        top: calc(100% + 0.55rem);
+        left: 0;
+        z-index: 30;
+        display: none;
+        min-width: 180px;
+        max-height: 320px;
+        overflow: auto;
+        padding: 0.45rem;
+        border: 2px solid #d8cab0;
+        border-radius: 18px;
+        background: #fffaf0;
+        box-shadow: 0 12px 30px rgba(61, 52, 40, 0.14);
+    }
+
+    .lb-select.is-open .lb-select-menu {
+        display: block;
+    }
+
+    .lb-select-option {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.58rem 0.7rem;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        color: #725d42;
+        font-size: 0.86rem;
+        font-weight: 800;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .lb-select-option:hover,
+    .lb-select-option.is-active {
+        background: #f0e8d8;
+    }
+
+    .lb-select-divider {
+        margin: 0.35rem 0;
+        border-top: 1px solid #eadfcd;
+    }
+
     .lb-stats {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -456,6 +512,25 @@
         box-shadow: 0 4px 0 0 #0a817a;
     }
 
+    html.dark .lb-select-menu {
+        border-color: rgba(255, 255, 255, 0.14);
+        background: #242424;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+    }
+
+    html.dark .lb-select-option {
+        color: #ddd6ca;
+    }
+
+    html.dark .lb-select-option:hover,
+    html.dark .lb-select-option.is-active {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    html.dark .lb-select-divider {
+        border-top-color: rgba(255, 255, 255, 0.10);
+    }
+
     html.dark .lb-board .animal-table {
         background: rgba(22, 22, 22, 0.96);
     }
@@ -502,27 +577,75 @@
                 </div>
 
                 <div class="lb-controls">
-                    <div class="lb-control-group" id="lbPeriodButtons">
+                    <div class="lb-control-group">
+                        <div class="lb-select" data-lb-select="period">
+                            <button type="button" class="animal-btn animal-btn--middle animal-btn--default lb-select-btn" data-lb-select-trigger="period">
+                                <span data-lb-select-label="period">选择周期</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="lb-select-menu">
                         {% for period_key, period_label in leaderboard_periods.items() %}
                         <button
                             type="button"
-                            class="animal-btn animal-btn--middle lb-period-btn"
+                                    class="lb-select-option"
                             data-period="{{ period_key }}">
+                                    <i class="fas {{ 'fa-calendar-week' if period_key == 'weekly' else 'fa-ranking-star' }}"></i>
                             {{ period_label }}
                         </button>
                         {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="lb-select" data-lb-select="scope">
+                            <button type="button" class="animal-btn animal-btn--middle animal-btn--default lb-select-btn" data-lb-select-trigger="scope">
+                                <span data-lb-select-label="scope">选择范围</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="lb-select-menu">
+                                {% if leaderboard_scopes.class %}
+                                <button type="button" class="lb-select-option" data-scope="class">
+                                    <i class="fas fa-users"></i>
+                                    本班
+                                </button>
+                                {% endif %}
+                                {% set group_count = namespace(value=0) %}
+                                {% for scope_key, scope_meta in leaderboard_scopes.items() %}
+                                    {% if scope_key[:6] == 'group:' %}
+                                    {% if group_count.value == 0 %}<div class="lb-select-divider"></div>{% endif %}
+                                    {% set group_count.value = group_count.value + 1 %}
+                                    <button type="button" class="lb-select-option" data-scope="{{ scope_key }}">
+                                        <i class="fas fa-user-friends"></i>
+                                        {{ scope_meta.label }}
+                                    </button>
+                                    {% endif %}
+                                {% endfor %}
+                                <div class="lb-select-divider"></div>
+                                <button type="button" class="lb-select-option" data-scope="all">
+                                    <i class="fas fa-globe"></i>
+                                    全部
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="lb-control-group" id="lbMetricButtons">
+                    <div class="lb-control-group">
+                        <div class="lb-select" data-lb-select="metric">
+                            <button type="button" class="animal-btn animal-btn--middle animal-btn--default lb-select-btn" data-lb-select-trigger="metric">
+                                <span data-lb-select-label="metric">选择榜单</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="lb-select-menu">
                         {% for metric_key, metric_meta in leaderboard_metrics.items() %}
                         <button
                             type="button"
-                            class="animal-btn animal-btn--middle lb-metric-btn"
+                                    class="lb-select-option"
                             data-metric="{{ metric_key }}">
                             <i class="fas {{ metric_meta.icon }}"></i>
                             {{ metric_meta.label }}
                         </button>
                         {% endfor %}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -584,13 +707,22 @@
 <script>
     (() => {
         const payload = {{ leaderboard_payload|tojson }};
+        const scopes = {{ leaderboard_scopes|tojson }};
         const state = {
             metric: {{ initial_metric|tojson }},
             period: {{ initial_period|tojson }},
+            scope: {{ initial_scope|tojson }},
         };
 
-        const periodButtons = Array.from(document.querySelectorAll("[data-period]"));
-        const metricButtons = Array.from(document.querySelectorAll("[data-metric]"));
+        const selectShells = Array.from(document.querySelectorAll("[data-lb-select]"));
+        const periodOptions = Array.from(document.querySelectorAll("[data-period]"));
+        const metricOptions = Array.from(document.querySelectorAll("[data-metric]"));
+        const scopeOptions = Array.from(document.querySelectorAll("[data-scope]"));
+        const selectLabels = {
+            period: document.querySelector("[data-lb-select-label='period']"),
+            metric: document.querySelector("[data-lb-select-label='metric']"),
+            scope: document.querySelector("[data-lb-select-label='scope']"),
+        };
         const subtitle = document.getElementById("lbSubtitle");
         const currentChip = document.getElementById("lbCurrentChip");
         const myRank = document.getElementById("lbMyRank");
@@ -623,20 +755,63 @@
             return String(numeric);
         }
 
-        function setActiveButtons() {
-            periodButtons.forEach((button) => {
+        function getScopeLabel(scopeKey) {
+            if (scopeKey === "class") return "本班";
+            return scopes[scopeKey]?.label || "全部";
+        }
+
+        function getScopedData(data) {
+            const scope = scopes[state.scope] ? state.scope : "all";
+            const filtered = data.rows.filter((row) => {
+                if (scope === "all") return true;
+                if (scope === "class") return row.class_id && row.class_id === scopes.class?.class_id;
+                if (scope.startsWith("group:")) {
+                    const groupId = scopes[scope]?.group_id;
+                    return Array.isArray(row.group_ids) && row.group_ids.includes(groupId);
+                }
+                return true;
+            });
+            let myRank = null;
+            const rows = filtered.map((row, index) => {
+                const rankedRow = { ...row, rank: index + 1 };
+                if (rankedRow.is_current_user) myRank = rankedRow;
+                return rankedRow;
+            });
+            const gapToNext = myRank && myRank.rank > 1
+                ? Number((rows[myRank.rank - 2].score - myRank.score).toFixed(1))
+                : 0;
+            return {
+                ...data,
+                rows,
+                top_three: rows.slice(0, 3),
+                top_score: rows[0]?.score || 0,
+                total_records: rows.length,
+                my_rank: myRank,
+                gap_to_next: gapToNext,
+                scope_label: getScopeLabel(scope),
+                scope_description: scopes[scope]?.description || "",
+            };
+        }
+
+        function setActiveControls() {
+            periodOptions.forEach((button) => {
                 const isActive = button.dataset.period === state.period;
-                button.classList.toggle("animal-btn--primary", isActive);
-                button.classList.toggle("animal-btn--default", !isActive);
-                button.classList.toggle("lb-btn--active", isActive);
+                button.classList.toggle("is-active", isActive);
             });
 
-            metricButtons.forEach((button) => {
+            metricOptions.forEach((button) => {
                 const isActive = button.dataset.metric === state.metric;
-                button.classList.toggle("animal-btn--primary", isActive);
-                button.classList.toggle("animal-btn--default", !isActive);
-                button.classList.toggle("lb-btn--active", isActive);
+                button.classList.toggle("is-active", isActive);
             });
+
+            scopeOptions.forEach((button) => {
+                const isActive = button.dataset.scope === state.scope;
+                button.classList.toggle("is-active", isActive);
+            });
+
+            if (selectLabels.period) selectLabels.period.textContent = payload[state.period]?.[state.metric]?.period_label || "选择周期";
+            if (selectLabels.metric) selectLabels.metric.textContent = payload[state.period]?.[state.metric]?.label || "选择榜单";
+            if (selectLabels.scope) selectLabels.scope.textContent = getScopeLabel(state.scope);
         }
 
         function renderPodium(rows) {
@@ -698,22 +873,23 @@
             const url = new URL(window.location.href);
             url.searchParams.set("metric", state.metric);
             url.searchParams.set("period", state.period);
+            url.searchParams.set("scope", state.scope);
             window.history.replaceState({}, "", `${url.pathname}?${url.searchParams.toString()}`);
         }
 
         function render() {
-            const data = payload[state.period][state.metric];
+            const data = getScopedData(payload[state.period][state.metric]);
             const leader = data.top_three[0] || null;
             const me = data.my_rank;
 
-            setActiveButtons();
+            setActiveControls();
 
             subtitle.textContent = "一个更轻量的排行榜视图，切换榜单不会刷新页面。";
-            currentChip.innerHTML = `<i class="fas ${data.icon}"></i>${data.period_label} · ${data.label}`;
+            currentChip.innerHTML = `<i class="fas ${data.icon}"></i>${data.period_label} · ${data.scope_label} · ${data.label}`;
             metricLabel.textContent = data.label;
-            metricNote.textContent = `${data.period_label} · ${data.description}`;
+            metricNote.textContent = `${data.period_label} · ${data.scope_label} · ${data.description}`;
             totalRecords.textContent = String(data.total_records);
-            totalRecordsNote.textContent = "只显示有成绩的用户，以及你自己的当前成绩。";
+            totalRecordsNote.textContent = data.scope_description || "只显示有成绩的用户，以及你自己的当前成绩。";
 
             if (leader) {
                 topScore.textContent = `${formatScore(leader.score)}`;
@@ -733,7 +909,7 @@
                 myRankNote.textContent = "先去积累一点成绩吧";
             }
 
-            boardTitle.textContent = `${data.label} · ${data.period_label}`;
+            boardTitle.textContent = `${data.label} · ${data.period_label} · ${data.scope_label}`;
             boardCopy.textContent = `${data.description}，点击上方按钮即可切换，不会刷新整页。`;
 
             renderPodium(data.top_three);
@@ -741,18 +917,45 @@
             syncUrl();
         }
 
-        periodButtons.forEach((button) => {
+        function closeSelects() {
+            selectShells.forEach((shell) => shell.classList.remove("is-open"));
+        }
+
+        selectShells.forEach((shell) => {
+            const trigger = shell.querySelector("[data-lb-select-trigger]");
+            trigger?.addEventListener("click", (event) => {
+                event.stopPropagation();
+                const shouldOpen = !shell.classList.contains("is-open");
+                closeSelects();
+                shell.classList.toggle("is-open", shouldOpen);
+            });
+        });
+
+        document.addEventListener("click", closeSelects);
+
+        periodOptions.forEach((button) => {
             button.addEventListener("click", () => {
                 if (state.period === button.dataset.period) return;
                 state.period = button.dataset.period;
+                closeSelects();
                 render();
             });
         });
 
-        metricButtons.forEach((button) => {
+        metricOptions.forEach((button) => {
             button.addEventListener("click", () => {
                 if (state.metric === button.dataset.metric) return;
                 state.metric = button.dataset.metric;
+                closeSelects();
+                render();
+            });
+        });
+
+        scopeOptions.forEach((button) => {
+            button.addEventListener("click", () => {
+                if (state.scope === button.dataset.scope) return;
+                state.scope = button.dataset.scope;
+                closeSelects();
                 render();
             });
         });

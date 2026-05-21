@@ -1,0 +1,76 @@
+<div class="overflow-x-auto">
+    <table class="table">
+        <thead>
+            <tr class="text-xs uppercase tracking-widest text-stone-500">
+                <th>编号</th>
+                <th>题目</th>
+                <th>难度</th>
+                <th>标签</th>
+                <th>AC/尝试</th>
+                <th>作者</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for problem in problems %}
+            {% set submission_stat = problem_submission_stats.get(problem.id, {'accepted': 0, 'attempts': 0}) %}
+            {% set my_status = my_problem_status.get(problem.id, {'accepted': False, 'attempted': False}) %}
+            {% set author_name = '系统' %}
+            {% if problem.created_by %}
+            {% set author_name = problem.created_by.real_name or problem.created_by.username %}
+            {% endif %}
+            <tr class="problem-row {% if my_status.accepted %}is-accepted{% elif my_status.attempted %}is-attempted{% endif %}">
+                <td class="font-mono font-black text-stone-900 dark:text-stone-100">{{ problem.problem_code }}</td>
+                <td>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <a href="{{ url_for('oj_problem_detail', slug=problem.slug) }}" class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600">
+                            {{ problem.title }}
+                        </a>
+                        {% if my_status.accepted %}
+                        <span class="badge badge-success badge-outline font-black">AC</span>
+                        {% elif my_status.attempted %}
+                        <span class="badge badge-error badge-outline font-black">未 AC</span>
+                        {% endif %}
+                    </div>
+                    {% if current_user.is_admin and not problem.is_visible %}
+                    <span class="badge badge-ghost mt-2">隐藏</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="diff-pill
+                        {% if problem.difficulty == 'easy' %}bg-emerald-100 text-emerald-700
+                        {% elif problem.difficulty == 'hard' %}bg-rose-100 text-rose-700
+                        {% else %}bg-amber-100 text-amber-700{% endif %}">
+                        {{ problem.difficulty }}
+                    </span>
+                </td>
+                <td>
+                    {% if problem.source %}
+                        {% for raw_tag in problem.source.replace('，', ',').split(',') %}
+                        {% set tag = raw_tag|trim %}
+                        {% if tag %}
+                        <a href="{{ url_for('oj_problem_list', q=tag, visibility=visibility) }}" class="badge badge-outline hover:border-cyan-500 hover:text-cyan-600" data-problem-filter-link>
+                            {{ tag }}
+                        </a>
+                        {% endif %}
+                        {% endfor %}
+                    {% else %}
+                    <span class="text-stone-400">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('oj_submission_list', problem_id=problem.id) }}" class="font-mono font-black text-stone-700 dark:text-stone-200 hover:text-cyan-600">
+                    {{ submission_stat.accepted }}/{{ submission_stat.attempts }}
+                    </a>
+                </td>
+                <td class="text-sm font-bold text-stone-500">
+                    {{ author_name }}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center py-14 text-stone-400">当前没有匹配的题目。</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

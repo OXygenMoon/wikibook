@@ -57,6 +57,76 @@ pid_is_running() {
     [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null
 }
 
+process_command() {
+    local pid="$1"
+    ps -p "${pid}" -o command= 2>/dev/null || true
+}
+
+process_cwd() {
+    local pid="$1"
+    if [ -L "/proc/${pid}/cwd" ]; then
+        readlink "/proc/${pid}/cwd" 2>/dev/null || true
+    else
+        pwdx "${pid}" 2>/dev/null | sed 's/^[^:]*: //' || true
+    fi
+}
+
+is_project_web_process() {
+    local pid="$1"
+    local command cwd
+    command="$(process_command "${pid}")"
+    cwd="$(process_cwd "${pid}")"
+
+    if [[ "${command}" != *"gunicorn"* && "${command}" != *"from app import app"* ]]; then
+        return 1
+    fi
+
+    [[ "${command}" == *"${ROOT_DIR}"* || "${cwd}" == "${ROOT_DIR}" ]]
+}
+
+stop_pid() {
+    local pid="$1"
+    local label="$2"
+
+    if [ -z "${pid}" ] || ! kill -0 "${pid}" 2>/dev/null; then
+        return 0
+    fi
+
+    echo "Stopping ${label} (PID: ${pid}) ..."
+    kill "${pid}" 2>/dev/null || true
+
+    local waited=0
+    while kill -0 "${pid}" 2>/dev/null; do
+        if [ "${waited}" -ge 10 ]; then
+            echo "${label} did not stop after SIGTERM; forcing shutdown ..."
+            kill -9 "${pid}" 2>/dev/null || true
+            break
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+}
+
+stop_orphaned_web_processes() {
+    local pids pid found
+    found=0
+    pids="$(pgrep -f 'gunicorn|from app import app' 2>/dev/null || true)"
+
+    for pid in ${pids}; do
+        if [ "${pid}" = "$$" ]; then
+            continue
+        fi
+        if is_project_web_process "${pid}"; then
+            found=1
+            stop_pid "${pid}" "orphaned web process"
+        fi
+    done
+
+    if [ "${found}" -eq 0 ]; then
+        echo "No orphaned Wikibook web processes found."
+    fi
+}
+
 try_start_system_service() {
     local service_name="$1"
     if ! command -v systemctl >/dev/null 2>&1; then
@@ -194,6 +264,7 @@ start_web() {
     local port="${PORT:-5009}"
 
     cd "${ROOT_DIR}"
+    stop_orphaned_web_processes
     : > "${WEB_LOGFILE}"
 
     echo "Starting Wikibook web at http://${host}:${port}"
@@ -266,22 +337,16 @@ stop_process() {
 
     local pid
     pid="$(cat "${pidfile}")"
-    echo "Stopping ${label} (PID: ${pid}) ..."
-    kill "${pid}" 2>/dev/null || true
-
-    local waited=0
-    while kill -0 "${pid}" 2>/dev/null; do
-        if [ "${waited}" -ge 10 ]; then
-            echo "${label} did not stop after SIGTERM; forcing shutdown ..."
-            kill -9 "${pid}" 2>/dev/null || true
-            break
-        fi
-        sleep 1
-        waited=$((waited + 1))
-    done
+    stop_pid "${pid}" "${label}"
 
     rm -f "${pidfile}"
     echo "${label} stopped."
+}
+
+stop_web() {
+    stop_process "${WEB_PIDFILE}" "Web service"
+    stop_orphaned_web_processes
+    rm -f "${ROOT_DIR}/.wikibook-local.pid"
 }
 
 show_status() {
@@ -297,6 +362,16 @@ show_status() {
         echo "URL:    http://${host}:${port}"
     else
         echo "Web:    stopped"
+    fi
+    local extra_web_pids=""
+    local pid
+    for pid in $(pgrep -f 'gunicorn|from app import app' 2>/dev/null || true); do
+        if [ "${pid}" != "$$" ] && is_project_web_process "${pid}"; then
+            extra_web_pids="${extra_web_pids} ${pid}"
+        fi
+    done
+    if [ -n "${extra_web_pids}" ]; then
+        echo "Web pids:${extra_web_pids}"
     fi
 
     if pid_is_running "${JUDGE_PIDFILE}"; then
@@ -372,11 +447,11 @@ case "${1:-restart}" in
         ;;
     stop)
         stop_process "${JUDGE_PIDFILE}" "Judge worker"
-        stop_process "${WEB_PIDFILE}" "Web service"
+        stop_web
         ;;
     restart)
         stop_process "${JUDGE_PIDFILE}" "Judge worker"
-        stop_process "${WEB_PIDFILE}" "Web service"
+        stop_web
         ensure_dependencies
         start_web
         start_judge

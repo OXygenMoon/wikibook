@@ -84,6 +84,16 @@ def to_utc8_naive(dt):
         return dt.astimezone(UTC8).replace(tzinfo=None)
     return dt
 
+def datetime_diff_seconds(later, earlier):
+    later = to_utc8_naive(later)
+    earlier = to_utc8_naive(earlier)
+    if not later or not earlier:
+        return 0
+    return (later - earlier).total_seconds()
+
+def study_session_seconds(session):
+    return max(datetime_diff_seconds(session.end_time, session.start_time), 0)
+
 def is_image_icon(s):
     if not s:
         return False
@@ -429,7 +439,7 @@ class User(db.Model, UserMixin):
             StudySession.user_id == self.id,
             StudySession.start_time >= start_of_day
         ).all()
-        total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+        total_seconds = sum(study_session_seconds(s) for s in sessions)
         
         if total_seconds < 60:
             return "少于1分钟"
@@ -497,12 +507,12 @@ class User(db.Model, UserMixin):
         sessions = StudySession.query.filter_by(user_id=self.id).all()
         
         # 1. Study Hours
-        total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+        total_seconds = sum(study_session_seconds(s) for s in sessions)
         stats["study_hours"] = round(total_seconds / 3600, 1)
 
         # 2. Streak
-        sorted_sessions = sorted(sessions, key=lambda x: x.start_time, reverse=True)
-        dates = sorted(list(set([s.start_time.date() for s in sorted_sessions])), reverse=True)
+        sorted_sessions = sorted(sessions, key=lambda x: to_utc8_naive(x.start_time) or datetime.min, reverse=True)
+        dates = sorted(list(set([to_utc8_naive(s.start_time).date() for s in sorted_sessions if to_utc8_naive(s.start_time)])), reverse=True)
         streak = 0
         if dates:
             today = now_utc8().date()
@@ -530,24 +540,28 @@ class User(db.Model, UserMixin):
         long_count = 0
 
         for s in sessions:
+            start_time = to_utc8_naive(s.start_time)
+            if not start_time:
+                continue
+
             # Night Owl
-            h = s.start_time.hour
+            h = start_time.hour
             if h >= 23 or h < 4:
-                logical_date = (s.start_time - timedelta(hours=4)).date()
+                logical_date = (start_time - timedelta(hours=4)).date()
                 night_days.add(logical_date)
             
             # Early Bird
             if 5 <= h < 8:
-                early_days.add(s.start_time.date())
+                early_days.add(start_time.date())
             
             # Weekend
-            if s.start_time.weekday() in [5, 6]:
-                duration = (s.end_time - s.start_time).total_seconds()
+            if start_time.weekday() in [5, 6]:
+                duration = study_session_seconds(s)
                 if duration > 0:
                     weekend_seconds += duration
             
             # Long Session
-            duration = (s.end_time - s.start_time).total_seconds()
+            duration = study_session_seconds(s)
             if duration >= 7200:
                 long_count += 1
         
@@ -3476,19 +3490,31 @@ def edit_badge(badge_id):
                     meets_condition = Comment.query.filter_by(user_id=user.id).count() >= val
                 elif b.condition_type == 'night_owl_sessions':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
-                    night_days = set([(s.start_time - timedelta(hours=4)).date() for s in sessions if s.start_time.hour >= 23 or s.start_time.hour < 4])
+                    night_days = set()
+                    for s in sessions:
+                        start_time = to_utc8_naive(s.start_time)
+                        if start_time and (start_time.hour >= 23 or start_time.hour < 4):
+                            night_days.add((start_time - timedelta(hours=4)).date())
                     meets_condition = len(night_days) >= val
                 elif b.condition_type == 'early_bird':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
-                    early_days = set([s.start_time.date() for s in sessions if 5 <= s.start_time.hour < 8])
+                    early_days = set()
+                    for s in sessions:
+                        start_time = to_utc8_naive(s.start_time)
+                        if start_time and 5 <= start_time.hour < 8:
+                            early_days.add(start_time.date())
                     meets_condition = len(early_days) >= val
                 elif b.condition_type == 'weekend_warrior':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
-                    total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if s.start_time.weekday() in [5, 6] and (s.end_time - s.start_time).total_seconds() > 0])
+                    total_seconds = sum(
+                        study_session_seconds(s)
+                        for s in sessions
+                        if to_utc8_naive(s.start_time) and to_utc8_naive(s.start_time).weekday() in [5, 6]
+                    )
                     meets_condition = (total_seconds / 3600) >= val
                 elif b.condition_type == 'long_session_count':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
-                    long_count = sum([1 for s in sessions if (s.end_time - s.start_time).total_seconds() >= 7200])
+                    long_count = sum(1 for s in sessions if study_session_seconds(s) >= 7200)
                     meets_condition = long_count >= val
                 elif b.condition_type == 'share_count':
                     meets_condition = NoteShare.query.join(Note).filter(Note.user_id == user.id).count() >= val
@@ -3500,7 +3526,7 @@ def edit_badge(badge_id):
                     meets_condition = WikiPageHistory.query.filter(WikiPageHistory.id.in_(subquery), WikiPageHistory.user_id == user.id).count() >= val
                 elif b.condition_type == 'study_hours':
                     sessions = StudySession.query.filter_by(user_id=user.id).all()
-                    total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+                    total_seconds = sum(study_session_seconds(s) for s in sessions)
                     meets_condition = (total_seconds / 3600) >= val
                 elif b.condition_type == 'pomo_count':
                     meets_condition = PomodoroRecord.query.filter_by(user_id=user.id).count() >= val
@@ -4131,22 +4157,26 @@ def my_notes():
     
     sessions = StudySession.query.filter_by(user_id=current_user.id).all()
     for s in sessions:
-        duration = (s.end_time - s.start_time).total_seconds()
-        if duration < 0: continue
+        duration = study_session_seconds(s)
+        if duration <= 0:
+            continue
+        start_time = to_utc8_naive(s.start_time)
+        if not start_time:
+            continue
         
         stats["total"] += duration
         
-        if s.start_time >= today_start:
+        if start_time >= today_start:
             stats["today"] += duration
-        if s.start_time >= week_start:
+        if start_time >= week_start:
             stats["week"] += duration
-        if s.start_time >= month_start:
+        if start_time >= month_start:
             stats["month"] += duration
-        if s.start_time >= three_months_start:
+        if start_time >= three_months_start:
             stats["three_months"] += duration
-        if s.start_time >= six_months_start:
+        if start_time >= six_months_start:
             stats["six_months"] += duration
-        if s.start_time >= year_start:
+        if start_time >= year_start:
             stats["year"] += duration
             
     # Convert seconds to hours/minutes string
@@ -4914,7 +4944,7 @@ def check_and_award_bookmarks(user):
                 sessions = StudySession.query.filter_by(user_id=user.id).all()
                 max_duration = 0
                 for s in sessions:
-                    dur = (s.end_time - s.start_time).total_seconds() / 60.0
+                    dur = study_session_seconds(s) / 60.0
                     if dur > max_duration: max_duration = dur
                 if max_duration >= val: earned = True
                 
@@ -4978,25 +5008,32 @@ def check_and_award_badges(user):
             sessions = StudySession.query.filter_by(user_id=user.id).all()
             night_days = set()
             for s in sessions:
-                h = s.start_time.hour
+                start_time = to_utc8_naive(s.start_time)
+                if not start_time:
+                    continue
+                h = start_time.hour
                 if h >= 23 or h < 4:
-                    logical_date = (s.start_time - timedelta(hours=4)).date()
+                    logical_date = (start_time - timedelta(hours=4)).date()
                     night_days.add(logical_date)
             if len(night_days) >= val: earned = True
         elif badge.condition_type == 'early_bird':
             sessions = StudySession.query.filter_by(user_id=user.id).all()
             early_days = set()
             for s in sessions:
-                h = s.start_time.hour
+                start_time = to_utc8_naive(s.start_time)
+                if not start_time:
+                    continue
+                h = start_time.hour
                 if 5 <= h < 8:
-                    early_days.add(s.start_time.date())
+                    early_days.add(start_time.date())
             if len(early_days) >= val: earned = True
         elif badge.condition_type == 'weekend_warrior':
             sessions = StudySession.query.filter_by(user_id=user.id).all()
             total_seconds = 0
             for s in sessions:
-                if s.start_time.weekday() in [5, 6]:
-                    duration = (s.end_time - s.start_time).total_seconds()
+                start_time = to_utc8_naive(s.start_time)
+                if start_time and start_time.weekday() in [5, 6]:
+                    duration = study_session_seconds(s)
                     if duration > 0:
                         total_seconds += duration
             total_hours = total_seconds / 3600
@@ -5005,7 +5042,7 @@ def check_and_award_badges(user):
             sessions = StudySession.query.filter_by(user_id=user.id).all()
             long_count = 0
             for s in sessions:
-                duration = (s.end_time - s.start_time).total_seconds()
+                duration = study_session_seconds(s)
                 if duration >= 7200:
                     long_count += 1
             if long_count >= val: earned = True
@@ -5022,7 +5059,7 @@ def check_and_award_badges(user):
             if count >= val: earned = True
         elif badge.condition_type == 'study_hours':
             sessions = StudySession.query.filter_by(user_id=user.id).all()
-            total_seconds = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+            total_seconds = sum(study_session_seconds(s) for s in sessions)
             total_hours = total_seconds / 3600
             if total_hours >= val: earned = True
         elif badge.condition_type == 'pomo_count':
@@ -6245,11 +6282,7 @@ def build_leaderboard_snapshot(users, metric, period, weekly_start):
                 StudySession.user_id == u.id,
                 StudySession.start_time >= start_date,
             ).all()
-            total_sec = sum(
-                (s.end_time - s.start_time).total_seconds()
-                for s in sessions
-                if (s.end_time - s.start_time).total_seconds() > 0
-            )
+            total_sec = sum(study_session_seconds(s) for s in sessions)
             score = round(total_sec / 3600, 1)
 
         elif metric == "contribution":
@@ -8057,7 +8090,7 @@ def check_learning_reports():
         
     # 1. 基础数据查询
     sessions = StudySession.query.filter(StudySession.user_id == current_user.id, StudySession.start_time >= start_dt, StudySession.start_time < end_dt).all()
-    duration = sum([(s.end_time - s.start_time).total_seconds() for s in sessions if (s.end_time - s.start_time).total_seconds() > 0])
+    duration = sum(study_session_seconds(s) for s in sessions)
     duration_mins = int(duration / 60)
     
     notes = Note.query.filter(Note.user_id == current_user.id, Note.created_at >= start_dt, Note.created_at < end_dt).count()

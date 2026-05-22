@@ -24,17 +24,13 @@
         text-transform: uppercase;
     }
     .oj-action-btn {
-        width: 4.5rem;
-        height: 4.5rem;
+        width: 2.45rem;
+        height: 2.45rem;
         border-radius: 999px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        text-align: center;
-        font-size: 0.85rem;
-        font-weight: 900;
-        line-height: 1.15;
-        padding: 0.5rem;
+        padding: 0;
     }
 </style>
 {% endblock %}
@@ -107,10 +103,16 @@
                         <td class="text-sm text-stone-500">{{ problem.updated_at.strftime('%Y-%m-%d %H:%M') if problem.updated_at else '-' }}</td>
                         <td>
                             <div class="flex justify-end gap-2 flex-wrap">
-                                <a href="{{ url_for('edit_oj_problem', problem_id=problem.id) }}" class="btn oj-action-btn" title="编辑题目">编辑</a>
-                                <a href="{{ url_for('manage_oj_problem_files', problem_id=problem.id) }}" class="btn btn-outline oj-action-btn" title="文件管理">文件</a>
+                                <a href="{{ url_for('edit_oj_problem', problem_id=problem.id) }}" class="btn btn-sm oj-action-btn" title="编辑题目" aria-label="编辑题目">
+                                    <i class="fas fa-pen"></i>
+                                </a>
+                                <a href="{{ url_for('manage_oj_problem_files', problem_id=problem.id) }}" class="btn btn-sm btn-outline oj-action-btn" title="文件管理" aria-label="文件管理">
+                                    <i class="fas fa-folder-open"></i>
+                                </a>
                                 <form method="post" action="{{ url_for('delete_oj_problem', problem_id=problem.id) }}" onsubmit="return confirm('确认删除这道 OJ 题目吗？');">
-                                    <button type="submit" class="btn btn-error btn-outline oj-action-btn" title="删除题目">删除</button>
+                                    <button type="submit" class="btn btn-sm btn-error btn-outline oj-action-btn" title="删除题目" aria-label="删除题目">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </form>
                             </div>
                         </td>

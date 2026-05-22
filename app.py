@@ -412,8 +412,7 @@ class User(db.Model, UserMixin):
     def last_active_human(self):
         if not self.active_status or not self.active_status.last_active_at:
             return "从未上线"
-        diff = now_utc8() - to_utc8_naive(self.active_status.last_active_at)
-        seconds = diff.total_seconds()
+        seconds = datetime_diff_seconds(now_utc8(), self.active_status.last_active_at)
         if seconds < 60:
             return "刚刚"
         minutes = seconds / 60
@@ -4313,7 +4312,7 @@ def view_note(note_id):
     try:
         last_view = NoteViewLog.query.filter_by(note_id=note_id, user_id=current_user.id).order_by(NoteViewLog.timestamp.desc()).first()
         last_view_time = to_utc8_naive(last_view.timestamp) if last_view else None
-        if not last_view_time or (now_utc8() - last_view_time).total_seconds() > 300:
+        if not last_view_time or datetime_diff_seconds(now_utc8(), last_view_time) > 300:
             log = NoteViewLog(note_id=note_id, user_id=current_user.id)
             db.session.add(log)
             db.session.commit()
@@ -4719,7 +4718,7 @@ def heartbeat():
         gap_limit = timedelta(minutes=5)
         session_end_time = to_utc8_naive(session_record.end_time) if session_record else None
         
-        if session_record and session_end_time and (now - session_end_time) < gap_limit:
+        if session_record and session_end_time and datetime_diff_seconds(now, session_end_time) < gap_limit.total_seconds():
             session_record.end_time = now
         else:
             session_record = StudySession(user_id=current_user.id, start_time=now, end_time=now)
@@ -5736,7 +5735,7 @@ def view_page(wiki_id, slug):
     should_commit = False
     last_log_time = to_utc8_naive(last_log.timestamp) if last_log else None
     
-    if not last_log_time or (now - last_log_time).total_seconds() > 600:
+    if not last_log_time or datetime_diff_seconds(now, last_log_time) > 600:
         log = WikiViewLog(wiki_id=wiki_id, user_id=current_user.id, timestamp=now)
         db.session.add(log)
         should_commit = True

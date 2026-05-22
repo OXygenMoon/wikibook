@@ -9,6 +9,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash, abo
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text, inspect, case
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.sql.sqltypes import Integer
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -9954,7 +9955,94 @@ def initialize_platform(run_schema=False):
             migrate_stamp(revision="head")
         except Exception as exc:
             app.logger.warning(f"Unable to stamp migration head automatically: {exc}")
+        repair_postgres_integer_pk_sequences()
     ensure_platform_seed_data()
+
+
+def repair_postgres_integer_pk_sequences():
+    if db.engine.dialect.name != "postgresql":
+        return []
+
+    repaired = []
+    preparer = db.engine.dialect.identifier_preparer
+
+    with db.engine.begin() as connection:
+        inspector = inspect(connection)
+        existing_tables = set(inspector.get_table_names())
+        schema = connection.execute(db.text("SELECT current_schema()")).scalar() or "public"
+
+        for table in db.metadata.sorted_tables:
+            if table.name not in existing_tables:
+                continue
+
+            pk_columns = list(table.primary_key.columns)
+            if len(pk_columns) != 1:
+                continue
+
+            column = pk_columns[0]
+            if not isinstance(column.type, Integer):
+                continue
+
+            default_value = connection.execute(
+                db.text(
+                    """
+                    SELECT column_default
+                    FROM information_schema.columns
+                    WHERE table_schema = :schema
+                      AND table_name = :table_name
+                      AND column_name = :column_name
+                    """
+                ),
+                {"schema": schema, "table_name": table.name, "column_name": column.name},
+            ).scalar()
+
+            sequence_name = connection.execute(
+                db.text("SELECT pg_get_serial_sequence(:table_name, :column_name)"),
+                {"table_name": f"{schema}.{table.name}", "column_name": column.name},
+            ).scalar()
+
+            quoted_table = preparer.quote(table.name)
+            quoted_column = preparer.quote(column.name)
+
+            if not sequence_name:
+                raw_sequence_name = f"{table.name}_{column.name}_seq"
+                quoted_sequence = preparer.quote(raw_sequence_name)
+                sequence_literal = raw_sequence_name.replace("'", "''")
+                connection.execute(db.text(f"CREATE SEQUENCE IF NOT EXISTS {quoted_sequence}"))
+                connection.execute(db.text(f"ALTER SEQUENCE {quoted_sequence} OWNED BY {quoted_table}.{quoted_column}"))
+                connection.execute(
+                    db.text(
+                        f"ALTER TABLE {quoted_table} ALTER COLUMN {quoted_column} "
+                        f"SET DEFAULT nextval('{sequence_literal}'::regclass)"
+                    )
+                )
+                sequence_name = raw_sequence_name
+                repaired.append(f"{table.name}.{column.name}: added sequence default")
+            elif not default_value:
+                sequence_literal = sequence_name.replace("'", "''")
+                connection.execute(
+                    db.text(
+                        f"ALTER TABLE {quoted_table} ALTER COLUMN {quoted_column} "
+                        f"SET DEFAULT nextval('{sequence_literal}'::regclass)"
+                    )
+                )
+                repaired.append(f"{table.name}.{column.name}: restored sequence default")
+
+            if sequence_name:
+                sequence_literal = sequence_name.replace("'", "''")
+                connection.execute(
+                    db.text(
+                        f"""
+                        SELECT setval(
+                            '{sequence_literal}'::regclass,
+                            GREATEST(COALESCE((SELECT MAX({quoted_column}) FROM {quoted_table}), 0), 1),
+                            COALESCE((SELECT MAX({quoted_column}) FROM {quoted_table}), 0) > 0
+                        )
+                        """
+                    )
+                )
+
+    return repaired
 
 
 @app.cli.group("wikibook")
@@ -9968,6 +10056,18 @@ def init_platform_command(with_schema):
     """Prepare DB schema and baseline seed data."""
     initialize_platform(run_schema=with_schema)
     click.echo("Wikibook platform initialization complete.")
+
+
+@wikibook_cli.command("repair-postgres-sequences")
+def repair_postgres_sequences_command():
+    """Repair PostgreSQL integer primary key sequence defaults after imports/migrations."""
+    repaired = repair_postgres_integer_pk_sequences()
+    if repaired:
+        for item in repaired:
+            click.echo(item)
+        click.echo(f"Repaired {len(repaired)} primary key sequence default(s).")
+    else:
+        click.echo("No PostgreSQL primary key sequence defaults needed repair.")
 
 
 @wikibook_cli.command("enqueue-judge-task")

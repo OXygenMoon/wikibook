@@ -25,6 +25,7 @@ dist/
 *.log
 logs/
 server.log
+flask_error.log
 
 # 数据库文件
 *.db

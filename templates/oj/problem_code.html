@@ -99,14 +99,35 @@
         white-space: pre-wrap;
         word-break: break-word;
     }
-    .spec-card {
+    .workspace-prose .statement-sample-pair {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
+        margin: 1.4rem 0;
+    }
+    .workspace-prose .statement-sample-card {
         border: 1px solid var(--workspace-border);
         border-radius: 14px;
-        padding: 1rem;
-        background: rgba(255, 255, 255, 0.66);
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.68);
     }
-    html.dark .spec-card {
+    html.dark .workspace-prose .statement-sample-card {
         background: rgba(255, 255, 255, 0.04);
+    }
+    .workspace-prose .statement-sample-card__header {
+        padding: 0.8rem 1rem;
+        font-weight: 900;
+        color: #0f172a;
+        border-bottom: 1px solid var(--workspace-border);
+        background: rgba(248, 250, 252, 0.78);
+    }
+    html.dark .workspace-prose .statement-sample-card__header {
+        color: #f8fafc;
+        background: rgba(255, 255, 255, 0.03);
+    }
+    .workspace-prose .statement-sample-card pre {
+        margin: 0;
+        border-radius: 0;
     }
     .editor-shell {
         display: grid;
@@ -287,6 +308,7 @@
             right: 1rem;
             width: auto;
         }
+        .workspace-prose .statement-sample-pair,
         .sample-grid {
             grid-template-columns: 1fr;
         }
@@ -328,29 +350,7 @@
                 {{ statement_html|safe }}
             </section>
 
-            {% if input_spec_html or output_spec_html or hint_html %}
-            <div class="flex flex-col gap-4 mt-7">
-                {% if input_spec_html %}
-                <section class="spec-card">
-                    <h2 class="text-lg font-black text-stone-900 dark:text-stone-100 mb-2">输入格式</h2>
-                    <div class="workspace-prose text-sm">{{ input_spec_html|safe }}</div>
-                </section>
-                {% endif %}
-                {% if output_spec_html %}
-                <section class="spec-card">
-                    <h2 class="text-lg font-black text-stone-900 dark:text-stone-100 mb-2">输出格式</h2>
-                    <div class="workspace-prose text-sm">{{ output_spec_html|safe }}</div>
-                </section>
-                {% endif %}
-                {% if hint_html %}
-                <section class="spec-card">
-                    <h2 class="text-lg font-black text-stone-900 dark:text-stone-100 mb-2">提示</h2>
-                    <div class="workspace-prose text-sm">{{ hint_html|safe }}</div>
-                </section>
-                {% endif %}
-            </div>
-            {% endif %}
-
+            {% if not statement_has_sample_pairs %}
             <section class="mt-8">
                 <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>
                 <div class="sample-grid">
@@ -371,6 +371,7 @@
                     {% endfor %}
                 </div>
             </section>
+            {% endif %}
         </div>
     </section>
 

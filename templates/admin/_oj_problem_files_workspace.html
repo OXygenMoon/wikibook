@@ -1,0 +1,179 @@
+<div class="flex flex-col gap-8">
+    <div class="bench-card p-5 flex flex-col gap-5">
+        <div>
+            <p class="text-xs font-black tracking-[0.2em] text-stone-400 mb-2">状态概览</p>
+            <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">文件工作区状态</h2>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+            <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                <div class="text-xs font-bold tracking-[0.16em] text-stone-400 mb-2 whitespace-nowrap">题目 UID</div>
+                <div class="text-[2.6rem] leading-none whitespace-nowrap font-black text-stone-800 dark:text-stone-100 font-mono">{{ problem.uid_text }}</div>
+            </div>
+            <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                <div class="text-xs font-bold tracking-[0.16em] text-stone-400 mb-2 whitespace-nowrap">题号</div>
+                <div class="text-[2.6rem] leading-none whitespace-nowrap font-black text-stone-800 dark:text-stone-100 font-mono">{{ problem.problem_code }}</div>
+            </div>
+            <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                <div class="text-xs font-bold tracking-[0.16em] text-stone-400 mb-2 whitespace-nowrap">测试点</div>
+                <div class="text-[2.6rem] leading-none whitespace-nowrap font-black text-stone-800 dark:text-stone-100">{{ problem.testcase_count }}</div>
+            </div>
+            <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                <div class="text-xs font-bold tracking-[0.16em] text-stone-400 mb-2 whitespace-nowrap">数据文件</div>
+                <div class="text-[2.6rem] leading-none whitespace-nowrap font-black text-stone-800 dark:text-stone-100">{{ data_files|length }}</div>
+            </div>
+            <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                <div class="text-xs font-bold tracking-[0.16em] text-stone-400 mb-2 whitespace-nowrap">附加文件</div>
+                <div class="text-[2.6rem] leading-none whitespace-nowrap font-black text-stone-800 dark:text-stone-100">{{ asset_files|length }}</div>
+            </div>
+            <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">
+                <div class="text-xs font-bold tracking-[0.16em] text-stone-400 mb-2 whitespace-nowrap">下一组号</div>
+                <div class="text-[2.6rem] leading-none whitespace-nowrap font-black text-stone-800 dark:text-stone-100 font-mono">{{ next_case_number }}</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="workbench-shell p-6 md:p-8 flex flex-col gap-6">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+                <p class="text-xs font-black tracking-[0.28em] uppercase text-emerald-600 mb-2">Test Data</p>
+                <h2 class="text-2xl font-black text-stone-800 dark:text-stone-100">测试数据工作区</h2>
+                <p class="text-stone-500 dark:text-stone-400 mt-2">创建或修改 `.in/.out` 后，会自动覆盖本题的隐藏测试点，不需要再手动同步。</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 2xl:grid-cols-[1.55fr,1fr] gap-4 items-start">
+            <div class="bench-card p-5">
+                <div class="mb-4">
+                    <p class="text-sm font-black text-stone-800 dark:text-stone-100">快速创建一组 `N.in / N.out`</p>
+                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">默认建议下一组编号 {{ next_case_number }}。可以勾选覆盖，直接更新已有同编号文件。</p>
+                </div>
+                <form method="post" action="{{ url_for('create_text_oj_problem_file_pair', problem_id=problem.id) }}" class="flex flex-col gap-4" data-async="true">
+                    <div class="flex gap-3 flex-wrap items-center">
+                        <input type="number" min="1" name="case_index" value="{{ next_case_number }}" class="input input-bordered rounded-2xl font-mono w-32" required>
+                        <label class="label cursor-pointer gap-2">
+                            <input type="checkbox" name="overwrite" value="1" class="checkbox checkbox-sm">
+                            <span class="label-text">若已存在则覆盖</span>
+                        </label>
+                        <button type="submit" class="btn btn-primary rounded-2xl">创建这一组文件</button>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <label class="form-control">
+                            <span class="label-text font-bold mb-2">输入内容</span>
+                            <textarea name="input_content" class="textarea textarea-bordered rounded-2xl mono-editor mono-editor--compact" placeholder="这里直接输入 {{ next_case_number }}.in ..."></textarea>
+                        </label>
+                        <label class="form-control">
+                            <span class="label-text font-bold mb-2">输出内容</span>
+                            <textarea name="output_content" class="textarea textarea-bordered rounded-2xl mono-editor mono-editor--compact" placeholder="这里直接输入 {{ next_case_number }}.out ..."></textarea>
+                        </label>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bench-card p-5">
+                <div class="mb-4">
+                    <p class="text-sm font-black text-stone-800 dark:text-stone-100">单独创建文本文件</p>
+                    <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">适合 `special.in`、`checker.txt`、`config.yaml` 这类非成对文件。</p>
+                </div>
+                <form method="post" action="{{ url_for('create_text_oj_problem_file', problem_id=problem.id) }}" class="flex flex-col gap-4" data-async="true">
+                    <div class="flex gap-3 flex-wrap items-center">
+                        <input type="text" name="filename" class="input input-bordered rounded-2xl font-mono flex-1 min-w-[16rem]" placeholder="例如：special.in" required>
+                        <button type="submit" class="btn btn-outline rounded-2xl">创建文本文件</button>
+                    </div>
+                    <textarea name="content" class="textarea textarea-bordered rounded-2xl mono-editor mono-editor--compact" placeholder="直接输入文件内容..."></textarea>
+                </form>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-4">
+            {% for asset in data_files %}
+            <details class="file-row p-5" {% if loop.first %}open{% endif %}>
+                <summary class="cursor-pointer list-none flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <div class="font-bold text-stone-800 dark:text-stone-100">{{ asset.filename }}</div>
+                        <div class="text-xs text-stone-400 mt-1">{{ (asset.file_size / 1024)|round(1) }} KB · {{ asset.uploaded_at.strftime('%Y-%m-%d %H:%M') if asset.uploaded_at else '' }}</div>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <a href="{{ asset.file_path }}" target="_blank" class="btn btn-sm rounded-xl">查看原文件</a>
+                        <form method="post" action="{{ url_for('delete_oj_problem_file', problem_id=problem.id, file_id=asset.id) }}" data-async="true" data-confirm-message="确认删除这个文件吗？">
+                            <button type="submit" class="btn btn-sm btn-error btn-outline rounded-xl">删除</button>
+                        </form>
+                    </div>
+                </summary>
+                {% if asset.is_text_editable %}
+                <form method="post" action="{{ url_for('update_text_oj_problem_file', problem_id=problem.id, file_id=asset.id) }}" class="mt-5 flex flex-col gap-4" data-async="true">
+                    <div class="flex gap-3 flex-wrap items-center">
+                        <input type="text" name="filename" value="{{ asset.filename }}" class="input input-bordered rounded-2xl font-mono flex-1 min-w-[16rem]" required>
+                        <button type="submit" class="btn btn-primary rounded-2xl">保存这个数据文件</button>
+                    </div>
+                    <textarea name="content" class="textarea textarea-bordered rounded-2xl mono-editor">{{ file_contents.get(asset.id, '') }}</textarea>
+                </form>
+                {% endif %}
+            </details>
+            {% else %}
+            <div class="bench-card p-8 text-center text-stone-400">当前还没有测试数据文件。先在上面快速创建 `{{ next_case_number }}.in / {{ next_case_number }}.out` 吧。</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="workbench-shell p-6 md:p-8 flex flex-col gap-6">
+        <div>
+            <p class="text-xs font-black tracking-[0.28em] uppercase text-fuchsia-600 mb-2">Assets</p>
+            <h2 class="text-2xl font-black text-stone-800 dark:text-stone-100">附加文件空间</h2>
+            <p class="text-stone-500 dark:text-stone-400 mt-2">这里放图片、PDF、压缩包，或者题面引用的说明性文本文件。</p>
+        </div>
+
+        <div class="grid grid-cols-1 2xl:grid-cols-[1fr,1fr] gap-4 items-start">
+            <div class="bench-card p-5">
+                <p class="text-sm font-black text-stone-800 dark:text-stone-100 mb-3">上传文件</p>
+                <form method="post" action="{{ url_for('upload_oj_problem_files', problem_id=problem.id) }}" enctype="multipart/form-data" class="flex gap-3 flex-wrap items-center" data-async="true">
+                    <input type="file" name="files" multiple class="file-input file-input-bordered rounded-2xl flex-1 min-w-[16rem]">
+                    <button type="submit" class="btn btn-primary rounded-2xl">上传到附加文件区</button>
+                </form>
+            </div>
+            <div class="bench-card p-5">
+                <p class="text-sm font-black text-stone-800 dark:text-stone-100 mb-3">在线新建文本附件</p>
+                <form method="post" action="{{ url_for('create_text_oj_problem_file', problem_id=problem.id) }}" class="flex flex-col gap-4" data-async="true">
+                    <div class="flex gap-3 flex-wrap items-center">
+                        <input type="text" name="filename" class="input input-bordered rounded-2xl font-mono flex-1 min-w-[16rem]" placeholder="例如：notes.md" required>
+                        <button type="submit" class="btn btn-outline rounded-2xl">创建文本附件</button>
+                    </div>
+                    <textarea name="content" class="textarea textarea-bordered rounded-2xl mono-editor mono-editor--compact" placeholder="直接输入文件内容..."></textarea>
+                </form>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-4">
+            {% for asset in asset_files %}
+            <details class="file-row p-5" {% if loop.first and not data_files %}open{% endif %}>
+                <summary class="cursor-pointer list-none flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <div class="font-bold text-stone-800 dark:text-stone-100">{{ asset.filename }}</div>
+                        <div class="text-xs text-stone-400 mt-1">{{ (asset.file_size / 1024)|round(1) }} KB · {{ asset.uploaded_at.strftime('%Y-%m-%d %H:%M') if asset.uploaded_at else '' }}</div>
+                    </div>
+                    <div class="flex flex-col gap-1 text-xs min-w-[18rem]">
+                        <a href="{{ asset.file_path }}" target="_blank" class="font-mono text-cyan-600 break-all">{{ asset.file_path }}</a>
+                        <code class="whitespace-pre-wrap break-all">{{ asset.markdown_embed }}</code>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <a href="{{ asset.file_path }}" target="_blank" class="btn btn-sm rounded-xl">打开</a>
+                        <form method="post" action="{{ url_for('delete_oj_problem_file', problem_id=problem.id, file_id=asset.id) }}" data-async="true" data-confirm-message="确认删除这个文件吗？">
+                            <button type="submit" class="btn btn-sm btn-error btn-outline rounded-xl">删除</button>
+                        </form>
+                    </div>
+                </summary>
+                {% if asset.is_text_editable %}
+                <form method="post" action="{{ url_for('update_text_oj_problem_file', problem_id=problem.id, file_id=asset.id) }}" class="mt-5 flex flex-col gap-4" data-async="true">
+                    <div class="flex gap-3 flex-wrap items-center">
+                        <input type="text" name="filename" value="{{ asset.filename }}" class="input input-bordered rounded-2xl font-mono flex-1 min-w-[16rem]" required>
+                        <button type="submit" class="btn btn-primary rounded-2xl">保存这个文本文件</button>
+                    </div>
+                    <textarea name="content" class="textarea textarea-bordered rounded-2xl mono-editor">{{ file_contents.get(asset.id, '') }}</textarea>
+                </form>
+                {% endif %}
+            </details>
+            {% else %}
+            <div class="bench-card p-8 text-center text-stone-400">当前还没有附加文件。可以上传图片、压缩包，或者新建 `notes.md` 这类文本附件。</div>
+            {% endfor %}
+        </div>
+    </section>
+</div>

@@ -40,6 +40,15 @@
         border-color: rgba(255,255,255,0.12) !important;
         box-shadow: none;
     }
+    .zip-import-panel {
+        border: 1px solid rgba(14,165,233,0.18);
+        border-radius: 1.5rem;
+        background: rgba(240,249,255,0.78);
+    }
+    html.dark .zip-import-panel {
+        border-color: rgba(14,165,233,0.22);
+        background: rgba(8,47,73,0.26);
+    }
 </style>
 {% endblock %}
 
@@ -49,11 +58,23 @@
         <div>
             <p class="text-xs font-black tracking-[0.32em] uppercase text-cyan-600 mb-2">Problem Create</p>
             <h1 class="text-3xl md:text-4xl font-black text-stone-800 dark:text-stone-100">新建 OJ 题目</h1>
-            <p class="text-stone-500 dark:text-stone-400 mt-2">第一步先把题目骨架和 Markdown 题面写好。创建成功后，再进入工作台配置测试数据和文件空间。</p>
+            <p class="text-stone-500 dark:text-stone-400 mt-2">第一步先把题目骨架和 Markdown 题面写好。创建成功后，再分别进入“编辑题目”和“文件管理”两条工作流。</p>
         </div>
         <div class="flex gap-3">
             <a href="{{ url_for('manage_oj_problems') }}" class="btn btn-ghost rounded-2xl">返回题库</a>
         </div>
+    </div>
+
+    <div class="zip-import-panel p-5 md:p-6 mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <div>
+            <p class="text-xs font-black tracking-[0.28em] uppercase text-sky-600 mb-2">ZIP Import</p>
+            <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">从 zip 创建题目</h2>
+            <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">支持 `problem.json`、`statement.md`，以及 `testdata/1.in` + `testdata/1.out` 这类测试数据文件对。</p>
+        </div>
+        <form method="post" action="{{ url_for('import_oj_problem_zip') }}" enctype="multipart/form-data" class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            <input type="file" name="problem_zip" accept=".zip,application/zip" class="file-input file-input-bordered rounded-2xl w-full sm:w-80" required>
+            <button type="submit" class="btn btn-info rounded-2xl px-6">导入 zip 并创建题目</button>
+        </form>
     </div>
 
     <form method="post" class="create-shell p-6 md:p-8 flex flex-col gap-8">
@@ -113,20 +134,6 @@
                     <span class="label-text font-bold mb-2">允许语言</span>
                     <input type="text" name="allowed_languages" value="{{ draft.allowed_languages }}" class="input input-bordered rounded-2xl">
                 </label>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <label class="form-control">
-                        <span class="label-text font-bold mb-2">输入格式（可选补充）</span>
-                        <textarea name="input_spec_md" class="textarea textarea-bordered rounded-2xl min-h-[110px]">{{ draft.input_spec_md }}</textarea>
-                    </label>
-                    <label class="form-control">
-                        <span class="label-text font-bold mb-2">输出格式（可选补充）</span>
-                        <textarea name="output_spec_md" class="textarea textarea-bordered rounded-2xl min-h-[110px]">{{ draft.output_spec_md }}</textarea>
-                    </label>
-                    <label class="form-control">
-                        <span class="label-text font-bold mb-2">提示（可选）</span>
-                        <textarea name="hint_md" class="textarea textarea-bordered rounded-2xl min-h-[110px]">{{ draft.hint_md }}</textarea>
-                    </label>
-                </div>
             </div>
 
             <div class="meta-card p-5 h-full flex flex-col justify-between gap-4">
@@ -150,14 +157,14 @@
             <div>
                 <p class="text-xs font-black tracking-[0.26em] uppercase text-cyan-600 mb-2">Markdown Statement</p>
                 <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">题面编辑器</h2>
-                <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">支持 Markdown。创建成功后，如果要引用图片或文件，再去工作台里的文件空间插入资源。</p>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">支持 Markdown。样例请直接写在题面里，代码块语言标记使用 `input1` / `output1`、`input2` / `output2`，页面会自动按组横向展示。</p>
             </div>
             <textarea id="problem-statement-editor" name="statement_md">{{ draft.statement_md }}</textarea>
         </div>
 
         <div class="flex items-center justify-between gap-4 flex-wrap pt-4 border-t border-stone-200 dark:border-white/10">
-            <p class="text-sm text-stone-500 dark:text-stone-400 font-mono">create first, then unlock files + testdata workspace</p>
-            <button type="submit" class="btn btn-primary rounded-2xl px-8">创建题目并进入工作台</button>
+            <p class="text-sm text-stone-500 dark:text-stone-400 font-mono">create first, then split into edit + files workflow</p>
+            <button type="submit" class="btn btn-primary rounded-2xl px-8">创建题目并进入编辑页</button>
         </div>
     </form>
 </div>

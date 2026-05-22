@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 import json
 import shutil
 import time
+import zipfile
 from flask_migrate import Migrate, stamp as migrate_stamp
 from sqlalchemy import MetaData
 import re
@@ -72,7 +73,99 @@ login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
 markdown = mistune.create_markdown(escape=False, plugins=["strikethrough", "table", "url", "task_lists"])
+STATEMENT_SAMPLE_BLOCK_RE = re.compile(r"^(input|output)(\d+)$", re.IGNORECASE)
 UTC8 = timezone(timedelta(hours=8))
+
+
+def _statement_sample_block_meta(node):
+    if getattr(node, "name", None) != "pre":
+        return None
+
+    code_node = node.find("code", recursive=False)
+    if code_node is None:
+        return None
+
+    for class_name in code_node.get("class") or []:
+        language_name = class_name[9:] if class_name.startswith("language-") else class_name
+        match = STATEMENT_SAMPLE_BLOCK_RE.match(language_name)
+        if match:
+            return {
+                "kind": match.group(1).lower(),
+                "index": int(match.group(2)),
+                "code": code_node,
+            }
+    return None
+
+
+def _build_statement_sample_pair(soup, sample_index):
+    pair_node = soup.new_tag("div", attrs={"class": "statement-sample-pair"})
+    pair_node.attrs["data-sample-index"] = str(sample_index)
+
+    for kind in ("input", "output"):
+        card_node = soup.new_tag("div", attrs={"class": "statement-sample-card"})
+        header_node = soup.new_tag("div", attrs={"class": "statement-sample-card__header"})
+        header_node.string = f"{'输入' if kind == 'input' else '输出'} {sample_index}"
+        card_node.append(header_node)
+        pair_node.append(card_node)
+
+    return pair_node
+
+
+def render_problem_statement(statement_md):
+    soup = BeautifulSoup(markdown(statement_md or ""), "html.parser")
+    transformed = False
+
+    def transform_parent(parent):
+        nonlocal transformed
+        children = list(parent.children)
+        index = 0
+
+        while index < len(children):
+            child = children[index]
+            sample_meta = _statement_sample_block_meta(child)
+            if sample_meta and sample_meta["kind"] == "input":
+                next_index = index + 1
+                gap_nodes = []
+                paired_output = None
+
+                while next_index < len(children):
+                    sibling = children[next_index]
+                    if getattr(sibling, "name", None) is None and not str(sibling).strip():
+                        gap_nodes.append(sibling)
+                        next_index += 1
+                        continue
+
+                    sibling_meta = _statement_sample_block_meta(sibling)
+                    if (
+                        sibling_meta
+                        and sibling_meta["kind"] == "output"
+                        and sibling_meta["index"] == sample_meta["index"]
+                    ):
+                        paired_output = sibling
+                    break
+
+                if paired_output is not None:
+                    pair_node = _build_statement_sample_pair(soup, sample_meta["index"])
+                    child.insert_before(pair_node)
+                    cards = pair_node.find_all("div", class_="statement-sample-card", recursive=False)
+                    for block, card_node in zip((child, paired_output), cards):
+                        block_classes = list(block.get("class") or [])
+                        if "statement-sample-card__code" not in block_classes:
+                            block_classes.append("statement-sample-card__code")
+                        block["class"] = block_classes
+                        card_node.append(block)
+                    for gap_node in gap_nodes:
+                        gap_node.extract()
+                    transformed = True
+                    children = list(parent.children)
+                    continue
+
+            if getattr(child, "name", None) and child.name not in {"pre", "code"}:
+                transform_parent(child)
+            index += 1
+
+    transform_parent(soup)
+    return str(soup), transformed
 
 # UTC+8 Helper
 def now_utc8():
@@ -326,6 +419,164 @@ def read_problem_asset_text(problem_file):
         return ""
     with open(absolute_path, "r", encoding="utf-8") as file_handle:
         return file_handle.read()
+
+
+def make_unique_problem_filename(problem_id, filename, reserved=None):
+    reserved = reserved or set()
+    base_name = secure_filename(os.path.basename((filename or "").strip()))
+    if not base_name:
+        raise ValueError("文件名无效")
+
+    stem, ext = os.path.splitext(base_name)
+    candidate = base_name
+    suffix = 2
+    while candidate in reserved or ProblemFile.query.filter_by(problem_id=problem_id, filename=candidate).first():
+        candidate = f"{stem}_{suffix}{ext}"
+        suffix += 1
+    reserved.add(candidate)
+    return candidate
+
+
+def create_problem_asset_from_bytes(problem_id, filename, content_bytes, content_type, uploaded_by_id):
+    sanitized_name = secure_filename(os.path.basename((filename or "").strip()))
+    if not sanitized_name:
+        raise ValueError("文件名无效")
+    if not is_allowed_problem_file(sanitized_name):
+        raise ValueError("不支持的文件类型")
+
+    ext = os.path.splitext(sanitized_name)[1].lower()
+    stored_filename = secure_filename(f"{uuid.uuid4().hex}{ext}")
+    relative_subdir = f"problem_assets/problem_{problem_id}"
+    absolute_dir = os.path.join(app.root_path, "static", "uploads", relative_subdir)
+    os.makedirs(absolute_dir, exist_ok=True)
+
+    absolute_path = os.path.join(absolute_dir, stored_filename)
+    with open(absolute_path, "wb") as file_handle:
+        file_handle.write(content_bytes or b"")
+
+    return ProblemFile(
+        problem_id=problem_id,
+        filename=sanitized_name,
+        stored_filename=stored_filename,
+        file_path=f"/static/uploads/{relative_subdir}/{stored_filename}",
+        content_type=content_type or "",
+        file_size=os.path.getsize(absolute_path),
+        uploaded_by_id=uploaded_by_id,
+    )
+
+
+def decode_zip_text(content_bytes):
+    try:
+        return (content_bytes or b"").decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return (content_bytes or b"").decode("utf-8", errors="replace")
+
+
+def is_ajax_request():
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return True
+    accepts = request.accept_mimetypes
+    return accepts["application/json"] > accepts["text/html"]
+
+
+def next_problem_case_number(problem_or_files):
+    if isinstance(problem_or_files, Problem):
+        problem_files = ProblemFile.query.filter_by(problem_id=problem_or_files.id).all()
+    else:
+        problem_files = problem_or_files
+    max_index = 0
+    for problem_file in problem_files:
+        stem, ext = os.path.splitext(problem_file.filename or "")
+        if ext.lower() not in {".in", ".out", ".ans"}:
+            continue
+        if stem.isdigit():
+            max_index = max(max_index, int(stem))
+    return max_index + 1 if max_index else 1
+
+
+def rebuild_hidden_problem_testcases_from_files(problem):
+    files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.filename.asc()).all()
+    grouped_files = {}
+    for problem_file in files:
+        stem, ext = os.path.splitext(problem_file.filename or "")
+        ext = ext.lower()
+        if ext not in {".in", ".out"}:
+            continue
+        grouped_files.setdefault(stem, {})[ext] = problem_file
+
+    paired_entries = []
+    for stem, pair in grouped_files.items():
+        if ".in" in pair and ".out" in pair:
+            paired_entries.append((stem, pair[".in"], pair[".out"]))
+    paired_entries.sort(key=lambda item: item[0])
+
+    hidden_cases = [case for case in problem.test_cases if case.case_type == "hidden"]
+    for case in hidden_cases:
+        db.session.delete(case)
+    db.session.flush()
+
+    created_count = 0
+    for sort_order, (_, input_file, output_file) in enumerate(paired_entries):
+        input_absolute_path = os.path.join(app.root_path, input_file.file_path.lstrip("/"))
+        output_absolute_path = os.path.join(app.root_path, output_file.file_path.lstrip("/"))
+        if not os.path.exists(input_absolute_path) or not os.path.exists(output_absolute_path):
+            continue
+
+        with open(input_absolute_path, "r", encoding="utf-8") as input_handle:
+            input_data = input_handle.read()
+        with open(output_absolute_path, "r", encoding="utf-8") as output_handle:
+            expected_output = output_handle.read()
+
+        problem.test_cases.append(
+            ProblemTestCase(
+                case_type="hidden",
+                input_data=input_data,
+                expected_output=expected_output,
+                score=1,
+                sort_order=sort_order,
+            )
+        )
+        created_count += 1
+
+    return created_count
+
+
+def build_problem_file_workspace_context(problem):
+    problem_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.uploaded_at.desc(), ProblemFile.id.desc()).all()
+    data_files = [problem_file for problem_file in problem_files if problem_file.is_testdata_file]
+    asset_files = [problem_file for problem_file in problem_files if not problem_file.is_testdata_file]
+    file_contents = {
+        problem_file.id: read_problem_asset_text(problem_file)
+        for problem_file in problem_files
+        if problem_file.is_text_editable
+    }
+    return {
+        "problem_files": problem_files,
+        "data_files": data_files,
+        "asset_files": asset_files,
+        "file_contents": file_contents,
+        "next_case_number": next_problem_case_number(problem_files),
+    }
+
+
+def render_problem_file_workspace(problem):
+    return render_template(
+        "admin/_oj_problem_files_workspace.html",
+        problem=problem,
+        **build_problem_file_workspace_context(problem),
+    )
+
+
+def problem_file_workspace_response(problem, message, category="success", status_code=200):
+    if is_ajax_request():
+        return jsonify({
+            "ok": category != "error",
+            "message": message,
+            "category": category,
+            "workspace_html": render_problem_file_workspace(problem),
+        }), status_code
+    flash(message, category)
+    return redirect(url_for("manage_oj_problem_files", problem_id=problem.id))
 
 app.jinja_env.filters["is_image_icon"] = is_image_icon
 app.jinja_env.filters["badge_icon_url"] = badge_icon_url
@@ -6914,16 +7165,50 @@ def validate_problem_code(raw_code, problem_id=None):
 
 
 OJ_STATUS_META = {
-    'queued': {'label': '排队中', 'badge': 'badge-info'},
-    'running': {'label': '评测中', 'badge': 'badge-warning'},
-    'accepted': {'label': '通过', 'badge': 'badge-success'},
-    'failed': {'label': '未通过', 'badge': 'badge-error'},
-    'system_error': {'label': '系统错误', 'badge': 'badge-error'},
+    'queued': {'label': '排队中', 'badge': 'badge-info', 'tone': 'info'},
+    'running': {'label': '评测中', 'badge': 'badge-warning', 'tone': 'warning'},
+    'accepted': {'label': '通过', 'badge': 'badge-success', 'tone': 'success'},
+    'failed': {'label': '未通过', 'badge': 'badge-error', 'tone': 'danger'},
+    'system_error': {'label': '系统错误', 'badge': 'badge-error', 'tone': 'danger'},
 }
 
 
 def oj_status_meta(status):
-    return OJ_STATUS_META.get(status or '', {'label': status or '未知', 'badge': 'badge-ghost'})
+    return OJ_STATUS_META.get(status or '', {'label': status or '未知', 'badge': 'badge-ghost', 'tone': 'neutral'})
+
+
+OJ_CASE_STATUS_META = {
+    'queued': {'label': 'Queued', 'tone': 'info'},
+    'running': {'label': 'Running', 'tone': 'warning'},
+    'accepted': {'label': 'AC', 'tone': 'success'},
+    'wrong_answer': {'label': 'Wrong Answer', 'tone': 'danger'},
+    'runtime_error': {'label': 'Runtime Error', 'tone': 'danger'},
+    'time_limit_exceeded': {'label': 'Time Limit Exceeded', 'tone': 'warning'},
+    'compile_error': {'label': 'Compile Error', 'tone': 'danger'},
+    'system_error': {'label': 'System Error', 'tone': 'danger'},
+    'failed': {'label': 'Failed', 'tone': 'danger'},
+}
+
+
+def oj_case_status_meta(status):
+    return OJ_CASE_STATUS_META.get(status or '', {'label': status or 'Unknown', 'tone': 'neutral'})
+
+
+def oj_submission_status_meta(task, results=None):
+    if task.status in {'queued', 'running'}:
+        return oj_case_status_meta(task.status)
+    if task.status == 'accepted':
+        return oj_case_status_meta('accepted')
+    if task.result_summary and task.result_summary.get('failure_reason') == 'compile_error':
+        return oj_case_status_meta('compile_error')
+
+    ordered_results = results
+    if ordered_results is None:
+        ordered_results = task.results.order_by(JudgeTaskResult.case_index.asc()).all()
+    first_failed = next((result for result in ordered_results if result.status != 'accepted'), None)
+    if first_failed:
+        return oj_case_status_meta(first_failed.status)
+    return oj_case_status_meta(task.status)
 
 
 def _jedi_unavailable_response():
@@ -7136,6 +7421,7 @@ def _oj_python_param_doc(signature, param):
 
 
 app.jinja_env.globals["oj_status_meta"] = oj_status_meta
+app.jinja_env.globals["oj_case_status_meta"] = oj_case_status_meta
 
 
 def build_oj_judge_cases(problem):
@@ -7337,6 +7623,203 @@ def collect_problem_testcases_from_form(form):
         )
 
     return testcases
+
+
+def zip_entry_name(info):
+    return (info.filename or "").replace("\\", "/").strip()
+
+
+def is_safe_zip_entry(info):
+    name = zip_entry_name(info)
+    if not name or name.endswith("/"):
+        return False
+    if name.startswith("/") or name.startswith("../") or "/../" in name:
+        return False
+    return True
+
+
+def zip_basename(info):
+    return os.path.basename(zip_entry_name(info))
+
+
+def read_zip_text(zip_file, info):
+    return decode_zip_text(zip_file.read(info))
+
+
+def parse_oj_problem_zip_metadata(zip_file, safe_infos, fallback_title):
+    meta = {}
+    for info in safe_infos:
+        if zip_basename(info).lower() in {"problem.json", "metadata.json", "meta.json"}:
+            try:
+                parsed = json.loads(read_zip_text(zip_file, info) or "{}")
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"{zip_basename(info)} 不是有效的 JSON：{exc}") from exc
+            if isinstance(parsed, dict):
+                meta = parsed.get("problem") if isinstance(parsed.get("problem"), dict) else parsed
+            break
+
+    text_files = {}
+    for info in safe_infos:
+        basename = zip_basename(info).lower()
+        if basename in {"statement.md", "readme.md", "description.md", "input.md", "output.md", "hint.md"}:
+            text_files[basename] = read_zip_text(zip_file, info).strip()
+
+    title = (meta.get("title") or meta.get("name") or fallback_title).strip()
+    if not title:
+        title = "导入题目"
+
+    raw_languages = meta.get("allowed_languages", meta.get("languages", "python,cpp,c"))
+    if isinstance(raw_languages, (list, tuple)):
+        raw_languages = ",".join(str(item) for item in raw_languages)
+
+    visible_value = meta.get("is_visible", meta.get("visible", True))
+    if isinstance(visible_value, str):
+        visible = visible_value.strip().lower() not in {"0", "false", "no", "off", "hidden"}
+    else:
+        visible = bool(visible_value)
+
+    statement_md = (
+        meta.get("statement_md")
+        or meta.get("statement")
+        or text_files.get("statement.md")
+        or text_files.get("readme.md")
+        or text_files.get("description.md")
+        or f"## 题目描述\n\n{title}\n"
+    )
+
+    return {
+        "problem_code": (meta.get("problem_code") or meta.get("code") or "").strip(),
+        "title": title,
+        "slug": (meta.get("slug") or "").strip(),
+        "difficulty": (meta.get("difficulty") or "medium").strip().lower(),
+        "time_limit_ms": int(meta.get("time_limit_ms") or meta.get("time_limit") or 2000),
+        "memory_limit_mb": int(meta.get("memory_limit_mb") or meta.get("memory_limit") or 256),
+        "allowed_languages": str(raw_languages or "python,cpp,c"),
+        "is_visible": visible,
+        "statement_md": statement_md,
+        "input_spec_md": meta.get("input_spec_md") or meta.get("input_spec") or text_files.get("input.md", ""),
+        "output_spec_md": meta.get("output_spec_md") or meta.get("output_spec") or text_files.get("output.md", ""),
+        "hint_md": meta.get("hint_md") or meta.get("hint") or text_files.get("hint.md", ""),
+        "source": (meta.get("source") or "ZIP 导入").strip(),
+    }
+
+
+def import_oj_problem_from_zip(file_storage, user):
+    if not file_storage or not file_storage.filename:
+        raise ValueError("请选择 zip 文件")
+
+    original_filename = secure_filename(file_storage.filename)
+    if os.path.splitext(original_filename)[1].lower() != ".zip":
+        raise ValueError("仅支持 .zip 文件")
+
+    zip_bytes = file_storage.read()
+    if not zip_bytes:
+        raise ValueError("zip 文件为空")
+
+    saved_files = []
+    reserved_filenames = set()
+    try:
+        with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zip_file:
+            safe_infos = [info for info in zip_file.infolist() if is_safe_zip_entry(info)]
+            if not safe_infos:
+                raise ValueError("zip 内没有可导入的文件")
+            if len(safe_infos) > 500:
+                raise ValueError("zip 内文件过多，最多支持 500 个文件")
+
+            total_size = sum(info.file_size for info in safe_infos)
+            if total_size > 64 * 1024 * 1024:
+                raise ValueError("zip 解压后文件总量超过 64MB")
+
+            fallback_title = os.path.splitext(original_filename)[0] or "导入题目"
+            meta = parse_oj_problem_zip_metadata(zip_file, safe_infos, fallback_title)
+
+            if meta["problem_code"]:
+                problem_code = validate_problem_code(meta["problem_code"])
+            else:
+                problem_code = next_problem_code()
+
+            difficulty = meta["difficulty"] if meta["difficulty"] in {"easy", "medium", "hard"} else "medium"
+            problem = Problem(
+                problem_code=problem_code,
+                title=meta["title"],
+                slug=build_problem_slug(meta["slug"] or meta["title"]),
+                difficulty=difficulty,
+                time_limit_ms=max(meta["time_limit_ms"], 100),
+                memory_limit_mb=max(meta["memory_limit_mb"], 16),
+                allowed_languages=normalize_language_list(meta["allowed_languages"]),
+                is_visible=meta["is_visible"],
+                created_by_id=user.id,
+                statement_md=meta["statement_md"],
+                input_spec_md=meta["input_spec_md"],
+                output_spec_md=meta["output_spec_md"],
+                hint_md=meta["hint_md"],
+                source=meta["source"] or None,
+            )
+            db.session.add(problem)
+            db.session.flush()
+
+            imported_files = {}
+            skipped_files = 0
+            for info in safe_infos:
+                basename = zip_basename(info)
+                if not basename:
+                    continue
+                if not is_allowed_problem_file(basename):
+                    skipped_files += 1
+                    continue
+
+                filename = make_unique_problem_filename(problem.id, basename, reserved_filenames)
+                content_bytes = zip_file.read(info)
+                problem_file = create_problem_asset_from_bytes(
+                    problem.id,
+                    filename,
+                    content_bytes,
+                    "application/octet-stream",
+                    user.id,
+                )
+                db.session.add(problem_file)
+                saved_files.append(problem_file.file_path)
+                imported_files[filename] = {
+                    "file": problem_file,
+                    "text": decode_zip_text(content_bytes) if problem_file.is_testdata_file else "",
+                }
+
+            grouped_files = {}
+            for filename, payload in imported_files.items():
+                stem, ext = os.path.splitext(filename)
+                ext = ext.lower()
+                if ext not in {".in", ".out", ".ans"}:
+                    continue
+                grouped_files.setdefault(stem, {})[ext] = payload
+
+            imported_cases = 0
+            for stem, pair in sorted(grouped_files.items(), key=lambda item: item[0]):
+                output_payload = pair.get(".out") or pair.get(".ans")
+                if ".in" not in pair or not output_payload:
+                    continue
+
+                case_type = "sample" if stem.lower().startswith(("sample", "example")) else "hidden"
+                problem.test_cases.append(
+                    ProblemTestCase(
+                        case_type=case_type,
+                        input_data=pair[".in"]["text"],
+                        expected_output=output_payload["text"],
+                        score=1,
+                        sort_order=imported_cases,
+                    )
+                )
+                imported_cases += 1
+
+            db.session.commit()
+            return problem, imported_cases, len(imported_files), skipped_files
+    except zipfile.BadZipFile as exc:
+        db.session.rollback()
+        raise ValueError("zip 文件无法读取或已损坏") from exc
+    except Exception:
+        db.session.rollback()
+        for file_path in saved_files:
+            remove_problem_asset_file(file_path)
+        raise
 
 
 def ensure_oj_authoring_schema():
@@ -8360,10 +8843,7 @@ def oj_problem_detail(slug):
     else:
         visible_files = [problem_file for problem_file in all_files if not problem_file.is_testdata_file]
 
-    statement_html = markdown(problem.statement_md or "")
-    input_spec_html = markdown(problem.input_spec_md or "")
-    output_spec_html = markdown(problem.output_spec_md or "")
-    hint_html = markdown(problem.hint_md or "")
+    statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
 
     return render_template(
         'oj/problem_detail.html',
@@ -8372,9 +8852,7 @@ def oj_problem_detail(slug):
         hidden_case_count=hidden_case_count,
         visible_files=visible_files,
         statement_html=statement_html,
-        input_spec_html=input_spec_html,
-        output_spec_html=output_spec_html,
-        hint_html=hint_html,
+        statement_has_sample_pairs=statement_has_sample_pairs,
         my_latest_task=my_latest_task,
         submission_history=submission_history,
         active_assignment=active_assignment,
@@ -8390,10 +8868,7 @@ def oj_problem_code(slug):
     if not can_view_problem(problem, current_user) and not active_assignment:
         abort(404)
 
-    statement_html = markdown(problem.statement_md or "")
-    input_spec_html = markdown(problem.input_spec_md or "")
-    output_spec_html = markdown(problem.output_spec_md or "")
-    hint_html = markdown(problem.hint_md or "")
+    statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
     sample_cases = problem.sample_cases
     my_latest_task = (
         JudgeTask.query
@@ -8411,9 +8886,7 @@ def oj_problem_code(slug):
         problem=problem,
         sample_cases=sample_cases,
         statement_html=statement_html,
-        input_spec_html=input_spec_html,
-        output_spec_html=output_spec_html,
-        hint_html=hint_html,
+        statement_has_sample_pairs=statement_has_sample_pairs,
         my_latest_task=my_latest_task,
         active_assignment=active_assignment,
     )
@@ -8754,7 +9227,14 @@ def oj_submission_detail(task_id):
         check_and_award_badges(current_user)
     results = task.results.order_by(JudgeTaskResult.case_index.asc()).all()
     failure_feedback = build_oj_failure_feedback(task, results)
-    return render_template('oj/submission_detail.html', task=task, results=results, failure_feedback=failure_feedback)
+    return render_template(
+        'oj/submission_detail.html',
+        task=task,
+        results=results,
+        failure_feedback=failure_feedback,
+        task_meta=oj_submission_status_meta(task, results),
+        can_view_case_details=bool(current_user.is_admin),
+    )
 
 
 @app.route('/api/oj/submissions/<int:task_id>')
@@ -8764,10 +9244,12 @@ def oj_submission_status_api(task_id):
     task = get_oj_judge_task_or_404(task_id)
     if task.user_id == current_user.id and task.status in OJ_FINAL_STATUSES:
         check_and_award_badges(current_user)
+    meta = oj_submission_status_meta(task)
     return jsonify({
         'id': task.id,
         'status': task.status,
-        'status_label': oj_status_meta(task.status)['label'],
+        'status_label': meta['label'],
+        'status_tone': meta['tone'],
         'passed_count': task.passed_count,
         'total_count': task.total_count,
         'total_score': task.total_score,
@@ -8903,6 +9385,36 @@ def create_oj_problem():
     return render_template('admin/create_oj_problem.html', draft=draft)
 
 
+@app.route('/admin/oj/problems/import_zip', methods=['POST'])
+@login_required
+def import_oj_problem_zip():
+    if not current_user.is_admin:
+        abort(403)
+
+    created_tables = ensure_oj_authoring_schema()
+    if created_tables:
+        flash('检测到旧数据库，已自动补建 OJ 题库数据表。', 'success')
+
+    try:
+        problem, imported_cases, imported_files, skipped_files = import_oj_problem_from_zip(
+            request.files.get('problem_zip'),
+            current_user,
+        )
+    except ValueError as exc:
+        flash(f'导入 zip 失败：{exc}', 'error')
+        return redirect(url_for('create_oj_problem'))
+    except Exception as exc:
+        app.logger.exception("Import OJ problem zip failed")
+        flash(f'导入 zip 失败：{exc}', 'error')
+        return redirect(url_for('create_oj_problem'))
+
+    message = f'已从 zip 创建题目《{problem.title}》，导入 {imported_files} 个文件、{imported_cases} 组测试点。'
+    if skipped_files:
+        message += f' 跳过 {skipped_files} 个不支持的文件。'
+    flash(message, 'success')
+    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+
 @app.route('/admin/oj/problems/<int:problem_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_oj_problem(problem_id):
@@ -8933,9 +9445,12 @@ def edit_oj_problem(problem_id):
         problem.title = title
         problem.slug = build_problem_slug(slug or title, problem_id=problem.id)
         problem.statement_md = request.form.get('statement_md', '').strip()
-        problem.input_spec_md = request.form.get('input_spec_md', '').strip()
-        problem.output_spec_md = request.form.get('output_spec_md', '').strip()
-        problem.hint_md = request.form.get('hint_md', '').strip()
+        if 'input_spec_md' in request.form:
+            problem.input_spec_md = request.form.get('input_spec_md', '').strip()
+        if 'output_spec_md' in request.form:
+            problem.output_spec_md = request.form.get('output_spec_md', '').strip()
+        if 'hint_md' in request.form:
+            problem.hint_md = request.form.get('hint_md', '').strip()
         problem.source = request.form.get('source', '').strip() or None
 
         difficulty = request.form.get('difficulty', 'medium').strip().lower()
@@ -8949,21 +9464,33 @@ def edit_oj_problem(problem_id):
         flash(f'题目《{problem.title}》已更新。', 'success')
         return redirect(url_for('edit_oj_problem', problem_id=problem.id))
 
-    problem_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.uploaded_at.desc(), ProblemFile.id.desc()).all()
-    data_files = [problem_file for problem_file in problem_files if problem_file.is_testdata_file]
-    asset_files = [problem_file for problem_file in problem_files if not problem_file.is_testdata_file]
-    file_contents = {
-        problem_file.id: read_problem_asset_text(problem_file)
-        for problem_file in problem_files
-        if problem_file.is_text_editable
-    }
+    problem_files = ProblemFile.query.filter_by(problem_id=problem.id).all()
+    data_file_count = sum(1 for problem_file in problem_files if problem_file.is_testdata_file)
+    asset_file_count = sum(1 for problem_file in problem_files if not problem_file.is_testdata_file)
     return render_template(
         'admin/edit_oj_problem.html',
         problem=problem,
-        problem_files=problem_files,
-        data_files=data_files,
-        asset_files=asset_files,
-        file_contents=file_contents,
+        data_file_count=data_file_count,
+        asset_file_count=asset_file_count,
+        next_case_number=next_problem_case_number(problem),
+    )
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/files')
+@login_required
+def manage_oj_problem_files(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    created_tables = ensure_oj_authoring_schema()
+    if created_tables:
+        flash('检测到旧数据库，已自动补建 OJ 题库数据表。', 'success')
+
+    problem = Problem.query.get_or_404(problem_id)
+    return render_template(
+        'admin/manage_oj_problem_files.html',
+        problem=problem,
+        **build_problem_file_workspace_context(problem),
     )
 
 
@@ -8984,13 +9511,58 @@ def create_text_oj_problem_file(problem_id):
             raise ValueError("已存在同名文件")
         problem_file = create_text_problem_asset(problem.id, filename, content, current_user.id)
         db.session.add(problem_file)
+        db.session.flush()
+        rebuild_hidden_problem_testcases_from_files(problem)
         db.session.commit()
-        flash(f'已创建文件：{problem_file.filename}', 'success')
+        return problem_file_workspace_response(problem, f'已创建文件：{problem_file.filename}', 'success')
     except ValueError as exc:
         db.session.rollback()
-        flash(f'创建文件失败：{exc}', 'error')
+        return problem_file_workspace_response(problem, f'创建文件失败：{exc}', 'error', 400)
 
-    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+
+@app.route('/admin/oj/problems/<int:problem_id>/files/text/create_pair', methods=['POST'])
+@login_required
+def create_text_oj_problem_file_pair(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    case_index = request.form.get('case_index', '').strip()
+    input_content = request.form.get('input_content', '')
+    output_content = request.form.get('output_content', '')
+    overwrite = request.form.get('overwrite') == '1'
+
+    if not case_index.isdigit() or int(case_index) <= 0:
+        return problem_file_workspace_response(problem, '组号必须是大于 0 的整数。', 'error', 400)
+
+    input_filename = f'{int(case_index)}.in'
+    output_filename = f'{int(case_index)}.out'
+    existing_input = ProblemFile.query.filter_by(problem_id=problem.id, filename=input_filename).first()
+    existing_output = ProblemFile.query.filter_by(problem_id=problem.id, filename=output_filename).first()
+
+    if (existing_input or existing_output) and not overwrite:
+        return problem_file_workspace_response(problem, f'文件 {input_filename} 或 {output_filename} 已存在。勾选覆盖后可直接更新。', 'error', 400)
+
+    try:
+        if existing_input:
+            update_text_problem_asset(existing_input, input_filename, input_content)
+        else:
+            db.session.add(create_text_problem_asset(problem.id, input_filename, input_content, current_user.id))
+
+        if existing_output:
+            update_text_problem_asset(existing_output, output_filename, output_content)
+        else:
+            db.session.add(create_text_problem_asset(problem.id, output_filename, output_content, current_user.id))
+
+        db.session.flush()
+        rebuild_hidden_problem_testcases_from_files(problem)
+        db.session.commit()
+        action_text = '已覆盖更新' if overwrite and (existing_input or existing_output) else '已创建'
+        return problem_file_workspace_response(problem, f'{action_text}文件对：{input_filename} / {output_filename}，并已自动更新测试点。', 'success')
+    except ValueError as exc:
+        db.session.rollback()
+        return problem_file_workspace_response(problem, f'创建文件对失败：{exc}', 'error', 400)
 
 
 @app.route('/admin/oj/problems/<int:problem_id>/files/<int:file_id>/text', methods=['POST'])
@@ -9011,13 +9583,13 @@ def update_text_oj_problem_file(problem_id, file_id):
         if exists:
             raise ValueError("已存在同名文件")
         update_text_problem_asset(problem_file, filename, content)
+        db.session.flush()
+        rebuild_hidden_problem_testcases_from_files(problem)
         db.session.commit()
-        flash(f'已更新文件：{problem_file.filename}', 'success')
+        return problem_file_workspace_response(problem, f'已更新文件：{problem_file.filename}，并已自动更新测试点。', 'success')
     except ValueError as exc:
         db.session.rollback()
-        flash(f'更新文件失败：{exc}', 'error')
-
-    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+        return problem_file_workspace_response(problem, f'更新文件失败：{exc}', 'error', 400)
 
 
 @app.route('/admin/oj/problems/<int:problem_id>/files/upload', methods=['POST'])
@@ -9031,8 +9603,7 @@ def upload_oj_problem_files(problem_id):
 
     files = request.files.getlist('files')
     if not files:
-        flash('没有选择要上传的文件。', 'error')
-        return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+        return problem_file_workspace_response(problem, '没有选择要上传的文件。', 'error', 400)
 
     uploaded_count = 0
     for file_storage in files:
@@ -9040,12 +9611,14 @@ def upload_oj_problem_files(problem_id):
             continue
         original_filename = secure_filename(file_storage.filename)
         if ProblemFile.query.filter_by(problem_id=problem.id, filename=original_filename).first():
-            flash(f'已存在同名文件：{original_filename}', 'error')
+            if not is_ajax_request():
+                flash(f'已存在同名文件：{original_filename}', 'error')
             continue
         try:
             saved_file = save_problem_asset(file_storage, problem.id)
         except ValueError as exc:
-            flash(f'文件 {file_storage.filename} 上传失败：{exc}', 'error')
+            if not is_ajax_request():
+                flash(f'文件 {file_storage.filename} 上传失败：{exc}', 'error')
             continue
 
         db.session.add(
@@ -9061,11 +9634,13 @@ def upload_oj_problem_files(problem_id):
         )
         uploaded_count += 1
 
+    db.session.flush()
+    rebuild_hidden_problem_testcases_from_files(problem)
     db.session.commit()
 
     if uploaded_count:
-        flash(f'已上传 {uploaded_count} 个题目文件。', 'success')
-    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+        return problem_file_workspace_response(problem, f'已上传 {uploaded_count} 个题目文件。', 'success')
+    return problem_file_workspace_response(problem, '没有成功上传任何文件。', 'error', 400)
 
 
 @app.route('/admin/oj/problems/<int:problem_id>/files/<int:file_id>/delete', methods=['POST'])
@@ -9080,9 +9655,10 @@ def delete_oj_problem_file(problem_id, file_id):
 
     remove_problem_asset_file(problem_file.file_path)
     db.session.delete(problem_file)
+    db.session.flush()
+    rebuild_hidden_problem_testcases_from_files(problem)
     db.session.commit()
-    flash(f'已删除文件：{problem_file.filename}', 'success')
-    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+    return problem_file_workspace_response(problem, f'已删除文件：{problem_file.filename}，并已自动更新测试点。', 'success')
 
 
 @app.route('/admin/oj/problems/<int:problem_id>/files/import_testcases', methods=['POST'])
@@ -9110,8 +9686,7 @@ def import_oj_problem_testcases_from_files(problem_id):
             paired_entries.append((stem, pair['.in'], pair['.out']))
 
     if not paired_entries:
-        flash('没有找到可配对的 .in / .out 文件。', 'error')
-        return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+        return problem_file_workspace_response(problem, '没有找到可配对的 .in / .out 文件。', 'error', 400)
 
     paired_entries.sort(key=lambda item: item[0])
 
@@ -9149,11 +9724,8 @@ def import_oj_problem_testcases_from_files(problem_id):
 
     if imported_count:
         action_text = '覆盖并导入' if mode == 'replace' else '追加导入'
-        flash(f'已{action_text} {imported_count} 组测试点。', 'success')
-    else:
-        flash('找到文件对了，但没有成功导入任何测试点。', 'error')
-
-    return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+        return problem_file_workspace_response(problem, f'已{action_text} {imported_count} 组测试点。', 'success')
+    return problem_file_workspace_response(problem, '找到文件对了，但没有成功导入任何测试点。', 'error', 400)
 
 
 @app.route('/admin/oj/problems/<int:problem_id>/delete', methods=['POST'])

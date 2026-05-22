@@ -33,98 +33,31 @@
         padding: 0;
     }
 </style>
+{% for css_file in vite_css_assets('src/oj-admin.js') %}
+<link rel="stylesheet" href="{{ css_file }}">
+{% endfor %}
 {% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 py-10 flex flex-col gap-8">
-    <div class="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-            <p class="text-xs font-black tracking-[0.3em] uppercase text-cyan-600 mb-2">OJ Authoring Layer</p>
-            <h1 class="text-3xl md:text-4xl font-black text-stone-800 dark:text-stone-100">题库管理中心</h1>
-            <p class="text-stone-500 dark:text-stone-400 mt-2">先创建题目。之后把“题面编辑”和“文件/测试数据管理”分开处理，工作流会更清晰。</p>
-        </div>
-        <div class="flex gap-3 flex-wrap">
-            <a href="{{ url_for('oj_problem_list') }}" class="btn btn-ghost rounded-2xl">返回题库</a>
-            <a href="{{ url_for('create_oj_problem') }}" class="btn btn-primary rounded-2xl">新建题目</a>
-        </div>
-    </div>
+<div id="oj-admin-shell-app"></div>
+{% endblock %}
 
-    <div class="oj-panel overflow-hidden">
-        <div class="px-6 py-5 border-b border-stone-200/80 dark:border-white/10 flex items-center justify-between gap-4 flex-wrap">
-            <div>
-                <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">已有题目</h2>
-                <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">当前共 {{ problems|length }} 道题。</p>
-            </div>
-            <div class="text-sm text-stone-400 font-mono">create -> edit problem / manage files</div>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="table">
-                <thead>
-                    <tr class="text-stone-500 uppercase text-xs tracking-widest">
-                        <th>UID</th>
-                        <th>编号</th>
-                        <th>标题</th>
-                        <th>难度</th>
-                        <th>测试点</th>
-                        <th>文件</th>
-                        <th>语言</th>
-                        <th>状态</th>
-                        <th>更新时间</th>
-                        <th class="text-right">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for problem in problems %}
-                    <tr>
-                        <td class="font-mono font-bold text-stone-500">{{ problem.uid_text }}</td>
-                        <td class="font-mono font-black text-stone-800 dark:text-stone-100">{{ problem.problem_code }}</td>
-                        <td>
-                            <div class="font-black text-stone-800 dark:text-stone-100">{{ problem.title }}</div>
-                            <div class="text-xs font-mono text-stone-400 mt-1">{{ problem.slug }}</div>
-                        </td>
-                        <td>
-                            <span class="oj-pill
-                                {% if problem.difficulty == 'easy' %}bg-emerald-100 text-emerald-700
-                                {% elif problem.difficulty == 'hard' %}bg-rose-100 text-rose-700
-                                {% else %}bg-amber-100 text-amber-700{% endif %}">
-                                {{ problem.difficulty }}
-                            </span>
-                        </td>
-                        <td class="font-bold">{{ problem.testcase_count }}</td>
-                        <td class="font-bold">{{ problem.files.count() }}</td>
-                        <td class="text-sm text-stone-500">{{ problem.allowed_languages_text }}</td>
-                        <td>
-                            {% if problem.is_visible %}
-                                <span class="oj-pill bg-sky-100 text-sky-700">visible</span>
-                            {% else %}
-                                <span class="oj-pill bg-stone-200 text-stone-600">hidden</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-sm text-stone-500">{{ problem.updated_at.strftime('%Y-%m-%d %H:%M') if problem.updated_at else '-' }}</td>
-                        <td>
-                            <div class="flex justify-end gap-2 flex-wrap">
-                                <a href="{{ url_for('edit_oj_problem', problem_id=problem.id) }}" class="btn btn-sm oj-action-btn" title="编辑题目" aria-label="编辑题目">
-                                    <i class="fas fa-pen"></i>
-                                </a>
-                                <a href="{{ url_for('manage_oj_problem_files', problem_id=problem.id) }}" class="btn btn-sm btn-outline oj-action-btn" title="文件管理" aria-label="文件管理">
-                                    <i class="fas fa-folder-open"></i>
-                                </a>
-                                <form method="post" action="{{ url_for('delete_oj_problem', problem_id=problem.id) }}" onsubmit="return confirm('确认删除这道 OJ 题目吗？');">
-                                    <button type="submit" class="btn btn-sm btn-error btn-outline oj-action-btn" title="删除题目" aria-label="删除题目">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="10" class="text-center py-12 text-stone-400">还没有 OJ 题目，先创建第一道题吧。</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+{% block scripts %}
+<script type="application/json" id="oj-admin-shell-payload">
+{{ {
+    "initialView": "list",
+    "problemsUrl": url_for('manage_oj_problems_json'),
+    "initialProblems": problems_json,
+    "urls": {
+        "adminList": url_for('manage_oj_problems'),
+        "publicList": url_for('oj_problem_list'),
+        "createProblem": url_for('create_oj_problem')
+    }
+}|tojson }}
+</script>
+{% if vite_asset('src/oj-admin.js') %}
+<script type="module" src="{{ vite_asset('src/oj-admin.js') }}"></script>
+{% else %}
+<script type="module" src="{{ url_for('static', filename='oj-vue/assets/oj-admin.js') }}"></script>
+{% endif %}
 {% endblock %}

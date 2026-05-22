@@ -46,6 +46,10 @@ find_gunicorn() {
     return 1
 }
 
+find_npm() {
+    command -v npm 2>/dev/null || true
+}
+
 pid_is_running() {
     local pidfile="$1"
     if [ ! -f "${pidfile}" ]; then
@@ -236,6 +240,24 @@ ensure_runtime_image() {
 
     echo "Judge runtime image is missing. Building ${runtime_image} ..."
     docker build -t "${runtime_image}" -f "${ROOT_DIR}/judge_runtime/Dockerfile" "${ROOT_DIR}"
+}
+
+build_frontend_assets() {
+    local npm_bin
+    npm_bin="$(find_npm)"
+    if [ -z "${npm_bin}" ]; then
+        echo "npm is missing; skipping OJ Vue asset build."
+        return 0
+    fi
+
+    cd "${ROOT_DIR}"
+    if [ ! -d "${ROOT_DIR}/node_modules" ]; then
+        echo "Installing frontend dependencies ..."
+        "${npm_bin}" install
+    fi
+
+    echo "Building OJ Vue assets ..."
+    "${npm_bin}" run build:oj
 }
 
 ensure_dependencies() {
@@ -442,6 +464,7 @@ bootstrap_schema() {
 case "${1:-restart}" in
     start)
         ensure_dependencies
+        build_frontend_assets
         start_web
         start_judge
         ;;
@@ -453,8 +476,12 @@ case "${1:-restart}" in
         stop_process "${JUDGE_PIDFILE}" "Judge worker"
         stop_web
         ensure_dependencies
+        build_frontend_assets
         start_web
         start_judge
+        ;;
+    build-frontend)
+        build_frontend_assets
         ;;
     status)
         show_status
@@ -469,7 +496,7 @@ case "${1:-restart}" in
         bootstrap_schema
         ;;
     *)
-        echo "Usage: $0 {start|stop|restart|status|logs|deps|init}"
+        echo "Usage: $0 {start|stop|restart|status|logs|deps|init|build-frontend}"
         echo "No argument defaults to: restart"
         exit 1
         ;;

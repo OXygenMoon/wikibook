@@ -34,6 +34,28 @@ find_python() {
     return 1
 }
 
+find_npm() {
+    command -v npm 2>/dev/null || true
+}
+
+build_frontend_assets() {
+    local npm_bin
+    npm_bin="$(find_npm)"
+    if [ -z "${npm_bin}" ]; then
+        echo "npm is missing; skipping OJ Vue asset build."
+        return 0
+    fi
+
+    cd "${ROOT_DIR}"
+    if [ ! -d "${ROOT_DIR}/node_modules" ]; then
+        echo "Installing frontend dependencies ..."
+        "${npm_bin}" install
+    fi
+
+    echo "Building OJ Vue assets ..."
+    "${npm_bin}" run build:oj
+}
+
 is_running() {
     if [ ! -f "${PIDFILE}" ]; then
         return 1
@@ -69,6 +91,7 @@ start_service() {
     local port="${PORT:-5009}"
 
     cd "${ROOT_DIR}"
+    build_frontend_assets
     : > "${LOGFILE}"
 
     echo "Starting Wikibook locally at http://${host}:${port}"
@@ -221,8 +244,11 @@ case "${1:-restart}" in
     logs)
         show_logs
         ;;
+    build-frontend)
+        build_frontend_assets
+        ;;
     *)
-        echo "Usage: $0 {start|stop|restart|status|logs}"
+        echo "Usage: $0 {start|stop|restart|status|logs|build-frontend}"
         echo "No argument defaults to: restart"
         exit 1
         ;;

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+{% for css_file in vite_css_assets('src/oj-admin.js') %}
+<link rel="stylesheet" href="{{ css_file }}">
+{% endfor %}
+{% endblock %}
+
+{% block content %}
+<div id="oj-admin-shell-app"></div>
+{% endblock %}
+
+{% block scripts %}
+<script type="application/json" id="oj-admin-shell-payload">
+{{ shell_payload|tojson }}
+</script>
+{% if vite_asset('src/oj-admin.js') %}
+<script type="module" src="{{ vite_asset('src/oj-admin.js') }}"></script>
+{% else %}
+<script type="module" src="{{ url_for('static', filename='oj-vue/assets/oj-admin.js') }}"></script>
+{% endif %}
+{% endblock %}

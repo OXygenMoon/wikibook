@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+{% for css_file in vite_css_assets('src/oj-public.js') %}
+<link rel="stylesheet" href="{{ css_file }}">
+{% endfor %}
+{% endblock %}
+
+{% block content %}
+<div id="oj-public-shell-app"></div>
+{% endblock %}
+
+{% block scripts %}
+<script type="application/json" id="oj-public-shell-payload">
+{{ shell_payload|tojson }}
+</script>
+{% if vite_asset('src/oj-public.js') %}
+<script type="module" src="{{ vite_asset('src/oj-public.js') }}"></script>
+{% else %}
+<script type="module" src="{{ url_for('static', filename='oj-vue/assets/oj-public.js') }}"></script>
+{% endif %}
+{% endblock %}

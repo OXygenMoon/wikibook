@@ -574,9 +574,713 @@ def problem_file_workspace_response(problem, message, category="success", status
             "message": message,
             "category": category,
             "workspace_html": render_problem_file_workspace(problem),
+            "workspace": serialize_problem_file_workspace(problem),
         }), status_code
     flash(message, category)
     return redirect(url_for("manage_oj_problem_files", problem_id=problem.id))
+
+
+def vite_asset(entry_name):
+    manifest_path = os.path.join(app.static_folder, "oj-vue", ".vite", "manifest.json")
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as manifest_file:
+            manifest = json.load(manifest_file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+    entry = manifest.get(entry_name)
+    if not entry:
+        entry = next(
+            (
+                item
+                for item in manifest.values()
+                if item.get("name") == entry_name or item.get("src") == entry_name or item.get("src", "").endswith(entry_name)
+            ),
+            None,
+        )
+    if not entry:
+        return None
+    return url_for("static", filename=f"oj-vue/{entry['file']}")
+
+
+def vite_css_assets(entry_name):
+    manifest_path = os.path.join(app.static_folder, "oj-vue", ".vite", "manifest.json")
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as manifest_file:
+            manifest = json.load(manifest_file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+    entry = manifest.get(entry_name) or {}
+    if not entry:
+        entry = next(
+            (
+                item
+                for item in manifest.values()
+                if item.get("name") == entry_name or item.get("src") == entry_name or item.get("src", "").endswith(entry_name)
+            ),
+            {},
+        )
+    return [
+        url_for("static", filename=f"oj-vue/{css_file}")
+        for css_file in entry.get("css", [])
+    ]
+
+
+def serialize_admin_problem(problem):
+    return {
+        "id": problem.id,
+        "uid": problem.uid_text,
+        "code": problem.problem_code,
+        "title": problem.title,
+        "slug": problem.slug,
+        "difficulty": problem.difficulty,
+        "testcaseCount": problem.testcase_count,
+        "fileCount": problem.files.count(),
+        "allowedLanguages": problem.allowed_languages_text,
+        "visible": bool(problem.is_visible),
+        "updatedAt": problem.updated_at.strftime("%Y-%m-%d %H:%M") if problem.updated_at else "-",
+        "urls": {
+            "edit": url_for("edit_oj_problem", problem_id=problem.id),
+            "files": url_for("manage_oj_problem_files", problem_id=problem.id),
+            "delete": url_for("delete_oj_problem", problem_id=problem.id),
+        },
+    }
+
+
+def serialize_problem_edit_workspace(problem):
+    context = build_problem_file_workspace_context(problem)
+    return {
+        "id": problem.id,
+        "uid": problem.uid_text,
+        "code": problem.problem_code,
+        "title": problem.title,
+        "slug": problem.slug,
+        "difficulty": problem.difficulty,
+        "visible": bool(problem.is_visible),
+        "timeLimitMs": problem.time_limit_ms,
+        "memoryLimitMb": problem.memory_limit_mb,
+        "source": problem.source or "",
+        "allowedLanguages": problem.allowed_languages_text or "python, cpp, c",
+        "statementMd": problem.statement_md or "",
+        "updatedAt": problem.updated_at.strftime("%Y-%m-%d %H:%M") if problem.updated_at else "-",
+        "stats": {
+            "testcaseCount": problem.testcase_count,
+            "dataFileCount": len(context["data_files"]),
+            "assetFileCount": len(context["asset_files"]),
+            "nextCaseNumber": context["next_case_number"],
+        },
+        "urls": {
+            "edit": url_for("edit_oj_problem", problem_id=problem.id),
+            "files": url_for("manage_oj_problem_files", problem_id=problem.id),
+            "json": url_for("admin_oj_problem_json", problem_id=problem.id),
+        },
+    }
+
+
+def serialize_problem_file(problem_file, content=None):
+    problem_id = problem_file.problem_id
+    return {
+        "id": problem_file.id,
+        "filename": problem_file.filename,
+        "filePath": problem_file.file_path,
+        "fileSizeKb": round((problem_file.file_size or 0) / 1024, 1),
+        "uploadedAt": problem_file.uploaded_at.strftime("%Y-%m-%d %H:%M") if problem_file.uploaded_at else "",
+        "isTextEditable": bool(problem_file.is_text_editable),
+        "isTestdataFile": bool(problem_file.is_testdata_file),
+        "markdownEmbed": problem_file.markdown_embed,
+        "content": content if content is not None else "",
+        "urls": {
+            "update": url_for("update_text_oj_problem_file", problem_id=problem_id, file_id=problem_file.id),
+            "delete": url_for("delete_oj_problem_file", problem_id=problem_id, file_id=problem_file.id),
+        },
+    }
+
+
+def serialize_problem_file_workspace(problem):
+    context = build_problem_file_workspace_context(problem)
+    file_contents = context["file_contents"]
+    data_files = [
+        serialize_problem_file(problem_file, file_contents.get(problem_file.id, ""))
+        for problem_file in context["data_files"]
+    ]
+    asset_files = [
+        serialize_problem_file(problem_file, file_contents.get(problem_file.id, ""))
+        for problem_file in context["asset_files"]
+    ]
+    return {
+        "problem": {
+            "id": problem.id,
+            "uid": problem.uid_text,
+            "code": problem.problem_code,
+            "title": problem.title,
+            "editUrl": url_for("edit_oj_problem", problem_id=problem.id),
+            "filesUrl": url_for("manage_oj_problem_files", problem_id=problem.id),
+            "listUrl": url_for("manage_oj_problems"),
+        },
+        "stats": {
+            "testcaseCount": problem.testcase_count,
+            "dataFileCount": len(data_files),
+            "assetFileCount": len(asset_files),
+            "nextCaseNumber": context["next_case_number"],
+        },
+        "dataFiles": data_files,
+        "assetFiles": asset_files,
+        "urls": {
+            "createPair": url_for("create_text_oj_problem_file_pair", problem_id=problem.id),
+            "createText": url_for("create_text_oj_problem_file", problem_id=problem.id),
+            "upload": url_for("upload_oj_problem_files", problem_id=problem.id),
+        },
+    }
+
+
+def oj_problem_source_tags(problem):
+    if not problem.source:
+        return []
+    return [
+        tag.strip()
+        for tag in problem.source.replace("，", ",").split(",")
+        if tag.strip()
+    ]
+
+
+def serialize_oj_problem_row(problem, submission_stat=None, my_status=None):
+    submission_stat = submission_stat or {"accepted": 0, "attempts": 0}
+    my_status = my_status or {"accepted": False, "attempted": False}
+    author_name = "系统"
+    if problem.created_by:
+        author_name = problem.created_by.real_name or problem.created_by.username
+    return {
+        "id": problem.id,
+        "uid": problem.uid_text,
+        "code": problem.problem_code,
+        "title": problem.title,
+        "slug": problem.slug,
+        "difficulty": problem.difficulty,
+        "source": problem.source or "",
+        "tags": oj_problem_source_tags(problem),
+        "visible": bool(problem.is_visible),
+        "author": author_name,
+        "submissionStat": submission_stat,
+        "myStatus": my_status,
+        "urls": {
+            "detail": url_for("oj_problem_detail", slug=problem.slug),
+            "submissions": url_for("oj_submission_list", problem_id=problem.id),
+        },
+    }
+
+
+def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
+    query = Problem.query
+    if not current_user.is_admin:
+        query = query.filter_by(is_visible=True)
+    elif visibility == "hidden":
+        query = query.filter_by(is_visible=False)
+    elif visibility == "all":
+        pass
+    else:
+        query = query.filter_by(is_visible=True)
+
+    if q:
+        like = f"%{q}%"
+        query = query.filter(db.or_(Problem.problem_code.like(like), Problem.title.like(like), Problem.slug.like(like), Problem.source.like(like)))
+
+    if difficulty in {"easy", "medium", "hard"}:
+        query = query.filter_by(difficulty=difficulty)
+
+    problems = query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
+    problem_ids = [problem.id for problem in problems]
+    problem_submission_stats = {problem_id: {"accepted": 0, "attempts": 0} for problem_id in problem_ids}
+    if problem_ids:
+        rows = (
+            db.session.query(
+                JudgeTask.problem_id,
+                db.func.count(JudgeTask.id).label("attempts"),
+                db.func.sum(case((JudgeTask.status == "accepted", 1), else_=0)).label("accepted"),
+            )
+            .filter(JudgeTask.problem_id.in_(problem_ids), JudgeTask.assignment_id.is_(None))
+            .group_by(JudgeTask.problem_id)
+            .all()
+        )
+        for problem_id, attempts, accepted in rows:
+            problem_submission_stats[problem_id] = {"accepted": int(accepted or 0), "attempts": int(attempts or 0)}
+
+    my_problem_status = {problem_id: {"accepted": False, "attempted": False} for problem_id in problem_ids}
+    if problem_ids:
+        my_rows = (
+            db.session.query(
+                JudgeTask.problem_id,
+                db.func.count(JudgeTask.id).label("attempts"),
+                db.func.sum(case((JudgeTask.status == "accepted", 1), else_=0)).label("accepted"),
+            )
+            .filter(JudgeTask.problem_id.in_(problem_ids), JudgeTask.user_id == current_user.id, JudgeTask.assignment_id.is_(None))
+            .group_by(JudgeTask.problem_id)
+            .all()
+        )
+        for problem_id, attempts, accepted in my_rows:
+            my_problem_status[problem_id] = {"accepted": int(accepted or 0) > 0, "attempted": int(attempts or 0) > 0}
+
+    stats_query = Problem.query if current_user.is_admin else Problem.query.filter_by(is_visible=True)
+    problem_stats = {
+        "total": stats_query.count(),
+        "easy": stats_query.filter_by(difficulty="easy").count(),
+        "medium": stats_query.filter_by(difficulty="medium").count(),
+        "hard": stats_query.filter_by(difficulty="hard").count(),
+    }
+    return {
+        "filters": {"q": q, "difficulty": difficulty, "visibility": visibility},
+        "stats": problem_stats,
+        "problems": [
+            serialize_oj_problem_row(problem, problem_submission_stats.get(problem.id), my_problem_status.get(problem.id))
+            for problem in problems
+        ],
+        "count": len(problems),
+    }
+
+
+def serialize_oj_file(problem_file):
+    return {
+        "id": problem_file.id,
+        "filename": problem_file.filename,
+        "filePath": problem_file.file_path,
+        "fileSizeKb": round((problem_file.file_size or 0) / 1024, 1),
+    }
+
+
+def serialize_oj_task_summary(task):
+    if not task:
+        return None
+    meta = oj_submission_status_meta(task)
+    return {
+        "id": task.id,
+        "status": task.status,
+        "statusLabel": meta["label"],
+        "statusTone": meta["tone"],
+        "passedCount": task.passed_count,
+        "totalCount": task.total_count,
+        "totalScore": task.total_score,
+        "createdAt": task.created_at.strftime("%Y-%m-%d %H:%M") if task.created_at else "-",
+        "url": url_for("oj_submission_detail", task_id=task.id),
+    }
+
+
+def serialize_oj_problem_detail(problem, active_assignment=None):
+    sample_cases = [
+        {"input": case.input_data, "expectedOutput": case.expected_output, "score": case.score}
+        for case in problem.sample_cases
+    ]
+    hidden_case_count = len(problem.hidden_cases)
+    all_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.filename.asc()).all()
+    visible_files = all_files if current_user.is_admin else [problem_file for problem_file in all_files if not problem_file.is_testdata_file]
+    assignment_id = active_assignment.id if active_assignment else None
+    task_query = JudgeTask.query.filter_by(problem_id=problem.id, user_id=current_user.id, assignment_id=assignment_id)
+    my_latest_task = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).first()
+    submission_history = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(5).all()
+    statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
+    return {
+        "id": problem.id,
+        "uid": problem.uid_text,
+        "code": problem.problem_code,
+        "title": problem.title,
+        "slug": problem.slug,
+        "difficulty": problem.difficulty,
+        "visible": bool(problem.is_visible),
+        "timeLimitMs": problem.time_limit_ms,
+        "memoryLimitMb": problem.memory_limit_mb,
+        "source": problem.source or "",
+        "allowedLanguages": problem.allowed_languages_text,
+        "statementHtml": statement_html,
+        "statementHasSamplePairs": statement_has_sample_pairs,
+        "sampleCases": sample_cases,
+        "hiddenCaseCount": hidden_case_count,
+        "visibleFiles": [serialize_oj_file(problem_file) for problem_file in visible_files],
+        "latestTask": serialize_oj_task_summary(my_latest_task),
+        "submissionHistory": [serialize_oj_task_summary(task) for task in submission_history],
+        "canManage": bool(current_user.is_admin),
+        "activeAssignment": {"id": active_assignment.id, "title": active_assignment.title, "url": url_for("oj_assignment_detail", assignment_id=active_assignment.id)} if active_assignment else None,
+        "urls": {
+            "list": url_for("oj_problem_list"),
+            "detail": url_for("oj_problem_detail", slug=problem.slug, assignment_id=assignment_id),
+            "code": url_for("oj_problem_code", slug=problem.slug, assignment_id=assignment_id),
+            "submit": url_for("submit_oj_problem", slug=problem.slug, assignment_id=assignment_id),
+            "submissions": url_for("oj_submission_list", assignment_id=assignment_id),
+            "adminEdit": url_for("edit_oj_problem", problem_id=problem.id),
+        },
+    }
+
+
+def serialize_submission_row(task):
+    meta = oj_submission_status_meta(task)
+    return {
+        "id": task.id,
+        "language": task.language,
+        "status": task.status,
+        "statusLabel": meta["label"],
+        "statusTone": meta["tone"],
+        "totalScore": task.total_score,
+        "createdAt": task.created_at.strftime("%Y-%m-%d %H:%M") if task.created_at else "-",
+        "user": task.user.username if task.user else "未知用户",
+        "problem": {
+            "id": task.problem.id,
+            "title": task.problem.title,
+            "slug": task.problem.slug,
+            "code": task.problem.problem_code,
+            "url": url_for("oj_problem_detail", slug=task.problem.slug),
+        } if task.problem else None,
+        "url": url_for("oj_submission_detail", task_id=task.id),
+    }
+
+
+def build_oj_submission_list_payload(status_filter="", language_filter="", user_filter="", problem_filter="", problem_id_filter=None, assignment_id_filter=None):
+    query = JudgeTask.query.filter(JudgeTask.problem_id.isnot(None))
+    language_query = db.session.query(JudgeTask.language).filter(JudgeTask.problem_id.isnot(None))
+    if not current_user.is_admin:
+        query = query.filter_by(user_id=current_user.id)
+        language_query = language_query.filter(JudgeTask.user_id == current_user.id)
+
+    selected_assignment = None
+    if assignment_id_filter:
+        selected_assignment = OJAssignment.query.filter_by(id=assignment_id_filter).first()
+        if selected_assignment and selected_assignment.is_visible_to(current_user):
+            query = query.filter(JudgeTask.assignment_id == selected_assignment.id)
+            language_query = language_query.filter(JudgeTask.assignment_id == selected_assignment.id)
+        else:
+            selected_assignment = None
+            assignment_id_filter = None
+    else:
+        query = query.filter(JudgeTask.assignment_id.is_(None))
+        language_query = language_query.filter(JudgeTask.assignment_id.is_(None))
+
+    if status_filter in OJ_STATUS_META:
+        query = query.filter_by(status=status_filter)
+    if language_filter:
+        query = query.filter_by(language=language_filter)
+    if user_filter and current_user.is_admin:
+        like = f"%{user_filter}%"
+        user_clauses = [User.username.like(like), User.real_name.like(like)]
+        if user_filter.isdigit():
+            user_clauses.append(User.id == int(user_filter))
+        query = query.filter(JudgeTask.user.has(db.or_(*user_clauses)))
+
+    selected_problem = None
+    if problem_id_filter:
+        selected_problem = Problem.query.filter_by(id=problem_id_filter).first()
+        problem_visible_in_assignment = bool(selected_assignment and any(link.problem_id == problem_id_filter for link in selected_assignment.problem_links))
+        if selected_problem and (can_view_problem(selected_problem, current_user) or problem_visible_in_assignment):
+            query = query.filter_by(problem_id=problem_id_filter)
+        else:
+            selected_problem = None
+            problem_id_filter = None
+    elif problem_filter:
+        like = f"%{problem_filter}%"
+        query = query.filter(JudgeTask.problem.has(db.or_(Problem.problem_code.like(like), Problem.title.like(like), Problem.slug.like(like))))
+
+    available_languages = [
+        language
+        for (language,) in language_query.distinct().order_by(JudgeTask.language.asc()).all()
+        if language
+    ]
+    submissions = query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(100).all()
+    return {
+        "submissions": [serialize_submission_row(task) for task in submissions],
+        "availableLanguages": available_languages,
+        "filters": {
+            "status": status_filter,
+            "language": language_filter,
+            "user": user_filter if current_user.is_admin else "",
+            "problem": problem_filter,
+            "problemId": problem_id_filter,
+            "assignmentId": assignment_id_filter,
+        },
+        "selectedProblem": {"id": selected_problem.id, "code": selected_problem.problem_code, "title": selected_problem.title} if selected_problem else None,
+        "selectedAssignment": {"id": selected_assignment.id, "title": selected_assignment.title, "url": url_for("oj_assignment_detail", assignment_id=selected_assignment.id)} if selected_assignment else None,
+        "isAdmin": bool(current_user.is_admin),
+        "count": len(submissions),
+    }
+
+
+def serialize_submission_detail(task, results=None):
+    results = results if results is not None else task.results.order_by(JudgeTaskResult.case_index.asc()).all()
+    task_meta = oj_submission_status_meta(task, results)
+    failure_feedback = build_oj_failure_feedback(task, results)
+    can_view_details = bool(current_user.is_admin)
+    return {
+        "id": task.id,
+        "status": task.status,
+        "statusLabel": task_meta["label"],
+        "statusTone": task_meta["tone"],
+        "passedCount": task.passed_count,
+        "totalCount": task.total_count,
+        "totalScore": task.total_score,
+        "language": task.language,
+        "timeLimitMs": task.time_limit_ms,
+        "memoryLimitMb": task.memory_limit_mb,
+        "errorMessage": task.error_message,
+        "sourceCode": task.source_code,
+        "problem": {
+            "title": task.problem.title,
+            "slug": task.problem.slug,
+            "url": url_for("oj_problem_detail", slug=task.problem.slug),
+        } if task.problem else None,
+        "results": [
+            {
+                "caseIndex": result.case_index,
+                "status": result.status,
+                "meta": oj_case_status_meta(result.status),
+                "score": result.score,
+                "timeMs": result.time_ms,
+                "inputData": result.input_data if can_view_details else "",
+                "expectedOutput": result.expected_output if can_view_details else "",
+                "actualOutput": result.actual_output if can_view_details else "",
+                "stderrText": result.stderr_text if can_view_details else "",
+            }
+            for result in results
+        ],
+        "failureFeedback": failure_feedback,
+        "canViewCaseDetails": can_view_details,
+        "urls": {
+            "list": url_for("oj_submission_list"),
+            "detail": url_for("oj_submission_detail", task_id=task.id),
+            "detailJson": url_for("oj_submission_detail_json", task_id=task.id),
+            "status": url_for("oj_submission_status_api", task_id=task.id),
+        },
+    }
+
+
+def serialize_oj_assignment_task(task):
+    if not task:
+        return None
+    meta = oj_task_display_meta(task)
+    return {
+        "id": task.id,
+        "status": task.status,
+        "statusLabel": meta["label"],
+        "statusTone": meta.get("tone", oj_status_meta(task.status).get("tone", "neutral")),
+        "statusBadge": meta.get("badge", "badge-ghost"),
+        "totalScore": task.total_score,
+        "createdAt": task.created_at.strftime("%Y-%m-%d %H:%M") if task.created_at else "-",
+        "createdShort": task.created_at.strftime("%m-%d %H:%M") if task.created_at else "-",
+        "problemCode": task.problem.problem_code if task.problem else "-",
+        "url": url_for("oj_submission_detail", task_id=task.id),
+    }
+
+
+def serialize_oj_assignment_summary(assignment, latest_by_problem=None, accepted_problem_ids=None):
+    latest_by_problem = latest_by_problem or {}
+    accepted_problem_ids = accepted_problem_ids or set()
+    last_task = None
+    if latest_by_problem:
+        last_task = max(
+            latest_by_problem.values(),
+            key=lambda item: ((item.created_at or datetime.min), item.id),
+        )
+    return {
+        "id": assignment.id,
+        "title": assignment.title,
+        "targetText": assignment.target_text,
+        "isActive": bool(assignment.is_active),
+        "extensionDays": assignment.extension_days,
+        "problemCount": assignment.problem_count,
+        "acceptedCount": len(accepted_problem_ids),
+        "attemptedCount": len(latest_by_problem),
+        "startAt": assignment.start_at.strftime("%Y-%m-%d %H:%M") if assignment.start_at else "-",
+        "endAt": assignment.end_at.strftime("%Y-%m-%d %H:%M") if assignment.end_at else "-",
+        "endShort": assignment.end_at.strftime("%m-%d %H:%M") if assignment.end_at else "",
+        "lastTask": serialize_oj_assignment_task(last_task),
+        "urls": {
+            "detail": url_for("oj_assignment_detail", assignment_id=assignment.id),
+            "detailJson": url_for("oj_assignment_detail_json", assignment_id=assignment.id),
+            "scoreboard": url_for("oj_assignment_scoreboard", assignment_id=assignment.id),
+            "scoreboardJson": url_for("oj_assignment_scoreboard_json", assignment_id=assignment.id),
+            "submissions": url_for("oj_submission_list", assignment_id=assignment.id),
+            "edit": url_for("edit_oj_assignment", assignment_id=assignment.id) if current_user.is_admin else None,
+        },
+    }
+
+
+def build_oj_assignment_list_payload():
+    assignments = get_visible_oj_assignments_for_user(current_user)
+    rows = []
+    for assignment in assignments:
+        latest_by_problem, accepted_problem_ids = assignment_problem_latest_status(assignment, current_user)
+        rows.append(serialize_oj_assignment_summary(assignment, latest_by_problem, accepted_problem_ids))
+    return {
+        "assignments": rows,
+        "count": len(rows),
+        "isAdmin": bool(current_user.is_admin),
+    }
+
+
+def build_oj_assignment_detail_payload(assignment):
+    latest_by_problem, accepted_problem_ids = assignment_problem_latest_status(assignment, current_user)
+    detail_rows = []
+    problem_ids = [link.problem_id for link in assignment.problem_links]
+    total_submissions = (
+        JudgeTask.query
+        .filter(
+            JudgeTask.user_id == current_user.id,
+            JudgeTask.problem_id.in_(problem_ids),
+        )
+        .count()
+    ) if problem_ids else 0
+    last_submission = None
+
+    for link in assignment.problem_links:
+        task = latest_by_problem.get(link.problem_id)
+        if task and (not last_submission or ((task.created_at or datetime.min), task.id) > ((last_submission.created_at or datetime.min), last_submission.id)):
+            last_submission = task
+        detail_rows.append({
+            "problem": {
+                "id": link.problem.id,
+                "code": link.problem.problem_code,
+                "title": link.problem.title,
+                "slug": link.problem.slug,
+                "url": url_for("oj_problem_detail", slug=link.problem.slug, assignment_id=assignment.id),
+            },
+            "task": serialize_oj_assignment_task(task),
+            "accepted": link.problem_id in accepted_problem_ids,
+        })
+
+    assignment_submissions = (
+        JudgeTask.query
+        .filter(
+            JudgeTask.user_id == current_user.id,
+            JudgeTask.assignment_id == assignment.id,
+            JudgeTask.problem_id.in_(problem_ids),
+        )
+        .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
+        .limit(8)
+        .all()
+    ) if problem_ids else []
+
+    description_html = markdown(assignment.description_md or "暂无作业介绍。")
+    score_summary = {
+        "acceptedCount": len(accepted_problem_ids),
+        "attemptedCount": len(latest_by_problem),
+        "problemCount": assignment.problem_count,
+        "completionPercent": round((len(accepted_problem_ids) / assignment.problem_count) * 100, 1) if assignment.problem_count else 0,
+        "totalSubmissions": total_submissions,
+    }
+    return {
+        "assignment": serialize_oj_assignment_summary(assignment, latest_by_problem, accepted_problem_ids),
+        "descriptionHtml": description_html,
+        "rows": detail_rows,
+        "recentSubmissions": [serialize_oj_assignment_task(task) for task in assignment_submissions],
+        "scoreSummary": score_summary,
+        "lastSubmission": serialize_oj_assignment_task(last_submission),
+        "isAdmin": bool(current_user.is_admin),
+    }
+
+
+def build_oj_assignment_scoreboard_payload(assignment):
+    participants = get_oj_assignment_participants(assignment)
+    problem_links = list(assignment.problem_links)
+    problem_ids = [link.problem_id for link in problem_links]
+    participant_ids = [user.id for user in participants]
+
+    tasks = []
+    if problem_ids and participant_ids:
+        tasks = (
+            JudgeTask.query
+            .filter(
+                JudgeTask.assignment_id == assignment.id,
+                JudgeTask.user_id.in_(participant_ids),
+                JudgeTask.problem_id.in_(problem_ids),
+            )
+            .order_by(JudgeTask.user_id.asc(), JudgeTask.problem_id.asc(), JudgeTask.created_at.desc(), JudgeTask.id.desc())
+            .all()
+        )
+
+    latest_by_pair = {}
+    accepted_pairs = set()
+    for task in tasks:
+        if task.status == 'accepted':
+            accepted_pairs.add((task.user_id, task.problem_id))
+        latest_by_pair.setdefault((task.user_id, task.problem_id), task)
+
+    rows = []
+    for user in participants:
+        accepted_count = 0
+        submission_count = 0
+        cells = []
+        for link in problem_links:
+            pair_task = latest_by_pair.get((user.id, link.problem_id))
+            if pair_task:
+                submission_count += 1
+            accepted = (user.id, link.problem_id) in accepted_pairs
+            if accepted:
+                accepted_count += 1
+            cells.append({
+                "problem": {
+                    "id": link.problem.id,
+                    "code": link.problem.problem_code,
+                    "title": link.problem.title,
+                    "slug": link.problem.slug,
+                    "url": url_for("oj_problem_detail", slug=link.problem.slug, assignment_id=assignment.id),
+                },
+                "task": serialize_oj_assignment_task(pair_task),
+                "accepted": accepted,
+            })
+
+        rows.append({
+            "user": {
+                "id": user.id,
+                "name": user.real_name or user.username,
+                "username": user.username,
+                "className": user.student_class.name if user.student_class else "未分班",
+            },
+            "acceptedCount": accepted_count,
+            "submissionCount": submission_count,
+            "score": accepted_count * 100,
+            "cells": cells,
+        })
+
+    rows.sort(
+        key=lambda item: (
+            -item["acceptedCount"],
+            -item["score"],
+            -item["submissionCount"],
+            item["user"]["name"],
+        )
+    )
+
+    last_score = None
+    current_rank = 0
+    for index, row in enumerate(rows, start=1):
+        score_key = (row["acceptedCount"], row["score"], row["submissionCount"])
+        if score_key != last_score:
+            current_rank = index
+            last_score = score_key
+        row["rank"] = current_rank
+
+    return {
+        "assignment": serialize_oj_assignment_summary(assignment),
+        "problemLinks": [
+            {
+                "id": link.id,
+                "problem": {
+                    "id": link.problem.id,
+                    "code": link.problem.problem_code,
+                    "title": link.problem.title,
+                    "slug": link.problem.slug,
+                    "url": url_for("oj_problem_detail", slug=link.problem.slug, assignment_id=assignment.id),
+                },
+            }
+            for link in problem_links
+        ],
+        "rows": rows,
+        "stats": {
+            "participantCount": len(rows),
+            "problemCount": len(problem_links),
+            "startAt": assignment.start_at.strftime("%m-%d %H:%M") if assignment.start_at else "-",
+            "endAt": assignment.end_at.strftime("%m-%d %H:%M") if assignment.end_at else "-",
+        },
+        "isAdmin": bool(current_user.is_admin),
+    }
+
+
+app.jinja_env.globals["vite_asset"] = vite_asset
+app.jinja_env.globals["vite_css_assets"] = vite_css_assets
 
 app.jinja_env.filters["is_image_icon"] = is_image_icon
 app.jinja_env.filters["badge_icon_url"] = badge_icon_url
@@ -8721,101 +9425,37 @@ def oj_problem_list():
     q = request.args.get('q', '').strip()
     difficulty = request.args.get('difficulty', '').strip().lower()
     visibility = request.args.get('visibility', 'visible').strip().lower()
+    payload = build_oj_problem_list_payload(q, difficulty, visibility)
+    return render_template(
+        'oj/oj_shell.html',
+        page_title='OJ 题库',
+        shell_payload={
+            "initialView": "problems",
+            "problemList": payload,
+            "urls": {
+                "problemList": url_for("oj_problem_list"),
+                "problemListJson": url_for("oj_problem_list_json"),
+                "submissionList": url_for("oj_submission_list"),
+                "submissionListJson": url_for("oj_submission_list_json"),
+                "assignmentList": url_for("oj_assignment_list"),
+                "assignmentListJson": url_for("oj_assignment_list_json"),
+                "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
+                "createProblem": url_for("create_oj_problem") if current_user.is_admin else None,
+                "createAssignment": url_for("create_oj_assignment") if current_user.is_admin else None,
+            },
+            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+        },
+    )
 
-    query = Problem.query
-    if not current_user.is_admin:
-        query = query.filter_by(is_visible=True)
-    elif visibility == 'hidden':
-        query = query.filter_by(is_visible=False)
-    elif visibility == 'all':
-        pass
-    else:
-        query = query.filter_by(is_visible=True)
 
-    if q:
-        like = f"%{q}%"
-        query = query.filter(db.or_(Problem.problem_code.like(like), Problem.title.like(like), Problem.slug.like(like), Problem.source.like(like)))
-
-    if difficulty in {'easy', 'medium', 'hard'}:
-        query = query.filter_by(difficulty=difficulty)
-
-    problems = query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
-    problem_ids = [problem.id for problem in problems]
-    problem_submission_stats = {
-        problem_id: {'accepted': 0, 'attempts': 0}
-        for problem_id in problem_ids
-    }
-    if problem_ids:
-        rows = (
-            db.session.query(
-                JudgeTask.problem_id,
-                db.func.count(JudgeTask.id).label('attempts'),
-                db.func.sum(case((JudgeTask.status == 'accepted', 1), else_=0)).label('accepted'),
-            )
-            .filter(
-                JudgeTask.problem_id.in_(problem_ids),
-                JudgeTask.assignment_id.is_(None),
-            )
-            .group_by(JudgeTask.problem_id)
-            .all()
-        )
-        for problem_id, attempts, accepted in rows:
-            problem_submission_stats[problem_id] = {
-                'accepted': int(accepted or 0),
-                'attempts': int(attempts or 0),
-            }
-
-    my_problem_status = {
-        problem_id: {'accepted': False, 'attempted': False}
-        for problem_id in problem_ids
-    }
-    if problem_ids:
-        my_rows = (
-            db.session.query(
-                JudgeTask.problem_id,
-                db.func.count(JudgeTask.id).label('attempts'),
-                db.func.sum(case((JudgeTask.status == 'accepted', 1), else_=0)).label('accepted'),
-            )
-            .filter(
-                JudgeTask.problem_id.in_(problem_ids),
-                JudgeTask.user_id == current_user.id,
-                JudgeTask.assignment_id.is_(None),
-            )
-            .group_by(JudgeTask.problem_id)
-            .all()
-        )
-        for problem_id, attempts, accepted in my_rows:
-            my_problem_status[problem_id] = {
-                'accepted': int(accepted or 0) > 0,
-                'attempted': int(attempts or 0) > 0,
-            }
-
-    stats_query = Problem.query if current_user.is_admin else Problem.query.filter_by(is_visible=True)
-    problem_stats = {
-        'total': stats_query.count(),
-        'easy': stats_query.filter_by(difficulty='easy').count(),
-        'medium': stats_query.filter_by(difficulty='medium').count(),
-        'hard': stats_query.filter_by(difficulty='hard').count(),
-    }
-
-    template_context = {
-        'problems': problems,
-        'q': q,
-        'difficulty': difficulty,
-        'visibility': visibility,
-        'problem_stats': problem_stats,
-        'problem_submission_stats': problem_submission_stats,
-        'my_problem_status': my_problem_status,
-    }
-
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({
-            'ok': True,
-            'html': render_template('oj/_problem_table.html', **template_context),
-            'count': len(problems),
-        })
-
-    return render_template('oj/problem_list.html', **template_context)
+@app.route('/oj/problems.json')
+@login_required
+def oj_problem_list_json():
+    ensure_oj_authoring_schema()
+    q = request.args.get('q', '').strip()
+    difficulty = request.args.get('difficulty', '').strip().lower()
+    visibility = request.args.get('visibility', 'visible').strip().lower()
+    return jsonify({"ok": True, "problemList": build_oj_problem_list_payload(q, difficulty, visibility)})
 
 
 @app.route('/oj/problems/<slug>')
@@ -8827,36 +9467,35 @@ def oj_problem_detail(slug):
     if not can_view_problem(problem, current_user) and not active_assignment:
         abort(404)
 
-    sample_cases = problem.sample_cases
-    hidden_case_count = len(problem.hidden_cases)
-    all_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.filename.asc()).all()
-    task_query = JudgeTask.query.filter_by(
-        problem_id=problem.id,
-        user_id=current_user.id,
-        assignment_id=active_assignment.id if active_assignment else None,
-    )
-    my_latest_task = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).first()
-    submission_history = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(5).all()
-
-    if current_user.is_admin:
-        visible_files = all_files
-    else:
-        visible_files = [problem_file for problem_file in all_files if not problem_file.is_testdata_file]
-
-    statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
-
     return render_template(
-        'oj/problem_detail.html',
-        problem=problem,
-        sample_cases=sample_cases,
-        hidden_case_count=hidden_case_count,
-        visible_files=visible_files,
-        statement_html=statement_html,
-        statement_has_sample_pairs=statement_has_sample_pairs,
-        my_latest_task=my_latest_task,
-        submission_history=submission_history,
-        active_assignment=active_assignment,
+        'oj/oj_shell.html',
+        page_title=f'{problem.title} - OJ 题库',
+        shell_payload={
+            "initialView": "problemDetail",
+            "problemDetail": serialize_oj_problem_detail(problem, active_assignment),
+            "urls": {
+                "problemList": url_for("oj_problem_list"),
+                "problemListJson": url_for("oj_problem_list_json"),
+                "submissionList": url_for("oj_submission_list"),
+                "submissionListJson": url_for("oj_submission_list_json"),
+                "assignmentList": url_for("oj_assignment_list"),
+                "assignmentListJson": url_for("oj_assignment_list_json"),
+                "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
+            },
+            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+        },
     )
+
+
+@app.route('/oj/problems/<slug>.json')
+@login_required
+def oj_problem_detail_json(slug):
+    ensure_oj_authoring_schema()
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user) and not active_assignment:
+        abort(404)
+    return jsonify({"ok": True, "problemDetail": serialize_oj_problem_detail(problem, active_assignment)})
 
 
 @app.route('/oj/problems/<slug>/code')
@@ -9127,95 +9766,47 @@ def submit_oj_problem(slug):
 @login_required
 def oj_submission_list():
     ensure_oj_authoring_schema()
-
-    query = JudgeTask.query.filter(JudgeTask.problem_id.isnot(None))
-    language_query = db.session.query(JudgeTask.language).filter(JudgeTask.problem_id.isnot(None))
-    if not current_user.is_admin:
-        query = query.filter_by(user_id=current_user.id)
-        language_query = language_query.filter(JudgeTask.user_id == current_user.id)
-
-    available_languages = [
-        language
-        for (language,) in language_query.distinct().order_by(JudgeTask.language.asc()).all()
-        if language
-    ]
-
     status_filter = request.args.get('status', '').strip().lower()
-    if status_filter in OJ_STATUS_META:
-        query = query.filter_by(status=status_filter)
-
     language_filter = request.args.get('language', '').strip()
-    if language_filter:
-        query = query.filter_by(language=language_filter)
-
     assignment_id_filter = request.args.get('assignment_id', type=int)
-    selected_assignment = None
-    if assignment_id_filter:
-        selected_assignment = OJAssignment.query.filter_by(id=assignment_id_filter).first()
-        if selected_assignment and selected_assignment.is_visible_to(current_user):
-            query = query.filter(JudgeTask.assignment_id == selected_assignment.id)
-            language_query = language_query.filter(JudgeTask.assignment_id == selected_assignment.id)
-        else:
-            selected_assignment = None
-            assignment_id_filter = None
-    else:
-        query = query.filter(JudgeTask.assignment_id.is_(None))
-        language_query = language_query.filter(JudgeTask.assignment_id.is_(None))
-
     user_filter = request.args.get('user', '').strip() if current_user.is_admin else ''
-    if user_filter:
-        like = f"%{user_filter}%"
-        user_clauses = [
-            User.username.like(like),
-            User.real_name.like(like),
-        ]
-        if user_filter.isdigit():
-            user_clauses.append(User.id == int(user_filter))
-        query = query.filter(JudgeTask.user.has(db.or_(*user_clauses)))
-
     problem_filter = request.args.get('problem', '').strip()
     problem_id_filter = request.args.get('problem_id', type=int)
-    selected_problem = None
-    if problem_id_filter:
-        selected_problem = Problem.query.filter_by(id=problem_id_filter).first()
-        problem_visible_in_assignment = bool(
-            selected_assignment and any(link.problem_id == problem_id_filter for link in selected_assignment.problem_links)
-        )
-        if selected_problem and (can_view_problem(selected_problem, current_user) or problem_visible_in_assignment):
-            query = query.filter_by(problem_id=problem_id_filter)
-        else:
-            selected_problem = None
-            problem_id_filter = None
-    elif problem_filter:
-        like = f"%{problem_filter}%"
-        query = query.filter(JudgeTask.problem.has(db.or_(
-            Problem.problem_code.like(like),
-            Problem.title.like(like),
-            Problem.slug.like(like),
-        )))
+    payload = build_oj_submission_list_payload(status_filter, language_filter, user_filter, problem_filter, problem_id_filter, assignment_id_filter)
+    return render_template(
+        'oj/oj_shell.html',
+        page_title='OJ 提交记录',
+        shell_payload={
+            "initialView": "submissions",
+            "submissionList": payload,
+            "urls": {
+                "problemList": url_for("oj_problem_list"),
+                "problemListJson": url_for("oj_problem_list_json"),
+                "submissionList": url_for("oj_submission_list"),
+                "submissionListJson": url_for("oj_submission_list_json"),
+                "assignmentList": url_for("oj_assignment_list"),
+                "assignmentListJson": url_for("oj_assignment_list_json"),
+            },
+            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+        },
+    )
 
-    submissions = query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(100).all()
-    template_context = {
-        'submissions': submissions,
-        'status_filter': status_filter,
-        'language_filter': language_filter,
-        'user_filter': user_filter,
-        'problem_filter': problem_filter,
-        'problem_id_filter': problem_id_filter,
-        'selected_problem': selected_problem,
-        'assignment_id_filter': assignment_id_filter,
-        'selected_assignment': selected_assignment,
-        'available_languages': available_languages,
-    }
 
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({
-            'ok': True,
-            'html': render_template('oj/_submission_table.html', **template_context),
-            'count': len(submissions),
-        })
-
-    return render_template('oj/submission_list.html', **template_context)
+@app.route('/oj/submissions.json')
+@login_required
+def oj_submission_list_json():
+    ensure_oj_authoring_schema()
+    return jsonify({
+        "ok": True,
+        "submissionList": build_oj_submission_list_payload(
+            request.args.get('status', '').strip().lower(),
+            request.args.get('language', '').strip(),
+            request.args.get('user', '').strip() if current_user.is_admin else '',
+            request.args.get('problem', '').strip(),
+            request.args.get('problem_id', type=int),
+            request.args.get('assignment_id', type=int),
+        ),
+    })
 
 
 @app.route('/oj/submissions/<int:task_id>')
@@ -9226,15 +9817,32 @@ def oj_submission_detail(task_id):
     if task.user_id == current_user.id and task.status in OJ_FINAL_STATUSES:
         check_and_award_badges(current_user)
     results = task.results.order_by(JudgeTaskResult.case_index.asc()).all()
-    failure_feedback = build_oj_failure_feedback(task, results)
     return render_template(
-        'oj/submission_detail.html',
-        task=task,
-        results=results,
-        failure_feedback=failure_feedback,
-        task_meta=oj_submission_status_meta(task, results),
-        can_view_case_details=bool(current_user.is_admin),
+        'oj/oj_shell.html',
+        page_title=f'提交 #{task.id} - OJ',
+        shell_payload={
+            "initialView": "submissionDetail",
+            "submissionDetail": serialize_submission_detail(task, results),
+            "urls": {
+                "problemList": url_for("oj_problem_list"),
+                "problemListJson": url_for("oj_problem_list_json"),
+                "submissionList": url_for("oj_submission_list"),
+                "submissionListJson": url_for("oj_submission_list_json"),
+                "assignmentList": url_for("oj_assignment_list"),
+                "assignmentListJson": url_for("oj_assignment_list_json"),
+            },
+            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+        },
     )
+
+
+@app.route('/oj/submissions/<int:task_id>.json')
+@login_required
+def oj_submission_detail_json(task_id):
+    ensure_oj_authoring_schema()
+    task = get_oj_judge_task_or_404(task_id)
+    results = task.results.order_by(JudgeTaskResult.case_index.asc()).all()
+    return jsonify({"ok": True, "submissionDetail": serialize_submission_detail(task, results)})
 
 
 @app.route('/api/oj/submissions/<int:task_id>')
@@ -9279,7 +9887,40 @@ def manage_oj_problems():
         if created_tables:
             flash('OJ 题库数据表已自动修复，请继续操作。', 'success')
         problems = Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
-    return render_template('admin/manage_oj_problems.html', problems=problems)
+    return render_template(
+        'admin/manage_oj_problems.html',
+        problems=problems,
+        problems_json=[serialize_admin_problem(problem) for problem in problems],
+    )
+
+
+@app.route('/admin/oj/problems.json', methods=['GET'])
+@login_required
+def manage_oj_problems_json():
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problems = Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
+    return jsonify({
+        "ok": True,
+        "problems": [serialize_admin_problem(problem) for problem in problems],
+        "count": len(problems),
+    })
+
+
+@app.route('/admin/oj/problems/<int:problem_id>.json', methods=['GET'])
+@login_required
+def admin_oj_problem_json(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    return jsonify({
+        "ok": True,
+        "problem": serialize_problem_edit_workspace(problem),
+    })
 
 
 @app.route('/admin/oj/problems/new', methods=['GET', 'POST'])
@@ -9433,12 +10074,16 @@ def edit_oj_problem(problem_id):
         slug = request.form.get('slug', '').strip()
 
         if not title:
+            if is_ajax_request():
+                return jsonify({"ok": False, "message": "题目标题不能为空"}), 400
             flash('题目标题不能为空', 'error')
             return redirect(url_for('edit_oj_problem', problem_id=problem.id))
 
         try:
             problem.problem_code = validate_problem_code(raw_problem_code, problem_id=problem.id)
         except ValueError as exc:
+            if is_ajax_request():
+                return jsonify({"ok": False, "message": str(exc)}), 400
             flash(str(exc), 'error')
             return redirect(url_for('edit_oj_problem', problem_id=problem.id))
 
@@ -9461,6 +10106,13 @@ def edit_oj_problem(problem_id):
         problem.is_visible = request.form.get('is_visible') == '1'
 
         db.session.commit()
+        if is_ajax_request():
+            return jsonify({
+                "ok": True,
+                "message": f'题目《{problem.title}》已更新。',
+                "problem": serialize_problem_edit_workspace(problem),
+                "summary": serialize_admin_problem(problem),
+            })
         flash(f'题目《{problem.title}》已更新。', 'success')
         return redirect(url_for('edit_oj_problem', problem_id=problem.id))
 
@@ -9468,11 +10120,20 @@ def edit_oj_problem(problem_id):
     data_file_count = sum(1 for problem_file in problem_files if problem_file.is_testdata_file)
     asset_file_count = sum(1 for problem_file in problem_files if not problem_file.is_testdata_file)
     return render_template(
-        'admin/edit_oj_problem.html',
-        problem=problem,
-        data_file_count=data_file_count,
-        asset_file_count=asset_file_count,
-        next_case_number=next_problem_case_number(problem),
+        'admin/oj_admin_shell.html',
+        page_title=f'编辑 OJ 题目 - {problem.title}',
+        shell_payload={
+            "initialView": "edit",
+            "currentProblemId": problem.id,
+            "problemsUrl": url_for('manage_oj_problems_json'),
+            "problem": serialize_problem_edit_workspace(problem),
+            "problemUrl": url_for('admin_oj_problem_json', problem_id=problem.id),
+            "urls": {
+                "adminList": url_for('manage_oj_problems'),
+                "publicList": url_for('oj_problem_list'),
+                "createProblem": url_for('create_oj_problem'),
+            },
+        },
     )
 
 
@@ -9490,8 +10151,23 @@ def manage_oj_problem_files(problem_id):
     return render_template(
         'admin/manage_oj_problem_files.html',
         problem=problem,
+        workspace_payload=serialize_problem_file_workspace(problem),
         **build_problem_file_workspace_context(problem),
     )
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/files.json')
+@login_required
+def manage_oj_problem_files_json(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    return jsonify({
+        "ok": True,
+        "workspace": serialize_problem_file_workspace(problem),
+    })
 
 
 @app.route('/admin/oj/problems/<int:problem_id>/files/text/create', methods=['POST'])
@@ -9744,6 +10420,11 @@ def delete_oj_problem(problem_id):
         remove_problem_asset_file(problem_file.file_path)
     db.session.delete(problem)
     db.session.commit()
+    if is_ajax_request():
+        return jsonify({
+            "ok": True,
+            "message": f'OJ 题目《{title}》已删除。',
+        })
     flash(f'OJ 题目《{title}》已删除。', 'success')
     return redirect(url_for('manage_oj_problems'))
 
@@ -9752,26 +10433,32 @@ def delete_oj_problem(problem_id):
 @login_required
 def oj_assignment_list():
     ensure_oj_authoring_schema()
-    assignments = get_visible_oj_assignments_for_user(current_user)
+    return render_template(
+        'oj/oj_shell.html',
+        page_title='OJ 作业',
+        shell_payload={
+            "initialView": "assignments",
+            "assignmentList": build_oj_assignment_list_payload(),
+            "urls": {
+                "problemList": url_for("oj_problem_list"),
+                "problemListJson": url_for("oj_problem_list_json"),
+                "submissionList": url_for("oj_submission_list"),
+                "submissionListJson": url_for("oj_submission_list_json"),
+                "assignmentList": url_for("oj_assignment_list"),
+                "assignmentListJson": url_for("oj_assignment_list_json"),
+                "createAssignment": url_for("create_oj_assignment") if current_user.is_admin else None,
+                "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
+            },
+            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+        },
+    )
 
-    assignment_data = []
-    for assignment in assignments:
-        latest_by_problem, accepted_problem_ids = assignment_problem_latest_status(assignment, current_user)
-        last_task = None
-        if latest_by_problem:
-            last_task = max(
-                latest_by_problem.values(),
-                key=lambda item: ((item.created_at or datetime.min), item.id),
-            )
-        assignment_data.append({
-            'assignment': assignment,
-            'accepted_count': len(accepted_problem_ids),
-            'problem_count': assignment.problem_count,
-            'attempted_count': len(latest_by_problem),
-            'last_task': last_task,
-        })
 
-    return render_template('oj/assignment_list.html', assignments=assignment_data)
+@app.route('/oj/assignments.json')
+@login_required
+def oj_assignment_list_json():
+    ensure_oj_authoring_schema()
+    return jsonify({"ok": True, "assignmentList": build_oj_assignment_list_payload()})
 
 
 @app.route('/oj/assignments/<int:assignment_id>')
@@ -9779,62 +10466,32 @@ def oj_assignment_list():
 def oj_assignment_detail(assignment_id):
     ensure_oj_authoring_schema()
     assignment = get_oj_assignment_or_404_visible(assignment_id)
-
-    latest_by_problem, accepted_problem_ids = assignment_problem_latest_status(assignment, current_user)
-    detail_rows = []
-    problem_ids = [link.problem_id for link in assignment.problem_links]
-    total_submissions = (
-        JudgeTask.query
-        .filter(
-            JudgeTask.user_id == current_user.id,
-            JudgeTask.problem_id.in_(problem_ids),
-        )
-        .count()
-    ) if problem_ids else 0
-    last_submission = None
-
-    for link in assignment.problem_links:
-        task = latest_by_problem.get(link.problem_id)
-        if task and (not last_submission or ((task.created_at or datetime.min), task.id) > ((last_submission.created_at or datetime.min), last_submission.id)):
-            last_submission = task
-        detail_rows.append({
-            'link': link,
-            'problem': link.problem,
-            'task': task,
-            'accepted': link.problem_id in accepted_problem_ids,
-            'display_meta': oj_task_display_meta(task),
-        })
-
-    assignment_submissions = (
-        JudgeTask.query
-        .filter(
-            JudgeTask.user_id == current_user.id,
-            JudgeTask.assignment_id == assignment.id,
-            JudgeTask.problem_id.in_(problem_ids),
-        )
-        .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
-        .limit(8)
-        .all()
-    ) if problem_ids else []
-
-    description_html = markdown(assignment.description_md or "暂无作业介绍。")
-    score_summary = {
-        'accepted_count': len(accepted_problem_ids),
-        'attempted_count': len(latest_by_problem),
-        'problem_count': assignment.problem_count,
-        'completion_percent': round((len(accepted_problem_ids) / assignment.problem_count) * 100, 1) if assignment.problem_count else 0,
-        'total_submissions': total_submissions,
-    }
-
     return render_template(
-        'oj/assignment_detail.html',
-        assignment=assignment,
-        description_html=description_html,
-        detail_rows=detail_rows,
-        assignment_submissions=assignment_submissions,
-        score_summary=score_summary,
-        last_submission=last_submission,
+        'oj/oj_shell.html',
+        page_title=f'{assignment.title} - OJ 作业',
+        shell_payload={
+            "initialView": "assignmentDetail",
+            "assignmentDetail": build_oj_assignment_detail_payload(assignment),
+            "urls": {
+                "problemList": url_for("oj_problem_list"),
+                "problemListJson": url_for("oj_problem_list_json"),
+                "submissionList": url_for("oj_submission_list"),
+                "submissionListJson": url_for("oj_submission_list_json"),
+                "assignmentList": url_for("oj_assignment_list"),
+                "assignmentListJson": url_for("oj_assignment_list_json"),
+                "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
+            },
+            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+        },
     )
+
+
+@app.route('/oj/assignments/<int:assignment_id>.json')
+@login_required
+def oj_assignment_detail_json(assignment_id):
+    ensure_oj_authoring_schema()
+    assignment = get_oj_assignment_or_404_visible(assignment_id)
+    return jsonify({"ok": True, "assignmentDetail": build_oj_assignment_detail_payload(assignment)})
 
 
 @app.route('/oj/assignments/<int:assignment_id>/scoreboard')
@@ -9842,83 +10499,32 @@ def oj_assignment_detail(assignment_id):
 def oj_assignment_scoreboard(assignment_id):
     ensure_oj_authoring_schema()
     assignment = get_oj_assignment_or_404_visible(assignment_id)
-    participants = get_oj_assignment_participants(assignment)
-    problem_links = list(assignment.problem_links)
-    problem_ids = [link.problem_id for link in problem_links]
-    participant_ids = [user.id for user in participants]
-
-    tasks = []
-    if problem_ids and participant_ids:
-        tasks = (
-            JudgeTask.query
-            .filter(
-                JudgeTask.assignment_id == assignment.id,
-                JudgeTask.user_id.in_(participant_ids),
-                JudgeTask.problem_id.in_(problem_ids),
-            )
-            .order_by(JudgeTask.user_id.asc(), JudgeTask.problem_id.asc(), JudgeTask.created_at.desc(), JudgeTask.id.desc())
-            .all()
-        )
-
-    latest_by_pair = {}
-    accepted_pairs = set()
-    for task in tasks:
-        if task.status == 'accepted':
-            accepted_pairs.add((task.user_id, task.problem_id))
-        latest_by_pair.setdefault((task.user_id, task.problem_id), task)
-
-    rows = []
-    for user in participants:
-        accepted_count = 0
-        submission_count = 0
-        cells = []
-        for link in problem_links:
-            pair_task = latest_by_pair.get((user.id, link.problem_id))
-            if pair_task:
-                submission_count += 1
-            meta = oj_task_display_meta(pair_task)
-            accepted = (user.id, link.problem_id) in accepted_pairs
-            if accepted:
-                accepted_count += 1
-            cells.append({
-                'problem': link.problem,
-                'task': pair_task,
-                'meta': meta,
-                'accepted': accepted,
-            })
-
-        rows.append({
-            'user': user,
-            'accepted_count': accepted_count,
-            'submission_count': submission_count,
-            'score': accepted_count * 100,
-            'cells': cells,
-        })
-
-    rows.sort(
-        key=lambda item: (
-            -item['accepted_count'],
-            -item['score'],
-            -item['submission_count'],
-            item['user'].real_name or item['user'].username,
-        )
-    )
-
-    last_score = None
-    current_rank = 0
-    for index, row in enumerate(rows, start=1):
-        score_key = (row['accepted_count'], row['score'], row['submission_count'])
-        if score_key != last_score:
-            current_rank = index
-            last_score = score_key
-        row['rank'] = current_rank
-
     return render_template(
-        'oj/assignment_scoreboard.html',
-        assignment=assignment,
-        problem_links=problem_links,
-        rows=rows,
+        'oj/oj_shell.html',
+        page_title=f'{assignment.title} - 作业成绩表',
+        shell_payload={
+            "initialView": "assignmentScoreboard",
+            "assignmentScoreboard": build_oj_assignment_scoreboard_payload(assignment),
+            "urls": {
+                "problemList": url_for("oj_problem_list"),
+                "problemListJson": url_for("oj_problem_list_json"),
+                "submissionList": url_for("oj_submission_list"),
+                "submissionListJson": url_for("oj_submission_list_json"),
+                "assignmentList": url_for("oj_assignment_list"),
+                "assignmentListJson": url_for("oj_assignment_list_json"),
+                "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
+            },
+            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+        },
     )
+
+
+@app.route('/oj/assignments/<int:assignment_id>/scoreboard.json')
+@login_required
+def oj_assignment_scoreboard_json(assignment_id):
+    ensure_oj_authoring_schema()
+    assignment = get_oj_assignment_or_404_visible(assignment_id)
+    return jsonify({"ok": True, "assignmentScoreboard": build_oj_assignment_scoreboard_payload(assignment)})
 
 
 @app.route('/admin/oj/assignments/new', methods=['GET', 'POST'])

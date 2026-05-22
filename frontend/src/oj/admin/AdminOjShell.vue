@@ -2,6 +2,8 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { requestJson } from './api.js';
 import AdminProblemManager from './AdminProblemManager.vue';
+import AssignmentFormWorkspace from './AssignmentFormWorkspace.vue';
+import CreateProblemWorkspace from './CreateProblemWorkspace.vue';
 import EditProblemWorkspace from './EditProblemWorkspace.vue';
 import ProblemFilesWorkspace from './ProblemFilesWorkspace.vue';
 
@@ -30,6 +32,14 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  createDraft: {
+    type: Object,
+    default: null,
+  },
+  assignmentForm: {
+    type: Object,
+    default: null,
+  },
   urls: {
     type: Object,
     default: () => ({}),
@@ -40,24 +50,32 @@ const view = ref(props.initialView);
 const currentProblemId = ref(props.currentProblemId);
 const currentProblem = ref(props.problem);
 const currentWorkspace = ref(props.workspace);
+const currentCreateDraft = ref(props.createDraft);
+const currentAssignmentForm = ref(props.assignmentForm);
 const loading = ref(false);
 const notice = ref(null);
 
 const activeTitle = computed(() => {
+  if (view.value === 'createProblem') return '新建 OJ 题目';
   if (view.value === 'edit') return currentProblem.value?.title || '编辑题目';
   if (view.value === 'files') return currentWorkspace.value?.problem?.title || currentProblem.value?.title || '文件管理';
+  if (view.value === 'assignmentForm') return currentAssignmentForm.value?.assignment?.title || '新建 OJ 作业';
   return '题库管理中心';
 });
 
 const activeEyebrow = computed(() => {
+  if (view.value === 'createProblem') return 'Problem Create';
   if (view.value === 'edit') return 'Problem Workbench';
   if (view.value === 'files') return 'Problem Files';
+  if (view.value === 'assignmentForm') return 'OJ Assignment';
   return 'OJ Authoring Layer';
 });
 
 const activeDescription = computed(() => {
+  if (view.value === 'createProblem') return '先把题目骨架和 Markdown 题面写好，再切进编辑题目 / 文件管理工作流。';
   if (view.value === 'edit') return '这里专注维护题目的基础信息和 Markdown 题面。';
   if (view.value === 'files') return '这里专门处理 `.in/.out`、测试点同步和题面引用资源。';
+  if (view.value === 'assignmentForm') return '这里维护 OJ 作业的题单、开放范围、管理员和 Markdown 介绍。';
   return '先创建题目。之后把“题面编辑”和“文件/测试数据管理”分开处理，工作流会更清晰。';
 });
 
@@ -70,6 +88,11 @@ function showNotice(message, category = 'success') {
 
 function problemIdFromPath(pathname = window.location.pathname) {
   const match = pathname.match(/\/admin\/oj\/problems\/(\d+)/);
+  return match ? Number(match[1]) : null;
+}
+
+function assignmentIdFromPath(pathname = window.location.pathname) {
+  const match = pathname.match(/\/admin\/oj\/assignments\/(\d+)/);
   return match ? Number(match[1]) : null;
 }
 
@@ -131,6 +154,49 @@ async function goFiles(problemOrId, { push = true } = {}) {
   if (push) replaceStateFor('files', workspace.problem.filesUrl);
 }
 
+async function goCreateProblem({ push = true } = {}) {
+  loading.value = true;
+  try {
+    const data = await requestJson('/admin/oj/problems/new.json');
+    currentCreateDraft.value = data.draft;
+    view.value = 'createProblem';
+    currentProblemId.value = null;
+    if (push) replaceStateFor('createProblem', props.urls.createProblem || '/admin/oj/problems/new');
+  } catch (error) {
+    showNotice(error.message, 'error');
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function goCreateAssignment({ push = true } = {}) {
+  loading.value = true;
+  try {
+    const data = await requestJson('/admin/oj/assignments/new.json');
+    currentAssignmentForm.value = data.assignmentForm;
+    view.value = 'assignmentForm';
+    if (push) replaceStateFor('assignmentForm', props.urls.createAssignment || '/admin/oj/assignments/new');
+  } catch (error) {
+    showNotice(error.message, 'error');
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function goAssignmentEdit(assignmentId, { push = true } = {}) {
+  loading.value = true;
+  try {
+    const data = await requestJson(`/admin/oj/assignments/${assignmentId}.json`);
+    currentAssignmentForm.value = data.assignmentForm;
+    view.value = 'assignmentForm';
+    if (push) replaceStateFor('assignmentForm', data.assignmentForm.assignment?.urls?.edit || `/admin/oj/assignments/${assignmentId}/edit`);
+  } catch (error) {
+    showNotice(error.message, 'error');
+  } finally {
+    loading.value = false;
+  }
+}
+
 function updateCurrentProblem(problem) {
   currentProblem.value = problem;
   currentProblemId.value = problem.id;
@@ -141,13 +207,38 @@ function updateCurrentWorkspace(workspace) {
   currentWorkspace.value = workspace;
 }
 
+function handleProblemCreated(payload) {
+  if (payload.message) showNotice(payload.message);
+  if (!payload.problem) return;
+  currentProblem.value = payload.problem;
+  currentProblemId.value = payload.problem.id;
+  view.value = 'edit';
+  replaceStateFor('edit', payload.redirectUrl || payload.problem.urls?.edit || `/admin/oj/problems/${payload.problem.id}/edit`);
+}
+
+function handleAssignmentSaved(payload) {
+  if (payload.message) showNotice(payload.message);
+  if (!payload.assignmentForm) return;
+  currentAssignmentForm.value = payload.assignmentForm;
+  view.value = 'assignmentForm';
+  const nextUrl = payload.redirectUrl || payload.assignmentForm.assignment?.urls?.edit;
+  if (nextUrl) replaceStateFor('assignmentForm', nextUrl);
+}
+
 function handlePopState() {
   const path = window.location.pathname;
   const problemId = problemIdFromPath(path);
+  const assignmentId = assignmentIdFromPath(path);
   if (path.endsWith('/files') && problemId) {
     goFiles(problemId, { push: false });
   } else if (path.endsWith('/edit') && problemId) {
     goEdit(problemId, { push: false });
+  } else if (path.endsWith('/problems/new')) {
+    goCreateProblem({ push: false });
+  } else if (path.endsWith('/assignments/new')) {
+    goCreateAssignment({ push: false });
+  } else if (path.endsWith('/edit') && assignmentId) {
+    goAssignmentEdit(assignmentId, { push: false });
   } else {
     goList({ push: false });
   }
@@ -171,13 +262,16 @@ onUnmounted(() => {
         <p class="text-stone-500 dark:text-stone-400 mt-2">{{ activeDescription }}</p>
       </div>
       <div class="flex gap-3 flex-wrap items-center">
-        <div v-if="currentProblemId && view !== 'list'" class="workspace-tabbar">
+        <div v-if="currentProblemId && (view === 'edit' || view === 'files')" class="workspace-tabbar">
           <a href="#" class="workspace-tabbar__link" :class="{ 'workspace-tabbar__link--active': view === 'edit' }" @click.prevent="goEdit(currentProblemId)">编辑题目</a>
           <a href="#" class="workspace-tabbar__link" :class="{ 'workspace-tabbar__link--active': view === 'files' }" @click.prevent="goFiles(currentProblemId)">文件管理</a>
         </div>
-        <button v-if="view !== 'list'" type="button" class="btn btn-ghost rounded-2xl" @click="goList()">返回题库</button>
+        <button v-if="view !== 'list' && view !== 'assignmentForm'" type="button" class="btn btn-ghost rounded-2xl" @click="goList()">返回题库</button>
+        <a v-if="view === 'assignmentForm'" :href="urls.assignmentList" class="btn btn-ghost rounded-2xl">作业列表</a>
+        <a v-if="view === 'assignmentForm' && currentAssignmentForm?.assignment?.urls?.detail" :href="currentAssignmentForm.assignment.urls.detail" class="btn btn-outline rounded-2xl">查看作业</a>
         <a v-if="view === 'list'" :href="urls.publicList" class="btn btn-ghost rounded-2xl">返回题库</a>
-        <a v-if="view === 'list'" :href="urls.createProblem" class="btn btn-primary rounded-2xl">新建题目</a>
+        <a v-if="view === 'list' && urls.createAssignment" :href="urls.createAssignment" class="btn btn-outline rounded-2xl" @click.prevent="goCreateAssignment()">新建作业</a>
+        <a v-if="view === 'list' && urls.createProblem" :href="urls.createProblem" class="btn btn-primary rounded-2xl" @click.prevent="goCreateProblem()">新建题目</a>
       </div>
     </header>
 
@@ -193,6 +287,11 @@ onUnmounted(() => {
       @navigate-edit="goEdit"
       @navigate-files="goFiles"
     />
+    <CreateProblemWorkspace
+      v-else-if="view === 'createProblem' && currentCreateDraft"
+      :draft="currentCreateDraft"
+      @created="handleProblemCreated"
+    />
     <EditProblemWorkspace
       v-else-if="view === 'edit' && currentProblem"
       :problem="currentProblem"
@@ -204,6 +303,11 @@ onUnmounted(() => {
       :workspace="currentWorkspace"
       :workspace-url="`/admin/oj/problems/${currentProblemId}/files.json`"
       @workspace-updated="updateCurrentWorkspace"
+    />
+    <AssignmentFormWorkspace
+      v-else-if="view === 'assignmentForm' && currentAssignmentForm"
+      :workspace="currentAssignmentForm"
+      @saved="handleAssignmentSaved"
     />
   </div>
 </template>

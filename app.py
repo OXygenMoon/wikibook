@@ -580,6 +580,20 @@ def problem_file_workspace_response(problem, message, category="success", status
     return redirect(url_for("manage_oj_problem_files", problem_id=problem.id))
 
 
+def assignment_form_workspace_response(assignment, form_state, message, category="success", status_code=200):
+    if is_ajax_request():
+        return jsonify({
+            "ok": category != "error",
+            "message": message,
+            "category": category,
+            "assignmentForm": serialize_oj_assignment_form_workspace(assignment, form_state),
+        }), status_code
+    flash(message, category)
+    if assignment:
+        return redirect(url_for("edit_oj_assignment", assignment_id=assignment.id))
+    return redirect(url_for("create_oj_assignment"))
+
+
 def vite_asset(entry_name):
     manifest_path = os.path.join(app.static_folder, "oj-vue", ".vite", "manifest.json")
     try:
@@ -678,6 +692,25 @@ def serialize_problem_edit_workspace(problem):
     }
 
 
+def serialize_problem_create_draft(draft):
+    return {
+        "code": draft.get("problem_code", ""),
+        "title": draft.get("title", ""),
+        "slug": draft.get("slug", ""),
+        "difficulty": draft.get("difficulty", "medium"),
+        "visible": str(draft.get("is_visible", "1")) == "1",
+        "timeLimitMs": draft.get("time_limit_ms", 2000) or 2000,
+        "memoryLimitMb": draft.get("memory_limit_mb", 256) or 256,
+        "source": draft.get("source", ""),
+        "allowedLanguages": draft.get("allowed_languages", "python,cpp,c"),
+        "statementMd": draft.get("statement_md", ""),
+        "urls": {
+            "create": url_for("create_oj_problem"),
+            "importZip": url_for("import_oj_problem_zip"),
+        },
+    }
+
+
 def serialize_problem_file(problem_file, content=None):
     problem_id = problem_file.problem_id
     return {
@@ -693,6 +726,103 @@ def serialize_problem_file(problem_file, content=None):
         "urls": {
             "update": url_for("update_text_oj_problem_file", problem_id=problem_id, file_id=problem_file.id),
             "delete": url_for("delete_oj_problem_file", problem_id=problem_id, file_id=problem_file.id),
+        },
+    }
+
+
+def serialize_oj_assignment_file(assignment_id, assignment_file):
+    return {
+        "id": assignment_file.id,
+        "filename": assignment_file.filename,
+        "filePath": assignment_file.file_path,
+        "fileSizeKb": round((assignment_file.file_size or 0) / 1024, 1),
+        "uploadedAt": assignment_file.uploaded_at.strftime("%Y-%m-%d %H:%M") if assignment_file.uploaded_at else "",
+        "markdownEmbed": assignment_file.markdown_embed,
+        "urls": {
+            "delete": url_for("delete_oj_assignment_file", assignment_id=assignment_id, file_id=assignment_file.id),
+        },
+    }
+
+
+def serialize_oj_assignment_form_workspace(assignment=None, form_state=None):
+    form_state = form_state or build_oj_assignment_form_state(assignment)
+    classes = Class.query.order_by(Class.name.asc()).all()
+    groups = Group.query.order_by(Group.name.asc()).all()
+    users = User.query.order_by(User.username.asc()).all()
+    problems = Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
+    assignment_files = (
+        assignment.files.order_by(OJAssignmentFile.uploaded_at.desc(), OJAssignmentFile.id.desc()).all()
+        if assignment else []
+    )
+
+    return {
+        "mode": "edit" if assignment else "create",
+        "assignment": {
+            "id": assignment.id,
+            "title": assignment.title,
+            "targetText": assignment.target_text,
+            "isActive": bool(assignment.is_active),
+            "problemCount": assignment.problem_count,
+            "fileCount": len(assignment_files),
+            "urls": {
+                "edit": url_for("edit_oj_assignment", assignment_id=assignment.id),
+                "detail": url_for("oj_assignment_detail", assignment_id=assignment.id),
+            },
+        } if assignment else None,
+        "form": {
+            "title": form_state.get("title", ""),
+            "descriptionMd": form_state.get("description_md", ""),
+            "startAt": form_state.get("start_at", ""),
+            "endAt": form_state.get("end_at", ""),
+            "extensionDays": form_state.get("extension_days", 0) or 0,
+            "visibility": form_state.get("visibility", "all") or "all",
+            "isActive": str(form_state.get("is_active", "1")) == "1",
+            "selectedClassIds": form_state.get("selected_class_ids", []),
+            "selectedGroupIds": form_state.get("selected_group_ids", []),
+            "selectedUserIds": form_state.get("selected_user_ids", []),
+            "selectedManagerIds": form_state.get("selected_manager_ids", []),
+            "selectedProblemIds": form_state.get("selected_problem_ids", []),
+        },
+        "options": {
+            "classes": [
+                {"id": class_item.id, "label": class_item.name}
+                for class_item in classes
+            ],
+            "groups": [
+                {"id": group_item.id, "label": group_item.name}
+                for group_item in groups
+            ],
+            "users": [
+                {
+                    "id": user.id,
+                    "label": user.real_name or user.username,
+                    "username": user.username,
+                }
+                for user in users
+            ],
+            "problems": [
+                {
+                    "id": problem.id,
+                    "code": problem.problem_code,
+                    "title": problem.title,
+                    "slug": problem.slug,
+                    "difficulty": problem.difficulty,
+                    "label": f"{problem.problem_code} · {problem.title}",
+                }
+                for problem in problems
+            ],
+        },
+        "files": [
+            serialize_oj_assignment_file(assignment.id, assignment_file)
+            for assignment_file in assignment_files
+        ],
+        "urls": {
+            "submit": url_for("edit_oj_assignment", assignment_id=assignment.id) if assignment else url_for("create_oj_assignment"),
+            "create": url_for("create_oj_assignment"),
+            "list": url_for("oj_assignment_list"),
+            "adminProblems": url_for("manage_oj_problems"),
+            "detail": url_for("oj_assignment_detail", assignment_id=assignment.id) if assignment else None,
+            "uploadFiles": url_for("upload_oj_assignment_files", assignment_id=assignment.id) if assignment else None,
         },
     }
 
@@ -8749,6 +8879,32 @@ def build_oj_assignment_form_state(assignment=None):
     }
 
 
+def extract_oj_assignment_form_state(form):
+    return {
+        'title': form.get('title', '').strip(),
+        'description_md': form.get('description_md', '').strip(),
+        'start_at': form.get('start_at', '').strip(),
+        'end_at': form.get('end_at', '').strip(),
+        'extension_days': form.get('extension_days', 0, type=int) or 0,
+        'visibility': form.get('visibility', 'all').strip() or 'all',
+        'is_active': form.get('is_active', '1'),
+        'selected_class_ids': [int(value) for value in form.getlist('class_ids') if value.isdigit()],
+        'selected_group_ids': [int(value) for value in form.getlist('group_ids') if value.isdigit()],
+        'selected_user_ids': [int(value) for value in form.getlist('user_ids') if value.isdigit()],
+        'selected_manager_ids': [int(value) for value in form.getlist('manager_ids') if value.isdigit()],
+        'selected_problem_ids': [int(value) for value in form.getlist('problem_ids') if value.isdigit()],
+    }
+
+
+def parse_html_datetime_local(value, field_label):
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, '%Y-%m-%dT%H:%M')
+    except ValueError as exc:
+        raise ValueError(f'{field_label}格式不正确。') from exc
+
+
 def get_assignment_for_problem_request(problem=None):
     assignment_id = request.values.get('assignment_id', type=int)
     if not assignment_id:
@@ -10074,17 +10230,8 @@ def admin_oj_problem_json(problem_id):
     })
 
 
-@app.route('/admin/oj/problems/new', methods=['GET', 'POST'])
-@login_required
-def create_oj_problem():
-    if not current_user.is_admin:
-        abort(403)
-
-    created_tables = ensure_oj_authoring_schema()
-    if created_tables:
-        flash('检测到旧数据库，已自动补建 OJ 题库数据表。', 'success')
-
-    draft = {
+def build_oj_problem_create_draft():
+    return {
         'problem_code': next_problem_code(),
         'title': '',
         'slug': '',
@@ -10125,6 +10272,32 @@ def create_oj_problem():
         'source': '',
     }
 
+
+@app.route('/admin/oj/problems/new.json', methods=['GET'])
+@login_required
+def create_oj_problem_json():
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    return jsonify({
+        "ok": True,
+        "draft": serialize_problem_create_draft(build_oj_problem_create_draft()),
+    })
+
+
+@app.route('/admin/oj/problems/new', methods=['GET', 'POST'])
+@login_required
+def create_oj_problem():
+    if not current_user.is_admin:
+        abort(403)
+
+    created_tables = ensure_oj_authoring_schema()
+    if created_tables:
+        flash('检测到旧数据库，已自动补建 OJ 题库数据表。', 'success')
+
+    draft = build_oj_problem_create_draft()
+
     if request.method == 'POST':
         draft = {
             'problem_code': request.form.get('problem_code', '').strip(),
@@ -10143,12 +10316,24 @@ def create_oj_problem():
         }
 
         if not draft['title']:
+            if is_ajax_request():
+                return jsonify({
+                    "ok": False,
+                    "message": "题目标题不能为空",
+                    "draft": serialize_problem_create_draft(draft),
+                }), 400
             flash('题目标题不能为空', 'error')
             return render_template('admin/create_oj_problem.html', draft=draft)
 
         try:
             problem_code = validate_problem_code(draft['problem_code'])
         except ValueError as exc:
+            if is_ajax_request():
+                return jsonify({
+                    "ok": False,
+                    "message": str(exc),
+                    "draft": serialize_problem_create_draft(draft),
+                }), 400
             flash(str(exc), 'error')
             return render_template('admin/create_oj_problem.html', draft=draft)
 
@@ -10171,10 +10356,32 @@ def create_oj_problem():
         )
         db.session.add(new_problem)
         db.session.commit()
+        if is_ajax_request():
+            return jsonify({
+                "ok": True,
+                "message": f'OJ 题目《{new_problem.title}》已创建。',
+                "problem": serialize_problem_edit_workspace(new_problem),
+                "redirectUrl": url_for('edit_oj_problem', problem_id=new_problem.id),
+            })
         flash(f'OJ 题目《{new_problem.title}》已创建。接下来可以配置文件空间和测试数据。', 'success')
         return redirect(url_for('edit_oj_problem', problem_id=new_problem.id))
 
-    return render_template('admin/create_oj_problem.html', draft=draft)
+    return render_template(
+        'admin/oj_admin_shell.html',
+        page_title='新建 OJ 题目',
+        shell_payload={
+            "initialView": "createProblem",
+            "problemsUrl": url_for('manage_oj_problems_json'),
+            "createDraft": serialize_problem_create_draft(draft),
+            "urls": {
+                "adminList": url_for('manage_oj_problems'),
+                "publicList": url_for('oj_problem_list'),
+                "createProblem": url_for('create_oj_problem'),
+                "createAssignment": url_for('create_oj_assignment'),
+                "assignmentList": url_for('oj_assignment_list'),
+            },
+        },
+    )
 
 
 @app.route('/admin/oj/problems/import_zip', methods=['POST'])
@@ -10193,16 +10400,27 @@ def import_oj_problem_zip():
             current_user,
         )
     except ValueError as exc:
+        if is_ajax_request():
+            return jsonify({"ok": False, "message": f'导入 zip 失败：{exc}'}), 400
         flash(f'导入 zip 失败：{exc}', 'error')
         return redirect(url_for('create_oj_problem'))
     except Exception as exc:
         app.logger.exception("Import OJ problem zip failed")
+        if is_ajax_request():
+            return jsonify({"ok": False, "message": f'导入 zip 失败：{exc}'}), 500
         flash(f'导入 zip 失败：{exc}', 'error')
         return redirect(url_for('create_oj_problem'))
 
     message = f'已从 zip 创建题目《{problem.title}》，导入 {imported_files} 个文件、{imported_cases} 组测试点。'
     if skipped_files:
         message += f' 跳过 {skipped_files} 个不支持的文件。'
+    if is_ajax_request():
+        return jsonify({
+            "ok": True,
+            "message": message,
+            "problem": serialize_problem_edit_workspace(problem),
+            "redirectUrl": url_for('edit_oj_problem', problem_id=problem.id),
+        })
     flash(message, 'success')
     return redirect(url_for('edit_oj_problem', problem_id=problem.id))
 
@@ -10283,6 +10501,8 @@ def edit_oj_problem(problem_id):
                 "adminList": url_for('manage_oj_problems'),
                 "publicList": url_for('oj_problem_list'),
                 "createProblem": url_for('create_oj_problem'),
+                "createAssignment": url_for('create_oj_assignment'),
+                "assignmentList": url_for('oj_assignment_list'),
             },
         },
     )
@@ -10688,36 +10908,26 @@ def create_oj_assignment():
     form_state = build_oj_assignment_form_state()
 
     if request.method == 'POST':
-        form_state = {
-            'title': request.form.get('title', '').strip(),
-            'description_md': request.form.get('description_md', '').strip(),
-            'start_at': request.form.get('start_at', '').strip(),
-            'end_at': request.form.get('end_at', '').strip(),
-            'extension_days': request.form.get('extension_days', 0, type=int) or 0,
-            'visibility': request.form.get('visibility', 'all').strip() or 'all',
-            'is_active': request.form.get('is_active', '1'),
-            'selected_class_ids': [int(value) for value in request.form.getlist('class_ids') if value.isdigit()],
-            'selected_group_ids': [int(value) for value in request.form.getlist('group_ids') if value.isdigit()],
-            'selected_user_ids': [int(value) for value in request.form.getlist('user_ids') if value.isdigit()],
-            'selected_manager_ids': [int(value) for value in request.form.getlist('manager_ids') if value.isdigit()],
-            'selected_problem_ids': [int(value) for value in request.form.getlist('problem_ids') if value.isdigit()],
-        }
+        form_state = extract_oj_assignment_form_state(request.form)
 
         if not form_state['title']:
-            flash('作业标题不能为空。', 'error')
+            return assignment_form_workspace_response(None, form_state, '作业标题不能为空。', 'error', 400) if is_ajax_request() else assignment_form_workspace_response(None, form_state, '作业标题不能为空。', 'error')
         elif not form_state['selected_problem_ids']:
-            flash('至少要选择一道 OJ 题目。', 'error')
+            return assignment_form_workspace_response(None, form_state, '至少要选择一道 OJ 题目。', 'error', 400) if is_ajax_request() else assignment_form_workspace_response(None, form_state, '至少要选择一道 OJ 题目。', 'error')
         else:
-            assignment = OJAssignment(
-                title=form_state['title'],
-                description_md=form_state['description_md'],
-                start_at=datetime.strptime(form_state['start_at'], '%Y-%m-%dT%H:%M') if form_state['start_at'] else None,
-                end_at=datetime.strptime(form_state['end_at'], '%Y-%m-%dT%H:%M') if form_state['end_at'] else None,
-                extension_days=max(int(form_state['extension_days'] or 0), 0),
-                visibility=form_state['visibility'] if form_state['visibility'] in {'all', 'restricted'} else 'all',
-                is_active=form_state['is_active'] == '1',
-                created_by_id=current_user.id,
-            )
+            try:
+                assignment = OJAssignment(
+                    title=form_state['title'],
+                    description_md=form_state['description_md'],
+                    start_at=parse_html_datetime_local(form_state['start_at'], '开始时间'),
+                    end_at=parse_html_datetime_local(form_state['end_at'], '结束时间'),
+                    extension_days=max(int(form_state['extension_days'] or 0), 0),
+                    visibility=form_state['visibility'] if form_state['visibility'] in {'all', 'restricted'} else 'all',
+                    is_active=form_state['is_active'] == '1',
+                    created_by_id=current_user.id,
+                )
+            except ValueError as exc:
+                return assignment_form_workspace_response(None, form_state, str(exc), 'error', 400) if is_ajax_request() else assignment_form_workspace_response(None, form_state, str(exc), 'error')
             resolve_oj_assignment_targets(
                 assignment,
                 form_state['selected_class_ids'],
@@ -10728,18 +10938,45 @@ def create_oj_assignment():
             resolve_oj_assignment_problem_links(assignment, form_state['selected_problem_ids'])
             db.session.add(assignment)
             db.session.commit()
+            if is_ajax_request():
+                return jsonify({
+                    "ok": True,
+                    "message": f'作业《{assignment.title}》已创建。',
+                    "assignmentForm": serialize_oj_assignment_form_workspace(assignment),
+                    "redirectUrl": url_for('edit_oj_assignment', assignment_id=assignment.id),
+                })
             flash(f'作业《{assignment.title}》已创建。', 'success')
             return redirect(url_for('edit_oj_assignment', assignment_id=assignment.id))
 
     return render_template(
-        'admin/create_oj_assignment.html',
-        form_state=form_state,
-        classes=Class.query.order_by(Class.name.asc()).all(),
-        groups=Group.query.order_by(Group.name.asc()).all(),
-        users=User.query.order_by(User.username.asc()).all(),
-        problems=Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all(),
-        assignment=None,
+        'admin/oj_admin_shell.html',
+        page_title='新建 OJ 作业',
+        shell_payload={
+            "initialView": "assignmentForm",
+            "assignmentForm": serialize_oj_assignment_form_workspace(None, form_state),
+            "problemsUrl": url_for('manage_oj_problems_json'),
+            "urls": {
+                "adminList": url_for('manage_oj_problems'),
+                "publicList": url_for('oj_problem_list'),
+                "createProblem": url_for('create_oj_problem'),
+                "createAssignment": url_for('create_oj_assignment'),
+                "assignmentList": url_for('oj_assignment_list'),
+            },
+        },
     )
+
+
+@app.route('/admin/oj/assignments/new.json', methods=['GET'])
+@login_required
+def create_oj_assignment_json():
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    return jsonify({
+        "ok": True,
+        "assignmentForm": serialize_oj_assignment_form_workspace(),
+    })
 
 
 @app.route('/admin/oj/assignments/<int:assignment_id>/edit', methods=['GET', 'POST'])
@@ -10753,30 +10990,20 @@ def edit_oj_assignment(assignment_id):
     form_state = build_oj_assignment_form_state(assignment)
 
     if request.method == 'POST':
-        form_state = {
-            'title': request.form.get('title', '').strip(),
-            'description_md': request.form.get('description_md', '').strip(),
-            'start_at': request.form.get('start_at', '').strip(),
-            'end_at': request.form.get('end_at', '').strip(),
-            'extension_days': request.form.get('extension_days', 0, type=int) or 0,
-            'visibility': request.form.get('visibility', 'all').strip() or 'all',
-            'is_active': request.form.get('is_active', '1'),
-            'selected_class_ids': [int(value) for value in request.form.getlist('class_ids') if value.isdigit()],
-            'selected_group_ids': [int(value) for value in request.form.getlist('group_ids') if value.isdigit()],
-            'selected_user_ids': [int(value) for value in request.form.getlist('user_ids') if value.isdigit()],
-            'selected_manager_ids': [int(value) for value in request.form.getlist('manager_ids') if value.isdigit()],
-            'selected_problem_ids': [int(value) for value in request.form.getlist('problem_ids') if value.isdigit()],
-        }
+        form_state = extract_oj_assignment_form_state(request.form)
 
         if not form_state['title']:
-            flash('作业标题不能为空。', 'error')
+            return assignment_form_workspace_response(assignment, form_state, '作业标题不能为空。', 'error', 400) if is_ajax_request() else assignment_form_workspace_response(assignment, form_state, '作业标题不能为空。', 'error')
         elif not form_state['selected_problem_ids']:
-            flash('至少要选择一道 OJ 题目。', 'error')
+            return assignment_form_workspace_response(assignment, form_state, '至少要选择一道 OJ 题目。', 'error', 400) if is_ajax_request() else assignment_form_workspace_response(assignment, form_state, '至少要选择一道 OJ 题目。', 'error')
         else:
+            try:
+                assignment.start_at = parse_html_datetime_local(form_state['start_at'], '开始时间')
+                assignment.end_at = parse_html_datetime_local(form_state['end_at'], '结束时间')
+            except ValueError as exc:
+                return assignment_form_workspace_response(assignment, form_state, str(exc), 'error', 400) if is_ajax_request() else assignment_form_workspace_response(assignment, form_state, str(exc), 'error')
             assignment.title = form_state['title']
             assignment.description_md = form_state['description_md']
-            assignment.start_at = datetime.strptime(form_state['start_at'], '%Y-%m-%dT%H:%M') if form_state['start_at'] else None
-            assignment.end_at = datetime.strptime(form_state['end_at'], '%Y-%m-%dT%H:%M') if form_state['end_at'] else None
             assignment.extension_days = max(int(form_state['extension_days'] or 0), 0)
             assignment.visibility = form_state['visibility'] if form_state['visibility'] in {'all', 'restricted'} else 'all'
             assignment.is_active = form_state['is_active'] == '1'
@@ -10789,19 +11016,45 @@ def edit_oj_assignment(assignment_id):
             )
             resolve_oj_assignment_problem_links(assignment, form_state['selected_problem_ids'])
             db.session.commit()
+            if is_ajax_request():
+                return jsonify({
+                    "ok": True,
+                    "message": f'作业《{assignment.title}》已更新。',
+                    "assignmentForm": serialize_oj_assignment_form_workspace(assignment),
+                })
             flash(f'作业《{assignment.title}》已更新。', 'success')
             return redirect(url_for('edit_oj_assignment', assignment_id=assignment.id))
 
     return render_template(
-        'admin/create_oj_assignment.html',
-        form_state=form_state,
-        classes=Class.query.order_by(Class.name.asc()).all(),
-        groups=Group.query.order_by(Group.name.asc()).all(),
-        users=User.query.order_by(User.username.asc()).all(),
-        problems=Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all(),
-        assignment=assignment,
-        assignment_files=assignment.files.order_by(OJAssignmentFile.uploaded_at.desc(), OJAssignmentFile.id.desc()).all(),
+        'admin/oj_admin_shell.html',
+        page_title=f'编辑 OJ 作业 - {assignment.title}',
+        shell_payload={
+            "initialView": "assignmentForm",
+            "assignmentForm": serialize_oj_assignment_form_workspace(assignment, form_state),
+            "problemsUrl": url_for('manage_oj_problems_json'),
+            "urls": {
+                "adminList": url_for('manage_oj_problems'),
+                "publicList": url_for('oj_problem_list'),
+                "createProblem": url_for('create_oj_problem'),
+                "createAssignment": url_for('create_oj_assignment'),
+                "assignmentList": url_for('oj_assignment_list'),
+            },
+        },
     )
+
+
+@app.route('/admin/oj/assignments/<int:assignment_id>.json', methods=['GET'])
+@login_required
+def admin_oj_assignment_json(assignment_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    assignment = OJAssignment.query.get_or_404(assignment_id)
+    return jsonify({
+        "ok": True,
+        "assignmentForm": serialize_oj_assignment_form_workspace(assignment),
+    })
 
 
 @app.route('/admin/oj/assignments/<int:assignment_id>/files/upload', methods=['POST'])
@@ -10821,6 +11074,14 @@ def upload_oj_assignment_files(assignment_id):
         try:
             saved_file = save_oj_assignment_asset(file_storage, assignment.id)
         except ValueError as exc:
+            if is_ajax_request():
+                return assignment_form_workspace_response(
+                    assignment,
+                    build_oj_assignment_form_state(assignment),
+                    f'文件 {file_storage.filename} 上传失败：{exc}',
+                    'error',
+                    400,
+                )
             flash(f'文件 {file_storage.filename} 上传失败：{exc}', 'error')
             continue
 
@@ -10839,7 +11100,21 @@ def upload_oj_assignment_files(assignment_id):
 
     db.session.commit()
     if uploaded_count:
+        if is_ajax_request():
+            return jsonify({
+                "ok": True,
+                "message": f'已上传 {uploaded_count} 个作业文件。',
+                "assignmentForm": serialize_oj_assignment_form_workspace(assignment),
+            })
         flash(f'已上传 {uploaded_count} 个作业文件。', 'success')
+    elif is_ajax_request():
+        return assignment_form_workspace_response(
+            assignment,
+            build_oj_assignment_form_state(assignment),
+            '没有成功上传任何文件。',
+            'error',
+            400,
+        )
     return redirect(url_for('edit_oj_assignment', assignment_id=assignment.id) + '#assignment-files')
 
 
@@ -10855,6 +11130,12 @@ def delete_oj_assignment_file(assignment_id, file_id):
     remove_oj_assignment_asset_file(assignment_file.file_path)
     db.session.delete(assignment_file)
     db.session.commit()
+    if is_ajax_request():
+        return jsonify({
+            "ok": True,
+            "message": f'已删除文件：{assignment_file.filename}',
+            "assignmentForm": serialize_oj_assignment_form_workspace(assignment),
+        })
     flash(f'已删除文件：{assignment_file.filename}', 'success')
     return redirect(url_for('edit_oj_assignment', assignment_id=assignment.id) + '#assignment-files')
 

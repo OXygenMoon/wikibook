@@ -645,6 +645,166 @@ class UserBadge(db.Model):
     def __init__(self, **kwargs):
         super(UserBadge, self).__init__(**kwargs)
 
+
+OJ_BADGE_CONDITION_LABELS = {
+    'oj_ac_count': 'OJ AC题目数',
+    'oj_submission_count': 'OJ提交次数',
+    'oj_error_count': 'OJ错误次数',
+    'oj_assignment_complete_count': 'OJ作业全完成次数',
+    'oj_consecutive_ac_count': 'OJ连续AC次数',
+    'oj_consecutive_error_count': 'OJ连续错误次数',
+    'oj_first_try_ac_count': 'OJ一发AC题目数',
+    'oj_daily_ac_peak': 'OJ单日AC峰值',
+    'oj_specific_assignment_complete': '完成指定OJ作业',
+}
+
+OJ_FINAL_STATUSES = {'accepted', 'failed', 'system_error'}
+OJ_ERROR_STATUSES = {'failed', 'system_error'}
+OJ_SPECIFIC_ASSIGNMENT_CONDITIONS = {'oj_specific_assignment_complete'}
+
+
+def _base_oj_task_query(user_id, final_only=False):
+    query = JudgeTask.query.filter(
+        JudgeTask.user_id == user_id,
+        JudgeTask.problem_id.isnot(None),
+    )
+    if final_only:
+        query = query.filter(JudgeTask.status.in_(OJ_FINAL_STATUSES))
+    return query
+
+
+def _count_current_oj_streak(user_id, accepted=True):
+    streak = 0
+    tasks = (
+        _base_oj_task_query(user_id, final_only=True)
+        .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
+        .all()
+    )
+    for task in tasks:
+        if accepted and task.status == 'accepted':
+            streak += 1
+            continue
+        if not accepted and task.status in OJ_ERROR_STATUSES:
+            streak += 1
+            continue
+        break
+    return streak
+
+
+def _count_oj_completed_assignments(user_id):
+    completed_count = 0
+    for assignment in OJAssignment.query.all():
+        problem_ids = [link.problem_id for link in assignment.problem_links]
+        if not problem_ids:
+            continue
+        accepted_problem_ids = {
+            row[0] for row in (
+                JudgeTask.query
+                .with_entities(JudgeTask.problem_id)
+                .filter(
+                    JudgeTask.user_id == user_id,
+                    JudgeTask.assignment_id == assignment.id,
+                    JudgeTask.problem_id.in_(problem_ids),
+                    JudgeTask.status == 'accepted',
+                )
+                .distinct()
+                .all()
+            )
+        }
+        if set(problem_ids).issubset(accepted_problem_ids):
+            completed_count += 1
+    return completed_count
+
+
+def _is_oj_assignment_completed(user_id, assignment_id):
+    assignment = OJAssignment.query.get(assignment_id)
+    if not assignment:
+        return False
+    problem_ids = [link.problem_id for link in assignment.problem_links]
+    if not problem_ids:
+        return False
+    accepted_problem_ids = {
+        row[0] for row in (
+            JudgeTask.query
+            .with_entities(JudgeTask.problem_id)
+            .filter(
+                JudgeTask.user_id == user_id,
+                JudgeTask.assignment_id == assignment.id,
+                JudgeTask.problem_id.in_(problem_ids),
+                JudgeTask.status == 'accepted',
+            )
+            .distinct()
+            .all()
+        )
+    }
+    return set(problem_ids).issubset(accepted_problem_ids)
+
+
+def _count_first_try_oj_accepts(user_id):
+    first_tasks_by_problem = {}
+    tasks = (
+        _base_oj_task_query(user_id, final_only=True)
+        .order_by(JudgeTask.problem_id.asc(), JudgeTask.created_at.asc(), JudgeTask.id.asc())
+        .all()
+    )
+    for task in tasks:
+        first_tasks_by_problem.setdefault(task.problem_id, task)
+    return sum(1 for task in first_tasks_by_problem.values() if task.status == 'accepted')
+
+
+def _count_daily_oj_ac_peak(user_id):
+    accepted_tasks = (
+        _base_oj_task_query(user_id)
+        .filter(JudgeTask.status == 'accepted')
+        .order_by(JudgeTask.created_at.asc(), JudgeTask.id.asc())
+        .all()
+    )
+    ac_by_day = {}
+    for task in accepted_tasks:
+        if not task.created_at:
+            continue
+        day = task.created_at.date()
+        ac_by_day.setdefault(day, set()).add(task.problem_id)
+    if not ac_by_day:
+        return 0
+    return max(len(problem_ids) for problem_ids in ac_by_day.values())
+
+
+def get_oj_badge_progress(user, badge):
+    if badge.condition_type == 'oj_ac_count':
+        return (
+            _base_oj_task_query(user.id)
+            .filter(JudgeTask.status == 'accepted')
+            .with_entities(JudgeTask.problem_id)
+            .distinct()
+            .count()
+        )
+    if badge.condition_type == 'oj_submission_count':
+        return _base_oj_task_query(user.id).count()
+    if badge.condition_type == 'oj_error_count':
+        return _base_oj_task_query(user.id).filter(JudgeTask.status.in_(OJ_ERROR_STATUSES)).count()
+    if badge.condition_type == 'oj_assignment_complete_count':
+        return _count_oj_completed_assignments(user.id)
+    if badge.condition_type == 'oj_consecutive_ac_count':
+        return _count_current_oj_streak(user.id, accepted=True)
+    if badge.condition_type == 'oj_consecutive_error_count':
+        return _count_current_oj_streak(user.id, accepted=False)
+    if badge.condition_type == 'oj_first_try_ac_count':
+        return _count_first_try_oj_accepts(user.id)
+    if badge.condition_type == 'oj_daily_ac_peak':
+        return _count_daily_oj_ac_peak(user.id)
+    if badge.condition_type == 'oj_specific_assignment_complete':
+        return 1 if badge.target_id and _is_oj_assignment_completed(user.id, badge.target_id) else 0
+    return None
+
+
+def meets_oj_badge_condition(user, badge):
+    progress = get_oj_badge_progress(user, badge)
+    if progress is None:
+        return False
+    target = 1 if badge.condition_type in OJ_SPECIFIC_ASSIGNMENT_CONDITIONS else badge.condition_value
+    return progress >= target
+
 # Wiki Permissions Associations
 wiki_classes = db.Table('wiki_classes',
     db.Column('wiki_id', db.Integer, db.ForeignKey('wiki.id'), primary_key=True),
@@ -1203,6 +1363,30 @@ def format_badge_condition(badge):
         if assignment_title:
             return f'在任务《{assignment_title}》中达到 {grade_text} 及以上'
         return f'在指定任务中达到 {grade_text} 及以上'
+    elif ctype == 'oj_ac_count':
+        return f'OJ 累计 AC {val} 道题'
+    elif ctype == 'oj_submission_count':
+        return f'OJ 累计提交 {val} 次'
+    elif ctype == 'oj_error_count':
+        return f'OJ 累计调试错误 {val} 次'
+    elif ctype == 'oj_assignment_complete_count':
+        return f'完整完成 {val} 次 OJ 作业'
+    elif ctype == 'oj_consecutive_ac_count':
+        return f'OJ 当前连续 AC {val} 次'
+    elif ctype == 'oj_consecutive_error_count':
+        return f'OJ 当前连续调试未通过 {val} 次'
+    elif ctype == 'oj_first_try_ac_count':
+        return f'OJ 一发 AC {val} 道题'
+    elif ctype == 'oj_daily_ac_peak':
+        return f'OJ 单日 AC 达到 {val} 道题'
+    elif ctype == 'oj_specific_assignment_complete':
+        assignment_title = None
+        if target_id:
+            assignment = OJAssignment.query.get(target_id)
+            assignment_title = assignment.title if assignment else None
+        if assignment_title:
+            return f'完成 OJ 作业《{assignment_title}》的全部题目'
+        return '完成指定 OJ 作业的全部题目'
     else:
         return f'{ctype}: {val}'
 
@@ -3123,12 +3307,14 @@ def manage_badges():
         'wiki_specific_duration': '特定Wiki学习时长',
         'assignment_complete': '完成指定任务',
         'assignment_stars': '任务实得星星',
-        'assignment_grade': '任务等第要求'
+        'assignment_grade': '任务等第要求',
+        **OJ_BADGE_CONDITION_LABELS,
     }
 
     # 💡 提取全部任务和 Wiki 供下拉菜单选择
     assignments = Assignment.query.order_by(Assignment.created_at.desc()).all()
     wikis = Wiki.query.order_by(Wiki.created_at.desc()).all()
+    oj_assignments = OJAssignment.query.order_by(OJAssignment.created_at.desc()).all()
 
     return render_template("admin/manage_badges.html", 
                            badges=badges, 
@@ -3139,7 +3325,8 @@ def manage_badges():
                            existing_conditions=existing_conditions,
                            condition_map=condition_map,
                            assignments=assignments,
-                           wikis=wikis)
+                           wikis=wikis,
+                           oj_assignments=oj_assignments)
 
 @app.route("/admin/badges/<int:badge_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -3159,7 +3346,15 @@ def edit_badge(badge_id):
             if file and file.filename:
                 if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
                     flash("不支持的文件格式")
-                    return render_template("admin/edit_badge.html", badge=b)
+                    return render_template(
+                        "admin/edit_badge.html",
+                        badge=b,
+                        users=User.query.order_by(User.class_name, User.student_id).all(),
+                        earned_user_ids=[ub.user_id for ub in b.users.all()],
+                        assignments=Assignment.query.order_by(Assignment.created_at.desc()).all(),
+                        wikis=Wiki.query.order_by(Wiki.created_at.desc()).all(),
+                        oj_assignments=OJAssignment.query.order_by(OJAssignment.created_at.desc()).all(),
+                    )
                 
                 filename = str(uuid.uuid4()) + os.path.splitext(file.filename)[1]
                 save_dir = os.path.join(app.root_path, "static/uploads/badges")
@@ -3336,6 +3531,8 @@ def edit_badge(badge_id):
                         if sub and sub.grade:
                             grade_map = {'S+': 6, 'S': 5, 'A': 4, 'B': 3, 'C': 2, 'D': 1}
                             meets_condition = grade_map.get(sub.grade.upper(), 0) >= val
+                elif b.condition_type in OJ_BADGE_CONDITION_LABELS:
+                    meets_condition = meets_oj_badge_condition(user, b)
 
                 existing_ub = UserBadge.query.filter_by(user_id=user.id, badge_id=b.id).first()
                 
@@ -3366,13 +3563,15 @@ def edit_badge(badge_id):
     # 💡 提取供下拉菜单用的数据
     assignments = Assignment.query.order_by(Assignment.created_at.desc()).all()
     wikis = Wiki.query.order_by(Wiki.created_at.desc()).all()
+    oj_assignments = OJAssignment.query.order_by(OJAssignment.created_at.desc()).all()
 
     return render_template("admin/edit_badge.html", 
                            badge=b, 
                            users=users, 
                            earned_user_ids=earned_user_ids,
                            assignments=assignments,
-                           wikis=wikis)
+                           wikis=wikis,
+                           oj_assignments=oj_assignments)
 
 @app.route("/admin/badges/<int:badge_id>/award", methods=["POST"])
 @login_required
@@ -4892,6 +5091,9 @@ def check_and_award_badges(user):
                     current_grade_val = grade_map.get(sub.grade.upper(), 0)
                     # 只要大于等于管理员设定的权重值 (val) 就发奖
                     if current_grade_val >= val: earned = True
+
+        elif badge.condition_type in OJ_BADGE_CONDITION_LABELS:
+            earned = meets_oj_badge_condition(user, badge)
 
         # -------------------------------------------------------------
         
@@ -8503,6 +8705,8 @@ def oj_submission_list():
 def oj_submission_detail(task_id):
     ensure_oj_authoring_schema()
     task = get_oj_judge_task_or_404(task_id)
+    if task.user_id == current_user.id and task.status in OJ_FINAL_STATUSES:
+        check_and_award_badges(current_user)
     results = task.results.order_by(JudgeTaskResult.case_index.asc()).all()
     failure_feedback = build_oj_failure_feedback(task, results)
     return render_template('oj/submission_detail.html', task=task, results=results, failure_feedback=failure_feedback)
@@ -8513,6 +8717,8 @@ def oj_submission_detail(task_id):
 def oj_submission_status_api(task_id):
     ensure_oj_authoring_schema()
     task = get_oj_judge_task_or_404(task_id)
+    if task.user_id == current_user.id and task.status in OJ_FINAL_STATUSES:
+        check_and_award_badges(current_user)
     return jsonify({
         'id': task.id,
         'status': task.status,

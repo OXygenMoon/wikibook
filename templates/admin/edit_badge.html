@@ -114,6 +114,15 @@
                                 <option value="assignment_complete" {% if badge.condition_type == 'assignment_complete' %}selected{% endif %}>✅ 完成指定任务</option>
                                 <option value="assignment_stars" {% if badge.condition_type == 'assignment_stars' %}selected{% endif %}>⭐ 任务实得星星数达标</option>
                                 <option value="assignment_grade" {% if badge.condition_type == 'assignment_grade' %}selected{% endif %}>🏆 任务获得等第达标 (A/S/S+ 等)</option>
+                                <option value="oj_ac_count" {% if badge.condition_type == 'oj_ac_count' %}selected{% endif %}>🧩 OJ AC题目数量</option>
+                                <option value="oj_submission_count" {% if badge.condition_type == 'oj_submission_count' %}selected{% endif %}>🚀 OJ 提交数量</option>
+                                <option value="oj_error_count" {% if badge.condition_type == 'oj_error_count' %}selected{% endif %}>🧪 OJ 错误次数</option>
+                                <option value="oj_assignment_complete_count" {% if badge.condition_type == 'oj_assignment_complete_count' %}selected{% endif %}>📦 OJ 作业全部完成次数</option>
+                                <option value="oj_consecutive_ac_count" {% if badge.condition_type == 'oj_consecutive_ac_count' %}selected{% endif %}>⚡ OJ 连续 AC 次数</option>
+                                <option value="oj_consecutive_error_count" {% if badge.condition_type == 'oj_consecutive_error_count' %}selected{% endif %}>🛠️ OJ 连续错误次数</option>
+                                <option value="oj_first_try_ac_count" {% if badge.condition_type == 'oj_first_try_ac_count' %}selected{% endif %}>🎯 OJ 一发 AC 题目数</option>
+                                <option value="oj_daily_ac_peak" {% if badge.condition_type == 'oj_daily_ac_peak' %}selected{% endif %}>🌞 OJ 单日 AC 峰值</option>
+                                <option value="oj_specific_assignment_complete" {% if badge.condition_type == 'oj_specific_assignment_complete' %}selected{% endif %}>🏁 完成指定 OJ 作业</option>
                             </select>
                         </div>
 
@@ -137,13 +146,23 @@
                             </select>
                         </div>
 
-                        <div class="form-control" id="condition_value_group" style="{% if badge.condition_type in ['manual', 'all_users', 'assignment_complete'] %}display:none;{% endif %}">
+                        <div class="form-control md:col-span-2" id="target_oj_assignment_group" style="{% if badge.condition_type != 'oj_specific_assignment_complete' %}display:none;{% endif %}">
+                            <label class="label"><span class="label-text font-bold text-primary">选择关联的 OJ 作业</span></label>
+                            <select id="target_oj_assignment_select" class="select select-bordered border-primary/50 w-full font-bold" {% if badge.condition_type == 'oj_specific_assignment_complete' %}name="target_id"{% endif %}>
+                                <option value="" disabled {% if not badge.target_id %}selected{% endif %}>-- 请下拉选择一个 OJ 作业 --</option>
+                                {% for a in oj_assignments %}
+                                    <option value="{{ a.id }}" {% if badge.target_id == a.id %}selected{% endif %}>{{ a.title }} ({{ a.problem_count }} 题)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-control" id="condition_value_group" style="{% if badge.condition_type in ['manual', 'all_users', 'assignment_complete', 'oj_specific_assignment_complete'] %}display:none;{% endif %}">
                             <label class="label"><span class="label-text font-medium">条件阈值 / 权重</span></label>
                             <div class="join w-full">
                                 <input type="number" name="condition_value" class="input input-bordered join-item w-full" value="{{ badge.condition_value }}" placeholder="例如：10" />
-                                <span class="btn btn-disabled join-item border-base-300">个/次/天/时/级</span>
+                                <span class="btn btn-disabled join-item border-base-300">题/次/天/时/级</span>
                             </div>
-                            <label class="label pt-1 pb-0"><span class="label-text-alt opacity-60">注：等第权重 S+=6, S=5, A=4, B=3, C=2, D=1</span></label>
+                            <label class="label pt-1 pb-0"><span class="label-text-alt opacity-60">注：等第权重 S+=6, S=5, A=4, B=3, C=2, D=1；OJ 连续错误可用于鼓励“持续调试”。</span></label>
                         </div>
 
                         <div class="form-control">
@@ -276,31 +295,46 @@ function toggleConditionInputs(select) {
     
     const targetAssignmentGroup = document.getElementById('target_assignment_group');
     const targetWikiGroup = document.getElementById('target_wiki_group');
+    const targetOjAssignmentGroup = document.getElementById('target_oj_assignment_group');
     const assignSelect = document.getElementById('target_assignment_select');
     const wikiSelect = document.getElementById('target_wiki_select');
+    const ojAssignSelect = document.getElementById('target_oj_assignment_select');
     
     // 1. 控制限时范围
     if(timeGroup) timeGroup.classList.toggle('hidden', val !== 'login_days_in_range');
     
     // 2. 控制数值阈值输入框
-    if(valueGroup) valueGroup.style.display = (['manual', 'all_users', 'assignment_complete'].includes(val)) ? 'none' : 'block';
+    if(valueGroup) valueGroup.style.display = (['manual', 'all_users', 'assignment_complete', 'oj_specific_assignment_complete'].includes(val)) ? 'none' : 'block';
     
     // 3. 智能显示目标下拉框，并动态分配 name="target_id" 属性（防止提交错误的数据）
     if (['assignment_complete', 'assignment_stars', 'assignment_grade'].includes(val)) {
         targetAssignmentGroup.style.display = 'block';
         targetWikiGroup.style.display = 'none';
+        targetOjAssignmentGroup.style.display = 'none';
         assignSelect.setAttribute('name', 'target_id');
         wikiSelect.removeAttribute('name');
+        ojAssignSelect.removeAttribute('name');
     } else if (val === 'wiki_specific_duration') {
         targetAssignmentGroup.style.display = 'none';
         targetWikiGroup.style.display = 'block';
+        targetOjAssignmentGroup.style.display = 'none';
         wikiSelect.setAttribute('name', 'target_id');
         assignSelect.removeAttribute('name');
+        ojAssignSelect.removeAttribute('name');
+    } else if (val === 'oj_specific_assignment_complete') {
+        targetAssignmentGroup.style.display = 'none';
+        targetWikiGroup.style.display = 'none';
+        targetOjAssignmentGroup.style.display = 'block';
+        ojAssignSelect.setAttribute('name', 'target_id');
+        assignSelect.removeAttribute('name');
+        wikiSelect.removeAttribute('name');
     } else {
         targetAssignmentGroup.style.display = 'none';
         targetWikiGroup.style.display = 'none';
+        targetOjAssignmentGroup.style.display = 'none';
         assignSelect.removeAttribute('name');
         wikiSelect.removeAttribute('name');
+        ojAssignSelect.removeAttribute('name');
     }
 }
 

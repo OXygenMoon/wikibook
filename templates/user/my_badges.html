@@ -133,20 +133,7 @@
                                     <div class="inline-flex items-center px-2.5 py-1 rounded-md bg-base-200/60 text-xs font-medium text-base-content/60">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1.5 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>
                                         目标: 
-                                        {% if badge.condition_type == 'streak_days' %}连续打卡 {{ badge.condition_value }} 天
-                                        {% elif badge.condition_type == 'study_hours' %}学习 {{ badge.condition_value }} 小时
-                                        {% elif badge.condition_type == 'note_count' %}创建 {{ badge.condition_value }} 篇笔记
-                                        {% elif badge.condition_type == 'featured_count' %}获得 {{ badge.condition_value }} 次精选
-                                        {% elif badge.condition_type == 'wiki_edit_count' %}编辑 Wiki {{ badge.condition_value }} 次
-                                        {% elif badge.condition_type == 'wiki_create_count' %}创建 Wiki 词条 {{ badge.condition_value }} 个
-                                        {% elif badge.condition_type == 'comment_count' %}发布 {{ badge.condition_value }} 条评论
-                                        {% elif badge.condition_type == 'night_owl_sessions' %}深夜学习 {{ badge.condition_value }} 天
-                                        {% elif badge.condition_type == 'early_bird' %}早起学习 {{ badge.condition_value }} 天
-                                        {% elif badge.condition_type == 'weekend_warrior' %}周末累计学习 {{ badge.condition_value }} 小时
-                                        {% elif badge.condition_type == 'long_session_count' %}深度专注(>2h) {{ badge.condition_value }} 次
-                                        {% elif badge.condition_type == 'share_count' %}分享笔记 {{ badge.condition_value }} 次
-                                        {% elif badge.condition_type == 'total_views_received' %}笔记被阅读 {{ badge.condition_value }} 次
-                                        {% else %}{{ badge.condition_value }}{% endif %}
+                                        {{ badge|badge_condition_text }}
                                     </div>
                                     
                                     {% if badge.total_limit is not none %}

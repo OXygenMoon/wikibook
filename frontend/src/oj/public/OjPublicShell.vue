@@ -3,6 +3,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { requestJson } from './api.js';
 import ProblemListView from './ProblemListView.vue';
 import ProblemDetailView from './ProblemDetailView.vue';
+import ProblemCodeView from './ProblemCodeView.vue';
+import ProblemSubmitView from './ProblemSubmitView.vue';
 import SubmissionListView from './SubmissionListView.vue';
 import SubmissionDetailView from './SubmissionDetailView.vue';
 import AssignmentListView from './AssignmentListView.vue';
@@ -13,6 +15,8 @@ const props = defineProps({
   initialView: { type: String, default: 'problems' },
   problemList: { type: Object, default: null },
   problemDetail: { type: Object, default: null },
+  problemCode: { type: Object, default: null },
+  problemSubmit: { type: Object, default: null },
   submissionList: { type: Object, default: null },
   submissionDetail: { type: Object, default: null },
   assignmentList: { type: Object, default: null },
@@ -25,6 +29,8 @@ const props = defineProps({
 const view = ref(props.initialView);
 const problemList = ref(props.problemList);
 const problemDetail = ref(props.problemDetail);
+const problemCode = ref(props.problemCode);
+const problemSubmit = ref(props.problemSubmit);
 const submissionList = ref(props.submissionList);
 const submissionDetail = ref(props.submissionDetail);
 const assignmentList = ref(props.assignmentList);
@@ -35,6 +41,8 @@ const notice = ref(null);
 
 const title = computed(() => {
   if (view.value === 'problemDetail') return problemDetail.value?.title || '题目详情';
+  if (view.value === 'problemCode') return `${problemCode.value?.problem?.title || '题目'} · 在线编码`;
+  if (view.value === 'problemSubmit') return `${problemSubmit.value?.problem?.title || '题目'} · 提交代码`;
   if (view.value === 'submissions') {
     if (submissionList.value?.selectedAssignment) return `${submissionList.value.selectedAssignment.title} · 提交记录`;
     return props.currentUser?.isAdmin ? '全站 OJ 提交' : '我的 OJ 提交';
@@ -78,6 +86,36 @@ async function goProblem(slug, url, { pushState = true } = {}) {
     problemDetail.value = data.problemDetail;
     view.value = 'problemDetail';
     if (pushState) push(url, 'problemDetail');
+  } catch (error) {
+    showNotice(error.message);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function goProblemCode(slug, url, { pushState = true } = {}) {
+  loading.value = true;
+  try {
+    const search = new URL(url, window.location.origin).search;
+    const data = await requestJson(`/oj/problems/${slug}/code.json${search}`);
+    problemCode.value = data.problemCode;
+    view.value = 'problemCode';
+    if (pushState) push(url, 'problemCode');
+  } catch (error) {
+    showNotice(error.message);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function goProblemSubmit(slug, url, { pushState = true } = {}) {
+  loading.value = true;
+  try {
+    const search = new URL(url, window.location.origin).search;
+    const data = await requestJson(`/oj/problems/${slug}/submit.json${search}`);
+    problemSubmit.value = data.problemSubmit;
+    view.value = 'problemSubmit';
+    if (pushState) push(url, 'problemSubmit');
   } catch (error) {
     showNotice(error.message);
   } finally {
@@ -155,6 +193,13 @@ async function goAssignmentScoreboard(assignmentId, url, { pushState = true } = 
   }
 }
 
+function showSubmissionDetail(nextSubmission, redirectUrl, message = '') {
+  submissionDetail.value = nextSubmission;
+  view.value = 'submissionDetail';
+  push(redirectUrl, 'submissionDetail');
+  if (message) showNotice(message, 'success');
+}
+
 function routeFromLocation({ pushState = false } = {}) {
   const path = window.location.pathname;
   if (path === '/oj/problems') {
@@ -164,6 +209,16 @@ function routeFromLocation({ pushState = false } = {}) {
   const problemMatch = path.match(/^\/oj\/problems\/([^/]+)$/);
   if (problemMatch) {
     goProblem(problemMatch[1], `${path}${window.location.search}`, { pushState });
+    return;
+  }
+  const problemCodeMatch = path.match(/^\/oj\/problems\/([^/]+)\/code$/);
+  if (problemCodeMatch) {
+    goProblemCode(problemCodeMatch[1], `${path}${window.location.search}`, { pushState });
+    return;
+  }
+  const problemSubmitMatch = path.match(/^\/oj\/problems\/([^/]+)\/submit$/);
+  if (problemSubmitMatch) {
+    goProblemSubmit(problemSubmitMatch[1], `${path}${window.location.search}`, { pushState });
     return;
   }
   if (path === '/oj/submissions') {
@@ -211,20 +266,6 @@ onUnmounted(() => {
           <p class="text-xs font-black tracking-[0.3em] uppercase text-cyan-600 mb-2">Online Judge</p>
           <h1 class="text-3xl md:text-4xl font-black text-stone-900 dark:text-stone-100">{{ title }}</h1>
         </div>
-        <div class="flex gap-2 flex-wrap">
-          <button type="button" class="btn btn-ghost rounded-lg" @click="loadProblems('/oj/problems.json')">
-            <i class="fas fa-code" aria-hidden="true"></i> 题库
-          </button>
-          <button type="button" class="btn btn-outline rounded-lg" @click="loadSubmissions('/oj/submissions.json')">
-            <i class="fas fa-history" aria-hidden="true"></i> 提交记录
-          </button>
-          <a v-if="urls.assignmentList" :href="urls.assignmentList" class="btn btn-ghost rounded-lg" @click.prevent="loadAssignments('/oj/assignments.json')">
-            <i class="fas fa-clipboard-list" aria-hidden="true"></i> 作业
-          </a>
-          <a v-if="urls.adminProblems" :href="urls.adminProblems" class="btn btn-outline rounded-lg">
-            <i class="fas fa-sliders-h" aria-hidden="true"></i> 管理题库
-          </a>
-        </div>
       </header>
 
       <div v-if="notice" class="oj-vue-alert" :class="notice.category === 'error' ? 'oj-vue-alert--error' : 'oj-vue-alert--success'">
@@ -244,8 +285,31 @@ onUnmounted(() => {
         v-else-if="view === 'problemDetail' && problemDetail"
         :problem="problemDetail"
         @back="loadProblems('/oj/problems.json')"
+        @open-code="goProblemCode"
+        @open-submit="goProblemSubmit"
         @open-submissions="loadSubmissions"
         @open-submission="goSubmission"
+      />
+      <ProblemCodeView
+        v-else-if="view === 'problemCode' && problemCode"
+        :key="problemCode.urls.code"
+        :workspace="problemCode"
+        @back="goProblem(problemCode.problem.slug, problemCode.urls.detail)"
+        @open-problem="goProblem"
+        @open-submissions="loadSubmissions"
+        @open-submission="goSubmission"
+        @submitted="showSubmissionDetail"
+      />
+      <ProblemSubmitView
+        v-else-if="view === 'problemSubmit' && problemSubmit"
+        :key="problemSubmit.urls.submit"
+        :workspace="problemSubmit"
+        @back="goProblem(problemSubmit.problem.slug, problemSubmit.urls.detail)"
+        @open-problem="goProblem"
+        @open-code="goProblemCode"
+        @open-submissions="loadSubmissions"
+        @open-submission="goSubmission"
+        @submitted="showSubmissionDetail"
       />
       <SubmissionListView
         v-else-if="view === 'submissions' && submissionList"

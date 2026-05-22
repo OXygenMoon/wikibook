@@ -909,6 +909,104 @@ def serialize_oj_problem_detail(problem, active_assignment=None):
     }
 
 
+def serialize_oj_problem_code_workspace(problem, active_assignment=None):
+    sample_cases = [
+        {"input": case.input_data, "expectedOutput": case.expected_output, "score": case.score}
+        for case in problem.sample_cases
+    ]
+    statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
+    assignment_id = active_assignment.id if active_assignment else None
+    my_latest_task = (
+        JudgeTask.query
+        .filter_by(
+            problem_id=problem.id,
+            user_id=current_user.id,
+            assignment_id=assignment_id,
+        )
+        .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
+        .first()
+    )
+    allowed_languages = problem.allowed_languages or ['python', 'cpp', 'c']
+    return {
+        "problem": {
+            "id": problem.id,
+            "uid": problem.uid_text,
+            "code": problem.problem_code,
+            "title": problem.title,
+            "slug": problem.slug,
+            "difficulty": problem.difficulty,
+            "source": problem.source or "",
+            "timeLimitMs": problem.time_limit_ms,
+            "memoryLimitMb": problem.memory_limit_mb,
+            "allowedLanguages": allowed_languages,
+            "allowedLanguagesText": problem.allowed_languages_text,
+            "statementHtml": statement_html,
+            "statementHasSamplePairs": statement_has_sample_pairs,
+            "sampleCases": sample_cases,
+        },
+        "latestTask": serialize_oj_task_summary(my_latest_task),
+        "activeAssignment": {
+            "id": active_assignment.id,
+            "title": active_assignment.title,
+            "url": url_for("oj_assignment_detail", assignment_id=active_assignment.id),
+        } if active_assignment else None,
+        "storageScope": str(assignment_id) if assignment_id else "global",
+        "urls": {
+            "detail": url_for("oj_problem_detail", slug=problem.slug, assignment_id=assignment_id),
+            "code": url_for("oj_problem_code", slug=problem.slug, assignment_id=assignment_id),
+            "codeJson": url_for("oj_problem_code_json", slug=problem.slug, assignment_id=assignment_id),
+            "submit": url_for("submit_oj_problem", slug=problem.slug, assignment_id=assignment_id),
+            "submissions": url_for("oj_submission_list", assignment_id=assignment_id),
+            "syntaxCheck": url_for("oj_problem_syntax_check", slug=problem.slug, assignment_id=assignment_id),
+            "adminEdit": url_for("edit_oj_problem", problem_id=problem.id) if current_user.is_admin else None,
+        },
+    }
+
+
+def serialize_oj_problem_submit_workspace(problem, active_assignment=None):
+    assignment_id = active_assignment.id if active_assignment else None
+    my_latest_task = (
+        JudgeTask.query
+        .filter_by(
+            problem_id=problem.id,
+            user_id=current_user.id,
+            assignment_id=assignment_id,
+        )
+        .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
+        .first()
+    )
+    allowed_languages = problem.allowed_languages or ['python', 'cpp', 'c']
+    return {
+        "problem": {
+            "id": problem.id,
+            "uid": problem.uid_text,
+            "code": problem.problem_code,
+            "title": problem.title,
+            "slug": problem.slug,
+            "difficulty": problem.difficulty,
+            "timeLimitMs": problem.time_limit_ms,
+            "memoryLimitMb": problem.memory_limit_mb,
+            "testcaseCount": problem.testcase_count,
+            "allowedLanguages": allowed_languages,
+        },
+        "latestTask": serialize_oj_task_summary(my_latest_task),
+        "activeAssignment": {
+            "id": active_assignment.id,
+            "title": active_assignment.title,
+            "url": url_for("oj_assignment_detail", assignment_id=active_assignment.id),
+        } if active_assignment else None,
+        "storageScope": str(assignment_id) if assignment_id else "global",
+        "urls": {
+            "detail": url_for("oj_problem_detail", slug=problem.slug, assignment_id=assignment_id),
+            "code": url_for("oj_problem_code", slug=problem.slug, assignment_id=assignment_id),
+            "submit": url_for("submit_oj_problem", slug=problem.slug, assignment_id=assignment_id),
+            "submitJson": url_for("oj_problem_submit_json", slug=problem.slug, assignment_id=assignment_id),
+            "submissions": url_for("oj_submission_list", assignment_id=assignment_id),
+            "adminEdit": url_for("edit_oj_problem", problem_id=problem.id) if current_user.is_admin else None,
+        },
+    }
+
+
 def serialize_submission_row(task):
     meta = oj_submission_status_meta(task)
     return {
@@ -9507,28 +9605,35 @@ def oj_problem_code(slug):
     if not can_view_problem(problem, current_user) and not active_assignment:
         abort(404)
 
-    statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
-    sample_cases = problem.sample_cases
-    my_latest_task = (
-        JudgeTask.query
-        .filter_by(
-            problem_id=problem.id,
-            user_id=current_user.id,
-            assignment_id=active_assignment.id if active_assignment else None,
-        )
-        .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
-        .first()
+    return render_template(
+        'oj/oj_shell.html',
+        page_title=f'在线编码 - {problem.title}',
+        shell_payload={
+            "initialView": "problemCode",
+            "problemCode": serialize_oj_problem_code_workspace(problem, active_assignment),
+            "urls": {
+                "problemList": url_for("oj_problem_list"),
+                "problemListJson": url_for("oj_problem_list_json"),
+                "submissionList": url_for("oj_submission_list"),
+                "submissionListJson": url_for("oj_submission_list_json"),
+                "assignmentList": url_for("oj_assignment_list"),
+                "assignmentListJson": url_for("oj_assignment_list_json"),
+                "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
+            },
+            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+        },
     )
 
-    return render_template(
-        'oj/problem_code.html',
-        problem=problem,
-        sample_cases=sample_cases,
-        statement_html=statement_html,
-        statement_has_sample_pairs=statement_has_sample_pairs,
-        my_latest_task=my_latest_task,
-        active_assignment=active_assignment,
-    )
+
+@app.route('/oj/problems/<slug>/code.json')
+@login_required
+def oj_problem_code_json(slug):
+    ensure_oj_authoring_schema()
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user) and not active_assignment:
+        abort(404)
+    return jsonify({"ok": True, "problemCode": serialize_oj_problem_code_workspace(problem, active_assignment)})
 
 
 @app.route('/oj/problems/<slug>/syntax-check', methods=['POST'])
@@ -9707,22 +9812,46 @@ def submit_oj_problem(slug):
         abort(404)
 
     if request.method == 'GET':
-        return render_template('oj/problem_submit.html', problem=problem, active_assignment=active_assignment)
+        return render_template(
+            'oj/oj_shell.html',
+            page_title=f'提交代码 - {problem.title}',
+            shell_payload={
+                "initialView": "problemSubmit",
+                "problemSubmit": serialize_oj_problem_submit_workspace(problem, active_assignment),
+                "urls": {
+                    "problemList": url_for("oj_problem_list"),
+                    "problemListJson": url_for("oj_problem_list_json"),
+                    "submissionList": url_for("oj_submission_list"),
+                    "submissionListJson": url_for("oj_submission_list_json"),
+                    "assignmentList": url_for("oj_assignment_list"),
+                    "assignmentListJson": url_for("oj_assignment_list_json"),
+                    "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
+                },
+                "currentUser": {"isAdmin": bool(current_user.is_admin)},
+            },
+        )
 
-    language = request.form.get('language', '').strip().lower()
-    source_code = request.form.get('source_code', '')
+    payload = request.get_json(silent=True) if request.is_json else None
+    language = (payload.get('language') if payload else request.form.get('language', '')).strip().lower()
+    source_code = payload.get('source_code', '') if payload else request.form.get('source_code', '')
     allowed_languages = problem.allowed_languages or ['python', 'cpp', 'c']
 
     if language not in allowed_languages:
+        if is_ajax_request():
+            return jsonify({'ok': False, 'message': '这道题暂不支持所选语言。'}), 400
         flash('这道题暂不支持所选语言。', 'error')
         return redirect(url_for('oj_problem_detail', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None))
 
     if not source_code.strip():
+        if is_ajax_request():
+            return jsonify({'ok': False, 'message': '请先填写代码再提交。'}), 400
         flash('请先填写代码再提交。', 'error')
         return redirect(url_for('oj_problem_detail', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None))
 
     test_cases = build_oj_judge_cases(problem)
     if not test_cases:
+        if is_ajax_request():
+            return jsonify({'ok': False, 'message': '这道题还没有配置测试数据，暂时不能提交。'}), 400
         flash('这道题还没有配置测试数据，暂时不能提交。', 'error')
         return redirect(url_for('oj_problem_detail', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None))
 
@@ -9747,6 +9876,7 @@ def submit_oj_problem(slug):
         task.queue_job_id = job.id
         task.status = 'queued'
         db.session.commit()
+        success_message = '代码已提交，正在进入评测队列。'
         flash('代码已提交，正在进入评测队列。', 'success')
     except Exception as exc:
         task.status = 'system_error'
@@ -9757,9 +9887,30 @@ def submit_oj_problem(slug):
             'error_message': str(exc),
         }
         db.session.commit()
+        success_message = '提交已保存，但评测队列暂不可用。'
         flash('提交已保存，但评测队列暂不可用。请检查 Redis / Judge Worker。', 'warning')
 
+    if is_ajax_request():
+        results = task.results.order_by(JudgeTaskResult.case_index.asc()).all()
+        return jsonify({
+            'ok': True,
+            'message': success_message,
+            'redirectUrl': url_for('oj_submission_detail', task_id=task.id),
+            'submissionDetail': serialize_submission_detail(task, results),
+        })
+
     return redirect(url_for('oj_submission_detail', task_id=task.id))
+
+
+@app.route('/oj/problems/<slug>/submit.json')
+@login_required
+def oj_problem_submit_json(slug):
+    ensure_oj_authoring_schema()
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user) and not active_assignment:
+        abort(404)
+    return jsonify({"ok": True, "problemSubmit": serialize_oj_problem_submit_workspace(problem, active_assignment)})
 
 
 @app.route('/oj/submissions')

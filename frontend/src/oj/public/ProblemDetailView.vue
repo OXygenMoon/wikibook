@@ -2,7 +2,7 @@
 const props = defineProps({
   problem: { type: Object, required: true },
 });
-const emit = defineEmits(['back', 'openSubmissions', 'openSubmission']);
+const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', 'openSubmission']);
 </script>
 
 <template>
@@ -67,8 +67,8 @@ const emit = defineEmits(['back', 'openSubmissions', 'openSubmission']);
       <div class="meta-line"><span class="text-stone-500">语言</span><span class="font-bold text-right">{{ problem.allowedLanguages }}</span></div>
       <div v-if="problem.canManage" class="meta-line"><span class="text-stone-500">隐藏测试点</span><span class="font-bold">{{ problem.hiddenCaseCount }}</span></div>
       <div class="pt-5 flex flex-col gap-3">
-        <a :href="problem.urls.code" class="btn btn-secondary rounded-lg"><i class="fas fa-code" aria-hidden="true"></i> 在线编码</a>
-        <a :href="problem.urls.submit" class="btn btn-primary rounded-lg"><i class="fas fa-paper-plane" aria-hidden="true"></i> 提交代码</a>
+        <a :href="problem.urls.code" class="btn btn-secondary rounded-lg" @click.prevent="emit('openCode', problem.slug, problem.urls.code)"><i class="fas fa-code" aria-hidden="true"></i> 在线编码</a>
+        <a :href="problem.urls.submit" class="btn btn-primary rounded-lg" @click.prevent="emit('openSubmit', problem.slug, problem.urls.submit)"><i class="fas fa-paper-plane" aria-hidden="true"></i> 提交代码</a>
         <a :href="problem.urls.submissions" class="btn btn-outline rounded-lg" @click.prevent="emit('openSubmissions', problem.urls.submissions.replace('/oj/submissions', '/oj/submissions.json'))">
           <i class="fas fa-list-check" aria-hidden="true"></i> 提交记录
         </a>

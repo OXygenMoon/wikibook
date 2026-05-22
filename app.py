@@ -71,10 +71,18 @@ login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
 markdown = mistune.create_markdown(escape=False, plugins=["strikethrough", "table", "url", "task_lists"])
+UTC8 = timezone(timedelta(hours=8))
 
 # UTC+8 Helper
 def now_utc8():
-    return datetime.utcnow() + timedelta(hours=8)
+    return datetime.now(UTC8).replace(tzinfo=None)
+
+def to_utc8_naive(dt):
+    if not dt:
+        return dt
+    if dt.tzinfo is not None and dt.utcoffset() is not None:
+        return dt.astimezone(UTC8).replace(tzinfo=None)
+    return dt
 
 def is_image_icon(s):
     if not s:
@@ -388,13 +396,13 @@ class User(db.Model, UserMixin):
     def is_online(self):
         if not self.active_status or not self.active_status.last_active_at:
             return False
-        return self.active_status.last_active_at > (now_utc8() - timedelta(minutes=5))
+        return to_utc8_naive(self.active_status.last_active_at) > (now_utc8() - timedelta(minutes=5))
 
     @property
     def last_active_human(self):
         if not self.active_status or not self.active_status.last_active_at:
             return "从未上线"
-        diff = now_utc8() - self.active_status.last_active_at
+        diff = now_utc8() - to_utc8_naive(self.active_status.last_active_at)
         seconds = diff.total_seconds()
         if seconds < 60:
             return "刚刚"
@@ -4274,7 +4282,8 @@ def view_note(note_id):
     # Record view log with debounce (e.g., 5 minutes)
     try:
         last_view = NoteViewLog.query.filter_by(note_id=note_id, user_id=current_user.id).order_by(NoteViewLog.timestamp.desc()).first()
-        if not last_view or (now_utc8() - last_view.timestamp).total_seconds() > 300:
+        last_view_time = to_utc8_naive(last_view.timestamp) if last_view else None
+        if not last_view_time or (now_utc8() - last_view_time).total_seconds() > 300:
             log = NoteViewLog(note_id=note_id, user_id=current_user.id)
             db.session.add(log)
             db.session.commit()
@@ -4651,9 +4660,10 @@ def heartbeat():
         
         was_offline = False
         online_threshold = now - timedelta(minutes=5)
-        if status.last_active_at and status.last_active_at < online_threshold:
+        last_active_at = to_utc8_naive(status.last_active_at)
+        if last_active_at and last_active_at < online_threshold:
             was_offline = True
-        elif status.last_active_at is None:
+        elif last_active_at is None:
             was_offline = True
             
         status.last_active_at = now
@@ -4677,8 +4687,9 @@ def heartbeat():
         
         session_record = StudySession.query.filter_by(user_id=current_user.id).order_by(StudySession.end_time.desc()).first()
         gap_limit = timedelta(minutes=5)
+        session_end_time = to_utc8_naive(session_record.end_time) if session_record else None
         
-        if session_record and (now - session_record.end_time) < gap_limit:
+        if session_record and session_end_time and (now - session_end_time) < gap_limit:
             session_record.end_time = now
         else:
             session_record = StudySession(user_id=current_user.id, start_time=now, end_time=now)
@@ -5686,8 +5697,9 @@ def view_page(wiki_id, slug):
         .order_by(WikiViewLog.timestamp.desc()).first()
     
     should_commit = False
+    last_log_time = to_utc8_naive(last_log.timestamp) if last_log else None
     
-    if not last_log or (now - last_log.timestamp).total_seconds() > 600:
+    if not last_log_time or (now - last_log_time).total_seconds() > 600:
         log = WikiViewLog(wiki_id=wiki_id, user_id=current_user.id, timestamp=now)
         db.session.add(log)
         should_commit = True

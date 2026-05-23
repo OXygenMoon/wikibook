@@ -14,7 +14,6 @@ const filters = reactive({
   problemId: null,
   assignmentId: null,
 });
-let debounceTimer = 0;
 
 const statusOptions = [
   { value: '', label: '全部状态' },
@@ -48,11 +47,6 @@ function submitFilter() {
   emit('filter', buildUrl());
 }
 
-function scheduleFilter() {
-  window.clearTimeout(debounceTimer);
-  debounceTimer = window.setTimeout(submitFilter, 260);
-}
-
 function resetFilter() {
   emit('filter', buildUrl(true));
 }
@@ -76,7 +70,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
       <form class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 items-end" @submit.prevent="submitFilter">
         <label v-if="payload.isAdmin" class="form-control">
           <span class="label-text font-bold mb-1">用户</span>
-          <input v-model.trim="filters.user" type="text" class="input input-bordered rounded-lg" placeholder="用户名、姓名或 UID" @input="scheduleFilter">
+          <input v-model.trim="filters.user" type="text" class="input input-bordered rounded-lg" placeholder="用户名、姓名或 UID">
         </label>
 
         <div v-if="payload.selectedAssignment" class="form-control">
@@ -90,7 +84,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
         </div>
         <label v-else class="form-control">
           <span class="label-text font-bold mb-1">题目</span>
-          <input v-model.trim="filters.problem" type="text" class="input input-bordered rounded-lg" placeholder="题号、标题或 Slug" @input="scheduleFilter">
+          <input v-model.trim="filters.problem" type="text" class="input input-bordered rounded-lg" placeholder="题号、标题或 Slug">
         </label>
 
         <label class="form-control">

@@ -8,6 +8,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash, abo
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text, inspect, case
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.sql.sqltypes import Integer
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -654,8 +655,15 @@ def vite_css_assets(entry_name):
     ]
 
 
-def serialize_admin_problem(problem):
-    configured_ast_rule_count = sum(1 for rule in problem.ast_rules if rule.enabled)
+def serialize_admin_problem(problem, stats=None):
+    stats = stats or {}
+    configured_ast_rule_count = stats.get("astRuleCount")
+    if configured_ast_rule_count is None:
+        configured_ast_rule_count = sum(1 for rule in problem.ast_rules if rule.enabled)
+    testcase_count = stats.get("testcaseCount", problem.testcase_count)
+    file_count = stats.get("fileCount")
+    if file_count is None:
+        file_count = problem.files.count()
     return {
         "id": problem.id,
         "uid": problem.uid_text,
@@ -663,8 +671,8 @@ def serialize_admin_problem(problem):
         "title": problem.title,
         "slug": problem.slug,
         "difficulty": problem.difficulty,
-        "testcaseCount": problem.testcase_count,
-        "fileCount": problem.files.count(),
+        "testcaseCount": testcase_count,
+        "fileCount": file_count,
         "astRuleCount": configured_ast_rule_count,
         "astCheckEnabled": bool(problem.ast_check_enabled),
         "allowedLanguages": problem.allowed_languages_text,
@@ -1168,6 +1176,63 @@ def oj_problem_source_tags(problem):
     ]
 
 
+def build_admin_problem_rows(problems):
+    problem_ids = [problem.id for problem in problems]
+    if not problem_ids:
+        return []
+
+    testcase_counts = {
+        problem_id: count
+        for problem_id, count in (
+            db.session.query(
+                ProblemTestCase.problem_id,
+                db.func.count(ProblemTestCase.id),
+            )
+            .filter(ProblemTestCase.problem_id.in_(problem_ids))
+            .group_by(ProblemTestCase.problem_id)
+            .all()
+        )
+    }
+    file_counts = {
+        problem_id: count
+        for problem_id, count in (
+            db.session.query(
+                ProblemFile.problem_id,
+                db.func.count(ProblemFile.id),
+            )
+            .filter(ProblemFile.problem_id.in_(problem_ids))
+            .group_by(ProblemFile.problem_id)
+            .all()
+        )
+    }
+    ast_rule_counts = {
+        problem_id: count
+        for problem_id, count in (
+            db.session.query(
+                ProblemAstRule.problem_id,
+                db.func.count(ProblemAstRule.id),
+            )
+            .filter(
+                ProblemAstRule.problem_id.in_(problem_ids),
+                ProblemAstRule.enabled.is_(True),
+            )
+            .group_by(ProblemAstRule.problem_id)
+            .all()
+        )
+    }
+    return [
+        serialize_admin_problem(
+            problem,
+            {
+                "testcaseCount": int(testcase_counts.get(problem.id, 0) or 0),
+                "fileCount": int(file_counts.get(problem.id, 0) or 0),
+                "astRuleCount": int(ast_rule_counts.get(problem.id, 0) or 0),
+            },
+        )
+        for problem in problems
+    ]
+
+
 def serialize_oj_problem_row(problem, submission_stat=None, my_status=None):
     submission_stat = submission_stat or {"accepted": 0, "attempts": 0}
     my_status = my_status or {"accepted": False, "attempted": False}
@@ -1195,7 +1260,7 @@ def serialize_oj_problem_row(problem, submission_stat=None, my_status=None):
 
 
 def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
-    query = Problem.query
+    query = Problem.query.options(joinedload(Problem.created_by))
     if not current_user.is_admin:
         query = query.filter_by(is_visible=True)
     elif visibility == "hidden":
@@ -1457,7 +1522,11 @@ def serialize_submission_row(task):
 
 
 def build_oj_submission_list_payload(status_filter="", language_filter="", user_filter="", problem_filter="", problem_id_filter=None, assignment_id_filter=None):
-    query = JudgeTask.query.filter(JudgeTask.problem_id.isnot(None))
+    query = (
+        JudgeTask.query
+        .options(joinedload(JudgeTask.user), joinedload(JudgeTask.problem))
+        .filter(JudgeTask.problem_id.isnot(None))
+    )
     language_query = db.session.query(JudgeTask.language).filter(JudgeTask.problem_id.isnot(None))
     if not current_user.is_admin:
         query = query.filter_by(user_id=current_user.id)
@@ -1628,9 +1697,35 @@ def serialize_oj_assignment_summary(assignment, latest_by_problem=None, accepted
 
 def build_oj_assignment_list_payload():
     assignments = get_visible_oj_assignments_for_user(current_user)
+    assignment_status = {
+        assignment.id: {"latest_by_problem": {}, "accepted_problem_ids": set()}
+        for assignment in assignments
+    }
+    assignment_ids = list(assignment_status.keys())
+    if current_user.is_authenticated and assignment_ids:
+        tasks = (
+            JudgeTask.query
+            .options(joinedload(JudgeTask.problem))
+            .filter(
+                JudgeTask.user_id == current_user.id,
+                JudgeTask.assignment_id.in_(assignment_ids),
+            )
+            .order_by(JudgeTask.assignment_id.asc(), JudgeTask.problem_id.asc(), JudgeTask.created_at.desc(), JudgeTask.id.desc())
+            .all()
+        )
+        for task in tasks:
+            bucket = assignment_status.get(task.assignment_id)
+            if not bucket:
+                continue
+            if task.status in OJ_PASSING_STATUSES:
+                bucket["accepted_problem_ids"].add(task.problem_id)
+            bucket["latest_by_problem"].setdefault(task.problem_id, task)
+
     rows = []
     for assignment in assignments:
-        latest_by_problem, accepted_problem_ids = assignment_problem_latest_status(assignment, current_user)
+        bucket = assignment_status.get(assignment.id, {})
+        latest_by_problem = bucket.get("latest_by_problem", {})
+        accepted_problem_ids = bucket.get("accepted_problem_ids", set())
         rows.append(serialize_oj_assignment_summary(assignment, latest_by_problem, accepted_problem_ids))
     return {
         "assignments": rows,
@@ -1671,6 +1766,7 @@ def build_oj_assignment_detail_payload(assignment):
 
     assignment_submissions = (
         JudgeTask.query
+        .options(joinedload(JudgeTask.problem))
         .filter(
             JudgeTask.user_id == current_user.id,
             JudgeTask.assignment_id == assignment.id,
@@ -1710,6 +1806,7 @@ def build_oj_assignment_scoreboard_payload(assignment):
     if problem_ids and participant_ids:
         tasks = (
             JudgeTask.query
+            .options(joinedload(JudgeTask.problem))
             .filter(
                 JudgeTask.assignment_id == assignment.id,
                 JudgeTask.user_id.in_(participant_ids),
@@ -8093,7 +8190,7 @@ class JudgeTask(db.Model):
     submission_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=True)
     problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), nullable=True, index=True)
     assignment_id = db.Column(db.Integer, db.ForeignKey('oj_assignment.id'), nullable=True, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
     language = db.Column(db.String(32), nullable=False, default='python')
     source_code = db.Column(db.Text, nullable=False)
     test_cases = db.Column(db.JSON, nullable=False, default=list)
@@ -9201,13 +9298,26 @@ def ensure_oj_authoring_schema():
                 connection.execute(db.text("CREATE INDEX IF NOT EXISTS ix_judge_task_problem_id ON judge_task (problem_id)"))
             if 'ix_judge_task_assignment_id' not in judge_task_indexes:
                 connection.execute(db.text("CREATE INDEX IF NOT EXISTS ix_judge_task_assignment_id ON judge_task (assignment_id)"))
+            if 'ix_judge_task_user_id' not in judge_task_indexes:
+                connection.execute(db.text("CREATE INDEX IF NOT EXISTS ix_judge_task_user_id ON judge_task (user_id)"))
+            if 'ix_judge_task_assignment_user_problem' not in judge_task_indexes:
+                connection.execute(
+                    db.text(
+                        "CREATE INDEX IF NOT EXISTS ix_judge_task_assignment_user_problem "
+                        "ON judge_task (assignment_id, user_id, problem_id)"
+                    )
+                )
 
     seed_ast_rule_templates()
     return created_tables
 
 
 def get_visible_oj_assignments_for_user(user):
-    base_query = OJAssignment.query.order_by(OJAssignment.start_at.desc(), OJAssignment.created_at.desc(), OJAssignment.id.desc())
+    base_query = (
+        OJAssignment.query
+        .options(selectinload(OJAssignment.problem_links))
+        .order_by(OJAssignment.start_at.desc(), OJAssignment.created_at.desc(), OJAssignment.id.desc())
+    )
     if not user.is_authenticated:
         return []
     if user.is_admin:
@@ -10597,10 +10707,11 @@ def manage_oj_problems():
         if created_tables:
             flash('OJ 题库数据表已自动修复，请继续操作。', 'success')
         problems = Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
+    problem_rows = build_admin_problem_rows(problems)
     return render_template(
         'admin/manage_oj_problems.html',
         problems=problems,
-        problems_json=[serialize_admin_problem(problem) for problem in problems],
+        problems_json=problem_rows,
     )
 
 
@@ -10614,7 +10725,7 @@ def manage_oj_problems_json():
     problems = Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
     return jsonify({
         "ok": True,
-        "problems": [serialize_admin_problem(problem) for problem in problems],
+        "problems": build_admin_problem_rows(problems),
         "count": len(problems),
     })
 

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { requestJson } from './api.js';
 
 const props = defineProps({
@@ -59,10 +59,6 @@ async function deleteProblem(problem) {
     loading.value = false;
   }
 }
-
-onMounted(() => {
-  refreshProblems();
-});
 </script>
 
 <template>

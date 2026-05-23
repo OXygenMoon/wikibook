@@ -38,6 +38,13 @@ const assignmentDetail = ref(props.assignmentDetail);
 const assignmentScoreboard = ref(props.assignmentScoreboard);
 const loading = ref(false);
 const notice = ref(null);
+const initialSubmissionListUrl = (() => {
+  if (props.initialView === 'submissions' && typeof window !== 'undefined') {
+    return `/oj/submissions.json${window.location.search}`;
+  }
+  return props.urls.submissionListJson || '/oj/submissions.json';
+})();
+const lastSubmissionListUrl = ref(initialSubmissionListUrl);
 
 const title = computed(() => {
   if (view.value === 'problemDetail') return problemDetail.value?.title || '题目详情';
@@ -128,6 +135,7 @@ async function loadSubmissions(url = props.urls.submissionListJson || '/oj/submi
   try {
     const data = await requestJson(url);
     submissionList.value = data.submissionList;
+    lastSubmissionListUrl.value = url;
     view.value = 'submissions';
     if (pushState) push(url.replace('/oj/submissions.json', '/oj/submissions'), 'submissions');
   } catch (error) {
@@ -321,7 +329,7 @@ onUnmounted(() => {
       <SubmissionDetailView
         v-else-if="view === 'submissionDetail' && submissionDetail"
         :submission="submissionDetail"
-        @back="loadSubmissions('/oj/submissions.json')"
+        @back="loadSubmissions(lastSubmissionListUrl)"
       />
       <AssignmentListView
         v-else-if="view === 'assignments' && assignmentList"

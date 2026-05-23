@@ -13,6 +13,7 @@ const filters = reactive({
   problem: '',
   problemId: null,
   assignmentId: null,
+  mine: false,
 });
 
 const statusOptions = [
@@ -39,6 +40,7 @@ function buildUrl(reset = false) {
   if (filters.problemId) params.set('problem_id', filters.problemId);
   else if (filters.problem) params.set('problem', filters.problem);
   if (filters.assignmentId) params.set('assignment_id', filters.assignmentId);
+  if (filters.mine) params.set('mine', '1');
   const query = params.toString();
   return `/oj/submissions.json${query ? `?${query}` : ''}`;
 }

@@ -1235,7 +1235,7 @@ def build_admin_problem_rows(problems):
 
 def serialize_oj_problem_row(problem, submission_stat=None, my_status=None):
     submission_stat = submission_stat or {"accepted": 0, "attempts": 0}
-    my_status = my_status or {"accepted": False, "attempted": False}
+    my_status = my_status or {"accepted": False, "attempted": False, "perfectAccepted": False}
     author_name = "系统"
     if problem.created_by:
         author_name = problem.created_by.real_name or problem.created_by.username
@@ -1294,20 +1294,28 @@ def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
         for problem_id, attempts, accepted in rows:
             problem_submission_stats[problem_id] = {"accepted": int(accepted or 0), "attempts": int(attempts or 0)}
 
-    my_problem_status = {problem_id: {"accepted": False, "attempted": False} for problem_id in problem_ids}
+    my_problem_status = {
+        problem_id: {"accepted": False, "attempted": False, "perfectAccepted": False}
+        for problem_id in problem_ids
+    }
     if problem_ids:
         my_rows = (
             db.session.query(
                 JudgeTask.problem_id,
                 db.func.count(JudgeTask.id).label("attempts"),
                 db.func.sum(case((JudgeTask.status.in_(OJ_PASSING_STATUSES), 1), else_=0)).label("accepted"),
+                db.func.sum(case((JudgeTask.status.in_({"accepted", "PAC"}), 1), else_=0)).label("perfect_accepted"),
             )
             .filter(JudgeTask.problem_id.in_(problem_ids), JudgeTask.user_id == current_user.id, JudgeTask.assignment_id.is_(None))
             .group_by(JudgeTask.problem_id)
             .all()
         )
-        for problem_id, attempts, accepted in my_rows:
-            my_problem_status[problem_id] = {"accepted": int(accepted or 0) > 0, "attempted": int(attempts or 0) > 0}
+        for problem_id, attempts, accepted, perfect_accepted in my_rows:
+            my_problem_status[problem_id] = {
+                "accepted": int(accepted or 0) > 0,
+                "attempted": int(attempts or 0) > 0,
+                "perfectAccepted": int(perfect_accepted or 0) > 0,
+            }
 
     stats_query = Problem.query if current_user.is_admin else Problem.query.filter_by(is_visible=True)
     problem_stats = {
@@ -1395,7 +1403,7 @@ def serialize_oj_problem_detail(problem, active_assignment=None):
             "detail": url_for("oj_problem_detail", slug=problem.slug, assignment_id=assignment_id),
             "code": url_for("oj_problem_code", slug=problem.slug, assignment_id=assignment_id),
             "submit": url_for("submit_oj_problem", slug=problem.slug, assignment_id=assignment_id),
-            "submissions": url_for("oj_submission_list", assignment_id=assignment_id),
+            "submissions": url_for("oj_submission_list", problem_id=problem.id, assignment_id=assignment_id, mine=1),
             "adminEdit": url_for("edit_oj_problem", problem_id=problem.id),
         },
     }
@@ -1448,7 +1456,7 @@ def serialize_oj_problem_code_workspace(problem, active_assignment=None):
             "code": url_for("oj_problem_code", slug=problem.slug, assignment_id=assignment_id),
             "codeJson": url_for("oj_problem_code_json", slug=problem.slug, assignment_id=assignment_id),
             "submit": url_for("submit_oj_problem", slug=problem.slug, assignment_id=assignment_id),
-            "submissions": url_for("oj_submission_list", assignment_id=assignment_id),
+            "submissions": url_for("oj_submission_list", problem_id=problem.id, assignment_id=assignment_id, mine=1),
             "syntaxCheck": url_for("oj_problem_syntax_check", slug=problem.slug, assignment_id=assignment_id),
             "adminEdit": url_for("edit_oj_problem", problem_id=problem.id) if current_user.is_admin else None,
         },
@@ -1493,7 +1501,7 @@ def serialize_oj_problem_submit_workspace(problem, active_assignment=None):
             "code": url_for("oj_problem_code", slug=problem.slug, assignment_id=assignment_id),
             "submit": url_for("submit_oj_problem", slug=problem.slug, assignment_id=assignment_id),
             "submitJson": url_for("oj_problem_submit_json", slug=problem.slug, assignment_id=assignment_id),
-            "submissions": url_for("oj_submission_list", assignment_id=assignment_id),
+            "submissions": url_for("oj_submission_list", problem_id=problem.id, assignment_id=assignment_id, mine=1),
             "adminEdit": url_for("edit_oj_problem", problem_id=problem.id) if current_user.is_admin else None,
         },
     }
@@ -1521,14 +1529,14 @@ def serialize_submission_row(task):
     }
 
 
-def build_oj_submission_list_payload(status_filter="", language_filter="", user_filter="", problem_filter="", problem_id_filter=None, assignment_id_filter=None):
+def build_oj_submission_list_payload(status_filter="", language_filter="", user_filter="", problem_filter="", problem_id_filter=None, assignment_id_filter=None, mine_only=False):
     query = (
         JudgeTask.query
         .options(joinedload(JudgeTask.user), joinedload(JudgeTask.problem))
         .filter(JudgeTask.problem_id.isnot(None))
     )
     language_query = db.session.query(JudgeTask.language).filter(JudgeTask.problem_id.isnot(None))
-    if not current_user.is_admin:
+    if not current_user.is_admin or mine_only:
         query = query.filter_by(user_id=current_user.id)
         language_query = language_query.filter(JudgeTask.user_id == current_user.id)
 
@@ -1585,6 +1593,7 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
             "problem": problem_filter,
             "problemId": problem_id_filter,
             "assignmentId": assignment_id_filter,
+            "mine": bool(mine_only),
         },
         "selectedProblem": {"id": selected_problem.id, "code": selected_problem.problem_code, "title": selected_problem.title} if selected_problem else None,
         "selectedAssignment": {"id": selected_assignment.id, "title": selected_assignment.title, "url": url_for("oj_assignment_detail", assignment_id=selected_assignment.id)} if selected_assignment else None,
@@ -10592,7 +10601,16 @@ def oj_submission_list():
     user_filter = request.args.get('user', '').strip() if current_user.is_admin else ''
     problem_filter = request.args.get('problem', '').strip()
     problem_id_filter = request.args.get('problem_id', type=int)
-    payload = build_oj_submission_list_payload(status_filter, language_filter, user_filter, problem_filter, problem_id_filter, assignment_id_filter)
+    mine_only = request.args.get('mine', '').strip().lower() in {'1', 'true', 'yes'}
+    payload = build_oj_submission_list_payload(
+        status_filter,
+        language_filter,
+        user_filter,
+        problem_filter,
+        problem_id_filter,
+        assignment_id_filter,
+        mine_only,
+    )
     return render_template(
         'oj/oj_shell.html',
         page_title='OJ 提交记录',
@@ -10625,6 +10643,7 @@ def oj_submission_list_json():
             request.args.get('problem', '').strip(),
             request.args.get('problem_id', type=int),
             request.args.get('assignment_id', type=int),
+            request.args.get('mine', '').strip().lower() in {'1', 'true', 'yes'},
         ),
     })
 

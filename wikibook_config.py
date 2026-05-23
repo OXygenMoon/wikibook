@@ -52,6 +52,8 @@ def configure_app(app):
 
     app.config.update(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret"),
+        APP_LOG_FILE=os.environ.get("APP_LOG_FILE", ""),
+        DEBUG_TRACEBACK_TO_CLIENT=_as_bool("DEBUG_TRACEBACK_TO_CLIENT", False),
         SQLALCHEMY_DATABASE_URI=database_url,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SQLALCHEMY_ENGINE_OPTIONS=engine_options,
@@ -69,6 +71,7 @@ def configure_app(app):
         JUDGE_CONTAINER_CPUS=float(os.environ.get("JUDGE_CONTAINER_CPUS", "1.0")),
         JUDGE_CONTAINER_PIDS_LIMIT=_as_int("JUDGE_CONTAINER_PIDS_LIMIT", 128),
         JUDGE_ALLOW_NETWORK=_as_bool("JUDGE_ALLOW_NETWORK", False),
+        JUDGE_MAX_OUTPUT_BYTES=_as_int("JUDGE_MAX_OUTPUT_BYTES", 65536),
         JUDGE_RESULT_TTL_SECONDS=_as_int("JUDGE_RESULT_TTL_SECONDS", 604800),
         DB_RENDER_AS_BATCH=is_sqlite,
         AUTO_INIT_DB=_as_bool("AUTO_INIT_DB", False),

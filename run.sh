@@ -7,6 +7,9 @@ WEB_PIDFILE="${ROOT_DIR}/.wikibook-web.pid"
 WEB_LOGFILE="${ROOT_DIR}/.wikibook-web.log"
 JUDGE_PIDFILE="${ROOT_DIR}/.wikibook-judge.pid"
 JUDGE_LOGFILE="${ROOT_DIR}/.wikibook-judge.log"
+PROXY_PIDFILE="${ROOT_DIR}/.wikibook-docker-proxy.pid"
+PROXY_LOGFILE="${ROOT_DIR}/.wikibook-docker-proxy.log"
+DOCKER_PROXY_PORT="${JUDGE_DOCKER_PROXY_PORT:-23750}"
 
 load_env() {
     if [ -f "${ROOT_DIR}/.env" ]; then
@@ -230,6 +233,110 @@ ensure_docker() {
     return 1
 }
 
+judge_docker_host() {
+    if [ -n "${JUDGE_DOCKER_HOST:-}" ]; then
+        echo "${JUDGE_DOCKER_HOST}"
+    else
+        echo "tcp://127.0.0.1:${DOCKER_PROXY_PORT}"
+    fi
+}
+
+proxy_is_running() {
+    [ -f "${PROXY_PIDFILE}" ] && kill -0 "$(cat "${PROXY_PIDFILE}")" 2>/dev/null
+}
+
+proxy_pid_from_port() {
+    lsof -tiTCP:"${DOCKER_PROXY_PORT}" -sTCP:LISTEN 2>/dev/null | head -n 1
+}
+
+proxy_is_healthy() {
+    [ "$(curl -s --max-time 2 "http://127.0.0.1:${DOCKER_PROXY_PORT}/_ping" 2>/dev/null || true)" = "OK" ]
+}
+
+ensure_docker_proxy() {
+    local resolved_host
+    resolved_host="$(judge_docker_host)"
+    if [ "${resolved_host}" != "tcp://127.0.0.1:${DOCKER_PROXY_PORT}" ]; then
+        echo "Using custom JUDGE_DOCKER_HOST=${resolved_host}; skipping local Docker proxy."
+        return 0
+    fi
+
+    if proxy_is_healthy; then
+        local running_pid
+        running_pid="$(proxy_pid_from_port)"
+        if [ -n "${running_pid}" ]; then
+            echo "${running_pid}" > "${PROXY_PIDFILE}"
+        fi
+        echo "Restricted Docker proxy is running at ${resolved_host}."
+        return 0
+    fi
+
+    rm -f "${PROXY_PIDFILE}"
+
+    local python_bin
+    python_bin="$(find_python)" || {
+        echo "Unable to find Python for the Docker proxy."
+        exit 1
+    }
+
+    echo "Starting restricted Docker proxy at ${resolved_host} ..."
+    : > "${PROXY_LOGFILE}"
+    nohup env JUDGE_DOCKER_PROXY_PORT="${DOCKER_PROXY_PORT}" "${python_bin}" "${ROOT_DIR}/judge_docker_proxy.py" --host 127.0.0.1 --port "${DOCKER_PROXY_PORT}" >> "${PROXY_LOGFILE}" 2>&1 &
+    echo $! > "${PROXY_PIDFILE}"
+
+    sleep 1
+    if proxy_is_healthy; then
+        local running_pid
+        running_pid="$(proxy_pid_from_port)"
+        if [ -n "${running_pid}" ]; then
+            echo "${running_pid}" > "${PROXY_PIDFILE}"
+        fi
+        echo "Restricted Docker proxy started."
+        return 0
+    fi
+
+    echo "Restricted Docker proxy failed to start."
+    tail -n 80 "${PROXY_LOGFILE}" 2>/dev/null || true
+    exit 1
+}
+
+stop_docker_proxy() {
+    local resolved_host
+    resolved_host="$(judge_docker_host)"
+    if [ "${resolved_host}" != "tcp://127.0.0.1:${DOCKER_PROXY_PORT}" ]; then
+        return 0
+    fi
+
+    if ! proxy_is_healthy; then
+        rm -f "${PROXY_PIDFILE}"
+        return 0
+    fi
+
+    local pid
+    pid="$(cat "${PROXY_PIDFILE}" 2>/dev/null || true)"
+    if [ -z "${pid}" ] || ! kill -0 "${pid}" 2>/dev/null; then
+        pid="$(proxy_pid_from_port)"
+    fi
+    if [ -z "${pid}" ]; then
+        rm -f "${PROXY_PIDFILE}"
+        return 0
+    fi
+    kill "${pid}" 2>/dev/null || true
+
+    local waited=0
+    while kill -0 "${pid}" 2>/dev/null; do
+        if [ "${waited}" -ge 5 ]; then
+            kill -9 "${pid}" 2>/dev/null || true
+            break
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    rm -f "${PROXY_PIDFILE}"
+    echo "Restricted Docker proxy stopped."
+}
+
 ensure_runtime_image() {
     local runtime_image="${JUDGE_RUNTIME_IMAGE:-wikibook-judge-runtime:latest}"
 
@@ -265,6 +372,7 @@ ensure_dependencies() {
     ensure_postgres
     ensure_redis
     ensure_docker
+    ensure_docker_proxy
     ensure_runtime_image
 }
 
@@ -323,16 +431,18 @@ start_judge() {
     load_env
 
     local python_bin
+    local resolved_judge_docker_host
     python_bin="$(find_python)" || {
         echo "Unable to find Python interpreter."
         exit 1
     }
+    resolved_judge_docker_host="$(judge_docker_host)"
 
     cd "${ROOT_DIR}"
     : > "${JUDGE_LOGFILE}"
 
     echo "Starting judge worker ..."
-    nohup env PYTHONUNBUFFERED=1 "${python_bin}" "${ROOT_DIR}/judge_worker.py" >> "${JUDGE_LOGFILE}" 2>&1 &
+    nohup env PYTHONUNBUFFERED=1 JUDGE_DOCKER_HOST="${resolved_judge_docker_host}" "${python_bin}" "${ROOT_DIR}/judge_worker.py" >> "${JUDGE_LOGFILE}" 2>&1 &
     echo $! > "${JUDGE_PIDFILE}"
     sleep 2
 
@@ -428,6 +538,20 @@ show_status() {
         else
             echo "not ready"
         fi
+        echo "Docker host: $(judge_docker_host)"
+        echo -n "Proxy:      "
+        if proxy_is_healthy; then
+            local running_pid
+            running_pid="$(proxy_pid_from_port)"
+            if [ -n "${running_pid}" ]; then
+                echo "${running_pid}" > "${PROXY_PIDFILE}"
+                echo "running (PID: ${running_pid})"
+            else
+                echo "running"
+            fi
+        else
+            echo "stopped"
+        fi
     fi
 }
 
@@ -469,11 +593,15 @@ case "${1:-restart}" in
         start_judge
         ;;
     stop)
+        load_env
         stop_process "${JUDGE_PIDFILE}" "Judge worker"
+        stop_docker_proxy
         stop_web
         ;;
     restart)
+        load_env
         stop_process "${JUDGE_PIDFILE}" "Judge worker"
+        stop_docker_proxy
         stop_web
         ensure_dependencies
         build_frontend_assets

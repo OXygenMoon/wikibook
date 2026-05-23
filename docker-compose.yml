@@ -1,3 +1,13 @@
+x-app-service-security: &app_service_security
+  init: true
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=64m
+
 services:
   postgres:
     image: postgres:16
@@ -13,6 +23,8 @@ services:
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
 
   redis:
     image: redis:7
@@ -23,8 +35,49 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+
+  dockerproxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:v0.4.2
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: warning
+      POST: 1
+      BUILD: 1
+      CONTAINERS: 1
+      IMAGES: 1
+      INFO: 1
+      PING: 1
+      VERSION: 1
+      EVENTS: 0
+      NETWORKS: 0
+      VOLUMES: 0
+      EXEC: 0
+      AUTH: 0
+      SECRETS: 0
+      SERVICES: 0
+      SWARM: 0
+      SYSTEM: 0
+      DISTRIBUTION: 0
+      SESSION: 0
+      TASKS: 0
+      NODES: 0
+      PLUGINS: 0
+      CONFIGS: 0
+      COMMIT: 0
+      ALLOW_START: 1
+      ALLOW_STOP: 0
+      ALLOW_RESTARTS: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - backend
 
   bootstrap:
+    <<: *app_service_security
     build:
       context: .
       dockerfile: Dockerfile
@@ -34,16 +87,20 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://wikibook:wikibook@postgres:5432/wikibook}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      APP_LOG_FILE: ${APP_LOG_FILE:-}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: ["flask", "--app", "app", "wikibook", "init-platform", "--with-schema"]
+    command: ["/app/docker/web-entrypoint.sh", "flask", "--app", "app", "wikibook", "init-platform", "--with-schema"]
     volumes:
       - uploads_data:/app/static/uploads
+    networks:
+      - backend
 
   web:
+    <<: *app_service_security
     build:
       context: .
       dockerfile: Dockerfile
@@ -53,19 +110,24 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://wikibook:wikibook@postgres:5432/wikibook}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      APP_LOG_FILE: ${APP_LOG_FILE:-}
       GUNICORN_BIND: 0.0.0.0:${PORT:-5009}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: ["gunicorn", "--config", "gunicorn.conf.py", "app:app"]
+    command: ["/app/docker/web-entrypoint.sh", "gunicorn", "--config", "gunicorn.conf.py", "app:app"]
     ports:
       - "${PORT:-5009}:${PORT:-5009}"
     volumes:
       - uploads_data:/app/static/uploads
+    networks:
+      - public
+      - backend
 
   worker:
+    <<: *app_service_security
     build:
       context: .
       dockerfile: Dockerfile
@@ -75,16 +137,21 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://wikibook:wikibook@postgres:5432/wikibook}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      APP_LOG_FILE: ${APP_LOG_FILE:-}
+      JUDGE_DOCKER_HOST: ${JUDGE_DOCKER_HOST:-tcp://dockerproxy:2375}
       JUDGE_RUNTIME_IMAGE: ${JUDGE_RUNTIME_IMAGE:-wikibook-judge-runtime:latest}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: ["python", "judge_worker.py"]
+      dockerproxy:
+        condition: service_started
+    command: ["/app/docker/worker-entrypoint.sh", "python", "judge_worker.py"]
     volumes:
       - uploads_data:/app/static/uploads
-      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - backend
 
   judge-runtime:
     build:
@@ -95,4 +162,10 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   uploads_data:
+
+networks:
+  public:
+  backend:
+    internal: true

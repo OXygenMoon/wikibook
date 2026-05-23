@@ -5,8 +5,10 @@ from pathlib import Path
 
 CURRENT_DIR = Path(__file__).resolve().parent
 PARENT_DIR = CURRENT_DIR.parent
-if str(PARENT_DIR) not in sys.path:
-    sys.path.insert(0, str(PARENT_DIR))
+for candidate in (CURRENT_DIR, PARENT_DIR):
+    candidate_path = str(candidate)
+    if candidate_path not in sys.path:
+        sys.path.insert(0, candidate_path)
 
 from judge_security import SAFE_PYTHON_MODULES, validate_python_source
 

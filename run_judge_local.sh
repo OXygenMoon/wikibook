@@ -5,8 +5,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PIDFILE="${ROOT_DIR}/.wikibook-judge-worker.pid"
 LOGFILE="${ROOT_DIR}/.wikibook-judge-worker.log"
+PROXY_PIDFILE="${ROOT_DIR}/.wikibook-docker-proxy.pid"
+PROXY_LOGFILE="${ROOT_DIR}/.wikibook-docker-proxy.log"
 RUNTIME_IMAGE="${JUDGE_RUNTIME_IMAGE:-wikibook-judge-runtime:latest}"
-COLIMA_SOCKET="${HOME}/.colima/default/docker.sock"
+DOCKER_PROXY_PORT="${JUDGE_DOCKER_PROXY_PORT:-23750}"
 
 find_python() {
     local candidate
@@ -27,9 +29,21 @@ find_python() {
 worker_env() {
     export PYTHONUNBUFFERED=1
     export JUDGE_WORKER_MODE="${JUDGE_WORKER_MODE:-simple}"
-    if [ -z "${JUDGE_DOCKER_HOST:-}" ] && [ -S "${COLIMA_SOCKET}" ]; then
-        export JUDGE_DOCKER_HOST="unix://${COLIMA_SOCKET}"
+    if [ -z "${JUDGE_DOCKER_HOST:-}" ]; then
+        export JUDGE_DOCKER_HOST="tcp://127.0.0.1:${DOCKER_PROXY_PORT}"
     fi
+}
+
+proxy_is_running() {
+    [ -f "${PROXY_PIDFILE}" ] && kill -0 "$(cat "${PROXY_PIDFILE}")" 2>/dev/null
+}
+
+proxy_pid_from_port() {
+    lsof -tiTCP:"${DOCKER_PROXY_PORT}" -sTCP:LISTEN 2>/dev/null | head -n 1
+}
+
+proxy_is_healthy() {
+    [ "$(curl -s --max-time 2 "http://127.0.0.1:${DOCKER_PROXY_PORT}/_ping" 2>/dev/null || true)" = "OK" ]
 }
 
 ensure_redis() {
@@ -69,6 +83,51 @@ ensure_colima() {
     echo "Colima started."
 }
 
+ensure_docker_proxy() {
+    if [ -n "${JUDGE_DOCKER_HOST:-}" ] && [ "${JUDGE_DOCKER_HOST}" != "tcp://127.0.0.1:${DOCKER_PROXY_PORT}" ]; then
+        echo "Using custom JUDGE_DOCKER_HOST=${JUDGE_DOCKER_HOST}; skipping local Docker proxy."
+        return 0
+    fi
+
+    if proxy_is_healthy; then
+        local running_pid
+        running_pid="$(proxy_pid_from_port)"
+        if [ -n "${running_pid}" ]; then
+            echo "${running_pid}" > "${PROXY_PIDFILE}"
+        fi
+        echo "Restricted Docker proxy is running at tcp://127.0.0.1:${DOCKER_PROXY_PORT}."
+        return 0
+    fi
+
+    rm -f "${PROXY_PIDFILE}"
+
+    local python_bin
+    python_bin="$(find_python)" || {
+        echo "Unable to find Python for the Docker proxy."
+        exit 1
+    }
+
+    echo "Starting restricted Docker proxy at tcp://127.0.0.1:${DOCKER_PROXY_PORT} ..."
+    : > "${PROXY_LOGFILE}"
+    nohup env JUDGE_DOCKER_PROXY_PORT="${DOCKER_PROXY_PORT}" "${python_bin}" "${ROOT_DIR}/judge_docker_proxy.py" --host 127.0.0.1 --port "${DOCKER_PROXY_PORT}" >> "${PROXY_LOGFILE}" 2>&1 &
+    echo $! > "${PROXY_PIDFILE}"
+
+    sleep 1
+    if proxy_is_healthy; then
+        local running_pid
+        running_pid="$(proxy_pid_from_port)"
+        if [ -n "${running_pid}" ]; then
+            echo "${running_pid}" > "${PROXY_PIDFILE}"
+        fi
+        echo "Restricted Docker proxy started."
+        return 0
+    fi
+
+    echo "Restricted Docker proxy failed to start."
+    tail -n 80 "${PROXY_LOGFILE}" 2>/dev/null || true
+    exit 1
+}
+
 ensure_runtime_image() {
     if docker image inspect "${RUNTIME_IMAGE}" >/dev/null 2>&1; then
         echo "Judge runtime image exists: ${RUNTIME_IMAGE}"
@@ -77,6 +136,41 @@ ensure_runtime_image() {
 
     docker build -t "${RUNTIME_IMAGE}" -f "${ROOT_DIR}/judge_runtime/Dockerfile" "${ROOT_DIR}"
     echo "Judge runtime image built: ${RUNTIME_IMAGE}"
+}
+
+stop_docker_proxy() {
+    if [ -n "${JUDGE_DOCKER_HOST:-}" ] && [ "${JUDGE_DOCKER_HOST}" != "tcp://127.0.0.1:${DOCKER_PROXY_PORT}" ]; then
+        return 0
+    fi
+
+    if ! proxy_is_healthy; then
+        rm -f "${PROXY_PIDFILE}"
+        return 0
+    fi
+
+    local pid
+    pid="$(cat "${PROXY_PIDFILE}" 2>/dev/null || true)"
+    if [ -z "${pid}" ] || ! kill -0 "${pid}" 2>/dev/null; then
+        pid="$(proxy_pid_from_port)"
+    fi
+    if [ -z "${pid}" ]; then
+        rm -f "${PROXY_PIDFILE}"
+        return 0
+    fi
+    kill "${pid}" 2>/dev/null || true
+
+    local waited=0
+    while kill -0 "${pid}" 2>/dev/null; do
+        if [ "${waited}" -ge 5 ]; then
+            kill -9 "${pid}" 2>/dev/null || true
+            break
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    rm -f "${PROXY_PIDFILE}"
+    echo "Restricted Docker proxy stopped."
 }
 
 is_worker_running() {
@@ -129,11 +223,26 @@ stop_worker() {
 }
 
 show_status() {
+    worker_env
     echo "Redis:"
     redis-cli ping 2>/dev/null || true
     echo
     echo "Docker:"
     docker info --format 'server={{.ServerVersion}} os={{.OperatingSystem}} arch={{.Architecture}}' 2>/dev/null || true
+    echo "Docker host: ${JUDGE_DOCKER_HOST}"
+    echo -n "Docker proxy: "
+    if proxy_is_healthy; then
+        local running_pid
+        running_pid="$(proxy_pid_from_port)"
+        if [ -n "${running_pid}" ]; then
+            echo "${running_pid}" > "${PROXY_PIDFILE}"
+            echo "running (PID: ${running_pid})"
+        else
+            echo "running"
+        fi
+    else
+        echo "stopped"
+    fi
     echo
     echo "Runtime image:"
     docker images "${RUNTIME_IMAGE}" --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Size}}' 2>/dev/null || true
@@ -149,6 +258,7 @@ show_status() {
 start_dependencies() {
     ensure_redis
     ensure_colima
+    ensure_docker_proxy
     ensure_runtime_image
 }
 
@@ -168,9 +278,13 @@ case "${1:-start}" in
         ;;
     stop)
         stop_worker
+        worker_env
+        stop_docker_proxy
         ;;
     restart)
         stop_worker
+        worker_env
+        stop_docker_proxy
         start_dependencies
         start_worker_background
         ;;

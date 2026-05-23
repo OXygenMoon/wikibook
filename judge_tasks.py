@@ -56,7 +56,10 @@ def _run_in_runtime_container(task):
         command=["python", "/runner/run_submission.py"],
         detach=True,
         remove=False,
-        environment={"JUDGE_PAYLOAD_B64": payload_b64},
+        environment={
+            "JUDGE_PAYLOAD_B64": payload_b64,
+            "JUDGE_MAX_OUTPUT_BYTES": str(app.config["JUDGE_MAX_OUTPUT_BYTES"]),
+        },
         network_disabled=not app.config["JUDGE_ALLOW_NETWORK"],
         mem_limit=f"{task.memory_limit_mb}m",
         nano_cpus=int(app.config["JUDGE_CONTAINER_CPUS"] * 1_000_000_000),

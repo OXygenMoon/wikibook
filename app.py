@@ -40,9 +40,15 @@ app = Flask(__name__)
 configure_app(app)
 
 
-# 💡 配置日志，将所有报错信息写入 flask_error.log 文件中
-logging.basicConfig(filename='flask_error.log', level=logging.DEBUG, 
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+log_handlers = [logging.StreamHandler()]
+if app.config.get("APP_LOG_FILE"):
+    log_handlers = [logging.FileHandler(app.config["APP_LOG_FILE"])]
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=log_handlers,
+)
 
 # 💡 捕获全局 500 错误，并强行把堆栈信息(Traceback)打印到终端和日志里
 @app.errorhandler(500)
@@ -50,7 +56,9 @@ def internal_server_error(e):
     error_tb = traceback.format_exc()
     app.logger.error(f"发生 500 错误:\n{error_tb}")
     print(f"\n{'='*50}\n🚨 崩溃日志来啦:\n{error_tb}\n{'='*50}\n")
-    return f"<h1>服务器崩溃了</h1><p>请查看控制台或 flask_error.log 文件提取日志发给 AI 助手。</p><pre>{error_tb}</pre>", 500
+    if app.config.get("DEBUG_TRACEBACK_TO_CLIENT"):
+        return f"<h1>服务器崩溃了</h1><p>请查看控制台或日志文件提取日志发给 AI 助手。</p><pre>{error_tb}</pre>", 500
+    return "<h1>服务器崩溃了</h1><p>请联系管理员查看服务器日志。</p>", 500
 
 
 

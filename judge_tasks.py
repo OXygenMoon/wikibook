@@ -62,10 +62,13 @@ def _run_in_runtime_container(task):
         nano_cpus=int(app.config["JUDGE_CONTAINER_CPUS"] * 1_000_000_000),
         pids_limit=app.config["JUDGE_CONTAINER_PIDS_LIMIT"],
         read_only=True,
-        security_opt=["no-new-privileges"],
+        user="65534:65534",
+        working_dir="/workspace",
+        cap_drop=["ALL"],
+        security_opt=["no-new-privileges:true"],
         tmpfs={
-            "/tmp": "rw,noexec,nosuid,size=64m",
-            "/workspace": "rw,exec,nosuid,size=128m",
+            "/tmp": "rw,noexec,nosuid,nodev,size=64m,uid=65534,gid=65534,mode=1777",
+            "/workspace": "rw,exec,nosuid,nodev,size=128m,uid=65534,gid=65534,mode=1777",
         },
     )
 

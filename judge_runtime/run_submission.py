@@ -6,11 +6,13 @@ import tempfile
 import time
 
 
+PYTHON_SECURITY_EXIT_CODE = 40
+
 LANGUAGE_CONFIG = {
     "python": {
         "source_file": "main.py",
         "compile": None,
-        "run": ["python3", "main.py"],
+        "run": ["python3", "-I", "/runner/python_sandbox.py", "main.py"],
     },
     "c": {
         "source_file": "main.c",
@@ -23,6 +25,16 @@ LANGUAGE_CONFIG = {
         "run": ["./main"],
     },
 }
+
+
+def build_process_env():
+    return {
+        "PATH": os.environ.get("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"),
+        "HOME": "/tmp",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "PYTHONHASHSEED": "0",
+    }
 
 
 def normalize_output(output_text):
@@ -52,6 +64,7 @@ def compile_if_needed(language, workdir):
     compile_proc = subprocess.run(
         config["compile"],
         cwd=workdir,
+        env=build_process_env(),
         capture_output=True,
         text=True,
         timeout=30,
@@ -67,6 +80,7 @@ def run_case(run_command, workdir, input_data, expected_output, score, time_limi
         proc = subprocess.run(
             run_command,
             cwd=workdir,
+            env=build_process_env(),
             input=input_data or "",
             text=True,
             capture_output=True,
@@ -75,6 +89,15 @@ def run_case(run_command, workdir, input_data, expected_output, score, time_limi
         elapsed_ms = int((time.perf_counter() - started_at) * 1000)
 
         if proc.returncode != 0:
+            if proc.returncode == PYTHON_SECURITY_EXIT_CODE:
+                return {
+                    "status": "security_violation",
+                    "score": 0,
+                    "time_ms": elapsed_ms,
+                    "memory_kb": 0,
+                    "actual_output": proc.stdout,
+                    "stderr_text": proc.stderr,
+                }
             return {
                 "status": "runtime_error",
                 "score": 0,
@@ -116,7 +139,7 @@ def run_case(run_command, workdir, input_data, expected_output, score, time_limi
 
 
 def build_result_payload(language, source_code, test_cases, time_limit_ms):
-    with tempfile.TemporaryDirectory(dir="/tmp") as workdir:
+    with tempfile.TemporaryDirectory(dir="/workspace") as workdir:
         language_config = LANGUAGE_CONFIG.get(language)
         if not language_config:
             return {

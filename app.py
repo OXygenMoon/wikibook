@@ -1,5 +1,4 @@
 import os
-import ast
 from datetime import datetime, timedelta, timezone
 import csv
 import io
@@ -28,6 +27,7 @@ import re
 import logging
 import traceback
 
+from judge_security import first_violation_message, validate_python_source, violations_to_diagnostics
 from queue_service import enqueue_judge_task
 from wikibook_config import configure_app
 
@@ -8115,6 +8115,7 @@ OJ_CASE_STATUS_META = {
     'accepted': {'label': 'AC', 'tone': 'success'},
     'wrong_answer': {'label': 'Wrong Answer', 'tone': 'danger'},
     'runtime_error': {'label': 'Runtime Error', 'tone': 'danger'},
+    'security_violation': {'label': 'Security Violation', 'tone': 'danger'},
     'time_limit_exceeded': {'label': 'Time Limit Exceeded', 'tone': 'warning'},
     'compile_error': {'label': 'Compile Error', 'tone': 'danger'},
     'system_error': {'label': 'System Error', 'tone': 'danger'},
@@ -8448,6 +8449,15 @@ def build_oj_failure_feedback(task, results):
         return {
             'title': '运行错误',
             'message': translate_python_error(detail) if task.language == 'python' else '程序运行时发生错误，请查看错误输出定位问题。',
+            'detail': detail,
+            'tone': 'error',
+        }
+
+    if first_failed and first_failed.status == 'security_violation':
+        detail = (first_failed.stderr_text or "").strip()
+        return {
+            'title': '安全限制',
+            'message': '代码触发了评测沙箱的安全限制，已被拒绝执行。请移除危险模块、受保护属性或高危函数调用。',
             'detail': detail,
             'tone': 'error',
         }
@@ -9819,26 +9829,18 @@ def oj_problem_syntax_check(slug):
             'message': '输入代码后会自动检查 Python 语法。',
         })
 
-    try:
-        ast.parse(source_code)
-    except SyntaxError as exc:
-        line = exc.lineno or 1
-        column = max((exc.offset or 1) - 1, 0)
+    is_safe, violations = validate_python_source(source_code)
+    if not is_safe:
         return jsonify({
             'ok': False,
-            'diagnostics': [{
-                'row': max(line - 1, 0),
-                'column': column,
-                'text': exc.msg or 'Python 语法错误',
-                'type': 'error',
-            }],
-            'message': f"第 {line} 行：{exc.msg or 'Python 语法错误'}",
+            'diagnostics': violations_to_diagnostics(violations),
+            'message': first_violation_message(violations, 'Python 代码未通过安全检查。'),
         })
 
     return jsonify({
         'ok': True,
         'diagnostics': [],
-        'message': 'Python 语法检查通过。',
+        'message': 'Python 语法与安全检查通过。',
     })
 
 
@@ -10003,6 +10005,19 @@ def submit_oj_problem(slug):
             return jsonify({'ok': False, 'message': '请先填写代码再提交。'}), 400
         flash('请先填写代码再提交。', 'error')
         return redirect(url_for('oj_problem_detail', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None))
+
+    if language == 'python':
+        is_safe, violations = validate_python_source(source_code)
+        if not is_safe:
+            message = first_violation_message(violations, '代码未通过安全检查。')
+            if is_ajax_request():
+                return jsonify({
+                    'ok': False,
+                    'message': message,
+                    'diagnostics': violations_to_diagnostics(violations),
+                }), 400
+            flash(message, 'error')
+            return redirect(url_for('oj_problem_detail', slug=problem.slug, assignment_id=active_assignment.id if active_assignment else None))
 
     test_cases = build_oj_judge_cases(problem)
     if not test_cases:

@@ -19,7 +19,7 @@ const emit = defineEmits(['back', 'openProblem', 'openSubmissions', 'openSubmiss
           <div class="flex gap-2 flex-wrap">
             <span v-if="payload.assignment.isActive" class="status-chip status-chip--success">进行中</span>
             <span v-else class="status-chip status-chip--neutral">已关闭</span>
-            <span class="metric-chip metric-chip--success">{{ payload.scoreSummary.acceptedCount }}/{{ payload.scoreSummary.problemCount }} AC</span>
+            <span class="metric-chip metric-chip--success">{{ payload.scoreSummary.acceptedCount }}/{{ payload.scoreSummary.problemCount }} 通过</span>
           </div>
         </div>
       </section>
@@ -46,7 +46,7 @@ const emit = defineEmits(['back', 'openProblem', 'openSubmissions', 'openSubmiss
             <tbody>
               <tr v-for="row in payload.rows" :key="row.problem.id">
                 <td>
-                  <span v-if="row.accepted" class="status-chip status-chip--success">AC</span>
+                  <span v-if="row.accepted" class="status-chip" :class="`status-chip--${row.task?.statusTone || 'success'}`">{{ row.task?.statusLabel || '通过' }}</span>
                   <span v-else-if="row.task" class="status-chip" :class="`status-chip--${row.task.statusTone}`">{{ row.task.statusLabel }}</span>
                   <span v-else class="status-chip status-chip--neutral">未提交</span>
                 </td>

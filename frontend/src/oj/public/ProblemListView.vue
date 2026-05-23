@@ -121,8 +121,8 @@ watch(() => props.payload, syncFilters, { immediate: true });
                   <a :href="problem.urls.detail" class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600" @click.prevent="emit('openProblem', problem.slug, problem.urls.detail)">
                     {{ problem.title }}
                   </a>
-                  <span v-if="problem.myStatus?.accepted" class="badge badge-success badge-outline font-black">AC</span>
-                  <span v-else-if="problem.myStatus?.attempted" class="badge badge-error badge-outline font-black">未 AC</span>
+                  <span v-if="problem.myStatus?.accepted" class="badge badge-success badge-outline font-black">已通过</span>
+                  <span v-else-if="problem.myStatus?.attempted" class="badge badge-error badge-outline font-black">未通过</span>
                 </div>
                 <span v-if="isAdmin && !problem.visible" class="badge badge-ghost mt-2">隐藏</span>
               </td>

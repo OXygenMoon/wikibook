@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PIDFILE="${ROOT_DIR}/.wikibook-local.pid"
 LOGFILE="${ROOT_DIR}/.wikibook-local.log"
 JUDGE_SCRIPT="${ROOT_DIR}/run_judge_local.sh"
+ENSURE_POSTGRES_SCRIPT="${ROOT_DIR}/scripts/ensure_local_postgres.sh"
 
 load_env() {
     if [ -f "${ROOT_DIR}/.env" ]; then
@@ -89,6 +90,11 @@ start_service() {
 
     local host="${HOST:-127.0.0.1}"
     local port="${PORT:-5009}"
+
+    if [ -x "${ENSURE_POSTGRES_SCRIPT}" ]; then
+        echo "Ensuring PostgreSQL is available..."
+        "${ENSURE_POSTGRES_SCRIPT}"
+    fi
 
     cd "${ROOT_DIR}"
     build_frontend_assets

@@ -29,6 +29,11 @@ import traceback
 
 from judge_security import first_violation_message, validate_python_source, violations_to_diagnostics
 from queue_service import enqueue_judge_task
+from utils.ast_checker import (
+    SUPPORTED_AST_RULE_TYPES,
+    build_rule_description,
+    get_default_ast_rule_templates,
+)
 from wikibook_config import configure_app
 
 try:
@@ -650,6 +655,7 @@ def vite_css_assets(entry_name):
 
 
 def serialize_admin_problem(problem):
+    configured_ast_rule_count = sum(1 for rule in problem.ast_rules if rule.enabled)
     return {
         "id": problem.id,
         "uid": problem.uid_text,
@@ -659,6 +665,8 @@ def serialize_admin_problem(problem):
         "difficulty": problem.difficulty,
         "testcaseCount": problem.testcase_count,
         "fileCount": problem.files.count(),
+        "astRuleCount": configured_ast_rule_count,
+        "astCheckEnabled": bool(problem.ast_check_enabled),
         "allowedLanguages": problem.allowed_languages_text,
         "visible": bool(problem.is_visible),
         "updatedAt": problem.updated_at.strftime("%Y-%m-%d %H:%M") if problem.updated_at else "-",
@@ -672,6 +680,7 @@ def serialize_admin_problem(problem):
 
 def serialize_problem_edit_workspace(problem):
     context = build_problem_file_workspace_context(problem)
+    configured_ast_rule_count = sum(1 for rule in problem.ast_rules if rule.enabled)
     return {
         "id": problem.id,
         "uid": problem.uid_text,
@@ -685,12 +694,14 @@ def serialize_problem_edit_workspace(problem):
         "source": problem.source or "",
         "allowedLanguages": problem.allowed_languages_text or "python, cpp, c",
         "statementMd": problem.statement_md or "",
+        "astConfig": serialize_problem_ast_config(problem),
         "updatedAt": problem.updated_at.strftime("%Y-%m-%d %H:%M") if problem.updated_at else "-",
         "stats": {
             "testcaseCount": problem.testcase_count,
             "dataFileCount": len(context["data_files"]),
             "assetFileCount": len(context["asset_files"]),
             "nextCaseNumber": context["next_case_number"],
+            "astRuleCount": configured_ast_rule_count,
         },
         "urls": {
             "edit": url_for("edit_oj_problem", problem_id=problem.id),
@@ -716,6 +727,281 @@ def serialize_problem_create_draft(draft):
             "create": url_for("create_oj_problem"),
             "importZip": url_for("import_oj_problem_zip"),
         },
+    }
+
+
+AST_RULE_SPECIAL_PARAM_KEYS = {
+    "min_count",
+    "max_count",
+    "required_value",
+    "editable_fields",
+    "field_labels",
+    "field_types",
+}
+
+
+def _safe_json_object(value, fallback=None):
+    fallback = {} if fallback is None else fallback
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return fallback
+        return parsed if isinstance(parsed, dict) else fallback
+    return fallback
+
+
+def _clean_ast_rule_params(value):
+    params = _safe_json_object(value, {})
+    return {str(key): item for key, item in params.items()}
+
+
+def ast_rule_template_defaults(template):
+    defaults = _clean_ast_rule_params(template.default_params if template else {})
+    return {
+        "min_count": defaults.get("min_count"),
+        "max_count": defaults.get("max_count"),
+        "required_value": defaults.get("required_value"),
+        "params": {key: value for key, value in defaults.items() if key not in AST_RULE_SPECIAL_PARAM_KEYS},
+        "editable_fields": list(defaults.get("editable_fields") or []),
+        "field_labels": defaults.get("field_labels") or {},
+        "field_types": defaults.get("field_types") or {},
+    }
+
+
+def serialize_ast_rule_template(template):
+    defaults = ast_rule_template_defaults(template)
+    preview_rule = {
+        "rule_type": template.rule_type,
+        "target": template.target,
+        "min_count": defaults["min_count"],
+        "max_count": defaults["max_count"],
+        "required_value": defaults["required_value"],
+        "params": defaults["params"],
+    }
+    return {
+        "id": template.id,
+        "code": template.code,
+        "name": template.name,
+        "category": template.category,
+        "ruleType": template.rule_type,
+        "target": template.target,
+        "description": template.description or "",
+        "defaultParams": template.default_params or {},
+        "enabled": bool(template.enabled),
+        "sortOrder": template.sort_order,
+        "previewDescription": build_rule_description(preview_rule),
+    }
+
+
+def serialize_problem_ast_rule(rule):
+    payload = {
+        "id": rule.id,
+        "templateId": rule.template_id,
+        "ruleType": rule.rule_type,
+        "target": rule.target,
+        "minCount": rule.min_count,
+        "maxCount": rule.max_count,
+        "requiredValue": rule.required_value,
+        "params": rule.params or {},
+        "description": rule.description or build_rule_description({
+            "rule_type": rule.rule_type,
+            "target": rule.target,
+            "min_count": rule.min_count,
+            "max_count": rule.max_count,
+            "required_value": rule.required_value,
+            "params": rule.params or {},
+        }),
+        "failMessage": rule.fail_message or "",
+        "enabled": bool(rule.enabled),
+        "sortOrder": rule.sort_order,
+    }
+    if not payload["failMessage"]:
+        payload["failMessage"] = payload["description"]
+    return payload
+
+
+def get_problem_ast_templates():
+    return AstRuleTemplate.query.order_by(AstRuleTemplate.sort_order.asc(), AstRuleTemplate.id.asc()).all()
+
+
+def get_enabled_problem_ast_rules(problem):
+    if not problem or not problem.ast_check_enabled:
+        return []
+    return [rule for rule in problem.ast_rules if rule.enabled]
+
+
+def build_problem_ast_rule_dict(rule):
+    return {
+        "id": rule.id,
+        "template_id": rule.template_id,
+        "rule_type": rule.rule_type,
+        "target": rule.target,
+        "min_count": rule.min_count,
+        "max_count": rule.max_count,
+        "required_value": rule.required_value,
+        "params": rule.params or {},
+        "description": rule.description,
+        "fail_message": rule.fail_message,
+        "enabled": bool(rule.enabled),
+        "sort_order": rule.sort_order,
+    }
+
+
+def serialize_problem_ast_config(problem):
+    templates = get_problem_ast_templates()
+    return {
+        "enabled": bool(problem.ast_check_enabled),
+        "templates": [serialize_ast_rule_template(template) for template in templates],
+        "rules": [serialize_problem_ast_rule(rule) for rule in problem.ast_rules],
+        "urls": {
+            "templates": url_for("ast_rule_template_list_json"),
+            "list": url_for("problem_ast_rules_json", problem_id=problem.id),
+            "save": url_for("save_problem_ast_rules", problem_id=problem.id),
+        },
+    }
+
+
+def _parse_optional_nonnegative_int(value, field_name):
+    if value in (None, ""):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field_name} 必须是非负整数。") from exc
+    if parsed < 0:
+        raise ValueError(f"{field_name} 必须是非负整数。")
+    return parsed
+
+
+def _parse_ast_rule_payload(raw_rules):
+    if raw_rules in (None, ""):
+        return []
+    if isinstance(raw_rules, list):
+        return raw_rules
+    try:
+        parsed = json.loads(raw_rules)
+    except json.JSONDecodeError as exc:
+        raise ValueError("AST 规则配置不是有效的 JSON。") from exc
+    if not isinstance(parsed, list):
+        raise ValueError("AST 规则配置格式不正确。")
+    return parsed
+
+
+def validate_problem_ast_rules(raw_rules):
+    template_map = {template.id: template for template in get_problem_ast_templates()}
+    validated_rules = []
+    for index, raw_rule in enumerate(_parse_ast_rule_payload(raw_rules), start=1):
+        if not isinstance(raw_rule, dict):
+            raise ValueError(f"第 {index} 条 AST 规则格式不正确。")
+        template = template_map.get(int(raw_rule.get("templateId"))) if str(raw_rule.get("templateId", "")).isdigit() else None
+        defaults = ast_rule_template_defaults(template)
+        params = defaults["params"]
+        params.update(_clean_ast_rule_params(raw_rule.get("params")))
+
+        rule_type = (raw_rule.get("ruleType") or (template.rule_type if template else "")).strip()
+        target = (raw_rule.get("target") or (template.target if template else "")).strip()
+        if rule_type not in SUPPORTED_AST_RULE_TYPES:
+            raise ValueError(f"第 {index} 条 AST 规则类型不受支持。")
+        if not target:
+            raise ValueError(f"第 {index} 条 AST 规则缺少 target。")
+
+        min_count = _parse_optional_nonnegative_int(raw_rule.get("minCount", defaults["min_count"]), "min_count")
+        max_count = _parse_optional_nonnegative_int(raw_rule.get("maxCount", defaults["max_count"]), "max_count")
+        if min_count is not None and max_count is not None and min_count > max_count:
+            raise ValueError(f"第 {index} 条 AST 规则的 min_count 不能大于 max_count。")
+
+        required_value = raw_rule.get("requiredValue", defaults["required_value"])
+        if required_value == "":
+            required_value = None
+        if isinstance(required_value, str) and "\\" in required_value:
+            try:
+                required_value = bytes(required_value, "utf-8").decode("unicode_escape")
+            except UnicodeDecodeError:
+                pass
+        enabled = bool(raw_rule.get("enabled", True))
+        sort_order = _parse_optional_nonnegative_int(raw_rule.get("sortOrder", index - 1), "sort_order") or (index - 1)
+
+        normalized_rule = {
+            "template_id": template.id if template else None,
+            "rule_type": rule_type,
+            "target": target,
+            "min_count": min_count,
+            "max_count": max_count,
+            "required_value": required_value,
+            "params": params,
+            "enabled": enabled,
+            "sort_order": sort_order,
+        }
+        description = (raw_rule.get("description") or "").strip() or build_rule_description(normalized_rule)
+        fail_message = (raw_rule.get("failMessage") or "").strip() or description
+        if not description:
+            raise ValueError(f"第 {index} 条 AST 规则缺少展示描述。")
+        normalized_rule["description"] = description
+        normalized_rule["fail_message"] = fail_message
+        validated_rules.append(normalized_rule)
+    return validated_rules
+
+
+def replace_problem_ast_rules(problem, raw_rules):
+    validated_rules = validate_problem_ast_rules(raw_rules)
+    problem.ast_rules.clear()
+    for rule in validated_rules:
+        problem.ast_rules.append(
+            ProblemAstRule(
+                template_id=rule["template_id"],
+                rule_type=rule["rule_type"],
+                target=rule["target"],
+                min_count=rule["min_count"],
+                max_count=rule["max_count"],
+                required_value=str(rule["required_value"]) if rule["required_value"] is not None else None,
+                params=rule["params"],
+                description=rule["description"],
+                fail_message=rule["fail_message"],
+                enabled=rule["enabled"],
+                sort_order=rule["sort_order"],
+            )
+        )
+    return validated_rules
+
+
+def build_problem_ast_goals(problem):
+    return [
+        {
+            "id": rule.id,
+            "description": rule.description or build_rule_description(build_problem_ast_rule_dict(rule)),
+            "message": rule.fail_message or rule.description,
+        }
+        for rule in get_enabled_problem_ast_rules(problem)
+    ]
+
+
+def build_submission_ast_feedback(task):
+    if task.status not in OJ_PASSING_STATUSES:
+        return None
+    ast_result = (task.result_summary or {}).get("ast_result") or {}
+    has_rules = bool(ast_result.get("has_rules"))
+    if task.status == "PAC" or (task.status == "accepted" and not has_rules):
+        return {
+            "title": "满星通过",
+            "message": "满星通过！你的输出正确，并且完成了本题的语法目标。",
+            "failedRules": [],
+            "isPerfect": True,
+        }
+    if task.status == "AC":
+        return {
+            "title": "通过",
+            "message": "你的输出结果正确，已通过本题。不过本题还有满星语法目标未完成，可以继续修改代码冲击满星通过。",
+            "failedRules": ast_result.get("failed_rules") or [],
+            "isPerfect": False,
+        }
+    return {
+        "title": "通过",
+        "message": "你的输出结果正确，已通过本题。",
+        "failedRules": [],
+        "isPerfect": False,
     }
 
 
@@ -934,7 +1220,7 @@ def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
             db.session.query(
                 JudgeTask.problem_id,
                 db.func.count(JudgeTask.id).label("attempts"),
-                db.func.sum(case((JudgeTask.status == "accepted", 1), else_=0)).label("accepted"),
+                db.func.sum(case((JudgeTask.status.in_(OJ_PASSING_STATUSES), 1), else_=0)).label("accepted"),
             )
             .filter(JudgeTask.problem_id.in_(problem_ids), JudgeTask.assignment_id.is_(None))
             .group_by(JudgeTask.problem_id)
@@ -949,7 +1235,7 @@ def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
             db.session.query(
                 JudgeTask.problem_id,
                 db.func.count(JudgeTask.id).label("attempts"),
-                db.func.sum(case((JudgeTask.status == "accepted", 1), else_=0)).label("accepted"),
+                db.func.sum(case((JudgeTask.status.in_(OJ_PASSING_STATUSES), 1), else_=0)).label("accepted"),
             )
             .filter(JudgeTask.problem_id.in_(problem_ids), JudgeTask.user_id == current_user.id, JudgeTask.assignment_id.is_(None))
             .group_by(JudgeTask.problem_id)
@@ -1015,6 +1301,7 @@ def serialize_oj_problem_detail(problem, active_assignment=None):
     my_latest_task = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).first()
     submission_history = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(5).all()
     statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
+    ast_goals = build_problem_ast_goals(problem)
     return {
         "id": problem.id,
         "uid": problem.uid_text,
@@ -1032,6 +1319,8 @@ def serialize_oj_problem_detail(problem, active_assignment=None):
         "sampleCases": sample_cases,
         "hiddenCaseCount": hidden_case_count,
         "visibleFiles": [serialize_oj_file(problem_file) for problem_file in visible_files],
+        "astGoals": ast_goals,
+        "hasAstGoals": bool(ast_goals),
         "latestTask": serialize_oj_task_summary(my_latest_task),
         "submissionHistory": [serialize_oj_task_summary(task) for task in submission_history],
         "canManage": bool(current_user.is_admin),
@@ -1239,6 +1528,7 @@ def serialize_submission_detail(task, results=None):
     results = results if results is not None else task.results.order_by(JudgeTaskResult.case_index.asc()).all()
     task_meta = oj_submission_status_meta(task, results)
     failure_feedback = build_oj_failure_feedback(task, results)
+    ast_feedback = build_submission_ast_feedback(task)
     can_view_details = bool(current_user.is_admin)
     return {
         "id": task.id,
@@ -1253,6 +1543,8 @@ def serialize_submission_detail(task, results=None):
         "memoryLimitMb": task.memory_limit_mb,
         "errorMessage": task.error_message,
         "sourceCode": task.source_code,
+        "astFeedback": ast_feedback,
+        "astResult": (task.result_summary or {}).get("ast_result"),
         "problem": {
             "title": task.problem.title,
             "slug": task.problem.slug,
@@ -1430,7 +1722,7 @@ def build_oj_assignment_scoreboard_payload(assignment):
     latest_by_pair = {}
     accepted_pairs = set()
     for task in tasks:
-        if task.status == 'accepted':
+        if task.status in OJ_PASSING_STATUSES:
             accepted_pairs.add((task.user_id, task.problem_id))
         latest_by_pair.setdefault((task.user_id, task.problem_id), task)
 
@@ -1871,7 +2163,9 @@ OJ_BADGE_CONDITION_LABELS = {
     'oj_specific_assignment_complete': '完成指定OJ作业',
 }
 
-OJ_FINAL_STATUSES = {'accepted', 'failed', 'system_error'}
+OJ_PASSING_STATUSES = {'accepted', 'AC', 'PAC'}
+OJ_PERFECT_STATUSES = {'accepted', 'PAC'}
+OJ_FINAL_STATUSES = OJ_PASSING_STATUSES | {'failed', 'system_error'}
 OJ_ERROR_STATUSES = {'failed', 'system_error'}
 OJ_SPECIFIC_ASSIGNMENT_CONDITIONS = {'oj_specific_assignment_complete'}
 
@@ -1894,7 +2188,7 @@ def _count_current_oj_streak(user_id, accepted=True):
         .all()
     )
     for task in tasks:
-        if accepted and task.status == 'accepted':
+        if accepted and task.status in OJ_PASSING_STATUSES:
             streak += 1
             continue
         if not accepted and task.status in OJ_ERROR_STATUSES:
@@ -1918,7 +2212,7 @@ def _count_oj_completed_assignments(user_id):
                     JudgeTask.user_id == user_id,
                     JudgeTask.assignment_id == assignment.id,
                     JudgeTask.problem_id.in_(problem_ids),
-                    JudgeTask.status == 'accepted',
+                    JudgeTask.status.in_(OJ_PASSING_STATUSES),
                 )
                 .distinct()
                 .all()
@@ -1944,7 +2238,7 @@ def _is_oj_assignment_completed(user_id, assignment_id):
                 JudgeTask.user_id == user_id,
                 JudgeTask.assignment_id == assignment.id,
                 JudgeTask.problem_id.in_(problem_ids),
-                JudgeTask.status == 'accepted',
+                JudgeTask.status.in_(OJ_PASSING_STATUSES),
             )
             .distinct()
             .all()
@@ -1962,13 +2256,13 @@ def _count_first_try_oj_accepts(user_id):
     )
     for task in tasks:
         first_tasks_by_problem.setdefault(task.problem_id, task)
-    return sum(1 for task in first_tasks_by_problem.values() if task.status == 'accepted')
+    return sum(1 for task in first_tasks_by_problem.values() if task.status in OJ_PASSING_STATUSES)
 
 
 def _count_daily_oj_ac_peak(user_id):
     accepted_tasks = (
         _base_oj_task_query(user_id)
-        .filter(JudgeTask.status == 'accepted')
+        .filter(JudgeTask.status.in_(OJ_PASSING_STATUSES))
         .order_by(JudgeTask.created_at.asc(), JudgeTask.id.asc())
         .all()
     )
@@ -1987,7 +2281,7 @@ def get_oj_badge_progress(user, badge):
     if badge.condition_type == 'oj_ac_count':
         return (
             _base_oj_task_query(user.id)
-            .filter(JudgeTask.status == 'accepted')
+            .filter(JudgeTask.status.in_(OJ_PASSING_STATUSES))
             .with_entities(JudgeTask.problem_id)
             .distinct()
             .count()
@@ -6789,7 +7083,7 @@ def upgrade_db():
             with db.engine.connect() as conn:
                 needs_commit = False
                 if 'is_scrapbook' not in note_columns:
-                    conn.execute(db.text("ALTER TABLE note ADD COLUMN is_scrapbook BOOLEAN DEFAULT 0"))
+                    conn.execute(db.text("ALTER TABLE note ADD COLUMN is_scrapbook BOOLEAN DEFAULT FALSE"))
                     needs_commit = True
                 if 'scrapbook_data' not in note_columns:
                     conn.execute(db.text("ALTER TABLE note ADD COLUMN scrapbook_data JSON"))
@@ -6804,7 +7098,7 @@ def upgrade_db():
                 added_is_approved = False
 
                 if 'is_approved' not in comment_columns:
-                    conn.execute(db.text("ALTER TABLE comment ADD COLUMN is_approved BOOLEAN DEFAULT 0"))
+                    conn.execute(db.text("ALTER TABLE comment ADD COLUMN is_approved BOOLEAN DEFAULT FALSE"))
                     added_is_approved = True
                     needs_commit = True
 
@@ -7498,7 +7792,7 @@ def build_leaderboard_snapshot(users, metric, period, weekly_start):
             score = pomo_query.count()
 
         elif metric == "oj_ac":
-            judge_query = JudgeTask.query.filter_by(user_id=u.id, status="accepted")
+            judge_query = JudgeTask.query.filter(JudgeTask.user_id == u.id, JudgeTask.status.in_(OJ_PASSING_STATUSES))
             judge_query = judge_query.filter(JudgeTask.problem_id.isnot(None))
             if period == "weekly":
                 judge_query = judge_query.filter(JudgeTask.created_at >= start_date)
@@ -7854,6 +8148,7 @@ class Problem(db.Model):
     time_limit_ms = db.Column(db.Integer, nullable=False, default=2000)
     memory_limit_mb = db.Column(db.Integer, nullable=False, default=256)
     allowed_languages = db.Column(db.JSON, nullable=False, default=list)
+    ast_check_enabled = db.Column(db.Boolean, nullable=False, default=False)
     is_visible = db.Column(db.Boolean, nullable=False, default=True)
     created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=now_utc8)
@@ -7865,6 +8160,12 @@ class Problem(db.Model):
         backref='problem',
         cascade='all, delete-orphan',
         order_by='ProblemTestCase.sort_order.asc()'
+    )
+    ast_rules = db.relationship(
+        'ProblemAstRule',
+        backref='problem',
+        cascade='all, delete-orphan',
+        order_by='ProblemAstRule.sort_order.asc(), ProblemAstRule.id.asc()',
     )
 
     @property
@@ -7930,6 +8231,43 @@ class ProblemFile(db.Model):
     @property
     def is_testdata_file(self):
         return self.extension in TESTDATA_FILE_EXTENSIONS
+
+
+class AstRuleTemplate(db.Model):
+    __tablename__ = 'ast_rule_templates'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(80), nullable=False, unique=True, index=True)
+    name = db.Column(db.String(200), nullable=False)
+    category = db.Column(db.String(80), nullable=False, default="")
+    rule_type = db.Column(db.String(80), nullable=False)
+    target = db.Column(db.String(120), nullable=False, default="")
+    description = db.Column(db.Text, nullable=True)
+    default_params = db.Column(db.JSON, nullable=False, default=dict)
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
+
+
+class ProblemAstRule(db.Model):
+    __tablename__ = 'problem_ast_rules'
+    id = db.Column(db.Integer, primary_key=True)
+    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), nullable=False, index=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('ast_rule_templates.id'), nullable=True, index=True)
+    rule_type = db.Column(db.String(80), nullable=False)
+    target = db.Column(db.String(120), nullable=False)
+    min_count = db.Column(db.Integer, nullable=True)
+    max_count = db.Column(db.Integer, nullable=True)
+    required_value = db.Column(db.String(255), nullable=True)
+    params = db.Column(db.JSON, nullable=False, default=dict)
+    description = db.Column(db.Text, nullable=False)
+    fail_message = db.Column(db.Text, nullable=False)
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
+
+    template = db.relationship('AstRuleTemplate', backref=db.backref('problem_rules', lazy='dynamic'))
 
 
 oj_assignment_classes = db.Table(
@@ -8107,7 +8445,9 @@ def validate_problem_code(raw_code, problem_id=None):
 OJ_STATUS_META = {
     'queued': {'label': '排队中', 'badge': 'badge-info', 'tone': 'info'},
     'running': {'label': '评测中', 'badge': 'badge-warning', 'tone': 'warning'},
-    'accepted': {'label': '通过', 'badge': 'badge-success', 'tone': 'success'},
+    'accepted': {'label': '满星通过', 'badge': 'badge-success', 'tone': 'success'},
+    'PAC': {'label': '满星通过', 'badge': 'badge-success', 'tone': 'success'},
+    'AC': {'label': '通过', 'badge': 'badge-info', 'tone': 'info'},
     'failed': {'label': '未通过', 'badge': 'badge-error', 'tone': 'danger'},
     'system_error': {'label': '系统错误', 'badge': 'badge-error', 'tone': 'danger'},
 }
@@ -8121,6 +8461,8 @@ OJ_CASE_STATUS_META = {
     'queued': {'label': 'Queued', 'tone': 'info'},
     'running': {'label': 'Running', 'tone': 'warning'},
     'accepted': {'label': 'AC', 'tone': 'success'},
+    'PAC': {'label': 'PAC', 'tone': 'success'},
+    'AC': {'label': 'AC', 'tone': 'info'},
     'wrong_answer': {'label': 'Wrong Answer', 'tone': 'danger'},
     'runtime_error': {'label': 'Runtime Error', 'tone': 'danger'},
     'security_violation': {'label': 'Security Violation', 'tone': 'danger'},
@@ -8137,9 +8479,9 @@ def oj_case_status_meta(status):
 
 def oj_submission_status_meta(task, results=None):
     if task.status in {'queued', 'running'}:
-        return oj_case_status_meta(task.status)
-    if task.status == 'accepted':
-        return oj_case_status_meta('accepted')
+        return oj_status_meta(task.status)
+    if task.status in {'accepted', 'PAC', 'AC'}:
+        return oj_status_meta(task.status)
     if task.result_summary and task.result_summary.get('failure_reason') == 'compile_error':
         return oj_case_status_meta('compile_error')
 
@@ -8438,7 +8780,7 @@ def translate_python_error(stderr_text):
 
 
 def build_oj_failure_feedback(task, results):
-    if task.status == 'accepted':
+    if task.status in OJ_PASSING_STATUSES:
         return None
     if task.status in {'queued', 'running'}:
         return None
@@ -8772,11 +9114,44 @@ def import_oj_problem_from_zip(file_storage, user):
         raise
 
 
+def seed_ast_rule_templates():
+    template_definitions = get_default_ast_rule_templates()
+    existing_templates = {
+        template.code: template
+        for template in AstRuleTemplate.query.all()
+    }
+    changed = False
+    for row in template_definitions:
+        template = existing_templates.get(row["code"])
+        if template is None:
+            template = AstRuleTemplate(code=row["code"])
+            db.session.add(template)
+            changed = True
+        next_values = {
+            "name": row["name"],
+            "category": row["category"],
+            "rule_type": row["rule_type"],
+            "target": row["target"],
+            "description": row.get("description") or "",
+            "default_params": row.get("default_params") or {},
+            "enabled": bool(row.get("enabled", True)),
+            "sort_order": int(row.get("sort_order", 0) or 0),
+        }
+        for key, value in next_values.items():
+            if getattr(template, key) != value:
+                setattr(template, key, value)
+                changed = True
+    if changed:
+        db.session.commit()
+
+
 def ensure_oj_authoring_schema():
     required_tables = {
         'problem': Problem.__table__,
         'problem_test_case': ProblemTestCase.__table__,
         'problem_file': ProblemFile.__table__,
+        'ast_rule_templates': AstRuleTemplate.__table__,
+        'problem_ast_rules': ProblemAstRule.__table__,
         'oj_assignment': OJAssignment.__table__,
         'oj_assignment_problem': OJAssignmentProblem.__table__,
         'oj_assignment_file': OJAssignmentFile.__table__,
@@ -8800,6 +9175,8 @@ def ensure_oj_authoring_schema():
             problem_columns = {column['name'] for column in inspector.get_columns('problem')}
             if 'problem_code' not in problem_columns:
                 connection.execute(db.text("ALTER TABLE problem ADD COLUMN problem_code VARCHAR(40)"))
+            if 'ast_check_enabled' not in problem_columns:
+                connection.execute(db.text("ALTER TABLE problem ADD COLUMN ast_check_enabled BOOLEAN DEFAULT FALSE"))
             problem_rows = connection.execute(db.text("SELECT id, problem_code FROM problem ORDER BY id ASC")).fetchall()
             for row in problem_rows:
                 if row.problem_code:
@@ -8825,6 +9202,7 @@ def ensure_oj_authoring_schema():
             if 'ix_judge_task_assignment_id' not in judge_task_indexes:
                 connection.execute(db.text("CREATE INDEX IF NOT EXISTS ix_judge_task_assignment_id ON judge_task (assignment_id)"))
 
+    seed_ast_rule_templates()
     return created_tables
 
 
@@ -8953,7 +9331,7 @@ def assignment_problem_latest_status(assignment, user):
         .all()
     )
     for task in tasks:
-        if task.status == 'accepted':
+        if task.status in OJ_PASSING_STATUSES:
             accepted_problem_ids.add(task.problem_id)
         latest_by_problem.setdefault(task.problem_id, task)
     return latest_by_problem, accepted_problem_ids
@@ -8962,8 +9340,10 @@ def assignment_problem_latest_status(assignment, user):
 def oj_task_display_meta(task):
     if not task:
         return {'label': '未提交', 'badge': 'badge-ghost'}
-    if task.status == 'accepted':
-        return {'label': 'AC', 'badge': 'badge-success'}
+    if task.status == 'PAC' or task.status == 'accepted':
+        return {'label': 'PAC', 'badge': 'badge-success'}
+    if task.status == 'AC':
+        return {'label': 'AC', 'badge': 'badge-info'}
     if task.result_summary and task.result_summary.get('failure_reason') == 'compile_error':
         return {'label': '编译错误', 'badge': 'badge-error'}
 
@@ -10253,6 +10633,105 @@ def admin_oj_problem_json(problem_id):
     })
 
 
+@app.route('/admin/oj/ast-rule-templates.json', methods=['GET'])
+@login_required
+def ast_rule_template_list_json():
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    templates = get_problem_ast_templates()
+    return jsonify({
+        "ok": True,
+        "templates": [serialize_ast_rule_template(template) for template in templates],
+    })
+
+
+@app.route('/admin/oj/ast-rule-templates', methods=['GET', 'POST'])
+@login_required
+def manage_ast_rule_templates():
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    if request.method == 'POST':
+        for template in get_problem_ast_templates():
+            template.enabled = request.form.get(f"enabled_{template.id}") == "1"
+            sort_value = request.form.get(f"sort_order_{template.id}", template.sort_order)
+            try:
+                template.sort_order = max(int(sort_value), 0)
+            except (TypeError, ValueError):
+                pass
+        db.session.commit()
+        flash('AST 规则模板已更新。', 'success')
+        return redirect(url_for('manage_ast_rule_templates', category=request.form.get('category', '').strip()))
+
+    category_filter = request.args.get('category', '').strip()
+    templates = get_problem_ast_templates()
+    categories = sorted({template.category for template in templates if template.category})
+    if category_filter:
+        templates = [template for template in templates if template.category == category_filter]
+    return render_template(
+        'admin/manage_ast_rule_templates.html',
+        templates=templates,
+        categories=categories,
+        selected_category=category_filter,
+    )
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/ast-rules.json', methods=['GET'])
+@login_required
+def problem_ast_rules_json(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    return jsonify({
+        "ok": True,
+        "enabled": bool(problem.ast_check_enabled),
+        "rules": [serialize_problem_ast_rule(rule) for rule in problem.ast_rules],
+    })
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/ast-rules', methods=['POST'])
+@login_required
+def save_problem_ast_rules(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    payload = request.get_json(silent=True) or {}
+    problem.ast_check_enabled = bool(payload.get("enabled", problem.ast_check_enabled))
+    try:
+        replace_problem_ast_rules(problem, payload.get("rules", []))
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+    return jsonify({
+        "ok": True,
+        "message": "AST 规则已保存。",
+        "enabled": bool(problem.ast_check_enabled),
+        "rules": [serialize_problem_ast_rule(rule) for rule in problem.ast_rules],
+    })
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/ast-rules/<int:rule_id>/delete', methods=['POST'])
+@login_required
+def delete_problem_ast_rule(problem_id, rule_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    rule = ProblemAstRule.query.filter_by(problem_id=problem_id, id=rule_id).first_or_404()
+    db.session.delete(rule)
+    db.session.commit()
+    return jsonify({"ok": True, "message": "AST 规则已删除。"})
+
+
 def build_oj_problem_create_draft():
     return {
         'problem_code': next_problem_code(),
@@ -10402,6 +10881,7 @@ def create_oj_problem():
                 "createProblem": url_for('create_oj_problem'),
                 "createAssignment": url_for('create_oj_assignment'),
                 "assignmentList": url_for('oj_assignment_list'),
+                "astTemplateManager": url_for('manage_ast_rule_templates'),
             },
         },
     )
@@ -10496,6 +10976,16 @@ def edit_oj_problem(problem_id):
         problem.memory_limit_mb = max(request.form.get('memory_limit_mb', 256, type=int) or 256, 16)
         problem.allowed_languages = normalize_language_list(request.form.get('allowed_languages', 'python,cpp,c'))
         problem.is_visible = request.form.get('is_visible') == '1'
+        problem.ast_check_enabled = request.form.get('ast_check_enabled') == '1'
+
+        try:
+            replace_problem_ast_rules(problem, request.form.get('ast_rules_payload', '[]'))
+        except ValueError as exc:
+            db.session.rollback()
+            if is_ajax_request():
+                return jsonify({"ok": False, "message": str(exc)}), 400
+            flash(str(exc), 'error')
+            return redirect(url_for('edit_oj_problem', problem_id=problem.id))
 
         db.session.commit()
         if is_ajax_request():
@@ -10526,6 +11016,7 @@ def edit_oj_problem(problem_id):
                 "createProblem": url_for('create_oj_problem'),
                 "createAssignment": url_for('create_oj_assignment'),
                 "assignmentList": url_for('oj_assignment_list'),
+                "astTemplateManager": url_for('manage_ast_rule_templates'),
             },
         },
     )
@@ -10984,6 +11475,7 @@ def create_oj_assignment():
                 "createProblem": url_for('create_oj_problem'),
                 "createAssignment": url_for('create_oj_assignment'),
                 "assignmentList": url_for('oj_assignment_list'),
+                "astTemplateManager": url_for('manage_ast_rule_templates'),
             },
         },
     )
@@ -11061,6 +11553,7 @@ def edit_oj_assignment(assignment_id):
                 "createProblem": url_for('create_oj_problem'),
                 "createAssignment": url_for('create_oj_assignment'),
                 "assignmentList": url_for('oj_assignment_list'),
+                "astTemplateManager": url_for('manage_ast_rule_templates'),
             },
         },
     )

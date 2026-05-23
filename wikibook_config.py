@@ -28,14 +28,16 @@ def _as_int(name, default):
 
 def normalize_database_url(database_url):
     if not database_url:
-        return "sqlite:///wikibook.db"
+        return "postgresql+psycopg://wikibook:wikibook@127.0.0.1:5432/wikibook"
     if database_url.startswith("postgres://"):
         return database_url.replace("postgres://", "postgresql://", 1)
     return database_url
 
 
 def configure_app(app):
-    database_url = normalize_database_url(os.environ.get("DATABASE_URL", "sqlite:///wikibook.db"))
+    database_url = normalize_database_url(
+        os.environ.get("DATABASE_URL", "postgresql+psycopg://wikibook:wikibook@127.0.0.1:5432/wikibook")
+    )
     is_sqlite = database_url.startswith("sqlite")
 
     engine_options = {

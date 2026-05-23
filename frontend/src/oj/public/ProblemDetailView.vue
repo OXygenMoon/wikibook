@@ -26,6 +26,13 @@ const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', '
 
       <section class="problem-prose" v-html="problem.statementHtml"></section>
 
+      <section v-if="problem.hasAstGoals" class="mt-8 oj-panel p-5">
+        <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">满星语法目标</h2>
+        <ol class="list-decimal pl-5 space-y-2 text-stone-700 dark:text-stone-200">
+          <li v-for="goal in problem.astGoals" :key="goal.id || goal.description">{{ goal.description }}</li>
+        </ol>
+      </section>
+
       <section v-if="!problem.statementHasSamplePairs" class="mt-8">
         <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

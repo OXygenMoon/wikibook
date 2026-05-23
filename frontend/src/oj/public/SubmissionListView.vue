@@ -20,7 +20,9 @@ const statusOptions = [
   { value: '', label: '全部状态' },
   { value: 'queued', label: '排队中' },
   { value: 'running', label: '评测中' },
-  { value: 'accepted', label: '通过' },
+  { value: 'PAC', label: '满星通过' },
+  { value: 'AC', label: '通过' },
+  { value: 'accepted', label: '旧版通过' },
   { value: 'failed', label: '未通过' },
   { value: 'system_error', label: '系统错误' },
 ];

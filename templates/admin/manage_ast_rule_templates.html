@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}AST 规则模板管理{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10 flex flex-col gap-6">
+  <header class="flex items-start justify-between gap-4 flex-wrap">
+    <div>
+      <p class="text-xs font-black tracking-[0.3em] uppercase text-emerald-600 mb-2">AST Template Manager</p>
+      <h1 class="text-3xl font-black text-stone-900 dark:text-stone-100">AST 规则模板管理</h1>
+      <p class="text-stone-500 dark:text-stone-400 mt-2">这里可以快速查看、筛选、启用/禁用并调整 AST 内置规则模板顺序。</p>
+    </div>
+    <div class="flex gap-3 flex-wrap">
+      <a href="{{ url_for('manage_oj_problems') }}" class="btn btn-outline rounded-2xl">返回题库管理</a>
+      <a href="{{ url_for('oj_problem_list') }}" class="btn btn-ghost rounded-2xl">查看 OJ 题库</a>
+    </div>
+  </header>
+
+  <section class="bg-white dark:bg-stone-900 border border-stone-200 dark:border-white/10 rounded-3xl p-5">
+    <form method="get" class="flex items-end gap-3 flex-wrap">
+      <label class="form-control min-w-56">
+        <span class="label-text font-bold mb-2">分类筛选</span>
+        <select name="category" class="select select-bordered rounded-2xl">
+          <option value="">全部分类</option>
+          {% for category in categories %}
+          <option value="{{ category }}" {% if category == selected_category %}selected{% endif %}>{{ category }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="btn btn-primary rounded-2xl">筛选</button>
+      {% if selected_category %}
+      <a href="{{ url_for('manage_ast_rule_templates') }}" class="btn btn-ghost rounded-2xl">清除筛选</a>
+      {% endif %}
+    </form>
+  </section>
+
+  <section class="bg-white dark:bg-stone-900 border border-stone-200 dark:border-white/10 rounded-3xl overflow-hidden">
+    <form method="post">
+      <input type="hidden" name="category" value="{{ selected_category }}">
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr class="text-xs uppercase tracking-widest text-stone-500">
+              <th>排序</th>
+              <th>启用</th>
+              <th>分类</th>
+              <th>模板名</th>
+              <th>编码</th>
+              <th>类型</th>
+              <th>目标</th>
+              <th>默认描述</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for template in templates %}
+            <tr>
+              <td class="w-28">
+                <input
+                  type="number"
+                  min="0"
+                  name="sort_order_{{ template.id }}"
+                  value="{{ template.sort_order }}"
+                  class="input input-bordered input-sm rounded-xl w-24"
+                >
+              </td>
+              <td>
+                <input type="hidden" name="enabled_{{ template.id }}" value="0">
+                <input type="checkbox" name="enabled_{{ template.id }}" value="1" class="toggle toggle-success" {% if template.enabled %}checked{% endif %}>
+              </td>
+              <td class="font-bold text-stone-600 dark:text-stone-300">{{ template.category }}</td>
+              <td class="font-black text-stone-900 dark:text-stone-100">{{ template.name }}</td>
+              <td class="font-mono text-xs">{{ template.code }}</td>
+              <td><span class="badge badge-outline">{{ template.rule_type }}</span></td>
+              <td class="font-mono text-xs">{{ template.target }}</td>
+              <td class="text-sm text-stone-500 dark:text-stone-400">{{ template.description or '-' }}</td>
+            </tr>
+            {% endfor %}
+            {% if not templates %}
+            <tr>
+              <td colspan="8" class="text-center py-12 text-stone-400">当前筛选条件下没有规则模板。</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      <div class="p-5 border-t border-stone-200 dark:border-white/10 flex justify-end">
+        <button type="submit" class="btn btn-primary rounded-2xl">保存模板状态与排序</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

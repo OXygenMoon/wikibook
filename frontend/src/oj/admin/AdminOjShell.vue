@@ -270,6 +270,7 @@ onUnmounted(() => {
         <a v-if="view === 'assignmentForm'" :href="urls.assignmentList" class="btn btn-ghost rounded-2xl">作业列表</a>
         <a v-if="view === 'assignmentForm' && currentAssignmentForm?.assignment?.urls?.detail" :href="currentAssignmentForm.assignment.urls.detail" class="btn btn-outline rounded-2xl">查看作业</a>
         <a v-if="view === 'list'" :href="urls.publicList" class="btn btn-ghost rounded-2xl">返回题库</a>
+        <a v-if="view === 'list' && urls.astTemplateManager" :href="urls.astTemplateManager" class="btn btn-outline rounded-2xl">AST 模板</a>
         <a v-if="view === 'list' && urls.createAssignment" :href="urls.createAssignment" class="btn btn-outline rounded-2xl" @click.prevent="goCreateAssignment()">新建作业</a>
         <a v-if="view === 'list' && urls.createProblem" :href="urls.createProblem" class="btn btn-primary rounded-2xl" @click.prevent="goCreateProblem()">新建题目</a>
       </div>

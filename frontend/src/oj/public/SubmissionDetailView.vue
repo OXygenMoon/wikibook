@@ -120,6 +120,17 @@ onUnmounted(() => {
         <pre v-if="localSubmission.failureFeedback.detail" class="failure-detail">{{ localSubmission.failureFeedback.detail }}</pre>
       </section>
 
+      <section v-if="localSubmission.astFeedback" class="failure-card" :class="{ error: !localSubmission.astFeedback.isPerfect }">
+        <div class="font-black text-lg">{{ localSubmission.astFeedback.title }}</div>
+        <p class="mt-2 leading-relaxed">{{ localSubmission.astFeedback.message }}</p>
+        <div v-if="localSubmission.astFeedback.failedRules?.length" class="mt-4">
+          <div class="font-bold mb-2">未完成的满星目标</div>
+          <ol class="list-decimal pl-5 space-y-2">
+            <li v-for="item in localSubmission.astFeedback.failedRules" :key="`${item.rule_id || 'rule'}-${item.description}`">{{ item.message || item.description }}</li>
+          </ol>
+        </div>
+      </section>
+
       <section class="oj-panel p-5 md:p-6">
         <div class="flex items-center justify-between gap-4 flex-wrap mb-4">
           <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100">测试点结果</h2>

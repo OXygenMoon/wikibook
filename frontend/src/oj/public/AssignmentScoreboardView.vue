@@ -91,7 +91,7 @@ const emit = defineEmits(['backAssignment', 'openProblem', 'openSubmissions', 'o
                     :class="cell.accepted ? 'status-chip--success' : `status-chip--${cell.task.statusTone}`"
                     @click.prevent="emit('openSubmission', cell.task.id, cell.task.url)"
                   >
-                    {{ cell.accepted ? 'AC' : cell.task.statusLabel }}
+                    {{ cell.accepted ? (cell.task.statusLabel || '通过') : cell.task.statusLabel }}
                   </a>
                   <a
                     v-else

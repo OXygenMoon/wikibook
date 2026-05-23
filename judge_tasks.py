@@ -7,6 +7,16 @@ import docker
 from docker.errors import DockerException
 
 from app import JudgeTask, JudgeTaskResult, app, db, now_utc8
+from utils.ast_checker import check_ast_rules
+
+
+def _normalize_output_text(value):
+    if value is None:
+        return ""
+    normalized = str(value).replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not normalized:
+        return ""
+    return "\n".join(line.rstrip() for line in normalized.split("\n"))
 
 
 def _judge_timeout_seconds(task):
@@ -119,8 +129,75 @@ def _persist_results(task, payload):
     task.result_summary = payload
     task.error_message = payload.get("error_message")
     task.status = payload.get("status", "failed")
+    if task.status == "accepted":
+        ast_result = _evaluate_ast_result(task)
+        task.result_summary = {**payload, "ast_result": ast_result}
+        task.status = "PAC" if ast_result.get("passed") else "AC"
     task.finished_at = now_utc8()
     db.session.commit()
+
+
+def _evaluate_ast_result(task):
+    enabled_rules = []
+    if task.problem and task.problem.ast_check_enabled:
+        public_sample_outputs = [
+            _normalize_output_text(case.expected_output)
+            for case in task.problem.sample_cases
+            if _normalize_output_text(case.expected_output)
+        ]
+        all_problem_outputs = [
+            _normalize_output_text(case.expected_output)
+            for case in task.problem.test_cases
+            if _normalize_output_text(case.expected_output)
+        ]
+        enabled_rules = [
+            {
+                "id": rule.id,
+                "rule_type": rule.rule_type,
+                "target": rule.target,
+                "min_count": rule.min_count,
+                "max_count": rule.max_count,
+                "required_value": rule.required_value,
+                "params": {
+                    **(rule.params or {}),
+                    "public_sample_outputs": public_sample_outputs,
+                    "problem_outputs": all_problem_outputs,
+                    "forbidden_outputs": (
+                        public_sample_outputs
+                        if (rule.params or {}).get("match_source") == "public_sample_outputs"
+                        else all_problem_outputs
+                    ),
+                },
+                "description": rule.description,
+                "fail_message": rule.fail_message,
+                "enabled": bool(rule.enabled),
+            }
+            for rule in task.problem.ast_rules
+            if rule.enabled
+        ]
+    has_rules = bool(enabled_rules)
+    if not has_rules:
+        return {"applied": False, "has_rules": False, "passed": True, "failed_rules": [], "stats": {}}
+
+    if task.language != "python":
+        return {
+            "applied": True,
+            "has_rules": True,
+            "passed": False,
+            "failed_rules": [
+                {
+                    "rule_id": None,
+                    "description": "当前题目配置了 Python AST 满星目标",
+                    "message": "当前满星语法检查仅支持 Python 代码，请使用 Python 提交以冲击满星通过。",
+                }
+            ],
+            "stats": {},
+        }
+
+    result = check_ast_rules(task.source_code, enabled_rules)
+    result["applied"] = True
+    result["has_rules"] = True
+    return result
 
 
 def process_judge_task(task_id):

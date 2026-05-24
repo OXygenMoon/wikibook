@@ -1,5 +1,6 @@
 <script setup>
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
+import { requestJson } from './api.js';
 
 const props = defineProps({
   payload: { type: Object, required: true },
@@ -30,6 +31,7 @@ const timeStats = computed(() => props.payload.submissionTimeStats || props.payl
 const totalSubmissions = computed(() => timeStats.value.find((stat) => stat.key === 'all')?.count ?? 0);
 const timedStats = computed(() => timeStats.value.filter((stat) => stat.key !== 'all'));
 const maxTimedStatCount = computed(() => Math.max(1, ...timedStats.value.map((stat) => Number(stat.count) || 0)));
+const deletingSubmissionId = ref(null);
 
 function syncFilters() {
   Object.assign(filters, props.payload.filters || {});
@@ -61,6 +63,21 @@ function submitFilter() {
 
 function resetFilter() {
   emit('filter', buildUrl(true));
+}
+
+async function deleteSubmission(row) {
+  if (!row?.deleteUrl || deletingSubmissionId.value) return;
+  if (!window.confirm(`确认删除提交 #${row.id}？此操作不可恢复。`)) return;
+
+  deletingSubmissionId.value = row.id;
+  try {
+    await requestJson(row.deleteUrl, { method: 'DELETE' });
+    emit('filter', buildUrl());
+  } catch (error) {
+    window.alert(error.message || '删除失败，请稍后再试。');
+  } finally {
+    deletingSubmissionId.value = null;
+  }
 }
 
 watch(() => props.payload, syncFilters, { immediate: true });
@@ -182,9 +199,21 @@ watch(() => props.payload, syncFilters, { immediate: true });
               </td>
               <td class="font-mono text-sm text-stone-500">{{ row.createdAt }}</td>
               <td>
-                <a :href="row.url" class="btn btn-sm btn-outline rounded-lg" @click.prevent="emit('openSubmission', row.id, row.url)">
-                  查看
-                </a>
+                <div class="flex justify-end gap-2">
+                  <a :href="row.url" class="btn btn-sm btn-outline rounded-lg" @click.prevent="emit('openSubmission', row.id, row.url)">
+                    查看
+                  </a>
+                  <button
+                    v-if="payload.isAdmin && row.deleteUrl"
+                    type="button"
+                    class="btn btn-sm btn-outline text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 dark:text-red-300 dark:border-red-900/70 dark:hover:bg-red-950/40 rounded-lg"
+                    :disabled="deletingSubmissionId === row.id"
+                    @click="deleteSubmission(row)"
+                  >
+                    <i class="fas fa-trash" aria-hidden="true"></i>
+                    {{ deletingSubmissionId === row.id ? '删除中...' : '删除' }}
+                  </button>
+                </div>
               </td>
             </tr>
             <tr v-if="!payload.submissions.length">

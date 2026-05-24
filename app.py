@@ -1733,6 +1733,7 @@ def serialize_submission_row(task, status_meta=None):
             "url": url_for("oj_problem_detail", slug=task.problem.slug),
         } if task.problem else None,
         "url": url_for("oj_submission_detail", task_id=task.id),
+        "deleteUrl": url_for("delete_oj_submission", task_id=task.id) if current_user.is_admin else None,
     }
 
 
@@ -11683,6 +11684,19 @@ def oj_submission_status_api(task_id):
         'finished_at': task.finished_at.isoformat() if task.finished_at else None,
         'error_message': task.error_message,
     })
+
+
+@app.route('/api/oj/submissions/<int:task_id>', methods=['DELETE'])
+@login_required
+def delete_oj_submission(task_id):
+    ensure_oj_authoring_schema()
+    if not current_user.is_admin:
+        return jsonify({"ok": False, "message": "权限不足，只有管理员可以删除提交记录。"}), 403
+
+    task = JudgeTask.query.filter(JudgeTask.problem_id.isnot(None), JudgeTask.id == task_id).first_or_404()
+    db.session.delete(task)
+    db.session.commit()
+    return jsonify({"ok": True, "message": f"已删除提交 #{task_id}。"})
 
 
 # ==========================================

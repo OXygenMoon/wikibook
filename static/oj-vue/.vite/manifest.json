@@ -16,7 +16,7 @@
     ]
   },
   "frontend/src/oj-public.js": {
-    "file": "assets/src/oj-public.js-rIhrbjmN.js",
+    "file": "assets/src/oj-public.js-Uejgo7nf.js",
     "name": "src/oj-public.js",
     "src": "frontend/src/oj-public.js",
     "isEntry": true,
@@ -24,7 +24,7 @@
       "_runtime-dom.esm-bundler-B8xFnQ3G.js"
     ],
     "css": [
-      "assets/oj-public-GeY8IuFr.css"
+      "assets/oj-public-D70j8cko.css"
     ]
   }
 }

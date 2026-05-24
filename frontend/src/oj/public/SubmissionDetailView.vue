@@ -12,6 +12,9 @@ let pollTimer = 0;
 
 const isFinal = computed(() => !['queued', 'running'].includes(localSubmission.value?.status));
 const hasCaseDetails = computed(() => Boolean(localSubmission.value?.canViewCaseDetails));
+const sampleComparisons = computed(() => localSubmission.value?.sampleComparisons || []);
+const hasSampleComparisons = computed(() => sampleComparisons.value.length > 0);
+const sampleGroupFailed = computed(() => Boolean(localSubmission.value?.sampleGroupFailed));
 
 function metricClass(score) {
   return Number(score || 0) > 0 ? 'metric-chip--success' : 'metric-chip--danger';
@@ -128,6 +131,60 @@ onUnmounted(() => {
           <ol class="list-decimal pl-5 space-y-2">
             <li v-for="item in localSubmission.astFeedback.failedRules" :key="`${item.rule_id || 'rule'}-${item.description}`">{{ item.message || item.description }}</li>
           </ol>
+        </div>
+      </section>
+
+      <section v-if="hasSampleComparisons" class="oj-panel p-5 md:p-6">
+        <div class="flex items-center justify-between gap-4 flex-wrap mb-4">
+          <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100">公开样例对比</h2>
+          <span
+            v-if="sampleGroupFailed"
+            class="status-chip status-chip--danger sample-alert-chip"
+          >
+            全部未通过
+          </span>
+        </div>
+
+        <div v-if="sampleGroupFailed" class="sample-failure-callout mb-4">
+          <div class="font-black text-lg">公开样例全部未通过</div>
+          <p class="mt-1 leading-relaxed">请先对照本题输出和标准输出，修正输出格式或核心逻辑后再看隐藏测试点。</p>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <article
+            v-for="sample in sampleComparisons"
+            :key="`sample-${sample.sampleIndex}-${sample.caseIndex}`"
+            class="sample-comparison-row"
+            :class="{ 'sample-comparison-row--failed': sampleGroupFailed }"
+          >
+            <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
+              <div class="font-black text-stone-900 dark:text-stone-100">样例 {{ sample.sampleIndex }}</div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="status-chip" :class="`status-chip--${sample.meta.tone}`">{{ sample.meta.label }}</span>
+                <span class="metric-chip" :class="metricClass(sample.score)">{{ sample.score }} 分</span>
+                <span class="metric-chip">{{ sample.timeMs }} ms</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              <div>
+                <div class="case-label">输入</div>
+                <pre class="judge-output">{{ sample.inputData || '（空）' }}</pre>
+              </div>
+              <div>
+                <div class="case-label">标准输出</div>
+                <pre class="judge-output judge-output--expected">{{ sample.expectedOutput || '（空）' }}</pre>
+              </div>
+              <div>
+                <div class="case-label">本题输出</div>
+                <pre class="judge-output" :class="{ 'judge-output--actual-danger': sampleGroupFailed }">{{ sample.actualOutput || '（空）' }}</pre>
+              </div>
+              <div v-if="sample.stderrText" class="lg:col-span-3">
+                <div class="case-label">标准错误</div>
+                <pre class="judge-output">{{ sample.stderrText }}</pre>
+              </div>
+            </div>
+          </article>
         </div>
       </section>
 

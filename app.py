@@ -2046,6 +2046,47 @@ def serialize_submission_detail(task, results=None):
     failure_feedback = build_oj_failure_feedback(task, results)
     ast_feedback = build_submission_ast_feedback(task)
     can_view_details = bool(current_user.is_admin)
+    result_by_case_index = {result.case_index: result for result in results}
+    sample_comparisons = []
+
+    def append_sample_comparison(input_data, expected_output, result=None, case_index=None):
+        sample_comparisons.append({
+            "sampleIndex": len(sample_comparisons) + 1,
+            "caseIndex": result.case_index if result else case_index,
+            "status": result.status if result else "queued",
+            "meta": oj_case_status_meta(result.status if result else "queued"),
+            "score": result.score if result else 0,
+            "timeMs": result.time_ms if result else 0,
+            "inputData": input_data or "",
+            "expectedOutput": expected_output or "",
+            "actualOutput": result.actual_output if result else "",
+            "stderrText": result.stderr_text if result else "",
+        })
+
+    for case_index, testcase in enumerate(task.test_cases or []):
+        if (testcase or {}).get("case_type") != "sample":
+            continue
+        append_sample_comparison(
+            (testcase or {}).get("input", ""),
+            (testcase or {}).get("expected_output", ""),
+            result_by_case_index.get(case_index),
+            case_index,
+        )
+    if not sample_comparisons and task.problem:
+        result_by_io = {
+            (result.input_data or "", result.expected_output or ""): result
+            for result in results
+        }
+        for sample_case in task.problem.sample_cases:
+            append_sample_comparison(
+                sample_case.input_data,
+                sample_case.expected_output,
+                result_by_io.get((sample_case.input_data or "", sample_case.expected_output or "")),
+            )
+    sample_group_failed = task.status in OJ_FINAL_STATUSES and bool(sample_comparisons) and all(
+        item["status"] != "queued" and item["status"] not in OJ_PASSING_STATUSES
+        for item in sample_comparisons
+    )
     return {
         "id": task.id,
         "status": task.status,
@@ -2061,6 +2102,8 @@ def serialize_submission_detail(task, results=None):
         "sourceCode": task.source_code,
         "astFeedback": ast_feedback,
         "astResult": (task.result_summary or {}).get("ast_result"),
+        "sampleComparisons": sample_comparisons,
+        "sampleGroupFailed": sample_group_failed,
         "problem": {
             "title": task.problem.title,
             "slug": task.problem.slug,

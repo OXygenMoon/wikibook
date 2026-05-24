@@ -1367,6 +1367,32 @@ def serialize_oj_file(problem_file):
     }
 
 
+def get_oj_problem_sample_cases(problem_id):
+    return [
+        {"input": input_data, "expectedOutput": expected_output, "score": score}
+        for input_data, expected_output, score in (
+            db.session.query(
+                ProblemTestCase.input_data,
+                ProblemTestCase.expected_output,
+                ProblemTestCase.score,
+            )
+            .filter(
+                ProblemTestCase.problem_id == problem_id,
+                ProblemTestCase.case_type == 'sample',
+            )
+            .order_by(ProblemTestCase.sort_order.asc(), ProblemTestCase.id.asc())
+            .all()
+        )
+    ]
+
+
+def count_oj_problem_cases(problem_id, case_type=None):
+    query = ProblemTestCase.query.filter_by(problem_id=problem_id)
+    if case_type:
+        query = query.filter_by(case_type=case_type)
+    return query.count()
+
+
 def serialize_oj_task_summary(task):
     if not task:
         return None
@@ -1385,11 +1411,8 @@ def serialize_oj_task_summary(task):
 
 
 def serialize_oj_problem_detail(problem, active_assignment=None):
-    sample_cases = [
-        {"input": case.input_data, "expectedOutput": case.expected_output, "score": case.score}
-        for case in problem.sample_cases
-    ]
-    hidden_case_count = len(problem.hidden_cases)
+    sample_cases = get_oj_problem_sample_cases(problem.id)
+    hidden_case_count = count_oj_problem_cases(problem.id, 'hidden')
     all_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.filename.asc()).all()
     visible_files = all_files if current_user.is_admin else [problem_file for problem_file in all_files if not problem_file.is_testdata_file]
     assignment_id = active_assignment.id if active_assignment else None
@@ -1433,10 +1456,7 @@ def serialize_oj_problem_detail(problem, active_assignment=None):
 
 
 def serialize_oj_problem_code_workspace(problem, active_assignment=None):
-    sample_cases = [
-        {"input": case.input_data, "expectedOutput": case.expected_output, "score": case.score}
-        for case in problem.sample_cases
-    ]
+    sample_cases = get_oj_problem_sample_cases(problem.id)
     statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
     assignment_id = active_assignment.id if active_assignment else None
     my_latest_task = (
@@ -1509,7 +1529,7 @@ def serialize_oj_problem_submit_workspace(problem, active_assignment=None):
             "difficulty": problem.difficulty,
             "timeLimitMs": problem.time_limit_ms,
             "memoryLimitMb": problem.memory_limit_mb,
-            "testcaseCount": problem.testcase_count,
+            "testcaseCount": count_oj_problem_cases(problem.id),
             "allowedLanguages": allowed_languages,
         },
         "latestTask": serialize_oj_task_summary(my_latest_task),
@@ -1735,6 +1755,232 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
     }
 
 
+OJ_LEADERBOARD_PERIODS = {
+    "weekly": {"label": "本周", "delta": timedelta(days=7)},
+    "monthly": {"label": "本月", "delta": timedelta(days=30)},
+    "all": {"label": "总榜", "delta": None},
+}
+
+OJ_LEADERBOARD_METRICS = {
+    "solved": {"label": "解题数", "unit": "题", "icon": "fa-circle-check", "description": "通过的不同题目数"},
+    "perfect": {"label": "满星", "unit": "题", "icon": "fa-star", "description": "满星通过的不同题目数"},
+    "score": {"label": "总分", "unit": "分", "icon": "fa-gauge-high", "description": "每题历史最高分累加"},
+    "submissions": {"label": "提交数", "unit": "次", "icon": "fa-paper-plane", "description": "提交记录总数"},
+}
+
+
+def normalize_oj_leaderboard_period(value):
+    return value if value in OJ_LEADERBOARD_PERIODS else "weekly"
+
+
+def normalize_oj_leaderboard_metric(value):
+    return value if value in OJ_LEADERBOARD_METRICS else "solved"
+
+
+def _format_oj_leaderboard_time(dt):
+    return dt.strftime("%m-%d %H:%M") if dt else "-"
+
+
+def build_oj_leaderboard_payload(period="weekly", metric="solved"):
+    period = normalize_oj_leaderboard_period(period)
+    metric = normalize_oj_leaderboard_metric(metric)
+    period_meta = OJ_LEADERBOARD_PERIODS[period]
+    start_at = now_utc8() - period_meta["delta"] if period_meta["delta"] else None
+
+    base_filters = [
+        JudgeTask.user_id.isnot(None),
+        JudgeTask.problem_id.isnot(None),
+    ]
+    if start_at:
+        base_filters.append(JudgeTask.created_at >= start_at)
+
+    passing_problem = case((JudgeTask.status.in_(OJ_PASSING_STATUSES), JudgeTask.problem_id), else_=None)
+    perfect_problem = case((JudgeTask.status.in_(OJ_PERFECT_STATUSES), JudgeTask.problem_id), else_=None)
+    accepted_submission = case((JudgeTask.status.in_(OJ_PASSING_STATUSES), 1), else_=0)
+    failed_submission = case((JudgeTask.status.in_(OJ_ERROR_STATUSES), 1), else_=0)
+
+    stat_rows = (
+        db.session.query(
+            JudgeTask.user_id,
+            db.func.count(JudgeTask.id).label("submission_count"),
+            db.func.coalesce(db.func.sum(accepted_submission), 0).label("accepted_submission_count"),
+            db.func.coalesce(db.func.sum(failed_submission), 0).label("failed_count"),
+            db.func.count(db.func.distinct(passing_problem)).label("solved_count"),
+            db.func.count(db.func.distinct(perfect_problem)).label("perfect_count"),
+            db.func.max(JudgeTask.created_at).label("latest_at"),
+        )
+        .filter(*base_filters)
+        .group_by(JudgeTask.user_id)
+        .all()
+    )
+
+    best_scores = (
+        db.session.query(
+            JudgeTask.user_id.label("user_id"),
+            JudgeTask.problem_id.label("problem_id"),
+            db.func.max(JudgeTask.total_score).label("best_score"),
+        )
+        .filter(*base_filters)
+        .group_by(JudgeTask.user_id, JudgeTask.problem_id)
+        .subquery()
+    )
+    score_rows = (
+        db.session.query(
+            best_scores.c.user_id,
+            db.func.coalesce(db.func.sum(best_scores.c.best_score), 0),
+        )
+        .group_by(best_scores.c.user_id)
+        .all()
+    )
+    total_score_by_user = {
+        user_id: int(total_score or 0)
+        for user_id, total_score in score_rows
+    }
+
+    summary_solved_count, summary_perfect_count = (
+        db.session.query(
+            db.func.count(db.func.distinct(passing_problem)),
+            db.func.count(db.func.distinct(perfect_problem)),
+        )
+        .filter(*base_filters)
+        .one()
+    )
+
+    stats_by_user = {
+        user_id: {
+            "solvedCount": int(solved_count or 0),
+            "perfectCount": int(perfect_count or 0),
+            "totalScore": total_score_by_user.get(user_id, 0),
+            "submissionCount": int(submission_count or 0),
+            "acceptedSubmissionCount": int(accepted_submission_count or 0),
+            "failedCount": int(failed_count or 0),
+            "latestAt": latest_at,
+        }
+        for (
+            user_id,
+            submission_count,
+            accepted_submission_count,
+            failed_count,
+            solved_count,
+            perfect_count,
+            latest_at,
+        ) in stat_rows
+    }
+
+    user_ids = set(stats_by_user.keys())
+    if current_user.is_authenticated:
+        user_ids.add(current_user.id)
+
+    user_id_list = list(user_ids)
+    users = (
+        User.query
+        .options(joinedload(User.student_class))
+        .filter(User.id.in_(user_id_list))
+        .all()
+        if user_id_list else []
+    )
+
+    rows = []
+    for user in users:
+        stats = stats_by_user.get(user.id, {})
+        solved_count = int(stats.get("solvedCount") or 0)
+        perfect_count = int(stats.get("perfectCount") or 0)
+        submission_count = int(stats.get("submissionCount") or 0)
+        total_score = int(stats.get("totalScore") or 0)
+        accepted_submission_count = int(stats.get("acceptedSubmissionCount") or 0)
+        success_rate = round((accepted_submission_count / submission_count) * 100) if submission_count else 0
+
+        primary_score = {
+            "solved": solved_count,
+            "perfect": perfect_count,
+            "score": total_score,
+            "submissions": submission_count,
+        }[metric]
+        if primary_score <= 0 and user.id != current_user.id:
+            continue
+
+        rows.append({
+            "rank": 0,
+            "userId": user.id,
+            "name": user.real_name or user.username,
+            "username": user.username,
+            "initial": (user.real_name or user.username or "?")[:1].upper(),
+            "className": user.student_class.name if user.student_class else "未分班",
+            "solvedCount": solved_count,
+            "perfectCount": perfect_count,
+            "totalScore": total_score,
+            "submissionCount": submission_count,
+            "acceptedSubmissionCount": accepted_submission_count,
+            "failedCount": int(stats.get("failedCount") or 0),
+            "successRate": success_rate,
+            "latestAt": _format_oj_leaderboard_time(stats.get("latestAt")),
+            "primaryScore": primary_score,
+            "unit": OJ_LEADERBOARD_METRICS[metric]["unit"],
+            "isCurrentUser": user.id == current_user.id,
+            "profileUrl": url_for("public_profile", user_id=user.id),
+        })
+
+    def sort_key(row):
+        if metric == "submissions":
+            return (
+                -row["submissionCount"],
+                -row["solvedCount"],
+                -row["perfectCount"],
+                -row["totalScore"],
+                row["name"],
+            )
+        return (
+            -row["primaryScore"],
+            -row["solvedCount"],
+            -row["perfectCount"],
+            -row["totalScore"],
+            row["submissionCount"],
+            row["name"],
+        )
+
+    rows.sort(key=sort_key)
+    my_rank = None
+    previous_rank_key = None
+    current_rank = 0
+    for index, row in enumerate(rows, start=1):
+        rank_key = sort_key(row)[:-1]
+        if rank_key != previous_rank_key:
+            current_rank = index
+            previous_rank_key = rank_key
+        row["rank"] = current_rank
+        if row["isCurrentUser"]:
+            my_rank = row
+
+    gap_to_next = 0
+    if my_rank and my_rank["rank"] > 1:
+        previous_row = rows[my_rank["rank"] - 2]
+        gap_to_next = max(previous_row["primaryScore"] - my_rank["primaryScore"], 0)
+
+    return {
+        "filters": {"period": period, "metric": metric},
+        "periods": [
+            {"key": key, "label": value["label"]}
+            for key, value in OJ_LEADERBOARD_PERIODS.items()
+        ],
+        "metrics": [
+            {"key": key, **value}
+            for key, value in OJ_LEADERBOARD_METRICS.items()
+        ],
+        "activePeriod": {"key": period, "label": period_meta["label"]},
+        "activeMetric": {"key": metric, **OJ_LEADERBOARD_METRICS[metric]},
+        "summary": {
+            "participantCount": len(rows),
+            "submissionCount": sum(row["submissionCount"] for row in rows),
+            "solvedProblemCount": int(summary_solved_count or 0),
+            "perfectProblemCount": int(summary_perfect_count or 0),
+        },
+        "topThree": rows[:3],
+        "rows": rows,
+        "myRank": my_rank,
+        "gapToNext": gap_to_next,
+    }
+
+
 def serialize_submission_detail(task, results=None):
     results = results if results is not None else task.results.order_by(JudgeTaskResult.case_index.asc()).all()
     task_meta = oj_submission_status_meta(task, results)
@@ -1784,6 +2030,18 @@ def serialize_submission_detail(task, results=None):
             "status": url_for("oj_submission_status_api", task_id=task.id),
         },
     }
+
+
+def check_oj_badges_once_for_task(task):
+    if not task or task.user_id != current_user.id or task.status not in OJ_FINAL_STATUSES:
+        return
+    checked_task_ids = session.get('oj_badge_checked_task_ids') or []
+    task_key = str(task.id)
+    if task_key in checked_task_ids:
+        return
+    check_and_award_badges(current_user)
+    checked_task_ids.append(task_key)
+    session['oj_badge_checked_task_ids'] = checked_task_ids[-20:]
 
 
 def serialize_oj_assignment_task(task):
@@ -1845,23 +2103,49 @@ def build_oj_assignment_list_payload():
     }
     assignment_ids = list(assignment_status.keys())
     if current_user.is_authenticated and assignment_ids:
-        tasks = (
-            JudgeTask.query
-            .options(joinedload(JudgeTask.problem))
+        latest_ids = (
+            db.session.query(
+                JudgeTask.id.label("task_id"),
+                db.func.row_number().over(
+                    partition_by=(JudgeTask.assignment_id, JudgeTask.problem_id),
+                    order_by=(JudgeTask.created_at.desc(), JudgeTask.id.desc()),
+                ).label("row_number"),
+            )
             .filter(
                 JudgeTask.user_id == current_user.id,
                 JudgeTask.assignment_id.in_(assignment_ids),
             )
-            .order_by(JudgeTask.assignment_id.asc(), JudgeTask.problem_id.asc(), JudgeTask.created_at.desc(), JudgeTask.id.desc())
+            .subquery()
+        )
+        latest_tasks = (
+            JudgeTask.query
+            .options(joinedload(JudgeTask.problem))
+            .filter(
+                JudgeTask.id.in_(
+                    db.session.query(latest_ids.c.task_id).filter(latest_ids.c.row_number == 1)
+                )
+            )
             .all()
         )
-        for task in tasks:
+        for task in latest_tasks:
             bucket = assignment_status.get(task.assignment_id)
             if not bucket:
                 continue
-            if task.status in OJ_PASSING_STATUSES:
-                bucket["accepted_problem_ids"].add(task.problem_id)
             bucket["latest_by_problem"].setdefault(task.problem_id, task)
+        accepted_rows = (
+            db.session.query(JudgeTask.assignment_id, JudgeTask.problem_id)
+            .filter(
+                JudgeTask.user_id == current_user.id,
+                JudgeTask.assignment_id.in_(assignment_ids),
+                JudgeTask.status.in_(OJ_PASSING_STATUSES),
+            )
+            .distinct()
+            .all()
+        )
+        for assignment_id, problem_id in accepted_rows:
+            bucket = assignment_status.get(assignment_id)
+            if bucket:
+                bucket["accepted_problem_ids"].add(problem_id)
 
     rows = []
     for assignment in assignments:
@@ -1884,6 +2168,7 @@ def build_oj_assignment_detail_payload(assignment):
         JudgeTask.query
         .filter(
             JudgeTask.user_id == current_user.id,
+            JudgeTask.assignment_id == assignment.id,
             JudgeTask.problem_id.in_(problem_ids),
         )
         .count()
@@ -9575,7 +9860,14 @@ def seed_ast_rule_templates():
         db.session.commit()
 
 
-def ensure_oj_authoring_schema():
+OJ_AUTHORING_SCHEMA_READY = False
+
+
+def ensure_oj_authoring_schema(force=False):
+    global OJ_AUTHORING_SCHEMA_READY
+    if OJ_AUTHORING_SCHEMA_READY and not force:
+        return []
+
     required_tables = {
         'problem': Problem.__table__,
         'problem_test_case': ProblemTestCase.__table__,
@@ -9640,22 +9932,84 @@ def ensure_oj_authoring_schema():
                         "ON judge_task (assignment_id, user_id, problem_id)"
                     )
                 )
+            if 'ix_judge_task_created_id' not in judge_task_indexes:
+                connection.execute(db.text("CREATE INDEX IF NOT EXISTS ix_judge_task_created_id ON judge_task (created_at, id)"))
+            if 'ix_judge_task_assignment_created_id' not in judge_task_indexes:
+                connection.execute(
+                    db.text(
+                        "CREATE INDEX IF NOT EXISTS ix_judge_task_assignment_created_id "
+                        "ON judge_task (assignment_id, created_at, id)"
+                    )
+                )
+            if 'ix_judge_task_problem_assignment_created_id' not in judge_task_indexes:
+                connection.execute(
+                    db.text(
+                        "CREATE INDEX IF NOT EXISTS ix_judge_task_problem_assignment_created_id "
+                        "ON judge_task (problem_id, assignment_id, created_at, id)"
+                    )
+                )
+            if 'ix_judge_task_user_created_at' not in judge_task_indexes:
+                connection.execute(db.text("CREATE INDEX IF NOT EXISTS ix_judge_task_user_created_at ON judge_task (user_id, created_at)"))
+            if 'ix_judge_task_user_assignment_created_id' not in judge_task_indexes:
+                connection.execute(
+                    db.text(
+                        "CREATE INDEX IF NOT EXISTS ix_judge_task_user_assignment_created_id "
+                        "ON judge_task (user_id, assignment_id, created_at, id)"
+                    )
+                )
+            if 'ix_judge_task_user_status_problem' not in judge_task_indexes:
+                connection.execute(
+                    db.text(
+                        "CREATE INDEX IF NOT EXISTS ix_judge_task_user_status_problem "
+                        "ON judge_task (user_id, status, problem_id)"
+                    )
+                )
+            if 'ix_judge_task_leaderboard_period' not in judge_task_indexes:
+                connection.execute(
+                    db.text(
+                        "CREATE INDEX IF NOT EXISTS ix_judge_task_leaderboard_period "
+                        "ON judge_task (created_at, user_id, problem_id, status)"
+                    )
+                )
 
     seed_ast_rule_templates()
+    OJ_AUTHORING_SCHEMA_READY = True
     return created_tables
 
 
 def get_visible_oj_assignments_for_user(user):
     base_query = (
         OJAssignment.query
-        .options(selectinload(OJAssignment.problem_links))
+        .options(
+            selectinload(OJAssignment.problem_links).joinedload(OJAssignmentProblem.problem),
+            selectinload(OJAssignment.allowed_classes),
+            selectinload(OJAssignment.allowed_groups),
+            selectinload(OJAssignment.allowed_users),
+            selectinload(OJAssignment.managers),
+        )
         .order_by(OJAssignment.start_at.desc(), OJAssignment.created_at.desc(), OJAssignment.id.desc())
     )
     if not user.is_authenticated:
         return []
     if user.is_admin:
         return base_query.all()
-    return [assignment for assignment in base_query.all() if assignment.is_visible_to(user)]
+
+    group_ids = [group.id for group in user.groups]
+    visibility_clauses = [
+        OJAssignment.created_by_id == user.id,
+        OJAssignment.managers.any(User.id == user.id),
+        db.and_(OJAssignment.is_active.is_(True), OJAssignment.visibility == 'all'),
+        db.and_(OJAssignment.is_active.is_(True), OJAssignment.allowed_users.any(User.id == user.id)),
+    ]
+    if user.class_id:
+        visibility_clauses.append(
+            db.and_(OJAssignment.is_active.is_(True), OJAssignment.allowed_classes.any(Class.id == user.class_id))
+        )
+    if group_ids:
+        visibility_clauses.append(
+            db.and_(OJAssignment.is_active.is_(True), OJAssignment.allowed_groups.any(Group.id.in_(group_ids)))
+        )
+    return base_query.filter(db.or_(*visibility_clauses)).all()
 
 
 def get_oj_assignment_or_404_visible(assignment_id):
@@ -9763,20 +10117,44 @@ def assignment_problem_latest_status(assignment, user):
     if not user.is_authenticated or not problem_ids:
         return latest_by_problem, accepted_problem_ids
 
-    tasks = (
-        JudgeTask.query
+    latest_ids = (
+        db.session.query(
+            JudgeTask.id.label("task_id"),
+            db.func.row_number().over(
+                partition_by=JudgeTask.problem_id,
+                order_by=(JudgeTask.created_at.desc(), JudgeTask.id.desc()),
+            ).label("row_number"),
+        )
         .filter(
             JudgeTask.user_id == user.id,
             JudgeTask.problem_id.in_(problem_ids),
             JudgeTask.assignment_id == assignment.id,
         )
-        .order_by(JudgeTask.problem_id.asc(), JudgeTask.created_at.desc(), JudgeTask.id.desc())
+        .subquery()
+    )
+    latest_tasks = (
+        JudgeTask.query
+        .filter(
+            JudgeTask.id.in_(
+                db.session.query(latest_ids.c.task_id).filter(latest_ids.c.row_number == 1)
+            )
+        )
         .all()
     )
-    for task in tasks:
-        if task.status in OJ_PASSING_STATUSES:
-            accepted_problem_ids.add(task.problem_id)
-        latest_by_problem.setdefault(task.problem_id, task)
+    latest_by_problem = {task.problem_id: task for task in latest_tasks}
+    accepted_problem_ids = {
+        problem_id for (problem_id,) in (
+            db.session.query(JudgeTask.problem_id)
+            .filter(
+                JudgeTask.user_id == user.id,
+                JudgeTask.problem_id.in_(problem_ids),
+                JudgeTask.assignment_id == assignment.id,
+                JudgeTask.status.in_(OJ_PASSING_STATUSES),
+            )
+            .distinct()
+            .all()
+        )
+    }
     return latest_by_problem, accepted_problem_ids
 
 
@@ -10975,13 +11353,53 @@ def oj_submission_list_json():
     })
 
 
+@app.route('/oj/leaderboard')
+@login_required
+def oj_leaderboard():
+    ensure_oj_authoring_schema()
+    period = normalize_oj_leaderboard_period(request.args.get('period', 'weekly').strip().lower())
+    metric = normalize_oj_leaderboard_metric(request.args.get('metric', 'solved').strip().lower())
+    payload = build_oj_leaderboard_payload(period, metric)
+    return render_template(
+        'oj/oj_shell.html',
+        page_title='OJ 排行榜',
+        shell_payload={
+            "initialView": "leaderboard",
+            "leaderboard": payload,
+            "urls": {
+                "problemList": url_for("oj_problem_list"),
+                "problemListJson": url_for("oj_problem_list_json"),
+                "submissionList": url_for("oj_submission_list"),
+                "submissionListJson": url_for("oj_submission_list_json"),
+                "assignmentList": url_for("oj_assignment_list"),
+                "assignmentListJson": url_for("oj_assignment_list_json"),
+                "leaderboard": url_for("oj_leaderboard"),
+                "leaderboardJson": url_for("oj_leaderboard_json"),
+            },
+            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+        },
+    )
+
+
+@app.route('/oj/leaderboard.json')
+@login_required
+def oj_leaderboard_json():
+    ensure_oj_authoring_schema()
+    return jsonify({
+        "ok": True,
+        "leaderboard": build_oj_leaderboard_payload(
+            normalize_oj_leaderboard_period(request.args.get('period', 'weekly').strip().lower()),
+            normalize_oj_leaderboard_metric(request.args.get('metric', 'solved').strip().lower()),
+        ),
+    })
+
+
 @app.route('/oj/submissions/<int:task_id>')
 @login_required
 def oj_submission_detail(task_id):
     ensure_oj_authoring_schema()
     task = get_oj_judge_task_or_404(task_id)
-    if task.user_id == current_user.id and task.status in OJ_FINAL_STATUSES:
-        check_and_award_badges(current_user)
+    check_oj_badges_once_for_task(task)
     results = task.results.order_by(JudgeTaskResult.case_index.asc()).all()
     return render_template(
         'oj/oj_shell.html',
@@ -11016,8 +11434,7 @@ def oj_submission_detail_json(task_id):
 def oj_submission_status_api(task_id):
     ensure_oj_authoring_schema()
     task = get_oj_judge_task_or_404(task_id)
-    if task.user_id == current_user.id and task.status in OJ_FINAL_STATUSES:
-        check_and_award_badges(current_user)
+    check_oj_badges_once_for_task(task)
     meta = oj_submission_status_meta(task)
     return jsonify({
         'id': task.id,
@@ -11049,7 +11466,7 @@ def manage_oj_problems():
         problems = Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
     except OperationalError:
         db.session.rollback()
-        created_tables = ensure_oj_authoring_schema()
+        created_tables = ensure_oj_authoring_schema(force=True)
         if created_tables:
             flash('OJ 题库数据表已自动修复，请继续操作。', 'success')
         problems = Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()

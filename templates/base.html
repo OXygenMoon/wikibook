@@ -3122,6 +3122,9 @@
                 <a href="{{ url_for('oj_submission_list') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/oj/submissions') else '' }}">
                     <i class="fas fa-history"></i> 提交记录
                 </a>
+                <a href="{{ url_for('oj_leaderboard') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/oj/leaderboard') else '' }}">
+                    <i class="fas fa-ranking-star"></i> 排行榜
+                </a>
                 <a href="{{ url_for('oj_assignment_list') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/oj/assignments') else '' }}">
                     <i class="fas fa-clipboard-list"></i> 作业
                 </a>

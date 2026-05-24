@@ -10,6 +10,7 @@ import SubmissionDetailView from './SubmissionDetailView.vue';
 import AssignmentListView from './AssignmentListView.vue';
 import AssignmentDetailView from './AssignmentDetailView.vue';
 import AssignmentScoreboardView from './AssignmentScoreboardView.vue';
+import OjLeaderboardView from './OjLeaderboardView.vue';
 
 const props = defineProps({
   initialView: { type: String, default: 'problems' },
@@ -22,6 +23,7 @@ const props = defineProps({
   assignmentList: { type: Object, default: null },
   assignmentDetail: { type: Object, default: null },
   assignmentScoreboard: { type: Object, default: null },
+  leaderboard: { type: Object, default: null },
   urls: { type: Object, default: () => ({}) },
   currentUser: { type: Object, default: () => ({}) },
 });
@@ -36,6 +38,7 @@ const submissionDetail = ref(props.submissionDetail);
 const assignmentList = ref(props.assignmentList);
 const assignmentDetail = ref(props.assignmentDetail);
 const assignmentScoreboard = ref(props.assignmentScoreboard);
+const leaderboard = ref(props.leaderboard);
 const loading = ref(false);
 const notice = ref(null);
 const initialSubmissionListUrl = (() => {
@@ -58,6 +61,7 @@ const title = computed(() => {
   if (view.value === 'assignments') return 'OJ 作业清单';
   if (view.value === 'assignmentDetail') return assignmentDetail.value?.assignment?.title || 'OJ 作业';
   if (view.value === 'assignmentScoreboard') return `${assignmentScoreboard.value?.assignment?.title || '作业'} · 成绩表`;
+  if (view.value === 'leaderboard') return 'OJ 排行榜';
   return 'OJ 题库';
 });
 
@@ -201,6 +205,20 @@ async function goAssignmentScoreboard(assignmentId, url, { pushState = true } = 
   }
 }
 
+async function loadLeaderboard(url = props.urls.leaderboardJson || '/oj/leaderboard.json', { pushState = true } = {}) {
+  loading.value = true;
+  try {
+    const data = await requestJson(url);
+    leaderboard.value = data.leaderboard;
+    view.value = 'leaderboard';
+    if (pushState) push(url.replace('/oj/leaderboard.json', '/oj/leaderboard'), 'leaderboard');
+  } catch (error) {
+    showNotice(error.message);
+  } finally {
+    loading.value = false;
+  }
+}
+
 function showSubmissionDetail(nextSubmission, redirectUrl, message = '') {
   submissionDetail.value = nextSubmission;
   view.value = 'submissionDetail';
@@ -240,6 +258,10 @@ function routeFromLocation({ pushState = false } = {}) {
   }
   if (path === '/oj/assignments') {
     loadAssignments(`/oj/assignments.json${window.location.search}`, { pushState });
+    return;
+  }
+  if (path === '/oj/leaderboard') {
+    loadLeaderboard(`/oj/leaderboard.json${window.location.search}`, { pushState });
     return;
   }
   const assignmentScoreboardMatch = path.match(/^\/oj\/assignments\/(\d+)\/scoreboard$/);
@@ -353,6 +375,11 @@ onUnmounted(() => {
         @open-problem="goProblem"
         @open-submissions="loadSubmissions"
         @open-submission="goSubmission"
+      />
+      <OjLeaderboardView
+        v-else-if="view === 'leaderboard' && leaderboard"
+        :payload="leaderboard"
+        @filter="loadLeaderboard"
       />
     </div>
   </div>

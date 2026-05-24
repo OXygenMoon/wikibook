@@ -66,17 +66,57 @@
 
             const darkTheme = 'business'; 
 
+            const animalWallpaperKey = 'animalWallpaper';
+            const animalWallpaperMap = {
+                default: {
+                    image: 'url("{{ url_for('static', filename='images/animal-island-home-bg.webp') }}")',
+                    color: '#7DC395'
+                },
+                blue: {
+                    image: 'url("{{ url_for('static', filename='images/winter.png') }}")',
+                    color: '#7fb8df'
+                },
+                orange: {
+                    image: 'url("{{ url_for('static', filename='images/orange.png') }}")',
+                    color: '#e9a460'
+                },
+                purple: {
+                    image: 'url("{{ url_for('static', filename='images/purple.png') }}")',
+                    color: '#9c87d3'
+                },
+                red: {
+                    image: 'url("{{ url_for('static', filename='images/red.png') }}")',
+                    color: '#d86f6b'
+                },
+                yellow: {
+                    image: 'url("{{ url_for('static', filename='images/yellow.png') }}")',
+                    color: '#e6cc66'
+                }
+            };
+
             if (savedTheme === 'dark') {
 
                 document.documentElement.setAttribute('data-theme', darkTheme);
 
                 document.documentElement.classList.add('dark');
 
+                document.documentElement.style.setProperty('--ai-home-bg', 'url("{{ url_for('static', filename='images/animal-island-home-bg-dark.png') }}")');
+
+                document.documentElement.style.setProperty('--ai-home-bg-color', '#1d2119');
+
             } else {
 
                 document.documentElement.setAttribute('data-theme', lightTheme);
 
                 document.documentElement.classList.remove('dark');
+
+                const savedWallpaper = localStorage.getItem(animalWallpaperKey) || 'default';
+
+                const wallpaper = animalWallpaperMap[savedWallpaper] || animalWallpaperMap.default;
+
+                document.documentElement.style.setProperty('--ai-home-bg', wallpaper.image);
+
+                document.documentElement.style.setProperty('--ai-home-bg-color', wallpaper.color);
 
             }
 
@@ -3606,7 +3646,7 @@
                         <p class="text-[10px] font-black tracking-widest text-base-content/40 uppercase mb-2">亮色壁纸</p>
                         <div class="animal-wallpaper-grid">
                             <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="default" data-wallpaper-theme="light" data-wallpaper-color="#7DC395" style="--wallpaper-image: url('{{ url_for('static', filename='images/animal-island-home-bg.webp') }}'); --wallpaper-color: #7DC395;" aria-label="默认亮色壁纸" title="默认亮色壁纸"></button>
-                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="blue" data-wallpaper-theme="light" data-wallpaper-color="#7fb8df" style="--wallpaper-image: url('{{ url_for('static', filename='images/blue.png') }}'); --wallpaper-color: #7fb8df;" aria-label="蓝色亮色壁纸" title="蓝色亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="blue" data-wallpaper-theme="light" data-wallpaper-color="#7fb8df" style="--wallpaper-image: url('{{ url_for('static', filename='images/winter.png') }}'); --wallpaper-color: #7fb8df;" aria-label="蓝色亮色壁纸" title="蓝色亮色壁纸"></button>
                             <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="orange" data-wallpaper-theme="light" data-wallpaper-color="#e9a460" style="--wallpaper-image: url('{{ url_for('static', filename='images/orange.png') }}'); --wallpaper-color: #e9a460;" aria-label="橙色亮色壁纸" title="橙色亮色壁纸"></button>
                             <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="purple" data-wallpaper-theme="light" data-wallpaper-color="#9c87d3" style="--wallpaper-image: url('{{ url_for('static', filename='images/purple.png') }}'); --wallpaper-color: #9c87d3;" aria-label="紫色亮色壁纸" title="紫色亮色壁纸"></button>
                             <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="red" data-wallpaper-theme="light" data-wallpaper-color="#d86f6b" style="--wallpaper-image: url('{{ url_for('static', filename='images/red.png') }}'); --wallpaper-color: #d86f6b;" aria-label="红色亮色壁纸" title="红色亮色壁纸"></button>
@@ -3908,7 +3948,7 @@
                         <p class="text-[10px] font-black tracking-widest text-base-content/40 uppercase mb-2">亮色壁纸</p>
                         <div class="animal-wallpaper-grid">
                             <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="default" data-wallpaper-theme="light" data-wallpaper-color="#7DC395" style="--wallpaper-image: url('{{ url_for('static', filename='images/animal-island-home-bg.webp') }}'); --wallpaper-color: #7DC395;" aria-label="默认亮色壁纸" title="默认亮色壁纸"></button>
-                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="blue" data-wallpaper-theme="light" data-wallpaper-color="#7fb8df" style="--wallpaper-image: url('{{ url_for('static', filename='images/blue.png') }}'); --wallpaper-color: #7fb8df;" aria-label="蓝色亮色壁纸" title="蓝色亮色壁纸"></button>
+                            <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="blue" data-wallpaper-theme="light" data-wallpaper-color="#7fb8df" style="--wallpaper-image: url('{{ url_for('static', filename='images/winter.png') }}'); --wallpaper-color: #7fb8df;" aria-label="蓝色亮色壁纸" title="蓝色亮色壁纸"></button>
                             <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="orange" data-wallpaper-theme="light" data-wallpaper-color="#e9a460" style="--wallpaper-image: url('{{ url_for('static', filename='images/orange.png') }}'); --wallpaper-color: #e9a460;" aria-label="橙色亮色壁纸" title="橙色亮色壁纸"></button>
                             <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="purple" data-wallpaper-theme="light" data-wallpaper-color="#9c87d3" style="--wallpaper-image: url('{{ url_for('static', filename='images/purple.png') }}'); --wallpaper-color: #9c87d3;" aria-label="紫色亮色壁纸" title="紫色亮色壁纸"></button>
                             <button type="button" class="animal-wallpaper-option" data-wallpaper-option data-wallpaper="red" data-wallpaper-theme="light" data-wallpaper-color="#d86f6b" style="--wallpaper-image: url('{{ url_for('static', filename='images/red.png') }}'); --wallpaper-color: #d86f6b;" aria-label="红色亮色壁纸" title="红色亮色壁纸"></button>

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+[ -n "${BASH_VERSION:-}" ] || exec bash "$0" "$@"
+
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,11 +41,41 @@ proxy_is_running() {
 }
 
 proxy_pid_from_port() {
-    lsof -tiTCP:"${DOCKER_PROXY_PORT}" -sTCP:LISTEN 2>/dev/null | head -n 1
+    lsof -tiTCP:"${DOCKER_PROXY_PORT}" -sTCP:LISTEN 2>/dev/null | head -n 1 || true
 }
 
 proxy_is_healthy() {
     [ "$(curl -s --max-time 2 "http://127.0.0.1:${DOCKER_PROXY_PORT}/_ping" 2>/dev/null || true)" = "OK" ]
+}
+
+wait_for_docker() {
+    local attempts="${1:-30}"
+    local waited=0
+    while [ "${waited}" -lt "${attempts}" ]; do
+        if docker info >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+    return 1
+}
+
+stop_proxy_pid() {
+    local pid="${1:-}"
+    [ -n "${pid}" ] || return 0
+
+    kill "${pid}" 2>/dev/null || true
+
+    local waited=0
+    while kill -0 "${pid}" 2>/dev/null; do
+        if [ "${waited}" -ge 5 ]; then
+            kill -9 "${pid}" 2>/dev/null || true
+            break
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
 }
 
 ensure_redis() {
@@ -80,7 +112,15 @@ ensure_colima() {
     fi
 
     colima start --cpu "${COLIMA_CPU:-2}" --memory "${COLIMA_MEMORY:-4}" --disk "${COLIMA_DISK:-20}"
-    echo "Colima started."
+
+    if wait_for_docker 45; then
+        echo "Colima started and Docker is ready."
+        return 0
+    fi
+
+    echo "Colima is running, but Docker did not become reachable."
+    echo "Try: colima restart"
+    exit 1
 }
 
 ensure_docker_proxy() {
@@ -100,6 +140,13 @@ ensure_docker_proxy() {
     fi
 
     rm -f "${PROXY_PIDFILE}"
+
+    local stale_pid
+    stale_pid="$(proxy_pid_from_port)"
+    if [ -n "${stale_pid}" ]; then
+        echo "Stopping unhealthy Docker proxy on port ${DOCKER_PROXY_PORT} (PID: ${stale_pid})."
+        stop_proxy_pid "${stale_pid}"
+    fi
 
     local python_bin
     python_bin="$(find_python)" || {
@@ -143,11 +190,6 @@ stop_docker_proxy() {
         return 0
     fi
 
-    if ! proxy_is_healthy; then
-        rm -f "${PROXY_PIDFILE}"
-        return 0
-    fi
-
     local pid
     pid="$(cat "${PROXY_PIDFILE}" 2>/dev/null || true)"
     if [ -z "${pid}" ] || ! kill -0 "${pid}" 2>/dev/null; then
@@ -157,17 +199,7 @@ stop_docker_proxy() {
         rm -f "${PROXY_PIDFILE}"
         return 0
     fi
-    kill "${pid}" 2>/dev/null || true
-
-    local waited=0
-    while kill -0 "${pid}" 2>/dev/null; do
-        if [ "${waited}" -ge 5 ]; then
-            kill -9 "${pid}" 2>/dev/null || true
-            break
-        fi
-        sleep 1
-        waited=$((waited + 1))
-    done
+    stop_proxy_pid "${pid}"
 
     rm -f "${PROXY_PIDFILE}"
     echo "Restricted Docker proxy stopped."

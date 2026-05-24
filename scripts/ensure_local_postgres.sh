@@ -27,6 +27,39 @@ ensure_container_hba() {
     docker exec "${LOCAL_PG_CONTAINER_NAME}" psql -U postgres -d postgres -tAc "SELECT pg_reload_conf();" >/dev/null
 }
 
+wait_for_docker() {
+    local attempts="${1:-45}"
+    local waited=0
+
+    while [ "${waited}" -lt "${attempts}" ]; do
+        if docker_can_run; then
+            return 0
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    return 1
+}
+
+ensure_docker_for_local_postgres() {
+    if docker_can_run; then
+        return 0
+    fi
+
+    if ! command_exists docker; then
+        return 1
+    fi
+
+    if ! command_exists colima; then
+        return 1
+    fi
+
+    log "Docker is unavailable; starting Colima ..."
+    colima start --cpu "${COLIMA_CPU:-2}" --memory "${COLIMA_MEMORY:-4}" --disk "${COLIMA_DISK:-20}" || return 1
+    wait_for_docker 45
+}
+
 usage() {
     cat <<'EOF'
 Usage: scripts/ensure_local_postgres.sh
@@ -60,7 +93,7 @@ if local_pg_is_ready; then
     exit 0
 fi
 
-docker_can_run || fail "PostgreSQL is not reachable at ${PG_HOST}:${PG_PORT}, and Docker is unavailable"
+ensure_docker_for_local_postgres || fail "PostgreSQL is not reachable at ${PG_HOST}:${PG_PORT}, and Docker is unavailable"
 find_matching_pg_volume || fail "PostgreSQL is not reachable at ${PG_HOST}:${PG_PORT}, and no matching Docker PostgreSQL data volume was found"
 
 image_name="postgres:${PG_VOLUME_VERSION}"

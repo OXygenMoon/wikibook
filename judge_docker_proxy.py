@@ -80,8 +80,13 @@ class DockerProxyHandler(http.server.BaseHTTPRequestHandler):
 
         conn = UnixHTTPConnection(self.socket_path)
         try:
-            conn.request(self.command, self.path, body=body, headers=headers)
-            resp = conn.getresponse()
+            try:
+                conn.request(self.command, self.path, body=body, headers=headers)
+                resp = conn.getresponse()
+            except OSError as exc:
+                self.send_error(502, f"Docker socket is not reachable: {exc}")
+                return
+
             self.send_response(resp.status, resp.reason)
             for key, value in resp.getheaders():
                 if key.lower() in {"connection", "keep-alive", "proxy-connection", "transfer-encoding"}:

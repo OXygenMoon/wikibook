@@ -251,23 +251,50 @@ start_temp_pg_from_volume() {
         docker pull "${TEMP_PG_IMAGE}" >/dev/null
     fi
 
-    docker rm -f "${TEMP_PG_CONTAINER_NAME}" >/dev/null 2>&1 || true
-    docker run -d \
-        --name "${TEMP_PG_CONTAINER_NAME}" \
-        -e POSTGRES_PASSWORD="${PG_PASSWORD}" \
-        -v "${volume_name}:/var/lib/postgresql/data" \
-        "${TEMP_PG_IMAGE}" >/dev/null
+    _try_start_pg() {
+        docker rm -f "${TEMP_PG_CONTAINER_NAME}" >/dev/null 2>&1 || true
+        docker run -d \
+            --name "${TEMP_PG_CONTAINER_NAME}" \
+            -e POSTGRES_PASSWORD="${PG_PASSWORD}" \
+            -v "${volume_name}:/var/lib/postgresql/data" \
+            "${TEMP_PG_IMAGE}" >/dev/null
 
-    local attempt
-    for attempt in $(seq 1 30); do
-        if docker exec "${TEMP_PG_CONTAINER_NAME}" pg_isready -h 127.0.0.1 -p 5432 -U postgres >/dev/null 2>&1; then
+        local attempt
+        for attempt in $(seq 1 30); do
+            if docker exec "${TEMP_PG_CONTAINER_NAME}" pg_isready -h 127.0.0.1 -p 5432 -U postgres >/dev/null 2>&1; then
+                return 0
+            fi
+            sleep 1
+        done
+        return 1
+    }
+
+    if _try_start_pg; then
+        return 0
+    fi
+
+    log "PostgreSQL failed to start from volume ${volume_name}, attempting pg_resetwal recovery..."
+    docker rm -f "${TEMP_PG_CONTAINER_NAME}" >/dev/null 2>&1 || true
+
+    local resetwal_output
+    resetwal_output="$(docker run --rm \
+        --user postgres \
+        -v "${volume_name}:/var/lib/postgresql/data" \
+        "${TEMP_PG_IMAGE}" \
+        pg_resetwal -f /var/lib/postgresql/data 2>&1)" && resetwal_ok=0 || resetwal_ok=1
+    if [ "${resetwal_ok}" -eq 0 ]; then
+        log "pg_resetwal succeeded, retrying PostgreSQL start..."
+        if _try_start_pg; then
             return 0
         fi
-        sleep 1
-    done
+    else
+        log "pg_resetwal failed: ${resetwal_output}"
+    fi
 
-    docker logs "${TEMP_PG_CONTAINER_NAME}" >&2 || true
-    docker rm -f "${TEMP_PG_CONTAINER_NAME}" >/dev/null 2>&1 || true
+    if docker ps -a --format '{{.Names}}' | grep -Fx "${TEMP_PG_CONTAINER_NAME}" >/dev/null 2>&1; then
+        docker logs "${TEMP_PG_CONTAINER_NAME}" >&2 || true
+        docker rm -f "${TEMP_PG_CONTAINER_NAME}" >/dev/null 2>&1 || true
+    fi
     TEMP_PG_CONTAINER_NAME=""
     fail "Unable to start a temporary PostgreSQL ${version} container from volume ${volume_name}"
 }

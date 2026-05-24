@@ -130,6 +130,9 @@ function buildRuleDescription(ruleLike) {
 
   if (ruleType === 'function_call') {
     if (target === '__user_defined__') return '本题要求调用自定义函数。';
+    if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined && Number(minCount) === Number(maxCount)) {
+      return `本题要求 ${target}() 恰好调用 ${minCount} 次。`;
+    }
     if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined) {
       return `本题要求 ${target}() 调用次数在 ${minCount} 到 ${maxCount} 次之间。`;
     }
@@ -152,6 +155,9 @@ function buildRuleDescription(ruleLike) {
       Continue: 'continue',
     };
     const label = labels[target] || target;
+    if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined && Number(minCount) === Number(maxCount)) {
+      return `本题要求 ${label} 恰好出现 ${minCount} 次。`;
+    }
     if (minCount !== null && minCount !== undefined) {
       if (target === 'If' && Number(minCount) <= 1) return '本题要求使用 if 分支结构。';
       if (target === 'For' && Number(minCount) <= 1) return '本题要求使用 for 循环。';
@@ -177,6 +183,9 @@ function buildRuleDescription(ruleLike) {
   }
 
   if (ruleType === 'assign' || ruleType === 'assign_count') {
+    if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined && Number(minCount) === Number(maxCount)) {
+      return `本题要求变量赋值恰好出现 ${minCount} 次。`;
+    }
     if (minCount !== null && minCount !== undefined && Number(minCount) <= 1 && (maxCount === null || maxCount === undefined)) {
       return '本题要求使用变量保存数据。';
     }
@@ -196,6 +205,9 @@ function buildRuleDescription(ruleLike) {
   if (ruleType === 'unary_operator') return '本题要求使用 not 进行取反判断。';
 
   if (ruleType === 'method_call') {
+    if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined && Number(minCount) === Number(maxCount)) {
+      return `本题要求 ${target}() 方法恰好调用 ${minCount} 次。`;
+    }
     if (minCount !== null && minCount !== undefined) {
       if (Number(minCount) <= 1) return `本题要求使用 ${target}() 方法。`;
       return `本题要求至少使用 ${minCount} 次 ${target}() 方法。`;
@@ -237,6 +249,16 @@ function buildRuleDescription(ruleLike) {
   if (ruleType === 'slice') return '本题要求使用切片。';
   if (ruleType === 'list_comprehension') return '本题要求使用列表推导式。';
   if (ruleType === 'iterate_collection') return target === 'dict' ? '本题要求使用 for 循环遍历字典。' : '本题要求使用 for 循环遍历列表。';
+  if (ruleType === 'parallel_assignment') {
+    if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined && Number(minCount) === Number(maxCount)) return `本题要求同步赋值恰好出现 ${minCount} 次。`;
+    if (minCount !== null && minCount !== undefined && Number(minCount) <= 1 && (maxCount === null || maxCount === undefined)) return '本题要求使用同步赋值。';
+    if (minCount !== null && minCount !== undefined) return `本题要求至少使用 ${minCount} 次同步赋值。`;
+    if (maxCount !== null && maxCount !== undefined) return `本题要求同步赋值不超过 ${maxCount} 次。`;
+    return '本题要求使用同步赋值。';
+  }
+  if (ruleType === 'chain_assignment') return '本题要求使用连锁赋值。';
+  if (ruleType === 'swap_assignment') return '本题要求使用交换赋值，例如 a, b = b, a。';
+  if (ruleType === 'nested_for') return '本题要求使用嵌套 for 循环。';
   if (ruleType === 'function_def_name') return `本题要求定义函数 ${params.function_name || requiredValue || 'check_score'}。`;
   if (ruleType === 'function_args_count') {
     if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined) return `本题要求函数参数数量在 ${minCount} 到 ${maxCount} 个之间。`;
@@ -383,6 +405,7 @@ function fieldLabel(rule, field) {
   const labels = {
     min_count: '最少次数',
     max_count: '最多次数',
+    exact_count: '精确次数',
     required_value: '指定值',
     arg_count: '输出对象数量阈值',
     variable_name: '变量名',
@@ -396,12 +419,18 @@ function fieldLabel(rule, field) {
 function fieldType(rule, field) {
   const defaults = parseTemplateDefaults(templateFor(rule));
   if (defaults.fieldTypes?.[field]) return defaults.fieldTypes[field];
-  return ['min_count', 'max_count', 'arg_count'].includes(field) ? 'number' : 'text';
+  return ['min_count', 'max_count', 'exact_count', 'arg_count'].includes(field) ? 'number' : 'text';
 }
 
 function fieldValue(rule, field) {
   if (field === 'min_count') return rule.minCount ?? '';
   if (field === 'max_count') return rule.maxCount ?? '';
+  if (field === 'exact_count') {
+    if (rule.minCount !== null && rule.minCount !== undefined && rule.maxCount !== null && rule.maxCount !== undefined && Number(rule.minCount) === Number(rule.maxCount)) {
+      return rule.minCount;
+    }
+    return rule.params?.exact_count ?? '';
+  }
   if (field === 'required_value') return rule.requiredValue ?? '';
   return rule.params?.[field] ?? '';
 }
@@ -417,6 +446,14 @@ function updateEditableField(rule, field, rawValue) {
   }
   if (field === 'required_value') {
     rule.requiredValue = rawValue;
+    syncAutoText(rule);
+    return;
+  }
+  if (field === 'exact_count') {
+    const nextValue = rawValue === '' ? null : Number(rawValue);
+    rule.minCount = nextValue;
+    rule.maxCount = nextValue;
+    rule.params = { ...(rule.params || {}), exact_count: nextValue };
     syncAutoText(rule);
     return;
   }

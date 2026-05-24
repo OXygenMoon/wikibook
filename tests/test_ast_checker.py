@@ -1,6 +1,6 @@
 import unittest
 
-from utils.ast_checker import check_ast_rules
+from utils.ast_checker import check_ast_rules, get_default_ast_rule_templates
 
 
 def make_rule(rule_type, target, **extra):
@@ -176,6 +176,66 @@ class AstCheckerTestCase(unittest.TestCase):
         )
         self.assertFalse(failed["passed"])
         self.assertTrue(passed["passed"])
+
+    def test_exact_for_count_rule(self):
+        passed = check_ast_rules(
+            'for i in range(3):\n    print(i)\nfor j in range(2):\n    print(j)\n',
+            [make_rule("syntax_node", "For", min_count=2, max_count=2)],
+        )
+        failed = check_ast_rules(
+            'for i in range(3):\n    print(i)\n',
+            [make_rule("syntax_node", "For", min_count=2, max_count=2)],
+        )
+        self.assertTrue(passed["passed"])
+        self.assertFalse(failed["passed"])
+
+    def test_parallel_assignment_rule(self):
+        passed = check_ast_rules(
+            'a, b = map(int, input().split())\nprint(a + b)\n',
+            [make_rule("parallel_assignment", "parallel", min_count=1)],
+        )
+        failed = check_ast_rules(
+            'a = int(input())\nb = int(input())\nprint(a + b)\n',
+            [make_rule("parallel_assignment", "parallel", min_count=1)],
+        )
+        self.assertTrue(passed["passed"])
+        self.assertEqual(passed["stats"]["parallel_assignment_count"], 1)
+        self.assertFalse(failed["passed"])
+
+    def test_chain_assignment_rule(self):
+        result = check_ast_rules(
+            'left = right = 0\nprint(left + right)\n',
+            [make_rule("chain_assignment", "chain", min_count=1)],
+        )
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["stats"]["chain_assignment_count"], 1)
+
+    def test_swap_assignment_rule(self):
+        result = check_ast_rules(
+            'a = 1\nb = 2\na, b = b, a\nprint(a, b)\n',
+            [make_rule("swap_assignment", "swap", min_count=1)],
+        )
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["stats"]["swap_assignment_count"], 1)
+
+    def test_nested_for_rule(self):
+        passed = check_ast_rules(
+            'for row in grid:\n    for cell in row:\n        print(cell)\n',
+            [make_rule("nested_for", "nested_for", min_count=1)],
+        )
+        failed = check_ast_rules(
+            'for row in grid:\n    print(row)\n',
+            [make_rule("nested_for", "nested_for", min_count=1)],
+        )
+        self.assertTrue(passed["passed"])
+        self.assertEqual(passed["stats"]["nested_for_count"], 1)
+        self.assertFalse(failed["passed"])
+
+    def test_extended_templates_registered(self):
+        codes = {template["code"] for template in get_default_ast_rule_templates()}
+        self.assertIn("exact_for_count", codes)
+        self.assertIn("require_parallel_assign", codes)
+        self.assertIn("require_nested_for", codes)
 
 
 if __name__ == "__main__":

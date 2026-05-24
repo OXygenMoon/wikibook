@@ -8,6 +8,7 @@ SUPPORTED_AST_RULE_TYPES = {
     "assign_count",
     "bool_operator",
     "branch_feature",
+    "chain_assignment",
     "chained_compare",
     "compare_operator",
     "default_args",
@@ -36,6 +37,7 @@ SUPPORTED_AST_RULE_TYPES = {
     "method_call",
     "open_mode",
     "operator",
+    "parallel_assignment",
     "percent_format",
     "print_arg_count",
     "required_variable",
@@ -43,6 +45,7 @@ SUPPORTED_AST_RULE_TYPES = {
     "set_call",
     "set_literal",
     "slice",
+    "swap_assignment",
     "subscript",
     "syntax_node",
     "try_except",
@@ -50,6 +53,7 @@ SUPPORTED_AST_RULE_TYPES = {
     "with_open",
     "with_statement",
     "aug_assign_operator",
+    "nested_for",
 }
 
 
@@ -190,6 +194,24 @@ def _range_rule_templates(prefix, category, rule_type, target, singular_name):
     ]
 
 
+def _exact_count_template(code, name, category, rule_type, target, exact_count=2):
+    return _template(
+        code,
+        name,
+        category,
+        rule_type,
+        target,
+        {
+            "min_count": exact_count,
+            "max_count": exact_count,
+            "exact_count": exact_count,
+            "editable_fields": ["exact_count"],
+            "field_labels": {"exact_count": "精确次数"},
+            "field_types": {"exact_count": "number"},
+        },
+    )
+
+
 def _call_rule_templates(prefix, category, target):
     return [
         _template(
@@ -320,6 +342,7 @@ def _build_default_templates():
             _template("require_assign", "必须使用变量赋值", "变量赋值", "assign", "assign", {"min_count": 1, "editable_fields": []}),
             _template("min_assign_count", "变量赋值至少 N 次", "变量赋值", "assign_count", "assign", {"min_count": 1, "editable_fields": ["min_count"], "field_labels": {"min_count": "最少次数"}}),
             _template("max_assign_count", "变量赋值至多 N 次", "变量赋值", "assign_count", "assign", {"max_count": 1, "editable_fields": ["max_count"], "field_labels": {"max_count": "最多次数"}}),
+            _exact_count_template("exact_assign_count", "变量赋值恰好 N 次", "变量赋值", "assign_count", "assign"),
             _template(
                 "require_variable_name",
                 "必须使用指定变量名",
@@ -336,6 +359,11 @@ def _build_default_templates():
                 "variable",
                 {"editable_fields": ["variable_name"], "field_labels": {"variable_name": "变量名"}, "variable_name": "temp"},
             ),
+            _template("require_parallel_assign", "必须使用同步赋值", "变量赋值", "parallel_assignment", "parallel", {"min_count": 1, "editable_fields": []}),
+            _template("min_parallel_assign_count", "同步赋值至少 N 次", "变量赋值", "parallel_assignment", "parallel", {"min_count": 1, "editable_fields": ["min_count"], "field_labels": {"min_count": "最少次数"}}),
+            _exact_count_template("exact_parallel_assign_count", "同步赋值恰好 N 次", "变量赋值", "parallel_assignment", "parallel"),
+            _template("require_chain_assign", "必须使用连锁赋值", "变量赋值", "chain_assignment", "chain", {"min_count": 1, "editable_fields": []}),
+            _template("require_swap_assign", "必须使用交换赋值", "变量赋值", "swap_assignment", "swap", {"min_count": 1, "editable_fields": []}),
         ]
     )
 
@@ -381,6 +409,7 @@ def _build_default_templates():
             _template("require_if", "必须使用 if", "分支结构", "syntax_node", "If", {"min_count": 1, "editable_fields": []}),
             _template("min_if_count", "if 至少出现 N 次", "分支结构", "syntax_node", "If", {"min_count": 1, "editable_fields": ["min_count"], "field_labels": {"min_count": "最少次数"}}),
             _template("max_if_count", "if 至多出现 N 次", "分支结构", "syntax_node", "If", {"max_count": 1, "editable_fields": ["max_count"], "field_labels": {"max_count": "最多次数"}}),
+            _exact_count_template("exact_if_count", "if 恰好出现 N 次", "分支结构", "syntax_node", "If"),
             _template("require_else", "必须使用 else", "分支结构", "branch_feature", "else", {"min_count": 1, "editable_fields": []}),
             _template("require_elif", "必须使用 elif", "分支结构", "branch_feature", "elif", {"min_count": 1, "editable_fields": []}),
         ]
@@ -391,11 +420,14 @@ def _build_default_templates():
             _template("require_for", "必须使用 for", "循环结构", "syntax_node", "For", {"min_count": 1, "editable_fields": []}),
             _template("min_for_count", "for 至少出现 N 次", "循环结构", "syntax_node", "For", {"min_count": 1, "editable_fields": ["min_count"], "field_labels": {"min_count": "最少次数"}}),
             _template("max_for_count", "for 至多出现 N 次", "循环结构", "syntax_node", "For", {"max_count": 1, "editable_fields": ["max_count"], "field_labels": {"max_count": "最多次数"}}),
+            _exact_count_template("exact_for_count", "for 恰好出现 N 次", "循环结构", "syntax_node", "For"),
             _template("require_while", "必须使用 while", "循环结构", "syntax_node", "While", {"min_count": 1, "editable_fields": []}),
             _template("min_while_count", "while 至少出现 N 次", "循环结构", "syntax_node", "While", {"min_count": 1, "editable_fields": ["min_count"], "field_labels": {"min_count": "最少次数"}}),
             _template("max_while_count", "while 至多出现 N 次", "循环结构", "syntax_node", "While", {"max_count": 1, "editable_fields": ["max_count"], "field_labels": {"max_count": "最多次数"}}),
+            _exact_count_template("exact_while_count", "while 恰好出现 N 次", "循环结构", "syntax_node", "While"),
             _template("require_break", "必须使用 break", "循环结构", "syntax_node", "Break", {"min_count": 1, "editable_fields": []}),
             _template("require_continue", "必须使用 continue", "循环结构", "syntax_node", "Continue", {"min_count": 1, "editable_fields": []}),
+            _template("require_nested_for", "必须使用嵌套 for", "循环结构", "nested_for", "nested_for", {"min_count": 1, "editable_fields": []}),
         ]
     )
 
@@ -467,6 +499,7 @@ def _build_default_templates():
             _template("require_def", "必须定义函数 def", "函数定义", "function_def", "FunctionDef", {"min_count": 1, "editable_fields": []}),
             _template("min_def_count", "函数定义至少 N 个", "函数定义", "function_def", "FunctionDef", {"min_count": 1, "editable_fields": ["min_count"], "field_labels": {"min_count": "最少次数"}}),
             _template("max_def_count", "函数定义至多 N 个", "函数定义", "function_def", "FunctionDef", {"max_count": 1, "editable_fields": ["max_count"], "field_labels": {"max_count": "最多次数"}}),
+            _exact_count_template("exact_def_count", "函数定义恰好 N 个", "函数定义", "function_def", "FunctionDef"),
             _template("require_return", "必须使用 return", "函数定义", "syntax_node", "Return", {"min_count": 1, "editable_fields": []}),
             _template(
                 "require_function_name",
@@ -732,6 +765,8 @@ def build_rule_description(rule):
         function_name = target if target != "__user_defined__" else "自定义函数"
         if function_name == "__user_defined__":
             function_name = "自定义函数"
+        if min_count is not None and max_count is not None and int(min_count) == int(max_count):
+            return f"本题要求 {function_name}() 恰好调用 {min_count} 次。"
         if min_count is not None and max_count is not None:
             return f"本题要求 {function_name} 调用次数在 {min_count} 到 {max_count} 次之间。"
         if min_count is not None:
@@ -746,6 +781,8 @@ def build_rule_description(rule):
 
     if rule_type == "syntax_node":
         label = NODE_LABELS.get(target, target)
+        if min_count is not None and max_count is not None and int(min_count) == int(max_count):
+            return f"本题要求 {label} 恰好出现 {min_count} 次。"
         if min_count is not None and int(min_count) <= 1:
             if target == "If":
                 return "本题要求使用 if 分支结构。"
@@ -771,6 +808,8 @@ def build_rule_description(rule):
     if rule_type in {"assign", "assign_count"}:
         if min_count is not None and int(min_count) <= 1 and max_count is None:
             return "本题要求使用变量保存数据。"
+        if min_count is not None and max_count is not None and int(min_count) == int(max_count):
+            return f"本题要求变量赋值恰好出现 {min_count} 次。"
         if min_count is not None and max_count is not None:
             return f"本题要求变量赋值次数在 {min_count} 到 {max_count} 次之间。"
         if min_count is not None:
@@ -807,6 +846,8 @@ def build_rule_description(rule):
 
     if rule_type == "method_call":
         label = METHOD_LABELS.get(target, f"{target}()")
+        if min_count is not None and max_count is not None and int(min_count) == int(max_count):
+            return f"本题要求 {label} 恰好调用 {min_count} 次。"
         if min_count is not None and max_count is not None:
             return f"本题要求 {label} 调用次数在 {min_count} 到 {max_count} 次之间。"
         if min_count is not None:
@@ -891,6 +932,32 @@ def build_rule_description(rule):
 
     if rule_type == "function_def":
         return build_rule_description({"rule_type": "syntax_node", "target": "FunctionDef", "min_count": min_count, "max_count": max_count})
+
+    if rule_type == "parallel_assignment":
+        if min_count is not None and max_count is not None and int(min_count) == int(max_count):
+            return f"本题要求同步赋值恰好出现 {min_count} 次。"
+        if min_count is not None and max_count is not None:
+            return f"本题要求同步赋值出现 {min_count} 到 {max_count} 次。"
+        if min_count is not None:
+            if int(min_count) <= 1:
+                return "本题要求使用同步赋值。"
+            return f"本题要求至少使用 {min_count} 次同步赋值。"
+        if max_count is not None:
+            return f"本题要求同步赋值不超过 {max_count} 次。"
+        return "本题要求使用同步赋值。"
+
+    if rule_type == "chain_assignment":
+        if min_count is not None and max_count is not None and int(min_count) == int(max_count):
+            return f"本题要求连锁赋值恰好出现 {min_count} 次。"
+        return "本题要求使用连锁赋值。"
+
+    if rule_type == "swap_assignment":
+        if min_count is not None and max_count is not None and int(min_count) == int(max_count):
+            return f"本题要求交换赋值恰好出现 {min_count} 次。"
+        return "本题要求使用交换赋值，例如 a, b = b, a。"
+
+    if rule_type == "nested_for":
+        return "本题要求使用嵌套 for 循环。"
 
     if rule_type == "function_def_name":
         function_name = _first_param(params, "function_name") or required_value or target
@@ -1035,6 +1102,9 @@ class AstStatsCollector(ast.NodeVisitor):
         self.try_features = {"try": 0, "except": 0, "else": 0, "finally": 0}
         self.forbidden_usage = {"import": 0, "eval": 0, "exec": 0, "open": 0, "os": 0, "subprocess": 0}
         self.assignment_count = 0
+        self.parallel_assignment_count = 0
+        self.chain_assignment_count = 0
+        self.swap_assignment_count = 0
         self.variables_assigned = set()
         self.variable_assign_counts = {}
         self.variables_used = set()
@@ -1053,6 +1123,7 @@ class AstStatsCollector(ast.NodeVisitor):
         self.subscript_contexts = {"any": 0, "list": 0, "dict": 0}
         self.slice_count = 0
         self.iterate_collection = {"any": 0, "list": 0, "dict": 0}
+        self.nested_for_count = 0
         self.function_defs = {}
         self.user_defined_function_names = set()
         self.imports = set()
@@ -1105,6 +1176,12 @@ class AstStatsCollector(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         self.assignment_count += 1
+        if len(node.targets) > 1:
+            self.chain_assignment_count += 1
+        if any(self._is_parallel_target(target) for target in node.targets):
+            self.parallel_assignment_count += 1
+        if self._is_swap_assignment(node):
+            self.swap_assignment_count += 1
         inferred_kind = self._infer_collection_kind(node.value)
         for target in node.targets:
             for name in _extract_store_names(target):
@@ -1115,6 +1192,8 @@ class AstStatsCollector(ast.NodeVisitor):
 
     def visit_AnnAssign(self, node):
         self.assignment_count += 1
+        if self._is_parallel_target(node.target):
+            self.parallel_assignment_count += 1
         inferred_kind = self._infer_collection_kind(node.value)
         for name in _extract_store_names(node.target):
             self._record_assigned_name(name)
@@ -1248,7 +1327,31 @@ class AstStatsCollector(ast.NodeVisitor):
         iter_kind = self._expr_kind(node.iter)
         if iter_kind in {"list", "dict"}:
             self.iterate_collection[iter_kind] += 1
+        if any(isinstance(child, (ast.For, ast.AsyncFor)) for statement in node.body for child in ast.walk(statement)):
+            self.nested_for_count += 1
         self.generic_visit(node)
+
+    def _is_parallel_target(self, target):
+        if not isinstance(target, (ast.Tuple, ast.List)):
+            return False
+        names = _extract_store_names(target)
+        return len(names) >= 2
+
+    def _is_swap_assignment(self, node):
+        if len(node.targets) != 1:
+            return False
+        target = node.targets[0]
+        if not isinstance(target, (ast.Tuple, ast.List)):
+            return False
+        if not isinstance(node.value, (ast.Tuple, ast.List)):
+            return False
+        left_names = [item.id for item in target.elts if isinstance(item, ast.Name)]
+        right_names = [item.id for item in node.value.elts if isinstance(item, ast.Name)]
+        if len(left_names) < 2 or len(left_names) != len(target.elts):
+            return False
+        if len(right_names) != len(node.value.elts) or len(left_names) != len(right_names):
+            return False
+        return left_names != right_names and sorted(left_names) == sorted(right_names)
 
     def visit_JoinedStr(self, node):
         self.has_f_string = True
@@ -1369,10 +1472,14 @@ def _build_stats(collector):
         "format_specs": collector.format_specs,
         "forbidden_usage": collector.forbidden_usage,
         "assignment_count": collector.assignment_count,
+        "parallel_assignment_count": collector.parallel_assignment_count,
+        "chain_assignment_count": collector.chain_assignment_count,
+        "swap_assignment_count": collector.swap_assignment_count,
         "exception_handlers": collector.exception_handlers,
         "with_open_count": collector.with_open_count,
         "open_modes": collector.open_modes,
         "print_literal_outputs": collector.print_literal_outputs,
+        "nested_for_count": collector.nested_for_count,
     }
 
 
@@ -1408,6 +1515,21 @@ def _evaluate_rule(rule, collector):
 
     if rule_type == "assign_count":
         return _compare_counts(collector.assignment_count, min_count, max_count)
+
+    if rule_type == "parallel_assignment":
+        if min_count is None and max_count is None:
+            min_count = 1
+        return _compare_counts(collector.parallel_assignment_count, min_count, max_count)
+
+    if rule_type == "chain_assignment":
+        if min_count is None and max_count is None:
+            min_count = 1
+        return _compare_counts(collector.chain_assignment_count, min_count, max_count)
+
+    if rule_type == "swap_assignment":
+        if min_count is None and max_count is None:
+            min_count = 1
+        return _compare_counts(collector.swap_assignment_count, min_count, max_count)
 
     if rule_type == "required_variable":
         variable_name = _first_param(params, "variable_name") or required_value or target
@@ -1548,6 +1670,11 @@ def _evaluate_rule(rule, collector):
         if min_count is None and max_count is None:
             min_count = 1
         return _compare_counts(actual_count, min_count, max_count)
+
+    if rule_type == "nested_for":
+        if min_count is None and max_count is None:
+            min_count = 1
+        return _compare_counts(collector.nested_for_count, min_count, max_count)
 
     if rule_type == "function_def":
         actual_count = int(collector.syntax_nodes.get("FunctionDef", 0))

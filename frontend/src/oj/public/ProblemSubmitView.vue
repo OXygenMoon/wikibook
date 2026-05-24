@@ -8,8 +8,8 @@ const props = defineProps({
 
 const emit = defineEmits(['back', 'open-problem', 'open-code', 'open-submissions', 'open-submission', 'submitted']);
 
-const activeLanguage = ref(props.workspace.problem.allowedLanguages[0] || 'python');
-const sourceCode = ref(localStorage.getItem(storageKey(activeLanguage.value)) || '');
+const activeLanguage = ref(props.workspace.defaultLanguage || props.workspace.problem.allowedLanguages[0] || 'python');
+const sourceCode = ref(localStorage.getItem(storageKey(activeLanguage.value)) || props.workspace.initialCode?.[activeLanguage.value] || '');
 const submitting = ref(false);
 const notice = ref('');
 
@@ -24,7 +24,7 @@ function syncDraft() {
 function changeLanguage(event) {
   syncDraft();
   activeLanguage.value = event.target.value;
-  sourceCode.value = localStorage.getItem(storageKey(activeLanguage.value)) || '';
+  sourceCode.value = localStorage.getItem(storageKey(activeLanguage.value)) || props.workspace.initialCode?.[activeLanguage.value] || '';
 }
 
 function setNotice(text) {

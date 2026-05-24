@@ -156,8 +156,27 @@ ensure_docker_proxy() {
 
     echo "Starting restricted Docker proxy at tcp://127.0.0.1:${DOCKER_PROXY_PORT} ..."
     : > "${PROXY_LOGFILE}"
-    nohup env JUDGE_DOCKER_PROXY_PORT="${DOCKER_PROXY_PORT}" "${python_bin}" "${ROOT_DIR}/judge_docker_proxy.py" --host 127.0.0.1 --port "${DOCKER_PROXY_PORT}" >> "${PROXY_LOGFILE}" 2>&1 &
-    echo $! > "${PROXY_PIDFILE}"
+    "${python_bin}" - "${python_bin}" "${PROXY_LOGFILE}" "${ROOT_DIR}" "${DOCKER_PROXY_PORT}" > "${PROXY_PIDFILE}" <<'PY'
+import os
+import subprocess
+import sys
+
+python_bin, log_file, cwd, proxy_port = sys.argv[1:5]
+env = os.environ.copy()
+env["JUDGE_DOCKER_PROXY_PORT"] = proxy_port
+log = open(log_file, "ab", buffering=0)
+process = subprocess.Popen(
+    [python_bin, "judge_docker_proxy.py", "--host", "127.0.0.1", "--port", proxy_port],
+    cwd=cwd,
+    env=env,
+    stdin=subprocess.DEVNULL,
+    stdout=log,
+    stderr=subprocess.STDOUT,
+    start_new_session=True,
+    close_fds=True,
+)
+print(process.pid)
+PY
 
     sleep 1
     if proxy_is_healthy; then
@@ -224,8 +243,25 @@ start_worker_background() {
     worker_env
     : > "${LOGFILE}"
     cd "${ROOT_DIR}"
-    nohup "${python_bin}" judge_worker.py >> "${LOGFILE}" 2>&1 &
-    echo $! > "${PIDFILE}"
+    "${python_bin}" - "${python_bin}" "${LOGFILE}" "${ROOT_DIR}" > "${PIDFILE}" <<'PY'
+import os
+import subprocess
+import sys
+
+python_bin, log_file, cwd = sys.argv[1:4]
+log = open(log_file, "ab", buffering=0)
+process = subprocess.Popen(
+    [python_bin, "judge_worker.py"],
+    cwd=cwd,
+    env=os.environ.copy(),
+    stdin=subprocess.DEVNULL,
+    stdout=log,
+    stderr=subprocess.STDOUT,
+    start_new_session=True,
+    close_fds=True,
+)
+print(process.pid)
+PY
     sleep 2
 
     if is_worker_running; then

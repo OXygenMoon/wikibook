@@ -1,11 +1,15 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { postForm } from './api.js';
+import { postForm, requestJson } from './api.js';
 
 const props = defineProps({
   problem: {
     type: Object,
     required: true,
+  },
+  workspaceMode: {
+    type: String,
+    default: 'edit',
   },
 });
 
@@ -27,6 +31,8 @@ const statLabels = [
 ];
 
 const astRules = ref([]);
+const isAstMode = computed(() => props.workspaceMode === 'ast');
+const isEditMode = computed(() => props.workspaceMode === 'edit');
 
 const astTemplates = computed(() => props.problem.astConfig?.templates || []);
 const astTemplatesById = computed(() => {
@@ -438,7 +444,7 @@ function serializeRulesForSave() {
 
 async function initEditor() {
   await nextTick();
-  if (!statementEditor.value || !window.EasyMDE || easyMde) return;
+  if (!isEditMode.value || !statementEditor.value || !window.EasyMDE || easyMde) return;
   easyMde = new window.EasyMDE({
     element: statementEditor.value,
     spellChecker: false,
@@ -460,11 +466,21 @@ async function initEditor() {
 async function saveProblem() {
   saving.value = true;
   const formData = new FormData();
-  Object.entries(form).forEach(([key, value]) => {
+  [
+    'problem_code',
+    'title',
+    'slug',
+    'difficulty',
+    'is_visible',
+    'time_limit_ms',
+    'memory_limit_mb',
+    'source',
+    'allowed_languages',
+    'statement_md',
+  ].forEach((key) => {
+    const value = form[key];
     formData.set(key, value ?? '');
   });
-  formData.set('ast_check_enabled', form.ast_check_enabled ?? '0');
-  formData.set('ast_rules_payload', JSON.stringify(serializeRulesForSave()));
 
   try {
     const data = await postForm(props.problem.urls.edit, formData);
@@ -479,16 +495,58 @@ async function saveProblem() {
   }
 }
 
+async function saveAstRules() {
+  saving.value = true;
+  try {
+    const data = await requestJson(props.problem.astConfig.urls.save, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enabled: form.ast_check_enabled === '1',
+        rules: serializeRulesForSave(),
+      }),
+    });
+    if (data.rules) {
+      astRules.value = data.rules.map((rule, index) => hydrateRule(rule, index));
+    }
+    emit('saved', {
+      ...props.problem,
+      astConfig: {
+        ...props.problem.astConfig,
+        enabled: data.enabled,
+        rules: data.rules || [],
+      },
+      stats: {
+        ...props.problem.stats,
+        astRuleCount: (data.rules || []).filter((rule) => rule.enabled !== false).length,
+      },
+    });
+  } catch (error) {
+    window.alert(error.message);
+  } finally {
+    saving.value = false;
+  }
+}
+
 watch(
   () => props.problem,
   (problem) => {
     resetForm(problem);
-    initEditor();
+    if (isEditMode.value) initEditor();
   },
   { immediate: true },
 );
 
-onMounted(initEditor);
+onMounted(() => {
+  if (isEditMode.value) initEditor();
+});
+
+watch(
+  () => props.workspaceMode,
+  (mode) => {
+    if (mode === 'edit') initEditor();
+  },
+);
 
 onBeforeUnmount(() => {
   if (easyMde) {
@@ -499,7 +557,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <form class="workbench-shell p-6 md:p-8 flex flex-col gap-8" @submit.prevent="saveProblem">
+  <form class="workbench-shell p-6 md:p-8 flex flex-col gap-8" @submit.prevent="isAstMode ? saveAstRules() : saveProblem()">
     <section class="bench-card p-5 flex flex-col gap-5">
       <div>
         <p class="text-xs font-black tracking-[0.2em] text-stone-400 mb-2">状态概览</p>
@@ -514,7 +572,7 @@ onBeforeUnmount(() => {
       <p class="text-sm text-stone-500 dark:text-stone-400">最近更新：{{ problem.updatedAt }}</p>
     </section>
 
-    <section class="bench-card p-5 flex flex-col gap-5">
+    <section v-if="isEditMode" class="bench-card p-5 flex flex-col gap-5">
       <div>
         <p class="text-xs font-black tracking-[0.26em] uppercase text-stone-400 mb-2">Core Meta</p>
         <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">基础信息</h2>
@@ -571,7 +629,7 @@ onBeforeUnmount(() => {
       </label>
     </section>
 
-    <section class="bench-card p-5 flex flex-col gap-5">
+    <section v-if="isAstMode" class="bench-card p-5 flex flex-col gap-5">
       <div class="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p class="text-xs font-black tracking-[0.26em] uppercase text-emerald-600 mb-2">Teaching AST</p>
@@ -662,7 +720,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <section class="flex flex-col gap-4">
+    <section v-if="isEditMode" class="flex flex-col gap-4">
       <div>
         <p class="text-xs font-black tracking-[0.26em] uppercase text-cyan-600 mb-2">Markdown Statement</p>
         <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">题面编辑器</h2>
@@ -674,8 +732,10 @@ onBeforeUnmount(() => {
     <div class="flex items-center justify-between gap-4 flex-wrap pt-4 border-t border-stone-200 dark:border-white/10">
       <p class="text-sm text-stone-500 dark:text-stone-400 font-mono">uid={{ problem.uid }} / code={{ problem.code }} / slug={{ problem.slug }}</p>
       <div class="flex gap-3 flex-wrap">
-        <button type="button" class="btn btn-outline rounded-2xl px-6" @click="emit('navigateFiles', problem.id)">文件管理</button>
-        <button type="submit" class="btn btn-primary rounded-2xl px-8" :disabled="saving">{{ saving ? '保存中...' : '保存题目基础配置' }}</button>
+        <button v-if="isEditMode" type="button" class="btn btn-outline rounded-2xl px-6" @click="emit('navigateFiles', problem.id)">文件管理</button>
+        <button type="submit" class="btn btn-primary rounded-2xl px-8" :disabled="saving">
+          {{ saving ? '保存中...' : (isAstMode ? '保存 AST 规则' : '保存题目基础配置') }}
+        </button>
       </div>
     </div>
   </form>

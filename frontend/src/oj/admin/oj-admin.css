@@ -83,6 +83,7 @@ html.dark .file-row {
 
 .workspace-tabbar {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.35rem;
   border-radius: 999px;

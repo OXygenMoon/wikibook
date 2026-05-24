@@ -103,10 +103,27 @@ start_service() {
     : > "${LOGFILE}"
 
     echo "Starting Wikibook locally at http://${host}:${port}"
-    nohup "${python_bin}" -c "import os; from app import app; app.run(host=os.environ.get('HOST', '${host}'), port=int(os.environ.get('PORT', '${port}')), debug=False, use_reloader=False)" \
-        >> "${LOGFILE}" 2>&1 &
+    local server_code
+    server_code="import os; from app import app; app.run(host=os.environ.get('HOST', '${host}'), port=int(os.environ.get('PORT', '${port}')), debug=False, use_reloader=False)"
+    "${python_bin}" - "${python_bin}" "${LOGFILE}" "${ROOT_DIR}" "${server_code}" > "${PIDFILE}" <<'PY'
+import os
+import subprocess
+import sys
 
-    echo $! > "${PIDFILE}"
+python_bin, log_file, cwd, server_code = sys.argv[1:5]
+log = open(log_file, "ab", buffering=0)
+process = subprocess.Popen(
+    [python_bin, "-c", server_code],
+    cwd=cwd,
+    env=os.environ.copy(),
+    stdin=subprocess.DEVNULL,
+    stdout=log,
+    stderr=subprocess.STDOUT,
+    start_new_session=True,
+    close_fds=True,
+)
+print(process.pid)
+PY
     sleep 2
 
     if is_running; then

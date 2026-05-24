@@ -12,7 +12,7 @@ const editorHost = ref(null);
 const notice = ref('');
 const draftStatus = ref('准备中...');
 const syntaxStatus = ref({ text: '正在初始化编辑器...', isError: false });
-const activeLanguage = ref(props.workspace.problem.allowedLanguages[0] || 'python');
+const activeLanguage = ref(props.workspace.defaultLanguage || props.workspace.problem.allowedLanguages[0] || 'python');
 const submitting = ref(false);
 const editorReady = ref(false);
 
@@ -65,7 +65,8 @@ function queueAutosave() {
 function loadDraft(language) {
   if (!monacoEditor) return;
   const saved = localStorage.getItem(storageKey(language));
-  monacoEditor.setValue(saved !== null ? saved : (defaultSnippets[language] || ''));
+  const initialCode = props.workspace.initialCode?.[language] || defaultSnippets[language] || '';
+  monacoEditor.setValue(saved !== null ? saved : initialCode);
   draftStatus.value = saved !== null ? '已载入草稿' : '新草稿';
   queueSyntaxCheck();
 }

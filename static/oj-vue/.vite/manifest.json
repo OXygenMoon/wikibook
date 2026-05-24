@@ -4,7 +4,7 @@
     "name": "runtime-dom.esm-bundler"
   },
   "frontend/src/oj-admin.js": {
-    "file": "assets/src/oj-admin.js-BV6YoCm6.js",
+    "file": "assets/src/oj-admin.js-DvSa2UCs.js",
     "name": "src/oj-admin.js",
     "src": "frontend/src/oj-admin.js",
     "isEntry": true,
@@ -12,11 +12,11 @@
       "_runtime-dom.esm-bundler-B8xFnQ3G.js"
     ],
     "css": [
-      "assets/oj-admin-dfMEWYsG.css"
+      "assets/oj-admin-BcM-gHSs.css"
     ]
   },
   "frontend/src/oj-public.js": {
-    "file": "assets/src/oj-public.js-Uejgo7nf.js",
+    "file": "assets/src/oj-public.js-DWnD8Jzx.js",
     "name": "src/oj-public.js",
     "src": "frontend/src/oj-public.js",
     "isEntry": true,

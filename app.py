@@ -749,6 +749,7 @@ def serialize_problem_edit_workspace(problem):
         "source": problem.source or "",
         "allowedLanguages": problem.allowed_languages_text or "python, cpp, c",
         "statementMd": problem.statement_md or "",
+        "pythonTemplate": problem.python_template or "",
         "astConfig": serialize_problem_ast_config(problem),
         "updatedAt": problem.updated_at.strftime("%Y-%m-%d %H:%M") if problem.updated_at else "-",
         "stats": {
@@ -761,6 +762,10 @@ def serialize_problem_edit_workspace(problem):
         "urls": {
             "edit": url_for("edit_oj_problem", problem_id=problem.id),
             "files": url_for("manage_oj_problem_files", problem_id=problem.id),
+            "ast": url_for("edit_oj_problem_ast", problem_id=problem.id),
+            "template": url_for("edit_oj_problem_template", problem_id=problem.id),
+            "templateJson": url_for("edit_oj_problem_template_json", problem_id=problem.id),
+            "templateSave": url_for("save_oj_problem_template", problem_id=problem.id),
             "json": url_for("admin_oj_problem_json", problem_id=problem.id),
         },
     }
@@ -793,6 +798,70 @@ AST_RULE_SPECIAL_PARAM_KEYS = {
     "field_labels",
     "field_types",
 }
+
+
+OJ_LANGUAGE_OPTIONS = ("python", "cpp", "c")
+
+OJ_DEFAULT_PYTHON_TEMPLATE = """import sys
+
+
+def solve():
+    data = sys.stdin.read().split()
+    # TODO: 在这里编写解题逻辑
+
+
+if __name__ == "__main__":
+    solve()
+"""
+
+
+def get_oj_user_setting(user):
+    if not user or not getattr(user, "is_authenticated", False):
+        return None
+    return OJUserSetting.query.filter_by(user_id=user.id).first()
+
+
+def get_or_create_oj_user_setting(user):
+    setting = get_oj_user_setting(user)
+    if setting:
+        return setting
+    setting = OJUserSetting(user_id=user.id, default_language="python", python_template="")
+    db.session.add(setting)
+    return setting
+
+
+def normalize_oj_default_language(language):
+    language = (language or "python").strip().lower()
+    return language if language in OJ_LANGUAGE_OPTIONS else "python"
+
+
+def effective_oj_default_language(user, allowed_languages=None):
+    allowed = allowed_languages or list(OJ_LANGUAGE_OPTIONS)
+    setting = get_oj_user_setting(user)
+    preferred = normalize_oj_default_language(setting.default_language if setting else "python")
+    if preferred in allowed:
+        return preferred
+    return allowed[0] if allowed else "python"
+
+
+def effective_python_code_template(problem, user):
+    problem_template = (getattr(problem, "python_template", None) or "").strip()
+    if problem_template:
+        return problem_template.rstrip() + "\n"
+    setting = get_oj_user_setting(user)
+    user_template = (setting.python_template or "").strip() if setting else ""
+    if user_template:
+        return user_template.rstrip() + "\n"
+    return OJ_DEFAULT_PYTHON_TEMPLATE
+
+
+def build_oj_initial_code(problem, user, attempted=False):
+    if attempted:
+        return {}
+    allowed_languages = problem.allowed_languages or ["python", "cpp", "c"]
+    if "python" not in allowed_languages:
+        return {}
+    return {"python": effective_python_code_template(problem, user)}
 
 
 def _safe_json_object(value, fallback=None):
@@ -1529,6 +1598,7 @@ def serialize_oj_problem_code_workspace(problem, active_assignment=None):
         .first()
     )
     allowed_languages = problem.allowed_languages or ['python', 'cpp', 'c']
+    attempted = bool(my_latest_task)
     return {
         "problem": {
             "id": problem.id,
@@ -1547,6 +1617,8 @@ def serialize_oj_problem_code_workspace(problem, active_assignment=None):
             "sampleCases": sample_cases,
         },
         "latestTask": serialize_oj_task_summary(my_latest_task),
+        "defaultLanguage": effective_oj_default_language(current_user, allowed_languages),
+        "initialCode": build_oj_initial_code(problem, current_user, attempted=attempted),
         "activeAssignment": {
             "id": active_assignment.id,
             "title": active_assignment.title,
@@ -1578,6 +1650,7 @@ def serialize_oj_problem_submit_workspace(problem, active_assignment=None):
         .first()
     )
     allowed_languages = problem.allowed_languages or ['python', 'cpp', 'c']
+    attempted = bool(my_latest_task)
     return {
         "problem": {
             "id": problem.id,
@@ -1592,6 +1665,8 @@ def serialize_oj_problem_submit_workspace(problem, active_assignment=None):
             "allowedLanguages": allowed_languages,
         },
         "latestTask": serialize_oj_task_summary(my_latest_task),
+        "defaultLanguage": effective_oj_default_language(current_user, allowed_languages),
+        "initialCode": build_oj_initial_code(problem, current_user, attempted=attempted),
         "activeAssignment": {
             "id": active_assignment.id,
             "title": active_assignment.title,
@@ -8937,6 +9012,7 @@ class Problem(db.Model):
     output_spec_md = db.Column(db.Text, nullable=False, default="")
     hint_md = db.Column(db.Text, nullable=False, default="")
     source = db.Column(db.String(200), nullable=True)
+    python_template = db.Column(db.Text, nullable=True)
     difficulty = db.Column(db.String(20), nullable=False, default="medium")
     time_limit_ms = db.Column(db.Integer, nullable=False, default=2000)
     memory_limit_mb = db.Column(db.Integer, nullable=False, default=256)
@@ -9070,6 +9146,18 @@ class ProblemAstRule(db.Model):
     updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
 
     template = db.relationship('AstRuleTemplate', backref=db.backref('problem_rules', lazy='dynamic'))
+
+
+class OJUserSetting(db.Model):
+    __tablename__ = 'oj_user_setting'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True, index=True)
+    python_template = db.Column(db.Text, nullable=True)
+    default_language = db.Column(db.String(32), nullable=False, default="python")
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
+
+    user = db.relationship('User', backref=db.backref('oj_setting', uselist=False, cascade='all, delete-orphan'))
 
 
 oj_assignment_classes = db.Table(
@@ -9990,6 +10078,7 @@ def ensure_oj_authoring_schema(force=False):
         'problem_file': ProblemFile.__table__,
         'ast_rule_templates': AstRuleTemplate.__table__,
         'problem_ast_rules': ProblemAstRule.__table__,
+        'oj_user_setting': OJUserSetting.__table__,
         'oj_assignment': OJAssignment.__table__,
         'oj_assignment_problem': OJAssignmentProblem.__table__,
         'oj_assignment_file': OJAssignmentFile.__table__,
@@ -10015,6 +10104,8 @@ def ensure_oj_authoring_schema(force=False):
                 connection.execute(db.text("ALTER TABLE problem ADD COLUMN problem_code VARCHAR(40)"))
             if 'ast_check_enabled' not in problem_columns:
                 connection.execute(db.text("ALTER TABLE problem ADD COLUMN ast_check_enabled BOOLEAN DEFAULT FALSE"))
+            if 'python_template' not in problem_columns:
+                connection.execute(db.text("ALTER TABLE problem ADD COLUMN python_template TEXT"))
             problem_rows = connection.execute(db.text("SELECT id, problem_code FROM problem ORDER BY id ASC")).fetchall()
             for row in problem_rows:
                 if row.problem_code:
@@ -11009,6 +11100,35 @@ def bulletin_view():
 # ==========================================
 # 🧩 OJ 题库：学生 / 教师可见视图
 # ==========================================
+@app.route('/oj/settings', methods=['GET', 'POST'])
+@login_required
+def oj_settings():
+    ensure_oj_authoring_schema()
+    setting = get_or_create_oj_user_setting(current_user)
+
+    if request.method == 'POST':
+        action = request.form.get('action', 'save')
+        setting.default_language = normalize_oj_default_language(request.form.get('default_language'))
+        if action == 'reset_template':
+            setting.python_template = ""
+            flash('Python 标准模板已恢复为系统默认。', 'success')
+        else:
+            setting.python_template = request.form.get('python_template', '').strip()
+            flash('OJ 设置已保存。', 'success')
+        db.session.commit()
+        return redirect(url_for('oj_settings'))
+
+    if setting.id is None:
+        db.session.commit()
+
+    return render_template(
+        'oj/settings.html',
+        setting=setting,
+        language_options=OJ_LANGUAGE_OPTIONS,
+        default_python_template=OJ_DEFAULT_PYTHON_TEMPLATE,
+    )
+
+
 @app.route('/oj/problems')
 @login_required
 def oj_problem_list():
@@ -11966,16 +12086,17 @@ def edit_oj_problem(problem_id):
         problem.memory_limit_mb = max(request.form.get('memory_limit_mb', 256, type=int) or 256, 16)
         problem.allowed_languages = normalize_language_list(request.form.get('allowed_languages', 'python,cpp,c'))
         problem.is_visible = request.form.get('is_visible') == '1'
-        problem.ast_check_enabled = request.form.get('ast_check_enabled') == '1'
 
-        try:
-            replace_problem_ast_rules(problem, request.form.get('ast_rules_payload', '[]'))
-        except ValueError as exc:
-            db.session.rollback()
-            if is_ajax_request():
-                return jsonify({"ok": False, "message": str(exc)}), 400
-            flash(str(exc), 'error')
-            return redirect(url_for('edit_oj_problem', problem_id=problem.id))
+        if 'ast_rules_payload' in request.form or 'ast_check_enabled' in request.form:
+            problem.ast_check_enabled = request.form.get('ast_check_enabled') == '1'
+            try:
+                replace_problem_ast_rules(problem, request.form.get('ast_rules_payload', '[]'))
+            except ValueError as exc:
+                db.session.rollback()
+                if is_ajax_request():
+                    return jsonify({"ok": False, "message": str(exc)}), 400
+                flash(str(exc), 'error')
+                return redirect(url_for('edit_oj_problem', problem_id=problem.id))
 
         db.session.commit()
         if is_ajax_request():
@@ -12012,6 +12133,105 @@ def edit_oj_problem(problem_id):
     )
 
 
+@app.route('/admin/oj/problems/<int:problem_id>/ast', methods=['GET'])
+@login_required
+def edit_oj_problem_ast(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    created_tables = ensure_oj_authoring_schema()
+    if created_tables:
+        flash('检测到旧数据库，已自动补建 OJ 题库数据表。', 'success')
+
+    problem = Problem.query.get_or_404(problem_id)
+    return render_template(
+        'admin/oj_admin_shell.html',
+        page_title=f'AST 规则 - {problem.title}',
+        shell_payload={
+            "initialView": "ast",
+            "currentProblemId": problem.id,
+            "problemsUrl": url_for('manage_oj_problems_json'),
+            "problem": serialize_problem_edit_workspace(problem),
+            "problemUrl": url_for('admin_oj_problem_json', problem_id=problem.id),
+            "urls": {
+                "adminList": url_for('manage_oj_problems'),
+                "publicList": url_for('oj_problem_list'),
+                "createProblem": url_for('create_oj_problem'),
+                "createAssignment": url_for('create_oj_assignment'),
+                "assignmentList": url_for('oj_assignment_list'),
+                "astTemplateManager": url_for('manage_ast_rule_templates'),
+            },
+        },
+    )
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/template', methods=['GET'])
+@login_required
+def edit_oj_problem_template(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    created_tables = ensure_oj_authoring_schema()
+    if created_tables:
+        flash('检测到旧数据库，已自动补建 OJ 题库数据表。', 'success')
+
+    problem = Problem.query.get_or_404(problem_id)
+    return render_template(
+        'admin/oj_admin_shell.html',
+        page_title=f'本题模板 - {problem.title}',
+        shell_payload={
+            "initialView": "template",
+            "currentProblemId": problem.id,
+            "problemsUrl": url_for('manage_oj_problems_json'),
+            "problem": serialize_problem_edit_workspace(problem),
+            "problemUrl": url_for('admin_oj_problem_json', problem_id=problem.id),
+            "urls": {
+                "adminList": url_for('manage_oj_problems'),
+                "publicList": url_for('oj_problem_list'),
+                "createProblem": url_for('create_oj_problem'),
+                "createAssignment": url_for('create_oj_assignment'),
+                "assignmentList": url_for('oj_assignment_list'),
+                "astTemplateManager": url_for('manage_ast_rule_templates'),
+            },
+        },
+    )
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/template.json', methods=['GET'])
+@login_required
+def edit_oj_problem_template_json(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    return jsonify({
+        "ok": True,
+        "problem": serialize_problem_edit_workspace(problem),
+    })
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/template', methods=['POST'])
+@login_required
+def save_oj_problem_template(problem_id):
+    if not current_user.is_admin:
+        abort(403)
+
+    ensure_oj_authoring_schema()
+    problem = Problem.query.get_or_404(problem_id)
+    problem.python_template = request.form.get('python_template', '').strip()
+    db.session.commit()
+
+    if is_ajax_request():
+        return jsonify({
+            "ok": True,
+            "message": "本题 Python 模板已保存。",
+            "problem": serialize_problem_edit_workspace(problem),
+        })
+    flash('本题 Python 模板已保存。', 'success')
+    return redirect(url_for('edit_oj_problem_template', problem_id=problem.id))
+
+
 @app.route('/admin/oj/problems/<int:problem_id>/files')
 @login_required
 def manage_oj_problem_files(problem_id):
@@ -12024,10 +12244,24 @@ def manage_oj_problem_files(problem_id):
 
     problem = Problem.query.get_or_404(problem_id)
     return render_template(
-        'admin/manage_oj_problem_files.html',
-        problem=problem,
-        workspace_payload=serialize_problem_file_workspace(problem),
-        **build_problem_file_workspace_context(problem),
+        'admin/oj_admin_shell.html',
+        page_title=f'文件管理 - {problem.title}',
+        shell_payload={
+            "initialView": "files",
+            "currentProblemId": problem.id,
+            "problemsUrl": url_for('manage_oj_problems_json'),
+            "problem": serialize_problem_edit_workspace(problem),
+            "workspace": serialize_problem_file_workspace(problem),
+            "problemUrl": url_for('admin_oj_problem_json', problem_id=problem.id),
+            "urls": {
+                "adminList": url_for('manage_oj_problems'),
+                "publicList": url_for('oj_problem_list'),
+                "createProblem": url_for('create_oj_problem'),
+                "createAssignment": url_for('create_oj_assignment'),
+                "assignmentList": url_for('oj_assignment_list'),
+                "astTemplateManager": url_for('manage_ast_rule_templates'),
+            },
+        },
     )
 
 

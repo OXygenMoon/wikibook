@@ -6,6 +6,7 @@ import AssignmentFormWorkspace from './AssignmentFormWorkspace.vue';
 import CreateProblemWorkspace from './CreateProblemWorkspace.vue';
 import EditProblemWorkspace from './EditProblemWorkspace.vue';
 import ProblemFilesWorkspace from './ProblemFilesWorkspace.vue';
+import ProblemTemplateWorkspace from './ProblemTemplateWorkspace.vue';
 
 const props = defineProps({
   initialView: {
@@ -59,6 +60,8 @@ const activeTitle = computed(() => {
   if (view.value === 'createProblem') return '新建 OJ 题目';
   if (view.value === 'edit') return currentProblem.value?.title || '编辑题目';
   if (view.value === 'files') return currentWorkspace.value?.problem?.title || currentProblem.value?.title || '文件管理';
+  if (view.value === 'ast') return currentProblem.value?.title || 'AST 规则';
+  if (view.value === 'template') return currentProblem.value?.title || '本题模板';
   if (view.value === 'assignmentForm') return currentAssignmentForm.value?.assignment?.title || '新建 OJ 作业';
   return '题库管理中心';
 });
@@ -67,6 +70,8 @@ const activeEyebrow = computed(() => {
   if (view.value === 'createProblem') return 'Problem Create';
   if (view.value === 'edit') return 'Problem Workbench';
   if (view.value === 'files') return 'Problem Files';
+  if (view.value === 'ast') return 'Teaching AST';
+  if (view.value === 'template') return 'Problem Template';
   if (view.value === 'assignmentForm') return 'OJ Assignment';
   return 'OJ Authoring Layer';
 });
@@ -75,6 +80,8 @@ const activeDescription = computed(() => {
   if (view.value === 'createProblem') return '先把题目骨架和 Markdown 题面写好，再切进编辑题目 / 文件管理工作流。';
   if (view.value === 'edit') return '这里专注维护题目的基础信息和 Markdown 题面。';
   if (view.value === 'files') return '这里专门处理 `.in/.out`、测试点同步和题面引用资源。';
+  if (view.value === 'ast') return '这里专门维护输出正确后的教学语法目标和提示。';
+  if (view.value === 'template') return '这里维护本题的 Python 初始模板，优先级高于学生个人模板。';
   if (view.value === 'assignmentForm') return '这里维护 OJ 作业的题单、开放范围、管理员和 Markdown 介绍。';
   return '先创建题目。之后把“题面编辑”和“文件/测试数据管理”分开处理，工作流会更清晰。';
 });
@@ -154,6 +161,26 @@ async function goFiles(problemOrId, { push = true } = {}) {
   if (push) replaceStateFor('files', workspace.problem.filesUrl);
 }
 
+async function goAst(problemOrId, { push = true } = {}) {
+  const problemId = typeof problemOrId === 'object' ? problemOrId.id : problemOrId;
+  const problem = typeof problemOrId === 'object' && problemOrId.astConfig ? problemOrId : await loadProblem(problemId);
+  if (!problem) return;
+  currentProblem.value = problem;
+  currentProblemId.value = problem.id;
+  view.value = 'ast';
+  if (push) replaceStateFor('ast', problem.urls.ast);
+}
+
+async function goTemplate(problemOrId, { push = true } = {}) {
+  const problemId = typeof problemOrId === 'object' ? problemOrId.id : problemOrId;
+  const problem = typeof problemOrId === 'object' && problemOrId.urls?.template ? problemOrId : await loadProblem(problemId);
+  if (!problem) return;
+  currentProblem.value = problem;
+  currentProblemId.value = problem.id;
+  view.value = 'template';
+  if (push) replaceStateFor('template', problem.urls.template);
+}
+
 async function goCreateProblem({ push = true } = {}) {
   loading.value = true;
   try {
@@ -231,6 +258,10 @@ function handlePopState() {
   const assignmentId = assignmentIdFromPath(path);
   if (path.endsWith('/files') && problemId) {
     goFiles(problemId, { push: false });
+  } else if (path.endsWith('/ast') && problemId) {
+    goAst(problemId, { push: false });
+  } else if (path.endsWith('/template') && problemId) {
+    goTemplate(problemId, { push: false });
   } else if (path.endsWith('/edit') && problemId) {
     goEdit(problemId, { push: false });
   } else if (path.endsWith('/problems/new')) {
@@ -262,9 +293,11 @@ onUnmounted(() => {
         <p class="text-stone-500 dark:text-stone-400 mt-2">{{ activeDescription }}</p>
       </div>
       <div class="flex gap-3 flex-wrap items-center">
-        <div v-if="currentProblemId && (view === 'edit' || view === 'files')" class="workspace-tabbar">
+        <div v-if="currentProblemId && ['edit', 'files', 'ast', 'template'].includes(view)" class="workspace-tabbar">
           <a href="#" class="workspace-tabbar__link" :class="{ 'workspace-tabbar__link--active': view === 'edit' }" @click.prevent="goEdit(currentProblemId)">编辑题目</a>
           <a href="#" class="workspace-tabbar__link" :class="{ 'workspace-tabbar__link--active': view === 'files' }" @click.prevent="goFiles(currentProblemId)">文件管理</a>
+          <a href="#" class="workspace-tabbar__link" :class="{ 'workspace-tabbar__link--active': view === 'ast' }" @click.prevent="goAst(currentProblemId)">AST 规则</a>
+          <a href="#" class="workspace-tabbar__link" :class="{ 'workspace-tabbar__link--active': view === 'template' }" @click.prevent="goTemplate(currentProblemId)">本题模板</a>
         </div>
         <button v-if="view !== 'list' && view !== 'assignmentForm'" type="button" class="btn btn-ghost rounded-2xl" @click="goList()">返回题库</button>
         <a v-if="view === 'assignmentForm'" :href="urls.assignmentList" class="btn btn-ghost rounded-2xl">作业列表</a>
@@ -296,8 +329,20 @@ onUnmounted(() => {
     <EditProblemWorkspace
       v-else-if="view === 'edit' && currentProblem"
       :problem="currentProblem"
+      workspace-mode="edit"
       @saved="updateCurrentProblem"
       @navigate-files="goFiles"
+    />
+    <EditProblemWorkspace
+      v-else-if="view === 'ast' && currentProblem"
+      :problem="currentProblem"
+      workspace-mode="ast"
+      @saved="updateCurrentProblem"
+    />
+    <ProblemTemplateWorkspace
+      v-else-if="view === 'template' && currentProblem"
+      :problem="currentProblem"
+      @saved="updateCurrentProblem"
     />
     <ProblemFilesWorkspace
       v-else-if="view === 'files' && currentWorkspace"

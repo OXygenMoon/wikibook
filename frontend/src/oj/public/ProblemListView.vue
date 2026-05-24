@@ -15,9 +15,31 @@ function syncFilters() {
 }
 
 function diffClass(difficulty) {
-  if (difficulty === 'easy') return 'bg-emerald-100 text-emerald-700';
-  if (difficulty === 'hard') return 'bg-rose-100 text-rose-700';
-  return 'bg-amber-100 text-amber-700';
+  if (difficulty === 'easy') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+  if (difficulty === 'hard') return 'bg-rose-100 text-rose-700 border-rose-200';
+  if (difficulty === 'medium') return 'bg-amber-100 text-amber-700 border-amber-200';
+  return '';
+}
+
+function difficultyLabel(difficulty) {
+  if (difficulty === 'easy') return '简单';
+  if (difficulty === 'medium') return '中等';
+  if (difficulty === 'hard') return '困难';
+  return difficulty || '-';
+}
+
+function difficultySelectClass() {
+  if (filters.difficulty === 'easy') return 'bg-emerald-50 text-emerald-800 border-emerald-300 focus:border-emerald-500 dark:bg-emerald-950 dark:text-emerald-100 dark:border-emerald-700';
+  if (filters.difficulty === 'medium') return 'bg-amber-50 text-amber-800 border-amber-300 focus:border-amber-500 dark:bg-amber-950 dark:text-amber-100 dark:border-amber-700';
+  if (filters.difficulty === 'hard') return 'bg-rose-50 text-rose-800 border-rose-300 focus:border-rose-500 dark:bg-rose-950 dark:text-rose-100 dark:border-rose-700';
+  return '';
+}
+
+function statusClass(problem) {
+  if (problem.myStatus?.perfectAccepted) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+  if (problem.myStatus?.accepted) return 'bg-amber-100 text-amber-700 border-amber-200';
+  if (problem.myStatus?.attempted) return 'bg-rose-100 text-rose-700 border-rose-200';
+  return '';
 }
 
 function rowClass(problem) {
@@ -49,6 +71,11 @@ function tagFilter(tag) {
   submitFilter();
 }
 
+function difficultyFilter(difficulty) {
+  filters.difficulty = difficulty;
+  submitFilter();
+}
+
 watch(() => props.payload, syncFilters, { immediate: true });
 </script>
 
@@ -56,19 +83,19 @@ watch(() => props.payload, syncFilters, { immediate: true });
   <div class="flex flex-col gap-6">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">Total</div>
+        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">全部</div>
         <div class="text-2xl font-black text-stone-900 dark:text-stone-100">{{ payload.stats.total }}</div>
       </div>
       <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">Easy</div>
+        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">简单</div>
         <div class="text-2xl font-black text-emerald-600">{{ payload.stats.easy }}</div>
       </div>
       <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">Medium</div>
+        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">中等</div>
         <div class="text-2xl font-black text-amber-600">{{ payload.stats.medium }}</div>
       </div>
       <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">Hard</div>
+        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">困难</div>
         <div class="text-2xl font-black text-rose-600">{{ payload.stats.hard }}</div>
       </div>
     </div>
@@ -80,11 +107,11 @@ watch(() => props.payload, syncFilters, { immediate: true });
       </label>
       <label class="form-control">
         <span class="label-text font-bold mb-1">难度</span>
-        <select v-model="filters.difficulty" class="select select-bordered rounded-lg" @change="submitFilter">
+        <select v-model="filters.difficulty" class="select select-bordered rounded-lg font-black transition-colors" :class="difficultySelectClass()" @change="submitFilter">
           <option value="">全部难度</option>
-          <option value="easy">Easy</option>
-          <option value="medium">Medium</option>
-          <option value="hard">Hard</option>
+          <option value="easy">简单</option>
+          <option value="medium">中等</option>
+          <option value="hard">困难</option>
         </select>
       </label>
       <label v-if="isAdmin" class="form-control">
@@ -107,6 +134,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
             <tr class="text-xs uppercase tracking-widest text-stone-500">
               <th>编号</th>
               <th>题目</th>
+              <th>状态</th>
               <th>难度</th>
               <th>标签</th>
               <th>AC/尝试</th>
@@ -121,13 +149,34 @@ watch(() => props.payload, syncFilters, { immediate: true });
                   <a :href="problem.urls.detail" class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600" @click.prevent="emit('openProblem', problem.slug, problem.urls.detail)">
                     {{ problem.title }}
                   </a>
-                  <span v-if="problem.myStatus?.perfectAccepted" class="badge badge-success badge-outline font-black">满星通过</span>
-                  <span v-else-if="problem.myStatus?.accepted" class="badge badge-success badge-outline font-black">通过</span>
-                  <span v-else-if="problem.myStatus?.attempted" class="badge badge-error badge-outline font-black">未通过</span>
                 </div>
                 <span v-if="isAdmin && !problem.visible" class="badge badge-ghost mt-2">隐藏</span>
               </td>
-              <td><span class="diff-pill" :class="diffClass(problem.difficulty)">{{ problem.difficulty }}</span></td>
+              <td>
+                <a
+                  v-if="problem.myStatus?.perfectAccepted"
+                  :href="problem.urls.submissions"
+                  class="diff-pill hover:opacity-80"
+                  :class="statusClass(problem)"
+                  @click.prevent="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)"
+                >满星通过</a>
+                <a
+                  v-else-if="problem.myStatus?.accepted"
+                  :href="problem.urls.submissions"
+                  class="diff-pill hover:opacity-80"
+                  :class="statusClass(problem)"
+                  @click.prevent="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)"
+                >通过</a>
+                <a
+                  v-else-if="problem.myStatus?.attempted"
+                  :href="problem.urls.submissions"
+                  class="diff-pill hover:opacity-80"
+                  :class="statusClass(problem)"
+                  @click.prevent="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)"
+                >未通过</a>
+                <span v-else class="text-stone-400">-</span>
+              </td>
+              <td><button type="button" class="diff-pill hover:opacity-80" :class="diffClass(problem.difficulty)" @click="difficultyFilter(problem.difficulty)">{{ difficultyLabel(problem.difficulty) }}</button></td>
               <td>
                 <button v-for="tag in problem.tags" :key="tag" type="button" class="badge badge-outline hover:border-cyan-500 hover:text-cyan-600 mr-1" @click="tagFilter(tag)">
                   {{ tag }}
@@ -142,7 +191,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
               <td class="text-sm font-bold text-stone-500">{{ problem.author }}</td>
             </tr>
             <tr v-if="!payload.problems.length">
-              <td colspan="6" class="text-center py-14 text-stone-400">当前没有匹配的题目。</td>
+              <td colspan="7" class="text-center py-14 text-stone-400">当前没有匹配的题目。</td>
             </tr>
           </tbody>
         </table>

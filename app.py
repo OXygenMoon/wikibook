@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import csv
 import io
@@ -8,7 +9,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash, abo
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text, inspect, case
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload, load_only, selectinload
 from sqlalchemy.sql.sqltypes import Integer
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1259,8 +1260,35 @@ def serialize_oj_problem_row(problem, submission_stat=None, my_status=None):
     }
 
 
+def _build_problem_stats(stats_query):
+    total, easy, medium, hard = stats_query.with_entities(
+        db.func.count(Problem.id),
+        db.func.sum(case((Problem.difficulty == "easy", 1), else_=0)),
+        db.func.sum(case((Problem.difficulty == "medium", 1), else_=0)),
+        db.func.sum(case((Problem.difficulty == "hard", 1), else_=0)),
+    ).one()
+    return {
+        "total": int(total or 0),
+        "easy": int(easy or 0),
+        "medium": int(medium or 0),
+        "hard": int(hard or 0),
+    }
+
+
 def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
-    query = Problem.query.options(joinedload(Problem.created_by))
+    query = Problem.query.options(
+        load_only(
+            Problem.id,
+            Problem.problem_code,
+            Problem.title,
+            Problem.slug,
+            Problem.difficulty,
+            Problem.source,
+            Problem.is_visible,
+            Problem.created_by_id,
+        ),
+        joinedload(Problem.created_by).load_only(User.id, User.username, User.real_name),
+    )
     if not current_user.is_admin:
         query = query.filter_by(is_visible=True)
     elif visibility == "hidden":
@@ -1318,12 +1346,7 @@ def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
             }
 
     stats_query = Problem.query if current_user.is_admin else Problem.query.filter_by(is_visible=True)
-    problem_stats = {
-        "total": stats_query.count(),
-        "easy": stats_query.filter_by(difficulty="easy").count(),
-        "medium": stats_query.filter_by(difficulty="medium").count(),
-        "hard": stats_query.filter_by(difficulty="hard").count(),
-    }
+    problem_stats = _build_problem_stats(stats_query)
     return {
         "filters": {"q": q, "difficulty": difficulty, "visibility": visibility},
         "stats": problem_stats,
@@ -1507,8 +1530,38 @@ def serialize_oj_problem_submit_workspace(problem, active_assignment=None):
     }
 
 
-def serialize_submission_row(task):
-    meta = oj_submission_status_meta(task)
+def _first_failed_result_statuses(task_ids):
+    if not task_ids:
+        return {}
+
+    first_failed = (
+        db.session.query(
+            JudgeTaskResult.task_id.label("task_id"),
+            db.func.min(JudgeTaskResult.case_index).label("case_index"),
+        )
+        .filter(
+            JudgeTaskResult.task_id.in_(task_ids),
+            JudgeTaskResult.status != 'accepted',
+        )
+        .group_by(JudgeTaskResult.task_id)
+        .subquery()
+    )
+    rows = (
+        db.session.query(JudgeTaskResult.task_id, JudgeTaskResult.status)
+        .join(
+            first_failed,
+            db.and_(
+                JudgeTaskResult.task_id == first_failed.c.task_id,
+                JudgeTaskResult.case_index == first_failed.c.case_index,
+            ),
+        )
+        .all()
+    )
+    return {task_id: status for task_id, status in rows}
+
+
+def serialize_submission_row(task, status_meta=None):
+    meta = status_meta or oj_submission_status_meta(task)
     return {
         "id": task.id,
         "language": task.language,
@@ -1532,7 +1585,21 @@ def serialize_submission_row(task):
 def build_oj_submission_list_payload(status_filter="", language_filter="", user_filter="", problem_filter="", problem_id_filter=None, assignment_id_filter=None, mine_only=False):
     query = (
         JudgeTask.query
-        .options(joinedload(JudgeTask.user), joinedload(JudgeTask.problem))
+        .options(
+            load_only(
+                JudgeTask.id,
+                JudgeTask.language,
+                JudgeTask.status,
+                JudgeTask.total_score,
+                JudgeTask.created_at,
+                JudgeTask.result_summary,
+                JudgeTask.user_id,
+                JudgeTask.problem_id,
+                JudgeTask.assignment_id,
+            ),
+            joinedload(JudgeTask.user).load_only(User.id, User.username, User.real_name),
+            joinedload(JudgeTask.problem).load_only(Problem.id, Problem.title, Problem.slug, Problem.problem_code),
+        )
         .filter(JudgeTask.problem_id.isnot(None))
     )
     language_query = db.session.query(JudgeTask.language).filter(JudgeTask.problem_id.isnot(None))
@@ -1562,7 +1629,7 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
         user_clauses = [User.username.like(like), User.real_name.like(like)]
         if user_filter.isdigit():
             user_clauses.append(User.id == int(user_filter))
-        query = query.filter(JudgeTask.user.has(db.or_(*user_clauses)))
+        query = query.join(User, JudgeTask.user_id == User.id).filter(db.or_(*user_clauses))
 
     selected_problem = None
     if problem_id_filter:
@@ -1575,7 +1642,9 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
             problem_id_filter = None
     elif problem_filter:
         like = f"%{problem_filter}%"
-        query = query.filter(JudgeTask.problem.has(db.or_(Problem.problem_code.like(like), Problem.title.like(like), Problem.slug.like(like))))
+        query = query.join(Problem, JudgeTask.problem_id == Problem.id).filter(
+            db.or_(Problem.problem_code.like(like), Problem.title.like(like), Problem.slug.like(like))
+        )
 
     available_languages = [
         language
@@ -1583,8 +1652,13 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
         if language
     ]
     submissions = query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(100).all()
+    first_failed_statuses = _first_failed_result_statuses([task.id for task in submissions])
+    status_meta_by_task_id = {
+        task.id: oj_submission_status_meta(task, first_failed_status=first_failed_statuses.get(task.id))
+        for task in submissions
+    }
     return {
-        "submissions": [serialize_submission_row(task) for task in submissions],
+        "submissions": [serialize_submission_row(task, status_meta_by_task_id.get(task.id)) for task in submissions],
         "availableLanguages": available_languages,
         "filters": {
             "status": status_filter,
@@ -2547,6 +2621,9 @@ class StudySession(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     start_time = db.Column(db.DateTime, default=now_utc8)
     end_time = db.Column(db.DateTime, default=now_utc8)
+    __table_args__ = (
+        db.Index("ix_study_session_user_start_time", "user_id", "start_time"),
+    )
     
     user = db.relationship("User", backref="study_sessions")
 
@@ -2564,6 +2641,9 @@ class WikiPageHistory(db.Model):
     slug = db.Column(db.String(200), nullable=False)
     content_md = db.Column(db.Text, default="")
     created_at = db.Column(db.DateTime, default=now_utc8)
+    __table_args__ = (
+        db.Index("ix_wiki_page_history_user_created_at", "user_id", "created_at"),
+    )
     
     user = db.relationship("User", backref="page_history")
     page = db.relationship("WikiPage", backref=db.backref("history", cascade="all, delete-orphan", order_by="desc(WikiPageHistory.created_at)"))
@@ -2611,6 +2691,9 @@ class Note(db.Model):
     icon = db.Column(db.String(255), nullable=True) # Emoji or Image URL
     
     comment_enabled = db.Column(db.Boolean, default=True)
+    __table_args__ = (
+        db.Index("ix_note_user_created_at", "user_id", "created_at"),
+    )
 
     shares = db.relationship("NoteShare", backref="note", cascade="all, delete-orphan")
     
@@ -7495,6 +7578,9 @@ class PomodoroRecord(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     duration_minutes = db.Column(db.Integer, default=45) # 默认一次 45 分钟
     completed_at = db.Column(db.DateTime, default=now_utc8)
+    __table_args__ = (
+        db.Index("ix_pomodoro_record_user_completed_at", "user_id", "completed_at"),
+    )
 
     # 关联 User
     user = db.relationship('User', backref=db.backref('pomodoros', cascade='all, delete-orphan', lazy='dynamic'))
@@ -7860,62 +7946,204 @@ LEADERBOARD_PERIODS = {
 }
 
 
-def build_leaderboard_snapshot(users, metric, period, weekly_start):
+def _leaderboard_count_by_user(model, user_column, user_ids, date_column=None, start_date=None, extra_filters=()):
+    if not user_ids:
+        return {}
+
+    query = db.session.query(user_column, db.func.count(model.id)).filter(user_column.in_(user_ids))
+    if date_column is not None and start_date is not None:
+        query = query.filter(date_column >= start_date)
+    for condition in extra_filters:
+        query = query.filter(condition)
+
+    return {user_id: int(count or 0) for user_id, count in query.group_by(user_column).all()}
+
+
+def _leaderboard_distinct_count_by_user(user_column, distinct_column, user_ids, date_column=None, start_date=None, extra_filters=()):
+    if not user_ids:
+        return {}
+
+    query = db.session.query(user_column, db.func.count(db.func.distinct(distinct_column))).filter(user_column.in_(user_ids))
+    if date_column is not None and start_date is not None:
+        query = query.filter(date_column >= start_date)
+    for condition in extra_filters:
+        query = query.filter(condition)
+
+    return {user_id: int(count or 0) for user_id, count in query.group_by(user_column).all()}
+
+
+def _leaderboard_study_duration_seconds_by_user(user_ids, start_date=None):
+    if not user_ids:
+        return {}
+
+    dialect_name = db.session.get_bind().dialect.name
+    if dialect_name == "postgresql":
+        raw_seconds = db.func.extract("epoch", StudySession.end_time - StudySession.start_time)
+    elif dialect_name == "sqlite":
+        raw_seconds = (db.func.julianday(StudySession.end_time) - db.func.julianday(StudySession.start_time)) * 86400
+    else:
+        query = StudySession.query.with_entities(
+            StudySession.user_id,
+            StudySession.start_time,
+            StudySession.end_time,
+        ).filter(StudySession.user_id.in_(user_ids))
+        if start_date is not None:
+            query = query.filter(StudySession.start_time >= start_date)
+
+        totals = defaultdict(float)
+        for user_id, start_time, end_time in query.all():
+            totals[user_id] += max(datetime_diff_seconds(end_time, start_time), 0)
+        return totals
+
+    duration_seconds = case((raw_seconds > 0, raw_seconds), else_=0)
+    query = db.session.query(
+        StudySession.user_id,
+        db.func.coalesce(db.func.sum(duration_seconds), 0),
+    ).filter(
+        StudySession.user_id.in_(user_ids),
+        StudySession.start_time.isnot(None),
+        StudySession.end_time.isnot(None),
+    )
+    if start_date is not None:
+        query = query.filter(StudySession.start_time >= start_date)
+
+    return {user_id: float(total_seconds or 0) for user_id, total_seconds in query.group_by(StudySession.user_id).all()}
+
+
+def _coerce_leaderboard_date(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return to_utc8_naive(value).date()
+    if hasattr(value, "year") and hasattr(value, "month") and hasattr(value, "day"):
+        return value
+    try:
+        return datetime.fromisoformat(str(value)).date()
+    except ValueError:
+        return None
+
+
+def _leaderboard_streaks_by_user(user_ids):
+    if not user_ids:
+        return {}
+
+    study_date = db.func.date(StudySession.start_time)
+    rows = (
+        db.session.query(StudySession.user_id, study_date.label("study_date"))
+        .filter(StudySession.user_id.in_(user_ids), StudySession.start_time.isnot(None))
+        .distinct()
+        .all()
+    )
+
+    dates_by_user = defaultdict(set)
+    for user_id, value in rows:
+        study_day = _coerce_leaderboard_date(value)
+        if study_day:
+            dates_by_user[user_id].add(study_day)
+
+    today = now_utc8().date()
+    streaks = {}
+    for user_id, dates in dates_by_user.items():
+        if today in dates:
+            streak = 1
+            current = today
+        elif today - timedelta(days=1) in dates:
+            streak = 1
+            current = today - timedelta(days=1)
+        else:
+            streak = 0
+            current = None
+
+        while streak and current - timedelta(days=1) in dates:
+            current -= timedelta(days=1)
+            streak += 1
+
+        streaks[user_id] = streak
+    return streaks
+
+
+def _build_leaderboard_scores(users, weekly_start):
+    user_ids = [u.id for u in users]
+    scores = {
+        period_key: {metric_key: defaultdict(int) for metric_key in LEADERBOARD_METRICS}
+        for period_key in LEADERBOARD_PERIODS
+    }
+    if not user_ids:
+        return scores
+
+    for period_key, start_date in (("all", None), ("weekly", weekly_start)):
+        duration_seconds = _leaderboard_study_duration_seconds_by_user(user_ids, start_date)
+        scores[period_key]["duration"].update({
+            user_id: round(total_seconds / 3600, 1)
+            for user_id, total_seconds in duration_seconds.items()
+        })
+
+        note_counts = _leaderboard_count_by_user(Note, Note.user_id, user_ids, Note.created_at, start_date)
+        edit_counts = _leaderboard_count_by_user(
+            WikiPageHistory,
+            WikiPageHistory.user_id,
+            user_ids,
+            WikiPageHistory.created_at,
+            start_date,
+        )
+        for user_id in user_ids:
+            scores[period_key]["contribution"][user_id] = note_counts.get(user_id, 0) * 10 + edit_counts.get(user_id, 0) * 2
+
+        scores[period_key]["pomo"].update(
+            _leaderboard_count_by_user(PomodoroRecord, PomodoroRecord.user_id, user_ids, PomodoroRecord.completed_at, start_date)
+        )
+        scores[period_key]["oj_attempts"].update(
+            _leaderboard_count_by_user(
+                JudgeTask,
+                JudgeTask.user_id,
+                user_ids,
+                JudgeTask.created_at,
+                start_date,
+                (JudgeTask.problem_id.isnot(None),),
+            )
+        )
+        scores[period_key]["oj_ac"].update(
+            _leaderboard_distinct_count_by_user(
+                JudgeTask.user_id,
+                JudgeTask.problem_id,
+                user_ids,
+                JudgeTask.created_at,
+                start_date,
+                (JudgeTask.problem_id.isnot(None), JudgeTask.status.in_(OJ_PASSING_STATUSES)),
+            )
+        )
+
+    streaks = _leaderboard_streaks_by_user(user_ids)
+    for period_key in LEADERBOARD_PERIODS:
+        scores[period_key]["streak"].update(streaks)
+
+    return scores
+
+
+def _leaderboard_badge_counts_by_user(user_ids):
+    if not user_ids:
+        return {}
+    rows = (
+        db.session.query(UserBadge.user_id, db.func.count(UserBadge.id))
+        .filter(UserBadge.user_id.in_(user_ids))
+        .group_by(UserBadge.user_id)
+        .all()
+    )
+    return {user_id: min(int(count or 0), 3) for user_id, count in rows}
+
+
+def build_leaderboard_snapshot(users, scores_by_user, badge_counts_by_user, metric, period):
     ranking_data = []
-    start_date = weekly_start if period == "weekly" else datetime.min
     metric_meta = LEADERBOARD_METRICS[metric]
 
     for u in users:
-        score = 0
-
-        if metric == "duration":
-            sessions = StudySession.query.filter(
-                StudySession.user_id == u.id,
-                StudySession.start_time >= start_date,
-            ).all()
-            total_sec = sum(study_session_seconds(s) for s in sessions)
-            score = round(total_sec / 3600, 1)
-
-        elif metric == "contribution":
-            notes_query = Note.query.filter_by(user_id=u.id)
-            edits_query = WikiPageHistory.query.filter_by(user_id=u.id)
-            if period == "weekly":
-                notes_query = notes_query.filter(Note.created_at >= start_date)
-                edits_query = edits_query.filter(WikiPageHistory.created_at >= start_date)
-
-            note_count = notes_query.count()
-            edit_count = edits_query.count()
-            score = note_count * 10 + edit_count * 2
-
-        elif metric == "streak":
-            stats = u.calculate_stats()
-            score = stats.get("streak_days", 0)
-
-        elif metric == "pomo":
-            pomo_query = PomodoroRecord.query.filter_by(user_id=u.id)
-            if period == "weekly":
-                pomo_query = pomo_query.filter(PomodoroRecord.completed_at >= start_date)
-            score = pomo_query.count()
-
-        elif metric == "oj_ac":
-            judge_query = JudgeTask.query.filter(JudgeTask.user_id == u.id, JudgeTask.status.in_(OJ_PASSING_STATUSES))
-            judge_query = judge_query.filter(JudgeTask.problem_id.isnot(None))
-            if period == "weekly":
-                judge_query = judge_query.filter(JudgeTask.created_at >= start_date)
-            score = judge_query.with_entities(JudgeTask.problem_id).distinct().count()
-
-        elif metric == "oj_attempts":
-            judge_query = JudgeTask.query.filter_by(user_id=u.id)
-            judge_query = judge_query.filter(JudgeTask.problem_id.isnot(None))
-            if period == "weekly":
-                judge_query = judge_query.filter(JudgeTask.created_at >= start_date)
-            score = judge_query.count()
+        score = scores_by_user.get(u.id, 0)
 
         if score > 0 or u.id == current_user.id:
             ranking_data.append({
                 "user": u,
                 "score": score,
-                "badge_count": len(u.earned_badges[:3]),
+                "badge_count": badge_counts_by_user.get(u.id, 0),
             })
 
     ranking_data.sort(key=lambda x: x["score"], reverse=True)
@@ -7979,7 +8207,7 @@ def leaderboard():
     if period not in LEADERBOARD_PERIODS:
         period = "all"
 
-    users = User.query.all()
+    users = User.query.options(joinedload(User.student_class), selectinload(User.groups)).all()
     groups = Group.query.order_by(Group.name.asc()).all()
     leaderboard_scopes = {
         "all": {
@@ -8009,15 +8237,18 @@ def leaderboard():
     weekly_start = now - timedelta(days=now.weekday())
     weekly_start = weekly_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
+    leaderboard_scores = _build_leaderboard_scores(users, weekly_start)
+    badge_counts_by_user = _leaderboard_badge_counts_by_user([u.id for u in users])
     leaderboard_payload = {}
     for period_key in LEADERBOARD_PERIODS:
         leaderboard_payload[period_key] = {}
         for metric_key in LEADERBOARD_METRICS:
             leaderboard_payload[period_key][metric_key] = build_leaderboard_snapshot(
                 users,
+                leaderboard_scores[period_key][metric_key],
+                badge_counts_by_user,
                 metric_key,
                 period_key,
-                weekly_start,
             )
 
     return render_template(
@@ -8216,6 +8447,13 @@ class JudgeTask(db.Model):
     created_at = db.Column(db.DateTime, default=now_utc8)
     started_at = db.Column(db.DateTime, nullable=True)
     finished_at = db.Column(db.DateTime, nullable=True)
+    __table_args__ = (
+        db.Index("ix_judge_task_assignment_created_id", "assignment_id", "created_at", "id"),
+        db.Index("ix_judge_task_problem_assignment_created_id", "problem_id", "assignment_id", "created_at", "id"),
+        db.Index("ix_judge_task_user_created_at", "user_id", "created_at"),
+        db.Index("ix_judge_task_user_assignment_created_id", "user_id", "assignment_id", "created_at", "id"),
+        db.Index("ix_judge_task_user_status_problem", "user_id", "status", "problem_id"),
+    )
 
     submission = db.relationship('Submission', backref=db.backref('judge_tasks', lazy='dynamic'))
     problem = db.relationship('Problem', backref=db.backref('judge_tasks', lazy='dynamic'))
@@ -8236,6 +8474,9 @@ class JudgeTaskResult(db.Model):
     actual_output = db.Column(db.Text, nullable=True)
     stderr_text = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=now_utc8)
+    __table_args__ = (
+        db.Index("ix_judge_task_result_task_case_status", "task_id", "case_index", "status"),
+    )
 
     task = db.relationship('JudgeTask', backref=db.backref('results', cascade='all, delete-orphan', lazy='dynamic'))
 
@@ -8259,6 +8500,9 @@ class Problem(db.Model):
     created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=now_utc8)
     updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
+    __table_args__ = (
+        db.Index("ix_problem_visible_difficulty_code_id", "is_visible", "difficulty", "problem_code", "id"),
+    )
 
     created_by = db.relationship('User', backref='created_problems', foreign_keys=[created_by_id])
     test_cases = db.relationship(
@@ -8304,6 +8548,9 @@ class ProblemTestCase(db.Model):
     score = db.Column(db.Integer, nullable=False, default=1)
     sort_order = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=now_utc8)
+    __table_args__ = (
+        db.Index("ix_problem_test_case_problem_sort", "problem_id", "sort_order"),
+    )
 
 
 class ProblemFile(db.Model):
@@ -8316,6 +8563,9 @@ class ProblemFile(db.Model):
     file_size = db.Column(db.Integer, nullable=False, default=0)
     uploaded_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     uploaded_at = db.Column(db.DateTime, default=now_utc8)
+    __table_args__ = (
+        db.Index("ix_problem_file_problem_filename", "problem_id", "filename"),
+    )
 
     problem = db.relationship('Problem', backref=db.backref('files', cascade='all, delete-orphan', lazy='dynamic'))
     uploader = db.relationship('User', backref='uploaded_problem_files', foreign_keys=[uploaded_by_id])
@@ -8563,33 +8813,48 @@ def oj_status_meta(status):
     return OJ_STATUS_META.get(status or '', {'label': status or '未知', 'badge': 'badge-ghost', 'tone': 'neutral'})
 
 
+def normalize_oj_status_filter(status):
+    status = (status or '').strip()
+    if status.upper() in {'AC', 'PAC'}:
+        return status.upper()
+    return status.lower()
+
+
 OJ_CASE_STATUS_META = {
-    'queued': {'label': 'Queued', 'tone': 'info'},
-    'running': {'label': 'Running', 'tone': 'warning'},
-    'accepted': {'label': 'AC', 'tone': 'success'},
-    'PAC': {'label': 'PAC', 'tone': 'success'},
-    'AC': {'label': 'AC', 'tone': 'info'},
-    'wrong_answer': {'label': 'Wrong Answer', 'tone': 'danger'},
-    'runtime_error': {'label': 'Runtime Error', 'tone': 'danger'},
-    'security_violation': {'label': 'Security Violation', 'tone': 'danger'},
-    'time_limit_exceeded': {'label': 'Time Limit Exceeded', 'tone': 'warning'},
-    'compile_error': {'label': 'Compile Error', 'tone': 'danger'},
-    'system_error': {'label': 'System Error', 'tone': 'danger'},
-    'failed': {'label': 'Failed', 'tone': 'danger'},
+    'queued': {'label': '排队中', 'tone': 'info'},
+    'running': {'label': '评测中', 'tone': 'warning'},
+    'accepted': {'label': '通过', 'tone': 'success'},
+    'PAC': {'label': '满星通过', 'tone': 'success'},
+    'AC': {'label': '通过', 'tone': 'info'},
+    'wrong_answer': {'label': '答案错误', 'tone': 'danger'},
+    'runtime_error': {'label': '运行错误', 'tone': 'danger'},
+    'security_violation': {'label': '安全限制', 'tone': 'danger'},
+    'time_limit_exceeded': {'label': '超时', 'tone': 'warning'},
+    'compile_error': {'label': '编译错误', 'tone': 'danger'},
+    'system_error': {'label': '系统错误', 'tone': 'danger'},
+    'failed': {'label': '未通过', 'tone': 'danger'},
 }
 
 
 def oj_case_status_meta(status):
-    return OJ_CASE_STATUS_META.get(status or '', {'label': status or 'Unknown', 'tone': 'neutral'})
+    return OJ_CASE_STATUS_META.get(status or '', {'label': status or '未知状态', 'tone': 'neutral'})
 
 
-def oj_submission_status_meta(task, results=None):
+_FIRST_FAILED_STATUS_NOT_PROVIDED = object()
+
+
+def oj_submission_status_meta(task, results=None, first_failed_status=_FIRST_FAILED_STATUS_NOT_PROVIDED):
     if task.status in {'queued', 'running'}:
         return oj_status_meta(task.status)
     if task.status in {'accepted', 'PAC', 'AC'}:
         return oj_status_meta(task.status)
     if task.result_summary and task.result_summary.get('failure_reason') == 'compile_error':
         return oj_case_status_meta('compile_error')
+
+    if first_failed_status is not _FIRST_FAILED_STATUS_NOT_PROVIDED:
+        if first_failed_status:
+            return oj_case_status_meta(first_failed_status)
+        return oj_case_status_meta(task.status)
 
     ordered_results = results
     if ordered_results is None:
@@ -8894,7 +9159,7 @@ def build_oj_failure_feedback(task, results):
     first_failed = next((result for result in results if result.status != 'accepted'), None)
     if first_failed and first_failed.status == 'wrong_answer':
         return {
-            'title': 'Wrong Answer',
+            'title': '答案错误',
             'message': '程序正常运行了，但输出结果和标准答案不一致。请重点检查输出格式、边界情况和算法逻辑。',
             'detail': '',
             'tone': 'warning',
@@ -8920,7 +9185,7 @@ def build_oj_failure_feedback(task, results):
 
     if first_failed and first_failed.status == 'time_limit_exceeded':
         return {
-            'title': 'Time Limit Exceeded',
+            'title': '超时',
             'message': '程序运行超时了。请检查是否存在死循环，或尝试优化算法复杂度。',
             'detail': '',
             'tone': 'warning',
@@ -9460,18 +9725,21 @@ def oj_task_display_meta(task):
     if not task:
         return {'label': '未提交', 'badge': 'badge-ghost'}
     if task.status == 'PAC' or task.status == 'accepted':
-        return {'label': 'PAC', 'badge': 'badge-success'}
+        return {'label': '满星通过', 'badge': 'badge-success'}
     if task.status == 'AC':
-        return {'label': 'AC', 'badge': 'badge-info'}
+        return {'label': '通过', 'badge': 'badge-info'}
     if task.result_summary and task.result_summary.get('failure_reason') == 'compile_error':
         return {'label': '编译错误', 'badge': 'badge-error'}
 
     first_failed = task.results.order_by(JudgeTaskResult.case_index.asc()).filter(JudgeTaskResult.status != 'accepted').first()
     if first_failed:
         mapping = {
-            'wrong_answer': {'label': 'WA', 'badge': 'badge-error'},
-            'runtime_error': {'label': 'RE', 'badge': 'badge-error'},
-            'time_limit_exceeded': {'label': 'TLE', 'badge': 'badge-warning'},
+            'wrong_answer': {'label': '答案错误', 'badge': 'badge-error'},
+            'runtime_error': {'label': '运行错误', 'badge': 'badge-error'},
+            'security_violation': {'label': '安全限制', 'badge': 'badge-error'},
+            'time_limit_exceeded': {'label': '超时', 'badge': 'badge-warning'},
+            'compile_error': {'label': '编译错误', 'badge': 'badge-error'},
+            'system_error': {'label': '系统错误', 'badge': 'badge-error'},
         }
         return mapping.get(first_failed.status, {'label': first_failed.status, 'badge': 'badge-error'})
 
@@ -10595,7 +10863,7 @@ def oj_problem_submit_json(slug):
 @login_required
 def oj_submission_list():
     ensure_oj_authoring_schema()
-    status_filter = request.args.get('status', '').strip().lower()
+    status_filter = normalize_oj_status_filter(request.args.get('status', ''))
     language_filter = request.args.get('language', '').strip()
     assignment_id_filter = request.args.get('assignment_id', type=int)
     user_filter = request.args.get('user', '').strip() if current_user.is_admin else ''
@@ -10637,7 +10905,7 @@ def oj_submission_list_json():
     return jsonify({
         "ok": True,
         "submissionList": build_oj_submission_list_payload(
-            request.args.get('status', '').strip().lower(),
+            normalize_oj_status_filter(request.args.get('status', '')),
             request.args.get('language', '').strip(),
             request.args.get('user', '').strip() if current_user.is_admin else '',
             request.args.get('problem', '').strip(),

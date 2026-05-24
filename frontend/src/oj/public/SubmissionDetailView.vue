@@ -18,7 +18,7 @@ function metricClass(score) {
 }
 
 function compactCaseTitle(result) {
-  return `Case ${result.caseIndex}`;
+  return `测试点 ${result.caseIndex}`;
 }
 
 async function refreshSubmissionDetail() {
@@ -71,7 +71,7 @@ onUnmounted(() => {
       <section class="oj-panel p-5 md:p-6">
         <div class="flex items-start justify-between gap-4 flex-wrap mb-5">
           <div>
-            <p class="text-xs font-black tracking-[0.3em] uppercase text-cyan-600 mb-2">Submission #{{ localSubmission.id }}</p>
+            <p class="text-xs font-black tracking-[0.3em] uppercase text-cyan-600 mb-2">提交 #{{ localSubmission.id }}</p>
             <h1 class="text-3xl md:text-4xl font-black text-stone-900 dark:text-stone-100">
               {{ localSubmission.problem?.title || 'OJ 提交详情' }}
             </h1>

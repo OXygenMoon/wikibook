@@ -8,7 +8,7 @@ import click
 from flask import Flask, render_template, redirect, url_for, request, flash, abort, send_file, Response, make_response, jsonify,session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text, inspect, case
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import joinedload, load_only, selectinload
 from sqlalchemy.sql.sqltypes import Integer
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -607,6 +607,52 @@ def assignment_form_workspace_response(assignment, form_state, message, category
     if assignment:
         return redirect(url_for("edit_oj_assignment", assignment_id=assignment.id))
     return redirect(url_for("create_oj_assignment"))
+
+
+def problem_delete_response(message, category="success", status_code=200):
+    if is_ajax_request():
+        return jsonify({
+            "ok": category != "error",
+            "message": message,
+            "category": category,
+        }), status_code
+    flash(message, category)
+    return redirect(url_for("manage_oj_problems"))
+
+
+def problem_delete_block_message(problem):
+    assignment_count = OJAssignmentProblem.query.filter_by(problem_id=problem.id).count()
+    judge_task_count = JudgeTask.query.filter_by(problem_id=problem.id).count()
+    blockers = []
+
+    if assignment_count:
+        assignment_titles = [
+            row.title
+            for row in (
+                db.session.query(OJAssignment.title)
+                .join(OJAssignmentProblem, OJAssignmentProblem.assignment_id == OJAssignment.id)
+                .filter(OJAssignmentProblem.problem_id == problem.id)
+                .order_by(OJAssignment.updated_at.desc(), OJAssignment.id.desc())
+                .limit(3)
+                .all()
+            )
+        ]
+        title_text = "、".join(assignment_titles)
+        if assignment_count > len(assignment_titles):
+            title_text = f"{title_text} 等" if title_text else ""
+        blockers.append(f"已被 {assignment_count} 个 OJ 作业引用{f'（{title_text}）' if title_text else ''}")
+
+    if judge_task_count:
+        blockers.append(f"已有 {judge_task_count} 条提交/评测记录")
+
+    if not blockers:
+        return ""
+
+    return (
+        f"不能删除 OJ 题目《{problem.title}》："
+        f"{'，'.join(blockers)}。"
+        "请先从相关作业中移除该题并确认不需要保留提交记录；如果只是下架，可以编辑题目改为隐藏。"
+    )
 
 
 def vite_asset(entry_name):
@@ -1411,16 +1457,25 @@ def serialize_oj_task_summary(task):
 
 
 def serialize_oj_problem_detail(problem, active_assignment=None):
-    sample_cases = get_oj_problem_sample_cases(problem.id)
+    hidden_for_viewer = bool(not problem.is_visible and not current_user.is_admin)
+    sample_cases = [] if hidden_for_viewer else get_oj_problem_sample_cases(problem.id)
     hidden_case_count = count_oj_problem_cases(problem.id, 'hidden')
-    all_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.filename.asc()).all()
-    visible_files = all_files if current_user.is_admin else [problem_file for problem_file in all_files if not problem_file.is_testdata_file]
+    if hidden_for_viewer:
+        visible_files = []
+    else:
+        all_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.filename.asc()).all()
+        visible_files = all_files if current_user.is_admin else [problem_file for problem_file in all_files if not problem_file.is_testdata_file]
     assignment_id = active_assignment.id if active_assignment else None
     task_query = JudgeTask.query.filter_by(problem_id=problem.id, user_id=current_user.id, assignment_id=assignment_id)
     my_latest_task = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).first()
     submission_history = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(5).all()
-    statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
-    ast_goals = build_problem_ast_goals(problem)
+    if hidden_for_viewer:
+        statement_html = ""
+        statement_has_sample_pairs = False
+        ast_goals = []
+    else:
+        statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
+        ast_goals = build_problem_ast_goals(problem)
     return {
         "id": problem.id,
         "uid": problem.uid_text,
@@ -1443,6 +1498,10 @@ def serialize_oj_problem_detail(problem, active_assignment=None):
         "latestTask": serialize_oj_task_summary(my_latest_task),
         "submissionHistory": [serialize_oj_task_summary(task) for task in submission_history],
         "canManage": bool(current_user.is_admin),
+        "canCode": bool(not hidden_for_viewer),
+        "canSubmit": bool(not hidden_for_viewer),
+        "hiddenForViewer": hidden_for_viewer,
+        "hiddenMessage": "这道题目当前已隐藏，题面与样例暂不对学生开放，也不能继续在线编码或提交代码。" if hidden_for_viewer else "",
         "activeAssignment": {"id": active_assignment.id, "title": active_assignment.title, "url": url_for("oj_assignment_detail", assignment_id=active_assignment.id)} if active_assignment else None,
         "urls": {
             "list": url_for("oj_problem_list"),
@@ -1709,7 +1768,7 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
     if problem_id_filter:
         selected_problem = Problem.query.filter_by(id=problem_id_filter).first()
         problem_visible_in_assignment = bool(selected_assignment and any(link.problem_id == problem_id_filter for link in selected_assignment.problem_links))
-        if selected_problem and (can_view_problem(selected_problem, current_user) or problem_visible_in_assignment):
+        if selected_problem and (can_filter_problem_submissions(selected_problem, current_user) or problem_visible_in_assignment):
             query = query.filter_by(problem_id=problem_id_filter)
             stats_query = stats_query.filter_by(problem_id=problem_id_filter)
         else:
@@ -9101,6 +9160,20 @@ def can_view_problem(problem, user):
     return bool(user.is_authenticated and user.is_admin)
 
 
+def can_view_problem_detail(problem, user):
+    if can_view_problem(problem, user):
+        return True
+    return bool(user.is_authenticated)
+
+
+def can_filter_problem_submissions(problem, user):
+    if can_view_problem(problem, user):
+        return True
+    if not user.is_authenticated:
+        return False
+    return JudgeTask.query.filter_by(problem_id=problem.id, user_id=user.id).first() is not None
+
+
 def get_problem_or_404_for_current_user(slug):
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     if not can_view_problem(problem, current_user):
@@ -10940,7 +11013,7 @@ def oj_problem_detail(slug):
     ensure_oj_authoring_schema()
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     active_assignment = get_assignment_for_problem_request(problem)
-    if not can_view_problem(problem, current_user) and not active_assignment:
+    if not can_view_problem_detail(problem, current_user):
         abort(404)
 
     return render_template(
@@ -10969,7 +11042,7 @@ def oj_problem_detail_json(slug):
     ensure_oj_authoring_schema()
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     active_assignment = get_assignment_for_problem_request(problem)
-    if not can_view_problem(problem, current_user) and not active_assignment:
+    if not can_view_problem_detail(problem, current_user):
         abort(404)
     return jsonify({"ok": True, "problemDetail": serialize_oj_problem_detail(problem, active_assignment)})
 
@@ -10980,7 +11053,7 @@ def oj_problem_code(slug):
     ensure_oj_authoring_schema()
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     active_assignment = get_assignment_for_problem_request(problem)
-    if not can_view_problem(problem, current_user) and not active_assignment:
+    if not can_view_problem(problem, current_user):
         abort(404)
 
     return render_template(
@@ -11009,7 +11082,7 @@ def oj_problem_code_json(slug):
     ensure_oj_authoring_schema()
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     active_assignment = get_assignment_for_problem_request(problem)
-    if not can_view_problem(problem, current_user) and not active_assignment:
+    if not can_view_problem(problem, current_user):
         abort(404)
     return jsonify({"ok": True, "problemCode": serialize_oj_problem_code_workspace(problem, active_assignment)})
 
@@ -11020,7 +11093,7 @@ def oj_problem_syntax_check(slug):
     ensure_oj_authoring_schema()
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     active_assignment = get_assignment_for_problem_request(problem)
-    if not can_view_problem(problem, current_user) and not active_assignment:
+    if not can_view_problem(problem, current_user):
         abort(404)
 
     payload = request.get_json(silent=True) or {}
@@ -11062,7 +11135,7 @@ def oj_problem_python_completions(slug):
     ensure_oj_authoring_schema()
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     active_assignment = get_assignment_for_problem_request(problem)
-    if not can_view_problem(problem, current_user) and not active_assignment:
+    if not can_view_problem(problem, current_user):
         abort(404)
 
     if jedi is None:
@@ -11097,7 +11170,7 @@ def oj_problem_python_hover(slug):
     ensure_oj_authoring_schema()
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     active_assignment = get_assignment_for_problem_request(problem)
-    if not can_view_problem(problem, current_user) and not active_assignment:
+    if not can_view_problem(problem, current_user):
         abort(404)
 
     if jedi is None:
@@ -11132,7 +11205,7 @@ def oj_problem_python_signatures(slug):
     ensure_oj_authoring_schema()
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     active_assignment = get_assignment_for_problem_request(problem)
-    if not can_view_problem(problem, current_user) and not active_assignment:
+    if not can_view_problem(problem, current_user):
         abort(404)
 
     if jedi is None:
@@ -11178,7 +11251,7 @@ def submit_oj_problem(slug):
     ensure_oj_authoring_schema()
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     active_assignment = get_assignment_for_problem_request(problem)
-    if not can_view_problem(problem, current_user) and not active_assignment:
+    if not can_view_problem(problem, current_user):
         abort(404)
 
     if request.method == 'GET':
@@ -11291,7 +11364,7 @@ def oj_problem_submit_json(slug):
     ensure_oj_authoring_schema()
     problem = Problem.query.filter_by(slug=slug).first_or_404()
     active_assignment = get_assignment_for_problem_request(problem)
-    if not can_view_problem(problem, current_user) and not active_assignment:
+    if not can_view_problem(problem, current_user):
         abort(404)
     return jsonify({"ok": True, "problemSubmit": serialize_oj_problem_submit_workspace(problem, active_assignment)})
 
@@ -12175,17 +12248,27 @@ def delete_oj_problem(problem_id):
 
     problem = Problem.query.get_or_404(problem_id)
     title = problem.title
-    for problem_file in problem.files.all():
-        remove_problem_asset_file(problem_file.file_path)
-    db.session.delete(problem)
-    db.session.commit()
-    if is_ajax_request():
-        return jsonify({
-            "ok": True,
-            "message": f'OJ 题目《{title}》已删除。',
-        })
-    flash(f'OJ 题目《{title}》已删除。', 'success')
-    return redirect(url_for('manage_oj_problems'))
+    block_message = problem_delete_block_message(problem)
+    if block_message:
+        return problem_delete_response(block_message, "error", 409)
+
+    asset_paths = [problem_file.file_path for problem_file in problem.files.all()]
+
+    try:
+        db.session.delete(problem)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return problem_delete_response(
+            f'OJ 题目《{title}》仍被其他数据引用，无法直接删除。请先解除关联，或将题目改为隐藏。',
+            "error",
+            409,
+        )
+
+    for file_path in asset_paths:
+        remove_problem_asset_file(file_path)
+
+    return problem_delete_response(f'OJ 题目《{title}》已删除。')
 
 
 @app.route('/oj/assignments')

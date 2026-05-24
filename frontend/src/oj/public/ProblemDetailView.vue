@@ -24,16 +24,20 @@ const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', '
         </div>
       </div>
 
-      <section class="problem-prose" v-html="problem.statementHtml"></section>
+      <section v-if="problem.hiddenForViewer" class="oj-vue-alert oj-vue-alert--error">
+        {{ problem.hiddenMessage }}
+      </section>
 
-      <section v-if="problem.hasAstGoals" class="mt-8 oj-panel p-5">
+      <section v-else class="problem-prose" v-html="problem.statementHtml"></section>
+
+      <section v-if="!problem.hiddenForViewer && problem.hasAstGoals" class="mt-8 oj-panel p-5">
         <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">满星语法目标</h2>
         <ol class="list-decimal pl-5 space-y-2 text-stone-700 dark:text-stone-200">
           <li v-for="goal in problem.astGoals" :key="goal.id || goal.description">{{ goal.description }}</li>
         </ol>
       </section>
 
-      <section v-if="!problem.statementHasSamplePairs" class="mt-8">
+      <section v-if="!problem.hiddenForViewer && !problem.statementHasSamplePairs" class="mt-8">
         <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <template v-for="(sample, index) in problem.sampleCases" :key="index">
@@ -53,7 +57,7 @@ const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', '
         </div>
       </section>
 
-      <section v-if="problem.visibleFiles.length" class="mt-8">
+      <section v-if="!problem.hiddenForViewer && problem.visibleFiles.length" class="mt-8">
         <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">文件</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <a v-for="file in problem.visibleFiles" :key="file.id" :href="file.filePath" target="_blank" class="oj-panel p-4 hover:border-cyan-400 transition-colors">
@@ -74,8 +78,8 @@ const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', '
       <div class="meta-line"><span class="text-stone-500">语言</span><span class="font-bold text-right">{{ problem.allowedLanguages }}</span></div>
       <div v-if="problem.canManage" class="meta-line"><span class="text-stone-500">隐藏测试点</span><span class="font-bold">{{ problem.hiddenCaseCount }}</span></div>
       <div class="pt-5 flex flex-col gap-3">
-        <a :href="problem.urls.code" class="btn btn-secondary rounded-lg" @click.prevent="emit('openCode', problem.slug, problem.urls.code)"><i class="fas fa-code" aria-hidden="true"></i> 在线编码</a>
-        <a :href="problem.urls.submit" class="btn btn-primary rounded-lg" @click.prevent="emit('openSubmit', problem.slug, problem.urls.submit)"><i class="fas fa-paper-plane" aria-hidden="true"></i> 提交代码</a>
+        <a v-if="problem.canCode" :href="problem.urls.code" class="btn btn-secondary rounded-lg" @click.prevent="emit('openCode', problem.slug, problem.urls.code)"><i class="fas fa-code" aria-hidden="true"></i> 在线编码</a>
+        <a v-if="problem.canSubmit" :href="problem.urls.submit" class="btn btn-primary rounded-lg" @click.prevent="emit('openSubmit', problem.slug, problem.urls.submit)"><i class="fas fa-paper-plane" aria-hidden="true"></i> 提交代码</a>
         <a :href="problem.urls.submissions" class="btn btn-outline rounded-lg" @click.prevent="emit('openSubmissions', problem.urls.submissions.replace('/oj/submissions', '/oj/submissions.json'))">
           <i class="fas fa-list-check" aria-hidden="true"></i> 提交记录
         </a>

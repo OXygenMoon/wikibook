@@ -42,6 +42,10 @@ wait_for_docker() {
     return 1
 }
 
+start_colima() {
+    colima start --cpu "${COLIMA_CPU:-2}" --memory "${COLIMA_MEMORY:-4}" --disk "${COLIMA_DISK:-20}"
+}
+
 ensure_docker_for_local_postgres() {
     if docker_can_run; then
         return 0
@@ -55,9 +59,20 @@ ensure_docker_for_local_postgres() {
         return 1
     fi
 
-    log "Docker is unavailable; starting Colima ..."
-    colima start --cpu "${COLIMA_CPU:-2}" --memory "${COLIMA_MEMORY:-4}" --disk "${COLIMA_DISK:-20}" || return 1
-    wait_for_docker 45
+    if colima status >/dev/null 2>&1; then
+        log "Colima is running; waiting for Docker ..."
+        if wait_for_docker 15; then
+            return 0
+        fi
+
+        log "Colima is running, but Docker is still unavailable; restarting Colima ..."
+        colima stop || return 1
+    else
+        log "Docker is unavailable; starting Colima ..."
+    fi
+
+    start_colima || return 1
+    wait_for_docker 60
 }
 
 usage() {

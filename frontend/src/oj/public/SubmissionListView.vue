@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 
 const props = defineProps({
   payload: { type: Object, required: true },
@@ -26,8 +26,19 @@ const statusOptions = [
   { value: 'system_error', label: '系统错误' },
 ];
 
+const timeStats = computed(() => props.payload.submissionTimeStats || props.payload.submissionProblemStats || []);
+const totalSubmissions = computed(() => timeStats.value.find((stat) => stat.key === 'all')?.count ?? 0);
+const timedStats = computed(() => timeStats.value.filter((stat) => stat.key !== 'all'));
+const maxTimedStatCount = computed(() => Math.max(1, ...timedStats.value.map((stat) => Number(stat.count) || 0)));
+
 function syncFilters() {
   Object.assign(filters, props.payload.filters || {});
+}
+
+function statPercent(stat) {
+  const count = Number(stat.count) || 0;
+  if (!count) return '0%';
+  return `${Math.max(6, Math.round((count / maxTimedStatCount.value) * 100))}%`;
 }
 
 function buildUrl(reset = false) {
@@ -57,6 +68,26 @@ watch(() => props.payload, syncFilters, { immediate: true });
 
 <template>
   <div class="flex flex-col gap-6">
+    <section v-if="timeStats.length" class="oj-panel p-4 md:p-5">
+      <div class="flex flex-col xl:flex-row gap-4">
+        <div class="rounded-xl bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-100 dark:border-cyan-800/70 p-4 xl:w-52">
+          <div class="text-xs text-cyan-700 dark:text-cyan-200 uppercase tracking-widest mb-2">全部</div>
+          <div class="text-3xl font-black text-cyan-700 dark:text-cyan-100">{{ totalSubmissions }}</div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 flex-1">
+          <div v-for="stat in timedStats" :key="stat.key" class="rounded-xl border border-stone-200/80 dark:border-white/10 bg-stone-50/80 dark:bg-white/5 p-3">
+            <div class="flex items-baseline justify-between gap-2">
+              <span class="text-xs font-black text-stone-500 dark:text-stone-400">{{ stat.label }}</span>
+              <span class="text-lg font-black text-stone-900 dark:text-stone-100">{{ stat.count }}</span>
+            </div>
+            <div class="mt-2 h-1.5 rounded-full bg-stone-200 dark:bg-white/10 overflow-hidden">
+              <div class="h-full rounded-full bg-cyan-500" :style="{ width: statPercent(stat) }"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="oj-panel p-4 md:p-5">
       <div class="flex items-center justify-between gap-4 flex-wrap mb-4">
         <div>

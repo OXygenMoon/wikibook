@@ -1,27 +1,27 @@
 {
-  "_runtime-dom.esm-bundler-C4a4zE-h.js": {
-    "file": "assets/runtime-dom.esm-bundler-C4a4zE-h.js",
+  "_runtime-dom.esm-bundler-B8xFnQ3G.js": {
+    "file": "assets/runtime-dom.esm-bundler-B8xFnQ3G.js",
     "name": "runtime-dom.esm-bundler"
   },
   "frontend/src/oj-admin.js": {
-    "file": "assets/src/oj-admin.js-BqiPYI_Q.js",
+    "file": "assets/src/oj-admin.js-BV6YoCm6.js",
     "name": "src/oj-admin.js",
     "src": "frontend/src/oj-admin.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-C4a4zE-h.js"
+      "_runtime-dom.esm-bundler-B8xFnQ3G.js"
     ],
     "css": [
       "assets/oj-admin-dfMEWYsG.css"
     ]
   },
   "frontend/src/oj-public.js": {
-    "file": "assets/src/oj-public.js-BG9dDf9N.js",
+    "file": "assets/src/oj-public.js-fSEZVtQl.js",
     "name": "src/oj-public.js",
     "src": "frontend/src/oj-public.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-C4a4zE-h.js"
+      "_runtime-dom.esm-bundler-B8xFnQ3G.js"
     ],
     "css": [
       "assets/oj-public-GeY8IuFr.css"

@@ -1582,6 +1582,53 @@ def serialize_submission_row(task, status_meta=None):
     }
 
 
+SUBMISSION_TIME_STAT_WINDOWS = [
+    ("1h", "1小时", timedelta(hours=1)),
+    ("6h", "6小时", timedelta(hours=6)),
+    ("12h", "12小时", timedelta(hours=12)),
+    ("24h", "24小时", timedelta(hours=24)),
+    ("1w", "一周", timedelta(weeks=1)),
+    ("1m", "一个月", timedelta(days=30)),
+    ("6m", "半年", timedelta(days=183)),
+    ("1y", "一年", timedelta(days=365)),
+    ("all", "全部", None),
+]
+
+
+def build_submission_time_stats(stats_query):
+    now = now_utc8()
+    fields = [db.func.count(JudgeTask.id).label("all_count")]
+    timed_windows = []
+    for key, label, delta in SUBMISSION_TIME_STAT_WINDOWS:
+        if delta is None:
+            continue
+        start_at = now - delta
+        timed_windows.append((key, label, delta))
+        fields.append(
+            db.func.sum(case((JudgeTask.created_at >= start_at, 1), else_=0)).label(f"{key}_count")
+        )
+
+    row = (
+        stats_query
+        .with_entities(*fields)
+        .one()
+    )
+    all_count = int(row[0] or 0)
+    timed_counts = {
+        key: int(row[index + 1] or 0)
+        for index, (key, _, _) in enumerate(timed_windows)
+    }
+
+    stats = []
+    for key, label, delta in SUBMISSION_TIME_STAT_WINDOWS:
+        if delta is None:
+            count = all_count
+        else:
+            count = timed_counts.get(key, 0)
+        stats.append({"key": key, "label": label, "count": count})
+    return stats
+
+
 def build_oj_submission_list_payload(status_filter="", language_filter="", user_filter="", problem_filter="", problem_id_filter=None, assignment_id_filter=None, mine_only=False):
     query = (
         JudgeTask.query
@@ -1602,9 +1649,11 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
         )
         .filter(JudgeTask.problem_id.isnot(None))
     )
+    stats_query = JudgeTask.query.filter(JudgeTask.problem_id.isnot(None))
     language_query = db.session.query(JudgeTask.language).filter(JudgeTask.problem_id.isnot(None))
     if not current_user.is_admin or mine_only:
         query = query.filter_by(user_id=current_user.id)
+        stats_query = stats_query.filter(JudgeTask.user_id == current_user.id)
         language_query = language_query.filter(JudgeTask.user_id == current_user.id)
 
     selected_assignment = None
@@ -1612,24 +1661,29 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
         selected_assignment = OJAssignment.query.filter_by(id=assignment_id_filter).first()
         if selected_assignment and selected_assignment.is_visible_to(current_user):
             query = query.filter(JudgeTask.assignment_id == selected_assignment.id)
+            stats_query = stats_query.filter(JudgeTask.assignment_id == selected_assignment.id)
             language_query = language_query.filter(JudgeTask.assignment_id == selected_assignment.id)
         else:
             selected_assignment = None
             assignment_id_filter = None
     else:
         query = query.filter(JudgeTask.assignment_id.is_(None))
+        stats_query = stats_query.filter(JudgeTask.assignment_id.is_(None))
         language_query = language_query.filter(JudgeTask.assignment_id.is_(None))
 
     if status_filter in OJ_STATUS_META:
         query = query.filter_by(status=status_filter)
+        stats_query = stats_query.filter_by(status=status_filter)
     if language_filter:
         query = query.filter_by(language=language_filter)
+        stats_query = stats_query.filter_by(language=language_filter)
     if user_filter and current_user.is_admin:
         like = f"%{user_filter}%"
         user_clauses = [User.username.like(like), User.real_name.like(like)]
         if user_filter.isdigit():
             user_clauses.append(User.id == int(user_filter))
         query = query.join(User, JudgeTask.user_id == User.id).filter(db.or_(*user_clauses))
+        stats_query = stats_query.join(User, JudgeTask.user_id == User.id).filter(db.or_(*user_clauses))
 
     selected_problem = None
     if problem_id_filter:
@@ -1637,12 +1691,16 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
         problem_visible_in_assignment = bool(selected_assignment and any(link.problem_id == problem_id_filter for link in selected_assignment.problem_links))
         if selected_problem and (can_view_problem(selected_problem, current_user) or problem_visible_in_assignment):
             query = query.filter_by(problem_id=problem_id_filter)
+            stats_query = stats_query.filter_by(problem_id=problem_id_filter)
         else:
             selected_problem = None
             problem_id_filter = None
     elif problem_filter:
         like = f"%{problem_filter}%"
         query = query.join(Problem, JudgeTask.problem_id == Problem.id).filter(
+            db.or_(Problem.problem_code.like(like), Problem.title.like(like), Problem.slug.like(like))
+        )
+        stats_query = stats_query.join(Problem, JudgeTask.problem_id == Problem.id).filter(
             db.or_(Problem.problem_code.like(like), Problem.title.like(like), Problem.slug.like(like))
         )
 
@@ -1660,6 +1718,7 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
     return {
         "submissions": [serialize_submission_row(task, status_meta_by_task_id.get(task.id)) for task in submissions],
         "availableLanguages": available_languages,
+        "submissionTimeStats": build_submission_time_stats(stats_query),
         "filters": {
             "status": status_filter,
             "language": language_filter,

@@ -177,6 +177,42 @@ class AstCheckerTestCase(unittest.TestCase):
         self.assertFalse(failed["passed"])
         self.assertTrue(passed["passed"])
 
+    def test_forbid_variable_rule(self):
+        failed = check_ast_rules(
+            'tmp = 1\nprint(tmp)\n',
+            [make_rule("forbid_variable", "variable", params={"variable_name": "tmp"})],
+        )
+        passed = check_ast_rules(
+            'score = 1\nprint(score)\n',
+            [make_rule("forbid_variable", "variable", params={"variable_name": "tmp"})],
+        )
+        self.assertFalse(failed["passed"])
+        self.assertTrue(passed["passed"])
+
+    def test_forbid_function_rule(self):
+        failed = check_ast_rules(
+            'print("Hello")\n',
+            [make_rule("forbid_function", "function", params={"function_name": "print"})],
+        )
+        passed = check_ast_rules(
+            'name = "Hello"\nvalue = len(name)\n',
+            [make_rule("forbid_function", "function", params={"function_name": "print"})],
+        )
+        self.assertFalse(failed["passed"])
+        self.assertTrue(passed["passed"])
+
+    def test_forbid_method_rule(self):
+        failed = check_ast_rules(
+            'nums = []\nnums.append(1)\n',
+            [make_rule("forbid_method", "method", params={"method_name": "append"})],
+        )
+        passed = check_ast_rules(
+            'nums = [1, 2, 3]\nprint(nums[0])\n',
+            [make_rule("forbid_method", "method", params={"method_name": "append"})],
+        )
+        self.assertFalse(failed["passed"])
+        self.assertTrue(passed["passed"])
+
     def test_exact_for_count_rule(self):
         passed = check_ast_rules(
             'for i in range(3):\n    print(i)\nfor j in range(2):\n    print(j)\n',
@@ -236,6 +272,8 @@ class AstCheckerTestCase(unittest.TestCase):
         self.assertIn("exact_for_count", codes)
         self.assertIn("require_parallel_assign", codes)
         self.assertIn("require_nested_for", codes)
+        self.assertIn("forbid_specific_function", codes)
+        self.assertIn("forbid_specific_method", codes)
 
 
 if __name__ == "__main__":

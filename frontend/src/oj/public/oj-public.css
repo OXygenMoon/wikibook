@@ -227,6 +227,12 @@ html.dark .assignment-prose h3 {
   min-width: max(100%, 72rem);
 }
 
+.scoreboard-table th,
+.scoreboard-table td {
+  text-align: center;
+  vertical-align: middle;
+}
+
 .problem-col {
   min-width: 9rem;
 }

@@ -17,6 +17,8 @@ SUPPORTED_AST_RULE_TYPES = {
     "exception_handler",
     "f_string",
     "forbid",
+    "forbid_function",
+    "forbid_method",
     "forbid_literal_output",
     "forbid_variable",
     "format_method",
@@ -358,6 +360,22 @@ def _build_default_templates():
                 "forbid_variable",
                 "variable",
                 {"editable_fields": ["variable_name"], "field_labels": {"variable_name": "变量名"}, "variable_name": "temp"},
+            ),
+            _template(
+                "forbid_specific_function",
+                "禁止使用指定函数",
+                "禁止写法",
+                "forbid_function",
+                "function",
+                {"editable_fields": ["function_name"], "field_labels": {"function_name": "函数名"}, "function_name": "print"},
+            ),
+            _template(
+                "forbid_specific_method",
+                "禁止使用指定方法",
+                "禁止写法",
+                "forbid_method",
+                "method",
+                {"editable_fields": ["method_name"], "field_labels": {"method_name": "方法名"}, "method_name": "append"},
             ),
             _template("require_parallel_assign", "必须使用同步赋值", "变量赋值", "parallel_assignment", "parallel", {"min_count": 1, "editable_fields": []}),
             _template("min_parallel_assign_count", "同步赋值至少 N 次", "变量赋值", "parallel_assignment", "parallel", {"min_count": 1, "editable_fields": ["min_count"], "field_labels": {"min_count": "最少次数"}}),
@@ -825,6 +843,14 @@ def build_rule_description(rule):
     if rule_type == "forbid_variable":
         variable_name = _first_param(params, "variable_name") or required_value or target
         return f"本题不允许使用变量名 {variable_name}。"
+
+    if rule_type == "forbid_function":
+        function_name = _first_param(params, "function_name") or required_value or target
+        return f"本题不允许使用函数 {function_name}()。"
+
+    if rule_type == "forbid_method":
+        method_name = _first_param(params, "method_name") or required_value or target
+        return f"本题不允许使用方法 {method_name}()。"
 
     if rule_type == "operator":
         return f"本题要求使用 {OPERATOR_LABELS.get(target, target)} 运算符。"
@@ -1538,6 +1564,14 @@ def _evaluate_rule(rule, collector):
     if rule_type == "forbid_variable":
         variable_name = _first_param(params, "variable_name") or required_value or target
         return variable_name not in collector.variables_assigned
+
+    if rule_type == "forbid_function":
+        function_name = _first_param(params, "function_name") or required_value or target
+        return int(collector.function_calls.get(function_name, 0)) <= 0
+
+    if rule_type == "forbid_method":
+        method_name = _first_param(params, "method_name") or required_value or target
+        return int(collector.method_calls.get(method_name, 0)) <= 0
 
     if rule_type == "operator":
         actual_count = int(collector.operators.get(target, 0))

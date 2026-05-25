@@ -11,7 +11,7 @@
     ]
   },
   "frontend/src/oj-admin.js": {
-    "file": "assets/src/oj-admin.js-DRwLoDoj.js",
+    "file": "assets/src/oj-admin.js-aE9Kujt8.js",
     "name": "src/oj-admin.js",
     "src": "frontend/src/oj-admin.js",
     "isEntry": true,
@@ -23,7 +23,7 @@
     ]
   },
   "frontend/src/oj-public.js": {
-    "file": "assets/src/oj-public.js-D8Fp--Mf.js",
+    "file": "assets/src/oj-public.js-B4vnEUps.js",
     "name": "src/oj-public.js",
     "src": "frontend/src/oj-public.js",
     "isEntry": true,
@@ -31,7 +31,7 @@
       "_DifficultyBadge-BmnU10WC.js"
     ],
     "css": [
-      "assets/oj-public-CjzWMtvM.css"
+      "assets/oj-public-CPvDH6ZJ.css"
     ]
   }
 }

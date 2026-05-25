@@ -198,6 +198,8 @@ function buildRuleDescription(ruleLike) {
 
   if (ruleType === 'required_variable') return `本题要求使用变量名 ${params.variable_name || requiredValue || 'score'}。`;
   if (ruleType === 'forbid_variable') return `本题不允许使用变量名 ${params.variable_name || requiredValue || 'temp'}。`;
+  if (ruleType === 'forbid_function') return `本题不允许使用函数 ${params.function_name || requiredValue || 'print'}()。`;
+  if (ruleType === 'forbid_method') return `本题不允许使用方法 ${params.method_name || requiredValue || 'append'}()。`;
   if (ruleType === 'operator') return `本题要求使用 ${operatorLabels[target] || target} 运算符。`;
   if (ruleType === 'aug_assign_operator') return `本题要求使用复合赋值 ${operatorLabels[target] || target}=。`;
   if (ruleType === 'compare_operator') return `本题要求使用 ${compareLabels[target] || target} 比较运算符。`;
@@ -411,6 +413,7 @@ function fieldLabel(rule, field) {
     arg_count: '输出对象数量阈值',
     variable_name: '变量名',
     function_name: '函数名',
+    method_name: '方法名',
     module: '模块名',
     exception_name: '异常类型',
   };

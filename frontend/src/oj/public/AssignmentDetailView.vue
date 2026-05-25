@@ -1,9 +1,36 @@
 <script setup>
+import { ref } from 'vue';
+import { requestJson } from './api.js';
+
 const props = defineProps({
   payload: { type: Object, required: true },
 });
 
 const emit = defineEmits(['back', 'openProblem', 'openSubmissions', 'openSubmission', 'openScoreboard']);
+const rejudging = ref(false);
+const notice = ref(null);
+
+function showNotice(message, category = 'success') {
+  notice.value = { message, category };
+  window.setTimeout(() => {
+    if (notice.value?.message === message) notice.value = null;
+  }, 3200);
+}
+
+async function rejudgeAssignment() {
+  const rejudgeUrl = props.payload.assignment.urls?.rejudge;
+  if (!rejudgeUrl || rejudging.value) return;
+  if (!window.confirm(`确认重测作业《${props.payload.assignment.title}》的全部已结束提交吗？`)) return;
+  rejudging.value = true;
+  try {
+    const data = await requestJson(rejudgeUrl, { method: 'POST' });
+    showNotice(data.message || `已提交 ${data.queuedCount || 0} 条重测任务。`, data.ok ? 'success' : 'error');
+  } catch (error) {
+    showNotice(error.message || '重测失败。', 'error');
+  } finally {
+    rejudging.value = false;
+  }
+}
 </script>
 
 <template>
@@ -21,6 +48,9 @@ const emit = defineEmits(['back', 'openProblem', 'openSubmissions', 'openSubmiss
             <span v-else class="status-chip status-chip--neutral">已关闭</span>
             <span class="metric-chip metric-chip--success">{{ payload.scoreSummary.acceptedCount }}/{{ payload.scoreSummary.problemCount }} 通过</span>
           </div>
+        </div>
+        <div v-if="notice" class="oj-vue-alert mt-4" :class="notice.category === 'error' ? 'oj-vue-alert--error' : 'oj-vue-alert--success'">
+          {{ notice.message }}
         </div>
       </section>
 
@@ -99,6 +129,15 @@ const emit = defineEmits(['back', 'openProblem', 'openSubmissions', 'openSubmiss
         <a v-if="payload.isAdmin && payload.assignment.urls.edit" :href="payload.assignment.urls.edit" class="btn btn-outline rounded-lg justify-start">
           <i class="fas fa-pen" aria-hidden="true"></i> 编辑作业
         </a>
+        <button
+          v-if="payload.isAdmin && payload.assignment.urls.rejudge"
+          type="button"
+          class="btn btn-outline rounded-lg justify-start"
+          :disabled="rejudging"
+          @click="rejudgeAssignment"
+        >
+          <i class="fas fa-rotate-right" :class="{ 'fa-spin': rejudging }" aria-hidden="true"></i> {{ rejudging ? '重测中' : '重测作业' }}
+        </button>
       </div>
 
       <div>

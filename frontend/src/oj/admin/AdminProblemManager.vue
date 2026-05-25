@@ -54,6 +54,20 @@ async function deleteProblem(problem) {
     loading.value = false;
   }
 }
+
+async function rejudgeProblem(problem) {
+  if (!window.confirm(`确认重测这道题的全部已结束提交吗？\n${problem.code} ${problem.title}`)) return;
+
+  loading.value = true;
+  try {
+    const data = await requestJson(problem.urls.rejudge, { method: 'POST' });
+    showNotice(data.message || `已提交 ${data.queuedCount || 0} 条重测任务。`, data.ok ? 'success' : 'error');
+  } catch (error) {
+    showNotice(error.message, 'error');
+  } finally {
+    loading.value = false;
+  }
+}
 </script>
 
 <template>
@@ -115,6 +129,9 @@ async function deleteProblem(problem) {
                 <a :href="problem.urls.files" class="btn btn-sm btn-outline oj-action-btn" title="文件管理" aria-label="文件管理" @click.prevent="emit('navigateFiles', problem.id)">
                   <i class="fas fa-folder-open" aria-hidden="true"></i>
                 </a>
+                <button type="button" class="btn btn-sm btn-outline oj-action-btn" title="重测本题全部提交" aria-label="重测本题全部提交" :disabled="loading" @click="rejudgeProblem(problem)">
+                  <i class="fas fa-rotate-right" aria-hidden="true"></i>
+                </button>
                 <button type="button" class="btn btn-sm btn-error btn-outline oj-action-btn" title="删除题目" aria-label="删除题目" :disabled="loading" @click="deleteProblem(problem)">
                   <i class="fas fa-trash" aria-hidden="true"></i>
                 </button>

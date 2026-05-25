@@ -8,6 +8,8 @@ const props = defineProps({
 
 const emit = defineEmits(['back']);
 const localSubmission = ref(props.submission);
+const rejudging = ref(false);
+const notice = ref(null);
 let pollTimer = 0;
 
 const isFinal = computed(() => !['queued', 'running'].includes(localSubmission.value?.status));
@@ -32,6 +34,29 @@ async function refreshSubmissionDetail() {
   if (!detailUrl) return;
   const data = await requestJson(detailUrl);
   localSubmission.value = data.submissionDetail;
+}
+
+function showNotice(message, category = 'success') {
+  notice.value = { message, category };
+  window.setTimeout(() => {
+    if (notice.value?.message === message) notice.value = null;
+  }, 3200);
+}
+
+async function rejudgeSubmission() {
+  const rejudgeUrl = localSubmission.value?.urls?.rejudge;
+  if (!rejudgeUrl || rejudging.value) return;
+  if (!window.confirm(`确认重测提交 #${localSubmission.value.id} 吗？`)) return;
+  rejudging.value = true;
+  try {
+    const data = await requestJson(rejudgeUrl, { method: 'POST' });
+    if (data.submissionDetail) localSubmission.value = data.submissionDetail;
+    showNotice(data.message || '已重新进入评测队列。', data.ok ? 'success' : 'error');
+  } catch (error) {
+    showNotice(error.message || '重测失败。', 'error');
+  } finally {
+    rejudging.value = false;
+  }
 }
 
 async function pollStatus() {
@@ -85,10 +110,23 @@ onUnmounted(() => {
           <a v-if="localSubmission.problem" :href="localSubmission.problem.url" class="btn btn-outline rounded-lg">
             <i class="fas fa-arrow-left" aria-hidden="true"></i> 返回题目
           </a>
+          <button
+            v-if="localSubmission.canRejudge && localSubmission.urls?.rejudge"
+            type="button"
+            class="btn btn-outline rounded-lg"
+            :disabled="rejudging"
+            @click="rejudgeSubmission"
+          >
+            <i class="fas fa-rotate-right" :class="{ 'fa-spin': rejudging }" aria-hidden="true"></i> {{ rejudging ? '重测中' : '重测提交' }}
+          </button>
           <button type="button" class="btn btn-ghost rounded-lg" @click="emit('back')">
             <i class="fas fa-history" aria-hidden="true"></i> 提交记录
           </button>
         </div>
+      </div>
+
+      <div v-if="notice" class="oj-vue-alert mt-4" :class="notice.category === 'error' ? 'oj-vue-alert--error' : 'oj-vue-alert--success'">
+        {{ notice.message }}
       </div>
 
       <div class="submission-summary-grid">

@@ -14,6 +14,8 @@ const emit = defineEmits(['saved']);
 const form = reactive({});
 const saving = ref(false);
 const uploading = ref(false);
+const rejudging = ref(false);
+const notice = ref(null);
 const descriptionEditor = ref(null);
 const uploadInput = ref(null);
 const classSearch = ref('');
@@ -93,6 +95,13 @@ function appendList(formData, name, values) {
   values.forEach((value) => formData.append(name, value));
 }
 
+function showNotice(message, category = 'success') {
+  notice.value = { message, category };
+  window.setTimeout(() => {
+    if (notice.value?.message === message) notice.value = null;
+  }, 3200);
+}
+
 async function saveAssignment() {
   saving.value = true;
   const formData = new FormData();
@@ -151,6 +160,21 @@ async function deleteFile(file) {
   }
 }
 
+async function rejudgeAssignment() {
+  const rejudgeUrl = props.workspace.urls?.rejudge || props.workspace.assignment?.urls?.rejudge;
+  if (!rejudgeUrl || rejudging.value) return;
+  if (!window.confirm(`确认重测作业《${props.workspace.assignment.title}》的全部已结束提交吗？`)) return;
+  rejudging.value = true;
+  try {
+    const data = await requestJson(rejudgeUrl, { method: 'POST' });
+    showNotice(data.message || `已提交 ${data.queuedCount || 0} 条重测任务。`, data.ok ? 'success' : 'error');
+  } catch (error) {
+    showNotice(error.message || '重测失败。', 'error');
+  } finally {
+    rejudging.value = false;
+  }
+}
+
 watch(
   () => props.workspace,
   (workspace) => {
@@ -172,10 +196,26 @@ onBeforeUnmount(() => {
 
 <template>
   <form class="workbench-shell p-6 md:p-8 flex flex-col gap-8" @submit.prevent="saveAssignment">
+    <div v-if="notice" class="oj-vue-alert" :class="notice.category === 'error' ? 'oj-vue-alert--error' : 'oj-vue-alert--success'">
+      {{ notice.message }}
+    </div>
+
     <section v-if="workspace.assignment" class="bench-card p-5 flex flex-col gap-5">
-      <div>
-        <p class="text-xs font-black tracking-[0.2em] text-stone-400 mb-2">状态概览</p>
-        <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">作业当前状态</h2>
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs font-black tracking-[0.2em] text-stone-400 mb-2">状态概览</p>
+          <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">作业当前状态</h2>
+        </div>
+        <button
+          v-if="workspace.urls?.rejudge || workspace.assignment?.urls?.rejudge"
+          type="button"
+          class="btn btn-sm btn-outline rounded-xl"
+          :disabled="rejudging"
+          @click="rejudgeAssignment"
+        >
+          <i class="fas fa-rotate-right" :class="{ 'fa-spin': rejudging }" aria-hidden="true"></i>
+          {{ rejudging ? '重测中' : '重测全部提交' }}
+        </button>
       </div>
       <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
         <div class="rounded-2xl bg-stone-100 dark:bg-white/5 p-4">

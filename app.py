@@ -746,6 +746,7 @@ def serialize_admin_problem(problem, stats=None):
         "urls": {
             "edit": url_for("edit_oj_problem", problem_id=problem.id),
             "files": url_for("manage_oj_problem_files", problem_id=problem.id),
+            "rejudge": url_for("rejudge_oj_problem", problem_id=problem.id),
             "delete": url_for("delete_oj_problem", problem_id=problem.id),
         },
     }
@@ -784,6 +785,7 @@ def serialize_problem_edit_workspace(problem):
             "template": url_for("edit_oj_problem_template", problem_id=problem.id),
             "templateJson": url_for("edit_oj_problem_template_json", problem_id=problem.id),
             "templateSave": url_for("save_oj_problem_template", problem_id=problem.id),
+            "rejudge": url_for("rejudge_oj_problem", problem_id=problem.id),
             "json": url_for("admin_oj_problem_json", problem_id=problem.id),
         },
     }
@@ -1194,6 +1196,7 @@ def serialize_oj_assignment_form_workspace(assignment=None, form_state=None):
             "urls": {
                 "edit": url_for("edit_oj_assignment", assignment_id=assignment.id),
                 "detail": url_for("oj_assignment_detail", assignment_id=assignment.id),
+                "rejudge": url_for("rejudge_oj_assignment", assignment_id=assignment.id),
             },
         } if assignment else None,
         "form": {
@@ -1249,6 +1252,7 @@ def serialize_oj_assignment_form_workspace(assignment=None, form_state=None):
             "list": url_for("oj_assignment_list"),
             "adminProblems": url_for("manage_oj_problems"),
             "detail": url_for("oj_assignment_detail", assignment_id=assignment.id) if assignment else None,
+            "rejudge": url_for("rejudge_oj_assignment", assignment_id=assignment.id) if assignment else None,
             "uploadFiles": url_for("upload_oj_assignment_files", assignment_id=assignment.id) if assignment else None,
         },
     }
@@ -2231,11 +2235,13 @@ def serialize_submission_detail(task, results=None):
         ],
         "failureFeedback": failure_feedback,
         "canViewCaseDetails": can_view_details,
+        "canRejudge": bool(current_user.is_admin and task.status in OJ_FINAL_STATUSES),
         "urls": {
             "list": url_for("oj_submission_list"),
             "detail": url_for("oj_submission_detail", task_id=task.id),
             "detailJson": url_for("oj_submission_detail_json", task_id=task.id),
             "status": url_for("oj_submission_status_api", task_id=task.id),
+            "rejudge": url_for("rejudge_oj_submission", task_id=task.id) if current_user.is_admin else None,
         },
     }
 
@@ -2298,6 +2304,7 @@ def serialize_oj_assignment_summary(assignment, latest_by_problem=None, accepted
             "scoreboard": url_for("oj_assignment_scoreboard", assignment_id=assignment.id),
             "scoreboardJson": url_for("oj_assignment_scoreboard_json", assignment_id=assignment.id),
             "submissions": url_for("oj_submission_list", assignment_id=assignment.id),
+            "rejudge": url_for("rejudge_oj_assignment", assignment_id=assignment.id) if current_user.is_admin else None,
             "edit": url_for("edit_oj_assignment", assignment_id=assignment.id) if current_user.is_admin else None,
         },
     }
@@ -9669,6 +9676,54 @@ def build_oj_judge_cases(problem):
     ]
 
 
+def prepare_oj_task_for_rejudge(task):
+    if not task.problem:
+        raise ValueError("这条提交没有关联 OJ 题目，不能重测。")
+    if task.status not in OJ_FINAL_STATUSES:
+        raise ValueError("这条提交仍在排队或评测中，暂时不能重测。")
+
+    test_cases = build_oj_judge_cases(task.problem)
+    if not test_cases:
+        raise ValueError(f"题目 {task.problem.problem_code} 还没有配置测试数据，不能重测。")
+
+    JudgeTaskResult.query.filter_by(task_id=task.id).delete()
+    task.test_cases = test_cases
+    task.status = 'queued'
+    task.queue_job_id = None
+    task.runtime_image = app.config.get('JUDGE_RUNTIME_IMAGE')
+    task.time_limit_ms = task.problem.time_limit_ms
+    task.memory_limit_mb = task.problem.memory_limit_mb
+    task.total_score = 0
+    task.passed_count = 0
+    task.total_count = len(test_cases)
+    task.result_summary = None
+    task.error_message = None
+    task.started_at = None
+    task.finished_at = None
+
+
+def enqueue_prepared_oj_tasks(tasks):
+    db.session.commit()
+    queued_count = 0
+    failed = []
+    for task in tasks:
+        try:
+            job = enqueue_judge_task(task.id)
+            task.queue_job_id = job.id
+            queued_count += 1
+        except Exception as exc:
+            task.status = 'system_error'
+            task.finished_at = now_utc8()
+            task.error_message = f"重测任务已准备，但无法连接评测队列：{exc}"
+            task.result_summary = {
+                'status': 'system_error',
+                'error_message': str(exc),
+            }
+            failed.append(task.id)
+    db.session.commit()
+    return queued_count, failed
+
+
 def can_view_oj_judge_task(task, user):
     return bool(user.is_authenticated and (user.is_admin or task.user_id == user.id))
 
@@ -11805,6 +11860,83 @@ def delete_oj_submission(task_id):
     return jsonify({"ok": True, "message": f"已删除提交 #{task_id}。"})
 
 
+@app.route('/api/oj/submissions/<int:task_id>/rejudge', methods=['POST'])
+@login_required
+def rejudge_oj_submission(task_id):
+    ensure_oj_authoring_schema()
+    if not current_user.is_admin:
+        abort(403)
+
+    task = JudgeTask.query.filter(JudgeTask.problem_id.isnot(None), JudgeTask.id == task_id).first_or_404()
+    try:
+        prepare_oj_task_for_rejudge(task)
+        queued_count, failed = enqueue_prepared_oj_tasks([task])
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+    results = task.results.order_by(JudgeTaskResult.case_index.asc()).all()
+    if failed:
+        message = f"提交 #{task.id} 已重置，但评测队列暂不可用。"
+    else:
+        message = f"提交 #{task.id} 已重新进入评测队列。"
+    return jsonify({
+        "ok": queued_count > 0,
+        "message": message,
+        "queuedCount": queued_count,
+        "failedTaskIds": failed,
+        "submissionDetail": serialize_submission_detail(task, results),
+    })
+
+
+@app.route('/admin/oj/problems/<int:problem_id>/rejudge', methods=['POST'])
+@login_required
+def rejudge_oj_problem(problem_id):
+    ensure_oj_authoring_schema()
+    if not current_user.is_admin:
+        abort(403)
+
+    problem = Problem.query.get_or_404(problem_id)
+    tasks = (
+        JudgeTask.query
+        .options(joinedload(JudgeTask.problem))
+        .filter(
+            JudgeTask.problem_id == problem.id,
+            JudgeTask.status.in_(OJ_FINAL_STATUSES),
+        )
+        .order_by(JudgeTask.id.asc())
+        .all()
+    )
+
+    prepared = []
+    skipped = []
+    for task in tasks:
+        try:
+            prepare_oj_task_for_rejudge(task)
+            prepared.append(task)
+        except ValueError as exc:
+            skipped.append({"id": task.id, "message": str(exc)})
+
+    if not prepared:
+        db.session.rollback()
+        return jsonify({
+            "ok": False,
+            "message": "没有可重测的已结束提交。",
+            "queuedCount": 0,
+            "skipped": skipped,
+        }), 400
+
+    queued_count, failed = enqueue_prepared_oj_tasks(prepared)
+    return jsonify({
+        "ok": queued_count > 0,
+        "message": f"题目 {problem.problem_code} 已提交 {queued_count} 条重测任务。",
+        "queuedCount": queued_count,
+        "failedCount": len(failed),
+        "failedTaskIds": failed,
+        "skipped": skipped,
+    })
+
+
 # ==========================================
 # 🧠 管理员：OJ 题库管理
 # ==========================================
@@ -12764,6 +12896,63 @@ def oj_assignment_scoreboard_json(assignment_id):
     ensure_oj_authoring_schema()
     assignment = get_oj_assignment_or_404_visible(assignment_id)
     return jsonify({"ok": True, "assignmentScoreboard": build_oj_assignment_scoreboard_payload(assignment)})
+
+
+@app.route('/admin/oj/assignments/<int:assignment_id>/rejudge', methods=['POST'])
+@login_required
+def rejudge_oj_assignment(assignment_id):
+    ensure_oj_authoring_schema()
+    if not current_user.is_admin:
+        abort(403)
+
+    assignment = OJAssignment.query.get_or_404(assignment_id)
+    problem_ids = [link.problem_id for link in assignment.problem_links]
+    if not problem_ids:
+        return jsonify({
+            "ok": False,
+            "message": "这份作业还没有题目，不能重测。",
+            "queuedCount": 0,
+        }), 400
+
+    tasks = (
+        JudgeTask.query
+        .options(joinedload(JudgeTask.problem))
+        .filter(
+            JudgeTask.assignment_id == assignment.id,
+            JudgeTask.problem_id.in_(problem_ids),
+            JudgeTask.status.in_(OJ_FINAL_STATUSES),
+        )
+        .order_by(JudgeTask.id.asc())
+        .all()
+    )
+
+    prepared = []
+    skipped = []
+    for task in tasks:
+        try:
+            prepare_oj_task_for_rejudge(task)
+            prepared.append(task)
+        except ValueError as exc:
+            skipped.append({"id": task.id, "message": str(exc)})
+
+    if not prepared:
+        db.session.rollback()
+        return jsonify({
+            "ok": False,
+            "message": "没有可重测的已结束作业提交。",
+            "queuedCount": 0,
+            "skipped": skipped,
+        }), 400
+
+    queued_count, failed = enqueue_prepared_oj_tasks(prepared)
+    return jsonify({
+        "ok": queued_count > 0,
+        "message": f"作业《{assignment.title}》已提交 {queued_count} 条重测任务。",
+        "queuedCount": queued_count,
+        "failedCount": len(failed),
+        "failedTaskIds": failed,
+        "skipped": skipped,
+    })
 
 
 @app.route('/admin/oj/assignments/new', methods=['GET', 'POST'])

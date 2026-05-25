@@ -679,6 +679,64 @@ html.dark .sample-failure-callout {
   color: #fecaca;
 }
 
+.submission-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.submission-detail__hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.submission-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.35fr) repeat(5, minmax(7rem, 1fr));
+  gap: 0.75rem;
+}
+
+.submission-summary-cell {
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.82);
+  padding: 0.85rem;
+}
+
+.submission-summary-cell--status {
+  background: rgba(236, 254, 255, 0.84);
+}
+
+html.dark .submission-summary-cell {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+html.dark .submission-summary-cell--status {
+  background: rgba(8, 145, 178, 0.12);
+}
+
+.submission-code-panel {
+  overflow: hidden;
+}
+
+.submission-code-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+  padding: 1.25rem 1.25rem 1rem;
+}
+
+html.dark .submission-code-panel__header {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 .case-note {
   border: 1px dashed rgba(15, 23, 42, 0.12);
   border-radius: 14px;
@@ -700,6 +758,20 @@ html.dark .sample-failure-callout {
 .judge-output {
   min-height: 4rem;
   max-height: 14rem;
+}
+
+.judge-code--submission {
+  max-height: min(42rem, 68vh);
+  border-radius: 0;
+  background: #0b1120;
+  font-size: 0.9rem;
+  line-height: 1.72;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 1.25rem;
+  tab-size: 4;
+  white-space: pre;
+  word-break: normal;
 }
 
 .judge-output--expected {
@@ -1087,6 +1159,26 @@ html.dark .self-test-field textarea[readonly] {
 @media (max-width: 768px) {
   .statement-sample-pair {
     grid-template-columns: 1fr;
+  }
+
+  .submission-detail__hero,
+  .submission-code-panel__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .submission-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .submission-summary-cell--status {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1180px) {
+  .submission-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

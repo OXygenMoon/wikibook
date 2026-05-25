@@ -820,17 +820,7 @@ AST_RULE_SPECIAL_PARAM_KEYS = {
 OJ_LANGUAGE_OPTIONS = ("python", "cpp", "c")
 OJ_DIFFICULTY_VALUES = ("easy", "medium", "hard", "extreme", "glitch")
 
-OJ_DEFAULT_PYTHON_TEMPLATE = """import sys
-
-
-def solve():
-    data = sys.stdin.read().split()
-    # TODO: 在这里编写解题逻辑
-
-
-if __name__ == "__main__":
-    solve()
-"""
+OJ_DEFAULT_PYTHON_TEMPLATE = ""
 
 
 def get_oj_user_setting(user):
@@ -11150,7 +11140,7 @@ def oj_settings():
         setting.default_language = normalize_oj_default_language(request.form.get('default_language'))
         if action == 'reset_template':
             setting.python_template = ""
-            flash('Python 标准模板已恢复为系统默认。', 'success')
+            flash('Python 个人模板已清空。', 'success')
         else:
             setting.python_template = request.form.get('python_template', '').strip()
             flash('OJ 设置已保存。', 'success')

@@ -22,9 +22,9 @@ let autosaveTimer = 0;
 let syntaxTimer = 0;
 
 const defaultSnippets = {
-  python: 'import sys\n\n# 在这里开始编写你的解法\n',
-  cpp: '#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    return 0;\n}\n',
-  c: '#include <stdio.h>\n\nint main(void) {\n    return 0;\n}\n',
+  python: '',
+  cpp: '',
+  c: '',
 };
 
 const latestTask = computed(() => props.workspace.latestTask);

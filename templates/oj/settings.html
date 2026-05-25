@@ -30,7 +30,7 @@
         <div>
             <p class="text-xs font-black tracking-[0.32em] uppercase text-cyan-600 mb-2">OJ Settings</p>
             <h1 class="text-3xl md:text-4xl font-black text-stone-800 dark:text-stone-100">OJ 设置</h1>
-            <p class="text-stone-500 dark:text-stone-400 mt-2">维护个人编程偏好。新题没有本地草稿、也没有提交记录时，会用这里的模板初始化。</p>
+            <p class="text-stone-500 dark:text-stone-400 mt-2">维护个人编程偏好。新题没有本地草稿、也没有提交记录时，会优先使用题目模板，其次使用这里的个人模板。</p>
         </div>
         <a href="{{ url_for('oj_problem_list') }}" class="btn btn-ghost rounded-2xl">返回题库</a>
     </header>
@@ -55,21 +55,21 @@
             <div>
                 <p class="text-xs font-black tracking-[0.26em] uppercase text-cyan-600 mb-2">Python Template</p>
                 <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">Python 标准模板</h2>
-                <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">管理员为题目配置了“本题模板”时，会优先使用本题模板；否则使用你的个人模板。</p>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">管理员为题目配置了“本题模板”时，会优先使用本题模板；否则使用你的个人模板。留空则从空白编辑器开始。</p>
             </div>
             <textarea
                 name="python_template"
                 class="textarea textarea-bordered rounded-2xl font-mono min-h-[28rem] leading-6"
                 spellcheck="false"
-                placeholder="{{ default_python_template }}"
+                placeholder="可选：填写你常用的 Python 起手代码"
             >{{ setting.python_template or "" }}</textarea>
-            <p class="text-xs text-stone-400">留空时使用系统内置模板。已经存在的本地草稿不会被覆盖。</p>
+            <p class="text-xs text-stone-400">留空时不预置任何代码。已经存在的本地草稿不会被覆盖。</p>
         </section>
 
         <div class="flex items-center justify-between gap-4 flex-wrap pt-4 border-t border-stone-200 dark:border-white/10">
             <p class="text-sm text-stone-500 dark:text-stone-400">设置保存后，会在下一道未开始的新题里生效。</p>
             <div class="flex gap-3 flex-wrap">
-                <button type="submit" name="action" value="reset_template" class="btn btn-outline rounded-2xl px-6">恢复系统模板</button>
+                <button type="submit" name="action" value="reset_template" class="btn btn-outline rounded-2xl px-6">清空个人模板</button>
                 <button type="submit" name="action" value="save" class="btn btn-primary rounded-2xl px-8">保存 OJ 设置</button>
             </div>
         </div>

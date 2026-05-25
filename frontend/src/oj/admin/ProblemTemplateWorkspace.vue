@@ -59,14 +59,14 @@ function clearTemplate() {
         <p class="text-xs font-black tracking-[0.26em] uppercase text-cyan-600 mb-2">Problem Template</p>
         <h2 class="text-xl font-black text-stone-800 dark:text-stone-100">本题 Python 模板</h2>
         <p class="text-sm text-stone-500 dark:text-stone-400 mt-2">
-          本题模板优先级高于学生自己的 OJ 设置。留空时，未开始的新草稿会使用学生个人模板或系统默认模板。
+          本题模板优先级高于学生自己的 OJ 设置。留空时，未开始的新草稿会使用学生个人模板；学生也未设置时从空白编辑器开始。
         </p>
       </div>
       <textarea
         v-model="pythonTemplate"
         class="textarea textarea-bordered rounded-2xl mono-editor"
         spellcheck="false"
-        placeholder="例如：import sys&#10;&#10;def solve():&#10;    pass&#10;&#10;if __name__ == '__main__':&#10;    solve()"
+        placeholder="可选：填写这道题希望学生看到的 Python 起始代码"
       ></textarea>
     </section>
 

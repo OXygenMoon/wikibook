@@ -92,7 +92,7 @@ async function submitCode() {
             class="textarea source-editor w-full"
             spellcheck="false"
             required
-            placeholder="# 在这里粘贴你的代码"
+            placeholder="在这里粘贴你的代码"
             @input="syncDraft"
           ></textarea>
         </label>

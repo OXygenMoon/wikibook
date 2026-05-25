@@ -1,34 +1,34 @@
 {
   "_DifficultyBadge-!~{003}~.js": {
-    "file": "assets/DifficultyBadge-CUVhBdJ-.css",
+    "file": "assets/DifficultyBadge-BTtXDHLw.css",
     "src": "_DifficultyBadge-!~{003}~.js"
   },
-  "_DifficultyBadge-WS5MBiuh.js": {
-    "file": "assets/DifficultyBadge-WS5MBiuh.js",
+  "_DifficultyBadge-BmnU10WC.js": {
+    "file": "assets/DifficultyBadge-BmnU10WC.js",
     "name": "DifficultyBadge",
     "css": [
-      "assets/DifficultyBadge-CUVhBdJ-.css"
+      "assets/DifficultyBadge-BTtXDHLw.css"
     ]
   },
   "frontend/src/oj-admin.js": {
-    "file": "assets/src/oj-admin.js-CrmjBPKU.js",
+    "file": "assets/src/oj-admin.js-DRwLoDoj.js",
     "name": "src/oj-admin.js",
     "src": "frontend/src/oj-admin.js",
     "isEntry": true,
     "imports": [
-      "_DifficultyBadge-WS5MBiuh.js"
+      "_DifficultyBadge-BmnU10WC.js"
     ],
     "css": [
       "assets/oj-admin-BcM-gHSs.css"
     ]
   },
   "frontend/src/oj-public.js": {
-    "file": "assets/src/oj-public.js-B-AGUc1o.js",
+    "file": "assets/src/oj-public.js-CNrrj67a.js",
     "name": "src/oj-public.js",
     "src": "frontend/src/oj-public.js",
     "isEntry": true,
     "imports": [
-      "_DifficultyBadge-WS5MBiuh.js"
+      "_DifficultyBadge-BmnU10WC.js"
     ],
     "css": [
       "assets/oj-public-CMxSMz7i.css"

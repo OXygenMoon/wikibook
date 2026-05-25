@@ -11,7 +11,7 @@ const props = defineProps({
 
 const label = computed(() => difficultyLabel(props.difficulty));
 const isGlitch = computed(() => props.difficulty === 'glitch');
-const glitchText = ref('00000000');
+const glitchText = ref('0000');
 const isShaking = ref(false);
 const isFlashing = ref(false);
 let rollTimer = 0;
@@ -19,7 +19,7 @@ let shakeTimer = 0;
 let flashTimer = 0;
 
 const GLITCH_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@$#%&*+=?<>█▓▒░';
-const GLITCH_LENGTH = 8;
+const GLITCH_LENGTH = 4;
 
 const classes = computed(() => [
   'difficulty-badge',
@@ -150,7 +150,7 @@ onBeforeUnmount(stopGlitch);
 }
 
 .difficulty-badge--glitch {
-  width: 8ch;
+  width: 6ch;
   max-width: none;
   min-height: 1.9rem;
   border-color: rgba(0, 255, 240, 0.72);

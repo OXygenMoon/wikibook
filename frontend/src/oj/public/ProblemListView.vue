@@ -89,7 +89,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
         <div class="text-2xl font-black text-rose-600">{{ payload.stats.hard }}</div>
       </div>
       <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">极度困难</div>
+        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">特难</div>
         <div class="text-2xl font-black text-red-800 dark:text-red-300">{{ payload.stats.extreme }}</div>
       </div>
       <div class="oj-panel p-4">

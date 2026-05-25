@@ -28,6 +28,7 @@ import re
 
 import logging
 import traceback
+from types import SimpleNamespace
 
 from judge_security import first_violation_message, validate_python_source, violations_to_diagnostics
 from queue_service import enqueue_judge_task
@@ -1650,6 +1651,7 @@ def serialize_oj_problem_code_workspace(problem, active_assignment=None):
             "submit": url_for("submit_oj_problem", slug=problem.slug, assignment_id=assignment_id),
             "submissions": url_for("oj_submission_list", problem_id=problem.id, assignment_id=assignment_id, mine=1),
             "syntaxCheck": url_for("oj_problem_syntax_check", slug=problem.slug, assignment_id=assignment_id),
+            "selfTest": url_for("oj_problem_self_test", slug=problem.slug, assignment_id=assignment_id),
             "adminEdit": url_for("edit_oj_problem", problem_id=problem.id) if current_user.is_admin else None,
         },
     }
@@ -11319,6 +11321,82 @@ def oj_problem_syntax_check(slug):
         'diagnostics': [],
         'message': 'Python 语法与安全检查通过。',
     })
+
+
+@app.route('/oj/problems/<slug>/self-test', methods=['POST'])
+@login_required
+def oj_problem_self_test(slug):
+    ensure_oj_authoring_schema()
+    problem = Problem.query.filter_by(slug=slug).first_or_404()
+    active_assignment = get_assignment_for_problem_request(problem)
+    if not can_view_problem(problem, current_user):
+        abort(404)
+
+    payload = request.get_json(silent=True) or {}
+    language = (payload.get('language') or '').strip().lower()
+    source_code = payload.get('source_code') or ''
+    stdin_text = payload.get('stdin') or ''
+    allowed_languages = problem.allowed_languages or ['python', 'cpp', 'c']
+
+    if language not in allowed_languages:
+        return jsonify({'ok': False, 'message': '这道题暂不支持所选语言。'}), 400
+    if not source_code.strip():
+        return jsonify({'ok': False, 'message': '请先填写代码再自测。'}), 400
+    if len(stdin_text.encode('utf-8')) > 64 * 1024:
+        return jsonify({'ok': False, 'message': '自测输入过长，请控制在 64KB 以内。'}), 400
+
+    if language == 'python':
+        is_safe, violations = validate_python_source(source_code)
+        if not is_safe:
+            return jsonify({
+                'ok': True,
+                'status': 'security_violation',
+                'statusLabel': '安全限制',
+                'statusTone': 'danger',
+                'stdout': '',
+                'timeMs': 0,
+            })
+
+    task = SimpleNamespace(
+        language=language,
+        source_code=source_code,
+        test_cases=[{'input': stdin_text, 'expected_output': '', 'score': 0}],
+        time_limit_ms=problem.time_limit_ms,
+        memory_limit_mb=problem.memory_limit_mb,
+        runtime_image=app.config.get('JUDGE_RUNTIME_IMAGE'),
+    )
+
+    try:
+        from judge_tasks import _run_in_runtime_container
+
+        result_payload = _run_in_runtime_container(task)
+        result = (result_payload.get('results') or [{}])[0]
+        if result:
+            raw_status = result.get('status') or result_payload.get('status') or 'system_error'
+            status = 'accepted' if raw_status in {'accepted', 'wrong_answer'} else raw_status
+        elif result_payload.get('failure_reason') == 'compile_error':
+            status = 'compile_error'
+        else:
+            status = result_payload.get('status') or 'system_error'
+        meta = {'label': '运行完成', 'tone': 'success'} if status == 'accepted' else oj_case_status_meta(status)
+        return jsonify({
+            'ok': True,
+            'status': status,
+            'statusLabel': meta['label'],
+            'statusTone': meta['tone'],
+            'stdout': result.get('actual_output') or '',
+            'timeMs': result.get('time_ms') or 0,
+        })
+    except Exception:
+        app.logger.exception("OJ self test failed")
+        return jsonify({
+            'ok': True,
+            'status': 'system_error',
+            'statusLabel': '自测失败',
+            'statusTone': 'danger',
+            'stdout': '',
+            'timeMs': 0,
+        })
 
 
 @app.route('/oj/problems/<slug>/python-completions', methods=['POST'])

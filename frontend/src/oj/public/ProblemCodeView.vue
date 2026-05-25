@@ -16,6 +16,12 @@ const syntaxStatus = ref({ text: '正在初始化编辑器...', isError: false }
 const activeLanguage = ref(props.workspace.defaultLanguage || props.workspace.problem.allowedLanguages[0] || 'python');
 const submitting = ref(false);
 const editorReady = ref(false);
+const selfTestInput = ref('');
+const selfTestOutput = ref('');
+const selfTestStatus = ref({ text: '准备自测', tone: 'neutral' });
+const selfTesting = ref(false);
+const editorFontSize = ref(Number(localStorage.getItem('oj-code-editor-font-size')) || 14);
+const editorFontFamily = ref(localStorage.getItem('oj-code-editor-font-family') || '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace');
 
 let monacoEditor = null;
 let autosaveTimer = 0;
@@ -26,6 +32,16 @@ const defaultSnippets = {
   cpp: '',
   c: '',
 };
+
+const fontOptions = [
+  { label: 'JetBrains Mono', value: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' },
+  { label: 'Fira Code', value: '"Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' },
+  { label: 'Cascadia Code', value: '"Cascadia Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' },
+  { label: 'Menlo', value: 'Menlo, Monaco, Consolas, ui-monospace, monospace' },
+  { label: 'Consolas', value: 'Consolas, "Courier New", ui-monospace, monospace' },
+];
+
+const fontSizeOptions = [12, 13, 14, 15, 16, 18, 20, 22];
 
 const latestTask = computed(() => props.workspace.latestTask);
 const assignmentId = computed(() => props.workspace.activeAssignment?.id || null);
@@ -81,6 +97,27 @@ function applyLanguage(language) {
   } else {
     setSyntaxStatus('当前语言提供高亮和草稿保存，语法检查暂支持 Python。', false);
   }
+}
+
+function applyEditorPreferences() {
+  if (!monacoEditor) return;
+  monacoEditor.updateOptions({
+    fontFamily: editorFontFamily.value,
+    fontSize: Number(editorFontSize.value) || 14,
+    lineHeight: Math.round((Number(editorFontSize.value) || 14) * 1.7),
+  });
+}
+
+function changeFontFamily(event) {
+  editorFontFamily.value = event.target.value;
+  localStorage.setItem('oj-code-editor-font-family', editorFontFamily.value);
+  applyEditorPreferences();
+}
+
+function changeFontSize(event) {
+  editorFontSize.value = Number(event.target.value) || 14;
+  localStorage.setItem('oj-code-editor-font-size', String(editorFontSize.value));
+  applyEditorPreferences();
 }
 
 async function checkSyntax() {
@@ -156,9 +193,9 @@ async function initializeEditor() {
     theme,
     automaticLayout: true,
     minimap: { enabled: false },
-    fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-    fontSize: 14,
-    lineHeight: 24,
+    fontFamily: editorFontFamily.value,
+    fontSize: editorFontSize.value,
+    lineHeight: Math.round(editorFontSize.value * 1.7),
     padding: { top: 12, bottom: 12 },
     scrollBeyondLastLine: false,
     smoothScrolling: true,
@@ -208,6 +245,40 @@ async function submitCode() {
     setNotice(error.message || '提交失败，请稍后重试。');
   } finally {
     submitting.value = false;
+  }
+}
+
+async function runSelfTest() {
+  if (!monacoEditor || selfTesting.value) return;
+  const sourceCode = monacoEditor.getValue();
+  if (!sourceCode.trim()) {
+    setNotice('请先填写代码再自测。');
+    return;
+  }
+  selfTesting.value = true;
+  selfTestOutput.value = '';
+  selfTestStatus.value = { text: '正在运行...', tone: 'neutral' };
+  saveDraft();
+  try {
+    const data = await requestJson(props.workspace.urls.selfTest, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language: activeLanguage.value,
+        source_code: sourceCode,
+        stdin: selfTestInput.value,
+      }),
+    });
+    selfTestOutput.value = data.stdout || '';
+    selfTestStatus.value = {
+      text: `${data.statusLabel || '自测完成'}${data.timeMs ? ` · ${data.timeMs} ms` : ''}`,
+      tone: data.statusTone || 'neutral',
+    };
+  } catch (error) {
+    selfTestOutput.value = '';
+    selfTestStatus.value = { text: error.message || '自测失败', tone: 'danger' };
+  } finally {
+    selfTesting.value = false;
   }
 }
 
@@ -318,6 +389,12 @@ onUnmounted(() => {
           <select class="editor-select" :value="activeLanguage" aria-label="选择语言" @change="changeLanguage">
             <option v-for="language in workspace.problem.allowedLanguages" :key="language" :value="language">{{ language }}</option>
           </select>
+          <select class="editor-select" :value="editorFontFamily" aria-label="选择编辑器字体" @change="changeFontFamily">
+            <option v-for="font in fontOptions" :key="font.value" :value="font.value">{{ font.label }}</option>
+          </select>
+          <select class="editor-select editor-select--compact" :value="editorFontSize" aria-label="选择编辑器字号" @change="changeFontSize">
+            <option v-for="size in fontSizeOptions" :key="size" :value="size">{{ size }}px</option>
+          </select>
           <span class="text-sm text-stone-500 dark:text-stone-400">
             <i class="fas fa-lock" aria-hidden="true"></i>
             使用全部测试点评测
@@ -340,6 +417,30 @@ onUnmounted(() => {
             <span>{{ syntaxStatus.text }}</span>
           </div>
         </div>
+        <section class="self-test-panel">
+          <div class="self-test-header">
+            <div class="workspace-tab self-test-tab">
+              <i class="fas fa-vial" aria-hidden="true"></i>
+              <span>自测</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="status-chip" :class="`status-chip--${selfTestStatus.tone}`">{{ selfTestStatus.text }}</span>
+              <button type="button" class="btn btn-sm btn-outline rounded-lg" :disabled="selfTesting || !editorReady" @click="runSelfTest">
+                <i class="fas fa-play" aria-hidden="true"></i> {{ selfTesting ? '运行中' : '运行' }}
+              </button>
+            </div>
+          </div>
+          <div class="self-test-grid">
+            <label class="self-test-field">
+              <span>输入</span>
+              <textarea v-model="selfTestInput" spellcheck="false" placeholder="在这里输入自测数据"></textarea>
+            </label>
+            <label class="self-test-field">
+              <span>输出</span>
+              <textarea :value="selfTestOutput" spellcheck="false" readonly placeholder="运行后显示标准输出"></textarea>
+            </label>
+          </div>
+        </section>
       </div>
     </section>
   </div>

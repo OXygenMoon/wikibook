@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { difficultyLabel } from './difficulty.js';
 
 const props = defineProps({
@@ -11,22 +11,96 @@ const props = defineProps({
 
 const label = computed(() => difficultyLabel(props.difficulty));
 const isGlitch = computed(() => props.difficulty === 'glitch');
+const glitchText = ref('00000000');
+const isShaking = ref(false);
+const isFlashing = ref(false);
+let rollTimer = 0;
+let shakeTimer = 0;
+let flashTimer = 0;
+
+const GLITCH_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@$#%&*+=?<>█▓▒░';
+const GLITCH_LENGTH = 8;
+
 const classes = computed(() => [
   'difficulty-badge',
   props.difficulty ? `difficulty-badge--${props.difficulty}` : '',
-  { 'difficulty-badge--glitch': isGlitch.value },
+  {
+    'difficulty-badge--glitch': isGlitch.value,
+    'difficulty-badge--shake': isShaking.value,
+    'difficulty-badge--flash': isFlashing.value,
+  },
 ]);
+
+function randomChar() {
+  return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
+}
+
+function randomCode() {
+  let text = '';
+  for (let index = 0; index < GLITCH_LENGTH; index += 1) {
+    text += randomChar();
+  }
+  return text;
+}
+
+function triggerShake() {
+  window.clearTimeout(shakeTimer);
+  isShaking.value = false;
+  window.requestAnimationFrame(() => {
+    isShaking.value = true;
+    shakeTimer = window.setTimeout(() => {
+      isShaking.value = false;
+    }, 90);
+  });
+}
+
+function triggerFlash() {
+  window.clearTimeout(flashTimer);
+  isFlashing.value = false;
+  window.requestAnimationFrame(() => {
+    isFlashing.value = true;
+    flashTimer = window.setTimeout(() => {
+      isFlashing.value = false;
+    }, 120);
+  });
+}
+
+function roll() {
+  glitchText.value = randomCode();
+  if (Math.random() > 0.76) triggerShake();
+  if (Math.random() > 0.86) triggerFlash();
+}
+
+function stopGlitch() {
+  window.clearInterval(rollTimer);
+  window.clearTimeout(shakeTimer);
+  window.clearTimeout(flashTimer);
+  rollTimer = 0;
+  isShaking.value = false;
+  isFlashing.value = false;
+}
+
+function startGlitch() {
+  stopGlitch();
+  glitchText.value = randomCode();
+  rollTimer = window.setInterval(roll, 180);
+}
+
+watch(isGlitch, (enabled) => {
+  if (enabled) startGlitch();
+  else stopGlitch();
+});
+
+onMounted(() => {
+  if (isGlitch.value) startGlitch();
+});
+
+onBeforeUnmount(stopGlitch);
 </script>
 
 <template>
-  <span :class="classes" :title="label" :aria-label="label">
-    <span v-if="isGlitch" class="difficulty-glitch-track" aria-hidden="true">
-      <span>10?&amp;#@</span>
-      <span>∑0!7?%</span>
-      <span>乱码滚动</span>
-      <span>4#?9∞</span>
-      <span>10?&amp;#@</span>
-    </span>
+  <span :class="classes" :title="label" :aria-label="label" :data-text="isGlitch ? glitchText : null">
+    <span v-if="isGlitch" class="difficulty-glitch-code" aria-hidden="true">{{ glitchText }}</span>
     <span :class="{ 'sr-only': isGlitch }">{{ label }}</span>
   </span>
 </template>
@@ -76,35 +150,155 @@ const classes = computed(() => [
 }
 
 .difficulty-badge--glitch {
-  width: 6.8rem;
-  border-color: rgba(34, 211, 238, 0.62);
+  width: 8ch;
+  max-width: none;
+  min-height: 1.9rem;
+  border-color: rgba(0, 255, 240, 0.72);
   background:
-    linear-gradient(90deg, rgba(8, 145, 178, 0.28), rgba(244, 63, 94, 0.20)),
-    rgb(15 23 42);
-  color: rgb(236 254 255);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  letter-spacing: 0;
-  text-shadow: 1px 0 rgb(244 63 94), -1px 0 rgb(34 211 238);
+    linear-gradient(90deg, rgba(255, 0, 90, 0.08), transparent 18%, transparent 82%, rgba(0, 255, 240, 0.08)),
+    rgba(0, 20, 28, 0.76);
+  color: #7dfff7;
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-shadow:
+    0 0 8px rgba(0, 255, 240, 0.95),
+    1px 0 0 rgba(255, 0, 100, 0.7),
+    -1px 0 0 rgba(0, 120, 255, 0.7);
+  box-shadow:
+    0 0 16px rgba(0, 255, 240, 0.22),
+    0 0 28px rgba(255, 0, 100, 0.12),
+    inset 0 0 14px rgba(0, 255, 240, 0.14);
+  isolation: isolate;
+  text-transform: none;
+  animation: difficulty-cyber-pulse 2.4s infinite steps(2);
 }
 
-.difficulty-glitch-track {
-  display: flex;
-  height: 1em;
-  flex-direction: column;
-  animation: difficulty-glitch-roll 1.15s steps(4, end) infinite;
+.difficulty-badge--glitch::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0.25rem 0.75rem;
+  z-index: 2;
+  color: #ff2b8a;
+  text-shadow:
+    -2px 0 0 rgba(255, 0, 100, 0.95),
+    2px 0 0 rgba(0, 255, 240, 0.8);
+  opacity: 0;
+  pointer-events: none;
+  animation: difficulty-error-slice 2.1s infinite steps(1);
 }
 
-.difficulty-glitch-track span {
-  height: 1em;
-  line-height: 1;
+.difficulty-badge--glitch::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 0, 100, 0.22) 48%, transparent 52%),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.08) 0,
+      rgba(255, 255, 255, 0.08) 1px,
+      transparent 1px,
+      transparent 5px
+    );
+  background-size: 180% 100%, 100% 100%;
+  opacity: 0.38;
+  pointer-events: none;
+  animation: difficulty-scan-move 1.6s linear infinite;
 }
 
-@keyframes difficulty-glitch-roll {
-  from {
-    transform: translateY(0);
+.difficulty-badge--shake {
+  animation: difficulty-shake 0.08s steps(2) 1, difficulty-cyber-pulse 2.4s infinite steps(2);
+}
+
+.difficulty-badge--flash {
+  border-color: rgba(255, 0, 100, 0.95);
+  color: #ffffff;
+  box-shadow:
+    0 0 18px rgba(255, 0, 100, 0.8),
+    0 0 34px rgba(0, 255, 240, 0.28),
+    inset 0 0 18px rgba(255, 0, 100, 0.28);
+}
+
+.difficulty-glitch-code {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes difficulty-shake {
+  0% {
+    transform: translate(0, 0) skewX(0deg);
   }
+  40% {
+    transform: translate(-2px, 1px) skewX(-4deg);
+  }
+  80% {
+    transform: translate(2px, -1px) skewX(4deg);
+  }
+  100% {
+    transform: translate(0, 0) skewX(0deg);
+  }
+}
+
+@keyframes difficulty-cyber-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  47% {
+    filter: brightness(1);
+  }
+  48% {
+    filter: brightness(1.35) contrast(1.35);
+  }
+  50% {
+    filter: brightness(0.9);
+  }
+  52% {
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes difficulty-scan-move {
+  from {
+    background-position: -120% 0, 0 0;
+  }
+
   to {
-    transform: translateY(-4em);
+    background-position: 120% 0, 0 0;
+  }
+}
+
+@keyframes difficulty-error-slice {
+  0%,
+  78%,
+  100% {
+    opacity: 0;
+    clip-path: inset(0 0 0 0);
+    transform: translateX(0);
+  }
+  80% {
+    opacity: 0.95;
+    clip-path: inset(0 0 68% 0);
+    transform: translateX(-4px);
+  }
+  82% {
+    opacity: 0.75;
+    clip-path: inset(36% 0 42% 0);
+    transform: translateX(5px);
+  }
+  84% {
+    opacity: 0.9;
+    clip-path: inset(70% 0 0 0);
+    transform: translateX(-3px);
+  }
+  86% {
+    opacity: 0;
+    clip-path: inset(0 0 0 0);
+    transform: translateX(0);
   }
 }
 

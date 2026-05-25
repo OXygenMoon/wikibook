@@ -705,8 +705,8 @@ html.dark .sample-failure-callout {
   display: grid;
   grid-template-columns: minmax(22rem, 42%) minmax(26rem, 1fr);
   gap: 0.85rem;
-  min-height: 34rem;
-  height: min(46rem, calc(100vh - 10rem));
+  min-height: 42rem;
+  height: min(52rem, calc(100vh - 7rem));
   color: #334155;
 }
 
@@ -756,10 +756,10 @@ html.dark .workspace-header {
 .problem-scroll,
 .editor-body {
   height: calc(100% - 3.2rem);
-  overflow: auto;
 }
 
 .problem-scroll {
+  overflow: auto;
   padding: 1.45rem;
 }
 
@@ -793,8 +793,8 @@ html.dark .sample-card {
 }
 
 .editor-shell {
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 
@@ -827,6 +827,11 @@ html.dark .editor-toolbar {
   background: transparent;
   color: inherit;
   font-weight: 800;
+  max-width: 13rem;
+}
+
+.editor-select--compact {
+  max-width: 5.5rem;
 }
 
 .editor-select:focus {
@@ -840,7 +845,7 @@ html.dark .editor-select:focus {
 
 .monaco-editor-frame {
   position: relative;
-  min-height: 20rem;
+  min-height: 22rem;
   height: 100%;
   background: #ffffff;
 }
@@ -886,6 +891,100 @@ html.dark .diagnostic-line.error {
   color: #f87171;
 }
 
+.editor-body {
+  display: grid;
+  grid-template-rows: minmax(24rem, 1fr) auto 12.5rem;
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.self-test-panel {
+  min-height: 0;
+  border-top: 1px solid var(--workspace-border);
+  background: rgba(248, 250, 252, 0.72);
+  padding: 0.85rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+html.dark .self-test-panel {
+  background: rgba(17, 24, 39, 0.78);
+}
+
+.self-test-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.self-test-tab {
+  height: 1.9rem;
+  font-size: 0.78rem;
+}
+
+.self-test-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.self-test-field {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.35rem;
+  min-height: 0;
+}
+
+.self-test-field span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+html.dark .self-test-field span {
+  color: #a1a1aa;
+}
+
+.self-test-field textarea {
+  min-height: 5.5rem;
+  height: 100%;
+  resize: none;
+  border: 1px solid var(--workspace-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f2937;
+  padding: 0.7rem;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  outline: none;
+}
+
+.self-test-field textarea:focus {
+  border-color: rgba(14, 165, 233, 0.45);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+}
+
+.self-test-field textarea[readonly] {
+  background: rgba(241, 245, 249, 0.9);
+}
+
+html.dark .self-test-field textarea {
+  background: rgba(2, 6, 23, 0.72);
+  color: #e5e7eb;
+}
+
+html.dark .self-test-field textarea[readonly] {
+  background: rgba(15, 23, 42, 0.82);
+}
+
 .btn-judge {
   border: 0;
   border-radius: 12px;
@@ -918,11 +1017,21 @@ html.dark .diagnostic-line.error {
     max-height: none;
   }
 
-  .monaco-editor-frame {
-    min-height: 28rem;
+  .editor-body {
+    grid-template-rows: 32rem auto auto;
+    overflow: visible;
   }
 
-  .sample-grid {
+  .monaco-editor-frame {
+    min-height: 32rem;
+  }
+
+  .sample-grid,
+  .self-test-grid {
     grid-template-columns: 1fr;
+  }
+
+  .self-test-field textarea {
+    min-height: 9rem;
   }
 }

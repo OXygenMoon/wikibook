@@ -3168,12 +3168,18 @@
                 <a href="{{ url_for('oj_assignment_list') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/oj/assignments') else '' }}">
                     <i class="fas fa-clipboard-list"></i> 作业
                 </a>
+                <a href="{{ url_for('oj_training_list') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/oj/trainings') else '' }}">
+                    <i class="fas fa-diagram-project"></i> 训练
+                </a>
                 <a href="{{ url_for('oj_settings') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/oj/settings') else '' }}">
                     <i class="fas fa-gear"></i> 设置
                 </a>
                 {% if current_user.is_authenticated and current_user.is_admin %}
-                <a href="{{ url_for('manage_oj_problems') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/admin/oj') else '' }}">
+                <a href="{{ url_for('manage_oj_problems') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/admin/oj') and not request.path.startswith('/admin/oj/trainings') else '' }}">
                     <i class="fas fa-sliders-h"></i> 管理题库
+                </a>
+                <a href="{{ url_for('manage_oj_trainings') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/admin/oj/trainings') else '' }}">
+                    <i class="fas fa-route"></i> 管理训练
                 </a>
                 {% endif %}
             </div>

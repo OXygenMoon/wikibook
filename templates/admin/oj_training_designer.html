@@ -1,0 +1,888 @@
+{% extends "base.html" %}
+
+{% block title %}{{ payload.project.title }} - 拓扑训练设计器{% endblock %}
+
+{% block extra_css %}
+<style>
+  .questbook-app {
+    height: calc(100vh - 4.25rem);
+    min-height: 720px;
+    margin: -1rem -1rem 0;
+    overflow: hidden;
+    background:
+      linear-gradient(rgba(28, 39, 52, 0.82), rgba(22, 30, 41, 0.9)),
+      radial-gradient(circle at 50% 40%, rgba(15, 188, 175, 0.16), transparent 34%),
+      #182232;
+    color: #e5edf7;
+    display: grid;
+    grid-template-columns: 310px minmax(0, 1fr);
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .questbook-sidebar {
+    min-width: 0;
+    background:
+      linear-gradient(rgba(10, 16, 22, 0.88), rgba(10, 16, 22, 0.94)),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 16px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 16px);
+    border-right: 3px solid rgba(0, 0, 0, 0.55);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 16px 0 32px rgba(0,0,0,0.22);
+    z-index: 4;
+  }
+
+  .questbook-titlebar {
+    height: 58px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    border-bottom: 3px solid rgba(0,0,0,0.5);
+    background: rgba(31, 41, 55, 0.72);
+  }
+
+  .questbook-book-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #8b5a2b, #2f2119);
+    border: 2px solid rgba(255,255,255,0.25);
+    display: grid;
+    place-items: center;
+    color: #f8d47a;
+  }
+
+  .questbook-sidebar-scroll {
+    overflow: auto;
+    padding: 8px 6px 18px;
+  }
+
+  .questbook-section-label {
+    padding: 14px 10px 8px;
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-weight: 900;
+  }
+
+  .questbook-chapter {
+    width: 100%;
+    min-height: 46px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    padding: 6px 10px;
+    color: #b8c4d2;
+    border: 3px solid transparent;
+    background: transparent;
+    text-align: left;
+    font-weight: 900;
+    font-size: 18px;
+  }
+
+  .questbook-chapter:hover,
+  .questbook-chapter.is-active {
+    border-color: rgba(229, 231, 235, 0.78);
+    background: rgba(255,255,255,0.16);
+    color: #00d4d8;
+  }
+
+  .questbook-chapter-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    display: grid;
+    place-items: center;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.16);
+    color: #f5c84b;
+  }
+
+  .questbook-footer {
+    margin-top: auto;
+    padding: 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: grid;
+    gap: 8px;
+  }
+
+  .questbook-main {
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .questbook-toolbar {
+    position: absolute;
+    left: 18px;
+    top: 16px;
+    right: 18px;
+    z-index: 3;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    pointer-events: none;
+  }
+
+  .questbook-toolgroup {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(12, 18, 27, 0.76);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.28);
+    backdrop-filter: blur(10px);
+  }
+
+  .questbook-toolgroup select,
+  .questbook-toolgroup input {
+    height: 38px;
+    min-width: 170px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.16);
+    color: #e5edf7;
+    padding: 0 10px;
+    font-weight: 800;
+  }
+
+  .questbook-toolgroup option {
+    background: #17212e;
+    color: #e5edf7;
+  }
+
+  .questbook-icon-btn {
+    width: 40px;
+    height: 40px;
+    display: inline-grid;
+    place-items: center;
+    background: rgba(255,255,255,0.1);
+    color: #f8fafc;
+    border: 1px solid rgba(255,255,255,0.16);
+    font-weight: 900;
+  }
+
+  .questbook-primary-btn {
+    height: 40px;
+    padding: 0 14px;
+    border: 1px solid rgba(34,211,238,0.45);
+    background: rgba(6,182,212,0.22);
+    color: #67e8f9;
+    font-weight: 900;
+  }
+
+  .questbook-viewport {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    cursor: grab;
+    background:
+      linear-gradient(rgba(20, 31, 44, 0.76), rgba(20, 31, 44, 0.76)),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.045) 0 1px, transparent 1px 16px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 16px);
+  }
+
+  .questbook-viewport.is-panning {
+    cursor: grabbing;
+  }
+
+  .questbook-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+  }
+
+  .questbook-edge-layer {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .quest-node {
+    position: absolute;
+    width: var(--node-size, 58px);
+    height: var(--node-size, 58px);
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    background:
+      radial-gradient(circle at 40% 34%, rgba(255,255,255,0.3), transparent 28%),
+      linear-gradient(135deg, #5b626b, #2b3038);
+    border: 2px solid rgba(255,255,255,0.55);
+    box-shadow: 0 7px 16px rgba(0,0,0,0.34), inset 0 0 0 3px rgba(0,0,0,0.18);
+    color: #f8fafc;
+    font-weight: 900;
+    user-select: none;
+  }
+
+  .quest-node.is-entry { border-color: #22d3ee; box-shadow: 0 0 0 3px rgba(34,211,238,0.24), 0 7px 16px rgba(0,0,0,0.34); }
+  .quest-node.is-core { outline: 6px solid rgba(250, 204, 21, 0.24); }
+  .quest-node.is-selected { border-color: #facc15; box-shadow: 0 0 0 4px rgba(250,204,21,0.24), 0 10px 22px rgba(0,0,0,0.42); }
+  .quest-node.is-connecting { border-color: #f97316; box-shadow: 0 0 0 5px rgba(249,115,22,0.26), 0 10px 22px rgba(0,0,0,0.42); }
+
+  .quest-node-code {
+    width: calc(var(--node-size, 58px) - 16px);
+    height: calc(var(--node-size, 58px) - 16px);
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: rgba(15, 23, 42, 0.58);
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .quest-node-check {
+    position: absolute;
+    right: -6px;
+    top: -8px;
+    color: #65ff00;
+    font-size: 23px;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.45);
+  }
+
+  .quest-node-tooltip {
+    position: absolute;
+    left: 50%;
+    top: -48px;
+    transform: translateX(-50%);
+    display: none;
+    white-space: nowrap;
+    padding: 7px 10px;
+    border: 2px solid rgba(255,255,255,0.7);
+    background: rgba(8, 12, 18, 0.9);
+    color: #e5edf7;
+    font-weight: 900;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.34);
+  }
+
+  .quest-node:hover .quest-node-tooltip { display: block; }
+
+  .quest-status-pill {
+    position: absolute;
+    left: 50%;
+    bottom: -23px;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-weight: 900;
+    color: #94a3b8;
+    white-space: nowrap;
+  }
+
+  .quest-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    background: rgba(2, 6, 12, 0.42);
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+
+  .quest-modal {
+    width: min(900px, 92vw);
+    max-height: min(760px, 86vh);
+    overflow: auto;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 16px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 16px),
+      #202b38;
+    border: 4px solid #101820;
+    color: #dbe6f4;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.5);
+  }
+
+  .quest-modal-head {
+    display: grid;
+    grid-template-columns: 68px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 72px;
+    border-bottom: 4px solid #101820;
+    padding: 10px 16px;
+  }
+
+  .quest-modal-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #5b626b, #252b33);
+    border: 2px solid rgba(255,255,255,0.25);
+    font-weight: 900;
+    color: #67e8f9;
+  }
+
+  .quest-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 4px solid #101820;
+  }
+
+  .quest-modal-cell {
+    padding: 18px;
+    min-height: 150px;
+  }
+
+  .quest-modal-cell + .quest-modal-cell {
+    border-left: 4px solid #101820;
+  }
+
+  .quest-modal-title {
+    color: #6d6aff;
+    font-size: 22px;
+    font-weight: 900;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+
+  .quest-modal-title.reward { color: #f59e0b; }
+
+  .quest-detail-list {
+    display: grid;
+    gap: 8px;
+    color: #cbd5e1;
+    font-weight: 700;
+  }
+
+  .quest-description {
+    padding: 20px;
+    font-size: 18px;
+    line-height: 1.8;
+    color: #f1f5f9;
+  }
+
+  .quest-small-muted {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  @media (max-width: 900px) {
+    .questbook-app { grid-template-columns: 1fr; }
+    .questbook-sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 300px; transform: translateX(-276px); transition: transform .18s ease; }
+    .questbook-sidebar:hover { transform: translateX(0); }
+    .questbook-toolbar { left: 38px; }
+    .quest-modal-grid { grid-template-columns: 1fr; }
+    .quest-modal-cell + .quest-modal-cell { border-left: 0; border-top: 4px solid #101820; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="training-designer-app"></div>
+<script type="application/json" id="training-designer-payload">{{ payload|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const app = document.getElementById('training-designer-app');
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const keyOf = (item) => String(item?.clientId || item?.id || '');
+  const nextClientId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  let state = JSON.parse(document.getElementById('training-designer-payload').textContent || '{}');
+  let activeChapterKey = keyOf((state.chapters || [])[0]);
+  let selectedNodeKey = null;
+  let connectFromKey = null;
+  let openNodeKey = null;
+  let saveTimer = null;
+  let view = { x: 260, y: 120, scale: 1 };
+  const nodeKey = keyOf;
+  const chapterKey = keyOf;
+  const chapters = () => state.chapters || [];
+  const nodes = () => state.nodes || [];
+  const edges = () => state.edges || [];
+  const currentStats = () => ({ chapterCount: chapters().length, nodeCount: nodes().length, edgeCount: edges().length });
+  const activeChapter = () => chapters().find((chapter) => chapterKey(chapter) === activeChapterKey) || chapters()[0];
+  const nodeByKey = (key) => nodes().find((node) => nodeKey(node) === String(key));
+  const nodeMap = () => Object.fromEntries(nodes().map((node) => [nodeKey(node), node]));
+
+  function normalizeState() {
+    state.chapters = (state.chapters || []).map((chapter, index) => ({ ...chapter, clientId: chapter.clientId || (chapter.id ? String(chapter.id) : nextClientId('chapter')), sortOrder: index }));
+    state.nodes = (state.nodes || []).map((node, index) => ({ ...node, clientId: node.clientId || (node.id ? String(node.id) : nextClientId('node')), chapterClientId: node.chapterClientId || String(node.chapterId), sortOrder: index, width: 64, height: 64 }));
+    state.edges = (state.edges || []).map((edge) => ({ ...edge, clientId: edge.clientId || (edge.id ? String(edge.id) : nextClientId('edge')), fromClientId: edge.fromClientId || String(edge.fromNodeId), toClientId: edge.toClientId || String(edge.toNodeId) }));
+    if (!activeChapterKey && state.chapters[0]) activeChapterKey = chapterKey(state.chapters[0]);
+  }
+
+  function activeChapterNodes() {
+    return nodes().filter((node) => String(node.chapterClientId || node.chapterId) === activeChapterKey);
+  }
+
+  function updateChapterNodeCaches() {
+    const grouped = new Map();
+    nodes().forEach((node) => {
+      const key = String(node.chapterClientId || node.chapterId);
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(node);
+    });
+    state.chapters.forEach((chapter) => {
+      chapter.nodes = grouped.get(chapterKey(chapter)) || [];
+    });
+  }
+
+  function renderProblemOptions() {
+    return (state.options?.problems || []).map((problem) =>
+      `<option value="${problem.id}">${esc(problem.code)} · ${esc(problem.title)}</option>`
+    ).join('');
+  }
+
+  function renderMultiSelect(name, values, selectedIds) {
+    const selected = new Set((selectedIds || []).map(Number));
+    return `<select multiple data-scope="${name}">
+      ${(values || []).map((item) => `<option value="${item.id}" ${selected.has(Number(item.id)) ? 'selected' : ''}>${esc(item.label)}${item.username ? ` (${esc(item.username)})` : ''}</option>`).join('')}
+    </select>`;
+  }
+
+  function edgePath(from, to) {
+    const x1 = from.x + 32;
+    const y1 = from.y + 32;
+    const x2 = to.x + 32;
+    const y2 = to.y + 32;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      const mid = Math.max(44, Math.abs(dx) / 2);
+      return `M ${x1} ${y1} C ${x1 + Math.sign(dx || 1) * mid} ${y1}, ${x2 - Math.sign(dx || 1) * mid} ${y2}, ${x2} ${y2}`;
+    }
+    const mid = Math.max(44, Math.abs(dy) / 2);
+    return `M ${x1} ${y1} C ${x1} ${y1 + Math.sign(dy || 1) * mid}, ${x2} ${y2 - Math.sign(dy || 1) * mid}, ${x2} ${y2}`;
+  }
+
+  function renderEdges() {
+    const visible = new Set(activeChapterNodes().map(nodeKey));
+    const map = nodeMap();
+    return edges().filter((edge) => visible.has(String(edge.fromClientId || edge.fromNodeId)) && visible.has(String(edge.toClientId || edge.toNodeId))).map((edge) => {
+      const from = map[String(edge.fromClientId || edge.fromNodeId)];
+      const to = map[String(edge.toClientId || edge.toNodeId)];
+      if (!from || !to) return '';
+      const isDone = from.accepted || false;
+      return `<path d="${edgePath(from, to)}" fill="none" stroke="${isDone ? '#00e05a' : '#9a7f86'}" stroke-width="7" stroke-opacity="0.58" stroke-linecap="round"></path>
+        <path d="${edgePath(from, to)}" fill="none" stroke="${isDone ? '#00f060' : '#c8a5ab'}" stroke-width="2" stroke-opacity="0.74" stroke-dasharray="6 5"></path>`;
+    }).join('');
+  }
+
+  function problemInitials(problem) {
+    const code = problem?.code || '';
+    return code.replace(/^P/i, 'P').slice(0, 5) || '?';
+  }
+
+  function renderNodes() {
+    return activeChapterNodes().map((node) => {
+      const active = selectedNodeKey === nodeKey(node) ? 'is-selected' : '';
+      const connecting = connectFromKey === nodeKey(node) ? 'is-connecting' : '';
+      const entry = node.isEntry ? 'is-entry' : '';
+      const core = node.isCore ? 'is-core' : '';
+      const title = node.label || node.problem.title;
+      return `<button type="button" class="quest-node ${active} ${connecting} ${entry} ${core}" data-node="${nodeKey(node)}" style="left:${node.x}px;top:${node.y}px;--node-size:64px;" title="${esc(title)}">
+        <span class="quest-node-code">${esc(problemInitials(node.problem))}</span>
+        ${node.accepted ? '<span class="quest-node-check">✓</span>' : ''}
+        <span class="quest-node-tooltip">${esc(title)}</span>
+        <span class="quest-status-pill">${node.isCore ? '核心' : (node.isEntry ? '入口' : '')}</span>
+      </button>`;
+    }).join('');
+  }
+
+  function renderNodeModal() {
+    const node = openNodeKey ? nodeByKey(openNodeKey) : null;
+    if (!node) return '';
+    const map = nodeMap();
+    const incoming = edges().filter((edge) => String(edge.toClientId || edge.toNodeId) === openNodeKey).map((edge) => map[String(edge.fromClientId || edge.fromNodeId)]).filter(Boolean);
+    const outgoing = edges().filter((edge) => String(edge.fromClientId || edge.fromNodeId) === openNodeKey).map((edge) => map[String(edge.toClientId || edge.toNodeId)]).filter(Boolean);
+    return `<div class="quest-modal-backdrop" data-close-modal>
+      <div class="quest-modal" role="dialog" aria-modal="true" data-modal-card>
+        <div class="quest-modal-head">
+          <div class="quest-modal-icon">${esc(problemInitials(node.problem))}</div>
+          <div>
+            <div class="quest-small-muted">${esc(node.problem.code)} · ${esc(node.problem.difficulty || 'medium')}</div>
+            <input data-node-field="label" value="${esc(node.label || '')}" placeholder="${esc(node.problem.title)}" style="width:100%;background:transparent;border:0;color:#e5edf7;font-size:26px;font-weight:900;outline:none;">
+          </div>
+          <div class="flex gap-2">
+            <button type="button" class="questbook-icon-btn" data-connect="${openNodeKey}" title="从此节点连线"><i class="fas fa-share-nodes"></i></button>
+            <button type="button" class="questbook-icon-btn" data-delete-node="${openNodeKey}" title="删除"><i class="fas fa-trash"></i></button>
+            <button type="button" class="questbook-icon-btn" data-close-modal-btn title="关闭"><i class="fas fa-xmark"></i></button>
+          </div>
+        </div>
+        <div class="quest-modal-grid">
+          <div class="quest-modal-cell">
+            <div class="quest-modal-title">目标</div>
+            <div class="quest-detail-list">
+              <div>完成题目：${esc(node.problem.title)}</div>
+              <div>题目编号：${esc(node.problem.code)}</div>
+              <div>解锁状态：${incoming.length ? '完成全部前置节点' : '入口可见'}</div>
+              <label class="flex items-center gap-3 mt-2"><input type="checkbox" data-node-bool="isEntry" ${node.isEntry ? 'checked' : ''}> 设为入口节点</label>
+              <label class="flex items-center gap-3"><input type="checkbox" data-node-bool="isCore" ${node.isCore ? 'checked' : ''}> 设为核心节点</label>
+            </div>
+          </div>
+          <div class="quest-modal-cell">
+            <div class="quest-modal-title reward">解锁</div>
+            <div class="quest-detail-list">
+              <div><strong>前置节点</strong></div>
+              ${incoming.length ? incoming.map((item) => `<div>${esc(item.problem.code)} · ${esc(item.label || item.problem.title)}</div>`).join('') : '<div class="quest-small-muted">无</div>'}
+              <div class="mt-3"><strong>可解锁节点</strong></div>
+              ${outgoing.length ? outgoing.map((item) => `<div class="flex items-center justify-between gap-3"><span>${esc(item.problem.code)} · ${esc(item.label || item.problem.title)}</span><button type="button" class="questbook-icon-btn" data-remove-edge="${openNodeKey}|${nodeKey(item)}" title="断开"><i class="fas fa-unlink"></i></button></div>`).join('') : '<div class="quest-small-muted">无</div>'}
+            </div>
+          </div>
+        </div>
+        <div class="quest-description">
+          <div class="quest-small-muted mb-2">描述 / 提示</div>
+          <textarea data-node-field="note" placeholder="写下这个节点的训练说明、提示或前置知识。" style="width:100%;min-height:150px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#f8fafc;padding:12px;line-height:1.7;outline:none;">${esc(node.note || '')}</textarea>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function render() {
+    normalizeState();
+    updateChapterNodeCaches();
+    const chapter = activeChapter();
+    const stats = currentStats();
+    app.innerHTML = `
+      <div class="questbook-app">
+        <aside class="questbook-sidebar">
+          <div class="questbook-titlebar">
+            <div class="questbook-book-icon"><i class="fas fa-book"></i></div>
+            <div class="min-w-0">
+              <div class="font-black truncate">${esc(state.project.title)}</div>
+              <div class="quest-small-muted">${stats.chapterCount} 章 · ${stats.nodeCount} 节点</div>
+            </div>
+          </div>
+          <div class="questbook-sidebar-scroll">
+            <div class="questbook-section-label">Chapters</div>
+            ${chapters().map((item, index) => `<button type="button" class="questbook-chapter ${chapterKey(item) === activeChapterKey ? 'is-active' : ''}" data-chapter="${chapterKey(item)}">
+              <span class="questbook-chapter-icon"><i class="fas fa-${index === 0 ? 'seedling' : 'diagram-project'}"></i></span>
+              <span class="truncate">${esc(item.title)}</span>
+            </button>`).join('')}
+          </div>
+          <div class="questbook-footer">
+            <button type="button" class="questbook-primary-btn" id="add-chapter"><i class="fas fa-plus"></i> 添加章节</button>
+            <button type="button" class="questbook-icon-btn" id="delete-chapter" title="删除当前章节"><i class="fas fa-trash"></i></button>
+          </div>
+        </aside>
+        <main class="questbook-main">
+          <div class="questbook-toolbar">
+            <div class="questbook-toolgroup">
+              <select id="problem-select">${renderProblemOptions()}</select>
+              <button type="button" class="questbook-primary-btn" id="add-node"><i class="fas fa-plus"></i> 添加节点</button>
+              <input data-chapter-field="title" value="${esc(chapter?.title || '')}" placeholder="章节标题">
+            </div>
+            <div class="questbook-toolgroup">
+              <button type="button" class="questbook-icon-btn" id="zoom-out" title="缩小"><i class="fas fa-minus"></i></button>
+              <button type="button" class="questbook-icon-btn" id="zoom-reset" title="重置视角">${Math.round(view.scale * 100)}%</button>
+              <button type="button" class="questbook-icon-btn" id="zoom-in" title="放大"><i class="fas fa-plus"></i></button>
+              <button type="button" class="questbook-primary-btn" id="save-training"><i class="fas fa-floppy-disk"></i> 保存</button>
+              <a class="questbook-icon-btn" href="${state.project.urls.detail}" title="查看训练"><i class="fas fa-eye"></i></a>
+            </div>
+          </div>
+          <div class="questbook-viewport" id="quest-viewport">
+            <div class="questbook-stage" id="quest-stage" style="width:${chapter?.canvasWidth || 2200}px;height:${chapter?.canvasHeight || 1400}px;transform:translate(${view.x}px, ${view.y}px) scale(${view.scale});">
+              <svg class="questbook-edge-layer" width="${chapter?.canvasWidth || 2200}" height="${chapter?.canvasHeight || 1400}">
+                ${renderEdges()}
+              </svg>
+              ${renderNodes()}
+            </div>
+          </div>
+          ${renderNodeModal()}
+        </main>
+      </div>`;
+    bindEvents();
+  }
+
+  function syncProjectInputs() {
+    state.form = state.form || {};
+    app.querySelectorAll('[data-scope]').forEach((select) => {
+      const pascal = select.dataset.scope.replace(/(^|_)([a-z])/g, (_, __, char) => char.toUpperCase());
+      state.form[`selected${pascal.charAt(0).toUpperCase()}${pascal.slice(1)}`] = Array.from(select.selectedOptions).map((option) => Number(option.value));
+    });
+  }
+
+  function syncSelectedNodeInputs() {
+    const key = openNodeKey || selectedNodeKey;
+    const node = key ? nodeByKey(key) : null;
+    if (!node) return;
+    app.querySelectorAll('[data-node-field]').forEach((input) => {
+      node[input.dataset.nodeField] = input.value;
+    });
+    app.querySelectorAll('[data-node-bool]').forEach((input) => {
+      node[input.dataset.nodeBool] = input.checked;
+    });
+  }
+
+  function syncAllVisibleInputs() {
+    syncProjectInputs();
+    syncSelectedNodeInputs();
+    const chapterTitle = app.querySelector('[data-chapter-field="title"]');
+    const chapter = activeChapter();
+    if (chapterTitle && chapter) chapter.title = chapterTitle.value;
+  }
+
+  function saveSoon() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => syncAllVisibleInputs(), 120);
+  }
+
+  function bindEvents() {
+    app.querySelector('#save-training')?.addEventListener('click', saveTraining);
+    app.querySelector('#add-node')?.addEventListener('click', addNode);
+    app.querySelector('#add-chapter')?.addEventListener('click', addChapter);
+    app.querySelector('#delete-chapter')?.addEventListener('click', deleteChapter);
+    app.querySelector('#zoom-in')?.addEventListener('click', () => zoomBy(1.16));
+    app.querySelector('#zoom-out')?.addEventListener('click', () => zoomBy(0.86));
+    app.querySelector('#zoom-reset')?.addEventListener('click', () => {
+      view = { x: 260, y: 120, scale: 1 };
+      render();
+    });
+    app.querySelectorAll('[data-chapter]').forEach((button) => button.addEventListener('click', () => {
+      syncAllVisibleInputs();
+      activeChapterKey = button.dataset.chapter;
+      selectedNodeKey = null;
+      openNodeKey = null;
+      render();
+    }));
+    app.querySelectorAll('[data-chapter-field], [data-node-field], [data-node-bool], [data-scope]').forEach((input) => input.addEventListener('input', saveSoon));
+    app.querySelectorAll('[data-node-bool]').forEach((input) => input.addEventListener('change', () => {
+      syncSelectedNodeInputs();
+      render();
+    }));
+    app.querySelectorAll('[data-connect]').forEach((button) => button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      syncSelectedNodeInputs();
+      connectFromKey = connectFromKey === button.dataset.connect ? null : button.dataset.connect;
+      openNodeKey = null;
+      render();
+    }));
+    app.querySelectorAll('[data-delete-node]').forEach((button) => button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      deleteNode(button.dataset.deleteNode);
+    }));
+    app.querySelectorAll('[data-remove-edge]').forEach((button) => button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const [fromKey, toKey] = button.dataset.removeEdge.split('|');
+      state.edges = edges().filter((edge) => !(String(edge.fromClientId || edge.fromNodeId) === fromKey && String(edge.toClientId || edge.toNodeId) === toKey));
+      render();
+    }));
+    app.querySelector('[data-close-modal]')?.addEventListener('click', () => {
+      syncSelectedNodeInputs();
+      openNodeKey = null;
+      render();
+    });
+    app.querySelector('[data-modal-card]')?.addEventListener('click', (event) => event.stopPropagation());
+    app.querySelector('[data-close-modal-btn]')?.addEventListener('click', () => {
+      syncSelectedNodeInputs();
+      openNodeKey = null;
+      render();
+    });
+    bindPanZoom();
+    bindNodeDrag();
+  }
+
+  function zoomBy(multiplier, origin = null) {
+    const oldScale = view.scale;
+    const nextScale = Math.min(2.4, Math.max(0.32, oldScale * multiplier));
+    if (origin) {
+      const worldX = (origin.x - view.x) / oldScale;
+      const worldY = (origin.y - view.y) / oldScale;
+      view.x = origin.x - worldX * nextScale;
+      view.y = origin.y - worldY * nextScale;
+    }
+    view.scale = nextScale;
+    render();
+  }
+
+  function bindPanZoom() {
+    const viewport = app.querySelector('#quest-viewport');
+    if (!viewport) return;
+    viewport.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      zoomBy(event.deltaY < 0 ? 1.08 : 0.92, { x: event.clientX - rect.left, y: event.clientY - rect.top });
+    }, { passive: false });
+    viewport.addEventListener('pointerdown', (event) => {
+      if (event.target.closest('.quest-node') || event.target.closest('.questbook-toolbar') || event.target.closest('.quest-modal')) return;
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const originX = view.x;
+      const originY = view.y;
+      viewport.classList.add('is-panning');
+      viewport.setPointerCapture(event.pointerId);
+      const onMove = (moveEvent) => {
+        view.x = originX + moveEvent.clientX - startX;
+        view.y = originY + moveEvent.clientY - startY;
+        const stage = app.querySelector('#quest-stage');
+        if (stage) stage.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+      };
+      const onUp = () => {
+        viewport.classList.remove('is-panning');
+        viewport.removeEventListener('pointermove', onMove);
+        viewport.removeEventListener('pointerup', onUp);
+      };
+      viewport.addEventListener('pointermove', onMove);
+      viewport.addEventListener('pointerup', onUp);
+    });
+  }
+
+  function bindNodeDrag() {
+    app.querySelectorAll('.quest-node').forEach((el) => {
+      el.addEventListener('pointerdown', (event) => {
+        event.stopPropagation();
+        const key = el.dataset.node;
+        const node = nodeByKey(key);
+        if (!node) return;
+        if (connectFromKey && connectFromKey !== key) {
+          addEdge(connectFromKey, key);
+          connectFromKey = null;
+          selectedNodeKey = key;
+          openNodeKey = key;
+          render();
+          return;
+        }
+        selectedNodeKey = key;
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const originX = node.x;
+        const originY = node.y;
+        let moved = false;
+        el.setPointerCapture(event.pointerId);
+        const onMove = (moveEvent) => {
+          const dx = (moveEvent.clientX - startX) / view.scale;
+          const dy = (moveEvent.clientY - startY) / view.scale;
+          if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
+          node.x = Math.max(0, Math.round(originX + dx));
+          node.y = Math.max(0, Math.round(originY + dy));
+          el.style.left = `${node.x}px`;
+          el.style.top = `${node.y}px`;
+        };
+        const onUp = () => {
+          el.removeEventListener('pointermove', onMove);
+          el.removeEventListener('pointerup', onUp);
+          if (!moved) openNodeKey = key;
+          render();
+        };
+        el.addEventListener('pointermove', onMove);
+        el.addEventListener('pointerup', onUp);
+      });
+    });
+  }
+
+  function addChapter() {
+    syncAllVisibleInputs();
+    const chapter = { clientId: nextClientId('chapter'), title: `第 ${chapters().length + 1} 章`, descriptionMd: '', sortOrder: chapters().length, canvasWidth: 2400, canvasHeight: 1600, nodes: [] };
+    state.chapters.push(chapter);
+    activeChapterKey = chapter.clientId;
+    selectedNodeKey = null;
+    openNodeKey = null;
+    render();
+  }
+
+  function deleteChapter() {
+    syncAllVisibleInputs();
+    if (chapters().length <= 1) {
+      window.alert('至少保留一个章节。');
+      return;
+    }
+    const chapter = activeChapter();
+    if (!window.confirm(`确认删除章节「${chapter.title}」吗？`)) return;
+    const removedNodeKeys = new Set(nodes().filter((node) => String(node.chapterClientId || node.chapterId) === activeChapterKey).map(nodeKey));
+    state.nodes = nodes().filter((node) => !removedNodeKeys.has(nodeKey(node)));
+    state.edges = edges().filter((edge) => !removedNodeKeys.has(String(edge.fromClientId || edge.fromNodeId)) && !removedNodeKeys.has(String(edge.toClientId || edge.toNodeId)));
+    state.chapters = chapters().filter((item) => chapterKey(item) !== activeChapterKey);
+    activeChapterKey = chapterKey(state.chapters[0]);
+    selectedNodeKey = null;
+    openNodeKey = null;
+    render();
+  }
+
+  function addNode() {
+    syncAllVisibleInputs();
+    const select = app.querySelector('#problem-select');
+    const problem = (state.options?.problems || []).find((item) => Number(item.id) === Number(select?.value));
+    if (!problem) return;
+    const count = activeChapterNodes().length;
+    const node = {
+      clientId: nextClientId('node'),
+      chapterClientId: activeChapterKey,
+      problemId: problem.id,
+      label: '',
+      note: '',
+      x: 160 + (count % 8) * 130,
+      y: 150 + Math.floor(count / 8) * 120,
+      width: 64,
+      height: 64,
+      sortOrder: nodes().length,
+      isEntry: count === 0,
+      isCore: false,
+      problem,
+    };
+    state.nodes.push(node);
+    selectedNodeKey = node.clientId;
+    openNodeKey = node.clientId;
+    render();
+  }
+
+  function addEdge(fromKey, toKey) {
+    if (fromKey === toKey) return;
+    const exists = edges().some((edge) => String(edge.fromClientId || edge.fromNodeId) === fromKey && String(edge.toClientId || edge.toNodeId) === toKey);
+    if (exists) return;
+    state.edges.push({ clientId: nextClientId('edge'), fromClientId: fromKey, toClientId: toKey, label: '' });
+  }
+
+  function deleteNode(key) {
+    syncSelectedNodeInputs();
+    const node = nodeByKey(key);
+    if (!node || !window.confirm(`确认删除节点「${node.problem.code}」吗？`)) return;
+    state.nodes = nodes().filter((item) => nodeKey(item) !== key);
+    state.edges = edges().filter((edge) => String(edge.fromClientId || edge.fromNodeId) !== key && String(edge.toClientId || edge.toNodeId) !== key);
+    selectedNodeKey = null;
+    openNodeKey = null;
+    connectFromKey = null;
+    render();
+  }
+
+  async function saveTraining() {
+    syncAllVisibleInputs();
+    updateChapterNodeCaches();
+    const body = {
+      project: state.project,
+      chapters: chapters().map((chapter, index) => ({ ...chapter, sortOrder: index, canvasWidth: Math.max(chapter.canvasWidth || 2400, 2200), canvasHeight: Math.max(chapter.canvasHeight || 1600, 1400) })),
+      nodes: nodes(),
+      edges: edges(),
+      classIds: state.form?.selectedClassIds || [],
+      groupIds: state.form?.selectedGroupIds || [],
+      userIds: state.form?.selectedUserIds || [],
+      managerIds: state.form?.selectedManagerIds || [],
+    };
+    const button = app.querySelector('#save-training');
+    if (button) button.classList.add('loading');
+    try {
+      const response = await fetch(state.project.urls.save, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.message || '保存失败。');
+      state = data.training;
+      activeChapterKey = keyOf((state.chapters || [])[0]);
+      selectedNodeKey = null;
+      openNodeKey = null;
+      connectFromKey = null;
+      window.alert(data.message || '已保存。');
+      render();
+    } catch (error) {
+      window.alert(error.message || '保存失败。');
+    } finally {
+      if (button) button.classList.remove('loading');
+    }
+  }
+
+  render();
+})();
+</script>
+{% endblock %}

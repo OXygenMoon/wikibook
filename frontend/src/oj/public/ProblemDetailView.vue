@@ -1,10 +1,12 @@
 <script setup>
+import { ref } from 'vue';
 import DifficultyBadge from '../DifficultyBadge.vue';
 
 const props = defineProps({
   problem: { type: Object, required: true },
 });
 const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', 'openSubmission']);
+const astGoalsExpanded = ref(true);
 </script>
 
 <template>
@@ -30,14 +32,37 @@ const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', '
         {{ problem.hiddenMessage }}
       </section>
 
-      <section v-else class="problem-prose" v-html="problem.statementHtml"></section>
-
-      <section v-if="!problem.hiddenForViewer && problem.hasAstGoals" class="mt-8 oj-panel p-5">
-        <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">满星语法目标</h2>
-        <ol class="list-decimal pl-5 space-y-2 text-stone-700 dark:text-stone-200">
-          <li v-for="goal in problem.astGoals" :key="goal.id || goal.description">{{ goal.description }}</li>
-        </ol>
+      <section v-if="!problem.hiddenForViewer && problem.hasAstGoals" class="full-star-goals mb-6">
+        <div
+          class="animal-collapse"
+          :class="{ 'animal-collapse--expanded': astGoalsExpanded }"
+        >
+          <button
+            type="button"
+            class="animal-collapse__trigger"
+            :aria-expanded="astGoalsExpanded"
+            aria-controls="full-star-goals-panel"
+            @click="astGoalsExpanded = !astGoalsExpanded"
+          >
+            <span class="animal-collapse__question">
+              满星目标
+              <span class="full-star-goals__count">{{ problem.astGoals.length }} 项</span>
+            </span>
+            <span class="animal-collapse__leaf" aria-hidden="true">
+              <i class="fas fa-leaf"></i>
+            </span>
+          </button>
+          <div id="full-star-goals-panel" class="animal-collapse__body">
+            <div class="animal-collapse__content">
+              <ol class="full-star-goals__list">
+                <li v-for="goal in problem.astGoals" :key="goal.id || goal.description">{{ goal.description }}</li>
+              </ol>
+            </div>
+          </div>
+        </div>
       </section>
+
+      <section v-if="!problem.hiddenForViewer" class="problem-prose" v-html="problem.statementHtml"></section>
 
       <section v-if="!problem.hiddenForViewer && !problem.statementHasSamplePairs" class="mt-8">
         <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>

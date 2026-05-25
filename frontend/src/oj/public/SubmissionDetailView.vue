@@ -15,6 +15,9 @@ const hasCaseDetails = computed(() => Boolean(localSubmission.value?.canViewCase
 const sampleComparisons = computed(() => localSubmission.value?.sampleComparisons || []);
 const hasSampleComparisons = computed(() => sampleComparisons.value.length > 0);
 const sampleGroupFailed = computed(() => Boolean(localSubmission.value?.sampleGroupFailed));
+const astFeedbackToneClass = computed(() => (
+  localSubmission.value?.astFeedback?.isPerfect ? 'submission-feedback-card--success' : 'submission-feedback-card--warning'
+));
 
 function metricClass(score) {
   return Number(score || 0) > 0 ? 'metric-chip--success' : 'metric-chip--danger';
@@ -117,13 +120,13 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section v-if="localSubmission.failureFeedback" class="failure-card" :class="{ error: localSubmission.failureFeedback.tone === 'error' }">
+      <section v-if="localSubmission.failureFeedback" class="submission-feedback-card submission-feedback-card--danger">
         <div class="font-black text-lg">{{ localSubmission.failureFeedback.title }}</div>
         <p class="mt-2 leading-relaxed">{{ localSubmission.failureFeedback.message }}</p>
         <pre v-if="localSubmission.failureFeedback.detail" class="failure-detail">{{ localSubmission.failureFeedback.detail }}</pre>
       </section>
 
-      <section v-if="localSubmission.astFeedback" class="failure-card" :class="{ error: !localSubmission.astFeedback.isPerfect }">
+      <section v-if="localSubmission.astFeedback" class="submission-feedback-card" :class="astFeedbackToneClass">
         <div class="font-black text-lg">{{ localSubmission.astFeedback.title }}</div>
         <p class="mt-2 leading-relaxed">{{ localSubmission.astFeedback.message }}</p>
         <div v-if="localSubmission.astFeedback.failedRules?.length" class="mt-4">

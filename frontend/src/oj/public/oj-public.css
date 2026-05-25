@@ -159,6 +159,41 @@ html.dark .mini-link-card {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.full-star-goals .animal-collapse {
+  margin-bottom: 0;
+}
+
+.full-star-goals .animal-collapse__trigger {
+  min-height: 4.25rem;
+}
+
+.full-star-goals .animal-collapse__question {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-weight: 900;
+}
+
+.full-star-goals__count {
+  color: var(--animal-text-color-secondary);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.full-star-goals__list {
+  margin: 0;
+  padding-left: 1.35rem;
+}
+
+.full-star-goals__list li {
+  margin-bottom: 0.45rem;
+  padding-left: 0.15rem;
+}
+
+.full-star-goals__list li:last-child {
+  margin-bottom: 0;
+}
+
 .assignment-prose {
   color: #334155;
   line-height: 1.85;
@@ -683,6 +718,51 @@ html.dark .sample-failure-callout {
   border-color: rgba(239, 68, 68, 0.32);
   background: linear-gradient(135deg, rgba(254, 226, 226, 0.88), rgba(255, 241, 242, 0.72));
   color: #7f1d1d;
+}
+
+.submission-feedback-card {
+  border: 1px solid transparent;
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+.submission-feedback-card--success {
+  border-color: rgba(34, 197, 94, 0.34);
+  background:
+    linear-gradient(135deg, rgba(220, 252, 231, 0.9), rgba(240, 253, 244, 0.74));
+  color: #14532d;
+}
+
+.submission-feedback-card--warning {
+  border-color: rgba(245, 158, 11, 0.34);
+  background:
+    linear-gradient(135deg, rgba(254, 243, 199, 0.9), rgba(255, 251, 235, 0.74));
+  color: #7c4a03;
+}
+
+.submission-feedback-card--danger {
+  border-color: rgba(239, 68, 68, 0.34);
+  background:
+    linear-gradient(135deg, rgba(254, 226, 226, 0.9), rgba(255, 241, 242, 0.74));
+  color: #7f1d1d;
+}
+
+html.dark .submission-feedback-card--success {
+  background:
+    linear-gradient(135deg, rgba(20, 83, 45, 0.42), rgba(5, 46, 22, 0.3));
+  color: #bbf7d0;
+}
+
+html.dark .submission-feedback-card--warning {
+  background:
+    linear-gradient(135deg, rgba(120, 53, 15, 0.42), rgba(69, 26, 3, 0.3));
+  color: #fde68a;
+}
+
+html.dark .submission-feedback-card--danger {
+  background:
+    linear-gradient(135deg, rgba(127, 29, 29, 0.42), rgba(69, 10, 10, 0.3));
+  color: #fecaca;
 }
 
 .failure-detail {

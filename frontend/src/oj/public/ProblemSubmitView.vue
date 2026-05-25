@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { requestJson } from './api.js';
+import DifficultyBadge from '../DifficultyBadge.vue';
 
 const props = defineProps({
   workspace: { type: Object, required: true },
@@ -125,7 +126,7 @@ async function submitCode() {
       <div class="flex flex-col gap-3 text-sm">
         <div class="meta-line"><span class="text-stone-500">UID</span><span class="font-mono font-bold">{{ workspace.problem.uid }}</span></div>
         <div class="meta-line"><span class="text-stone-500">编号</span><span class="font-mono font-bold">{{ workspace.problem.code }}</span></div>
-        <div class="meta-line"><span class="text-stone-500">难度</span><span class="font-bold">{{ workspace.problem.difficulty }}</span></div>
+        <div class="meta-line"><span class="text-stone-500">难度</span><DifficultyBadge :difficulty="workspace.problem.difficulty" /></div>
         <div class="meta-line"><span class="text-stone-500">时间限制</span><span class="font-bold">{{ workspace.problem.timeLimitMs }} ms</span></div>
         <div class="meta-line"><span class="text-stone-500">内存限制</span><span class="font-bold">{{ workspace.problem.memoryLimitMb }} MB</span></div>
         <div class="meta-line"><span class="text-stone-500">测试点</span><span class="font-bold">{{ workspace.problem.testcaseCount }}</span></div>

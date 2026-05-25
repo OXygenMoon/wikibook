@@ -160,6 +160,8 @@
                         <option value="easy" {% if problem.difficulty == 'easy' %}selected{% endif %}>Easy</option>
                         <option value="medium" {% if problem.difficulty == 'medium' %}selected{% endif %}>Medium</option>
                         <option value="hard" {% if problem.difficulty == 'hard' %}selected{% endif %}>Hard</option>
+                        <option value="extreme" {% if problem.difficulty == 'extreme' %}selected{% endif %}>极度困难</option>
+                        <option value="glitch" {% if problem.difficulty == 'glitch' %}selected{% endif %}>乱码滚动</option>
                     </select>
                 </label>
                 <label class="form-control">

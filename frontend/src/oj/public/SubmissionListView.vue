@@ -167,6 +167,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
             <tr class="text-xs uppercase tracking-widest text-stone-500">
               <th>ID</th>
               <th>题目</th>
+              <th>来源</th>
               <th v-if="payload.isAdmin">用户</th>
               <th>语言</th>
               <th>状态</th>
@@ -188,6 +189,16 @@ watch(() => props.payload, syncFilters, { immediate: true });
                   {{ row.problem.code }} · {{ row.problem.title }}
                 </a>
                 <span v-else class="text-stone-400">-</span>
+              </td>
+              <td>
+                <a
+                  v-if="row.assignment"
+                  :href="row.assignment.url"
+                  class="badge badge-outline border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-200"
+                >
+                  {{ row.assignment.title }}
+                </a>
+                <span v-else class="badge badge-outline">题库</span>
               </td>
               <td v-if="payload.isAdmin" class="font-bold text-stone-500">{{ row.user }}</td>
               <td><span class="badge badge-outline">{{ row.language }}</span></td>
@@ -217,7 +228,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
               </td>
             </tr>
             <tr v-if="!payload.submissions.length">
-              <td :colspan="payload.isAdmin ? 8 : 7" class="text-center py-14 text-stone-400">暂无匹配的提交记录。</td>
+              <td :colspan="payload.isAdmin ? 9 : 8" class="text-center py-14 text-stone-400">暂无匹配的提交记录。</td>
             </tr>
           </tbody>
         </table>

@@ -1,5 +1,7 @@
 <script setup>
 import { reactive, watch } from 'vue';
+import DifficultyBadge from '../DifficultyBadge.vue';
+import { DIFFICULTY_OPTIONS } from '../difficulty.js';
 
 const props = defineProps({
   payload: { type: Object, required: true },
@@ -14,24 +16,12 @@ function syncFilters() {
   Object.assign(filters, props.payload.filters || {});
 }
 
-function diffClass(difficulty) {
-  if (difficulty === 'easy') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-  if (difficulty === 'hard') return 'bg-rose-100 text-rose-700 border-rose-200';
-  if (difficulty === 'medium') return 'bg-amber-100 text-amber-700 border-amber-200';
-  return '';
-}
-
-function difficultyLabel(difficulty) {
-  if (difficulty === 'easy') return '简单';
-  if (difficulty === 'medium') return '中等';
-  if (difficulty === 'hard') return '困难';
-  return difficulty || '-';
-}
-
 function difficultySelectClass() {
   if (filters.difficulty === 'easy') return 'bg-emerald-50 text-emerald-800 border-emerald-300 focus:border-emerald-500 dark:bg-emerald-950 dark:text-emerald-100 dark:border-emerald-700';
   if (filters.difficulty === 'medium') return 'bg-amber-50 text-amber-800 border-amber-300 focus:border-amber-500 dark:bg-amber-950 dark:text-amber-100 dark:border-amber-700';
   if (filters.difficulty === 'hard') return 'bg-rose-50 text-rose-800 border-rose-300 focus:border-rose-500 dark:bg-rose-950 dark:text-rose-100 dark:border-rose-700';
+  if (filters.difficulty === 'extreme') return 'bg-red-950 text-red-50 border-red-700 focus:border-red-400';
+  if (filters.difficulty === 'glitch') return 'bg-slate-950 text-cyan-100 border-cyan-500 focus:border-cyan-300';
   return '';
 }
 
@@ -81,7 +71,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
       <div class="oj-panel p-4">
         <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">全部</div>
         <div class="text-2xl font-black text-stone-900 dark:text-stone-100">{{ payload.stats.total }}</div>
@@ -98,6 +88,14 @@ watch(() => props.payload, syncFilters, { immediate: true });
         <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">困难</div>
         <div class="text-2xl font-black text-rose-600">{{ payload.stats.hard }}</div>
       </div>
+      <div class="oj-panel p-4">
+        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">极度困难</div>
+        <div class="text-2xl font-black text-red-800 dark:text-red-300">{{ payload.stats.extreme }}</div>
+      </div>
+      <div class="oj-panel p-4">
+        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">乱码滚动</div>
+        <div class="text-2xl font-black text-cyan-600">{{ payload.stats.glitch }}</div>
+      </div>
     </div>
 
     <form class="oj-panel p-4 grid grid-cols-1 md:grid-cols-[1fr,12rem,12rem,auto] gap-3 items-end" @submit.prevent="submitFilter">
@@ -109,9 +107,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
         <span class="label-text font-bold mb-1">难度</span>
         <select v-model="filters.difficulty" class="select select-bordered rounded-lg font-black transition-colors" :class="difficultySelectClass()" @change="submitFilter">
           <option value="">全部难度</option>
-          <option value="easy">简单</option>
-          <option value="medium">中等</option>
-          <option value="hard">困难</option>
+          <option v-for="option in DIFFICULTY_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
         </select>
       </label>
       <label v-if="isAdmin" class="form-control">
@@ -176,7 +172,11 @@ watch(() => props.payload, syncFilters, { immediate: true });
                 >未通过</a>
                 <span v-else class="text-stone-400">-</span>
               </td>
-              <td><button type="button" class="diff-pill hover:opacity-80" :class="diffClass(problem.difficulty)" @click="difficultyFilter(problem.difficulty)">{{ difficultyLabel(problem.difficulty) }}</button></td>
+              <td>
+                <button type="button" class="hover:opacity-80" @click="difficultyFilter(problem.difficulty)">
+                  <DifficultyBadge :difficulty="problem.difficulty" />
+                </button>
+              </td>
               <td>
                 <button v-for="tag in problem.tags" :key="tag" type="button" class="badge badge-outline hover:border-cyan-500 hover:text-cyan-600 mr-1" @click="tagFilter(tag)">
                   {{ tag }}

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { requestJson } from './api.js';
+import DifficultyBadge from '../DifficultyBadge.vue';
 
 const props = defineProps({
   workspace: { type: Object, required: true },
@@ -256,7 +257,7 @@ onUnmounted(() => {
           <p class="text-xs font-black tracking-[0.32em] uppercase text-cyan-600 mb-2">Problem {{ workspace.problem.code }} · UID {{ workspace.problem.uid }}</p>
           <h1 class="text-3xl md:text-4xl font-black text-stone-900 dark:text-stone-100">{{ workspace.problem.title }}</h1>
           <div class="flex gap-2 flex-wrap mt-4">
-            <span class="badge badge-outline">{{ workspace.problem.difficulty }}</span>
+            <DifficultyBadge :difficulty="workspace.problem.difficulty" />
             <span class="badge badge-outline">{{ workspace.problem.timeLimitMs }}ms</span>
             <span class="badge badge-outline">{{ workspace.problem.memoryLimitMb }}MB</span>
             <span v-if="workspace.problem.source" class="badge badge-outline">{{ workspace.problem.source }}</span>

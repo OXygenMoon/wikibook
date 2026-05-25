@@ -214,56 +214,211 @@ html.dark .sticky-head thead th {
   background: rgba(250, 204, 21, 0.16);
 }
 
-.problem-prose {
-  color: rgb(68, 64, 60);
-  line-height: 1.85;
+.problem-prose,
+.workspace-prose {
+  --statement-text: #334155;
+  --statement-muted: #64748b;
+  --statement-heading: #0f172a;
+  --statement-border: rgba(15, 23, 42, 0.1);
+  --statement-soft: rgba(240, 249, 255, 0.72);
+  --statement-chip: rgba(14, 165, 233, 0.1);
+  max-width: 76ch;
+  color: var(--statement-text);
+  line-height: 1.86;
+  overflow-wrap: break-word;
 }
 
-html.dark .problem-prose {
-  color: rgb(231, 229, 228);
+.workspace-prose {
+  max-width: none;
+}
+
+html.dark .problem-prose,
+html.dark .workspace-prose {
+  --statement-text: #d4d4d8;
+  --statement-muted: #a1a1aa;
+  --statement-heading: #f8fafc;
+  --statement-border: rgba(255, 255, 255, 0.1);
+  --statement-soft: rgba(8, 47, 73, 0.24);
+  --statement-chip: rgba(14, 165, 233, 0.16);
+  color: var(--statement-text);
+}
+
+.problem-prose > :first-child,
+.workspace-prose > :first-child {
+  margin-top: 0;
+}
+
+.problem-prose > :last-child,
+.workspace-prose > :last-child {
+  margin-bottom: 0;
 }
 
 .problem-prose h1,
 .problem-prose h2,
-.problem-prose h3 {
-  margin-top: 1.8rem;
-  margin-bottom: 0.8rem;
-  color: rgb(28, 25, 23);
+.problem-prose h3,
+.workspace-prose h1,
+.workspace-prose h2,
+.workspace-prose h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 2.1rem;
+  margin-bottom: 0.85rem;
+  color: var(--statement-heading);
+  font-weight: 900;
+  line-height: 1.28;
+}
+
+.problem-prose h1::before,
+.problem-prose h2::before,
+.problem-prose h3::before,
+.workspace-prose h1::before,
+.workspace-prose h2::before,
+.workspace-prose h3::before {
+  content: "";
+  width: 0.42rem;
+  height: 1.15em;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #22d3ee, #14b8a6);
+  box-shadow: 0 0 0 0.24rem rgba(14, 165, 233, 0.09);
+}
+
+.problem-prose h1,
+.workspace-prose h1 {
+  font-size: 1.85rem;
+}
+
+.problem-prose h2,
+.workspace-prose h2 {
+  font-size: 1.48rem;
+}
+
+.problem-prose h3,
+.workspace-prose h3 {
+  font-size: 1.2rem;
+}
+
+.problem-prose p,
+.workspace-prose p {
+  margin: 0.85rem 0;
+}
+
+.problem-prose a,
+.workspace-prose a {
+  color: #0891b2;
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-color: rgba(14, 165, 233, 0.32);
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.18em;
+}
+
+.problem-prose a:hover,
+.workspace-prose a:hover {
+  color: #0e7490;
+  text-decoration-color: currentColor;
+}
+
+.problem-prose strong,
+.workspace-prose strong {
+  color: var(--statement-heading);
   font-weight: 900;
 }
 
-html.dark .problem-prose h1,
-html.dark .problem-prose h2,
-html.dark .problem-prose h3 {
-  color: rgb(245, 245, 244);
-}
-
-.problem-prose h1 {
-  font-size: 1.9rem;
-}
-
-.problem-prose h2 {
-  font-size: 1.55rem;
-}
-
-.problem-prose h3 {
-  font-size: 1.25rem;
-}
-
-.problem-prose p {
-  margin: 0.8rem 0;
-}
-
 .problem-prose ul,
-.problem-prose ol {
-  margin: 0.8rem 0 0.8rem 1.25rem;
+.problem-prose ol,
+.workspace-prose ul,
+.workspace-prose ol {
+  margin: 0.85rem 0 0.85rem 1.35rem;
+  padding-left: 0.45rem;
 }
 
-.problem-prose li {
-  margin: 0.35rem 0;
+.problem-prose li,
+.workspace-prose li {
+  margin: 0.38rem 0;
+  padding-left: 0.1rem;
+}
+
+.problem-prose li::marker,
+.workspace-prose li::marker {
+  color: #0891b2;
+  font-weight: 900;
+}
+
+.problem-prose blockquote,
+.workspace-prose blockquote {
+  margin: 1rem 0;
+  border: 1px solid var(--statement-border);
+  border-left: 0.32rem solid #22d3ee;
+  border-radius: 14px;
+  background: var(--statement-soft);
+  color: var(--statement-text);
+  padding: 0.85rem 1rem;
+}
+
+.problem-prose hr,
+.workspace-prose hr {
+  height: 1px;
+  margin: 1.6rem 0;
+  border: 0;
+  background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.34), transparent);
+}
+
+.problem-prose img,
+.workspace-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem auto;
+  border: 1px solid var(--statement-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.problem-prose table,
+.workspace-prose table {
+  display: block;
+  width: 100%;
+  margin: 1rem 0;
+  overflow-x: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--statement-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+html.dark .problem-prose table,
+html.dark .workspace-prose table {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.problem-prose th,
+.problem-prose td,
+.workspace-prose th,
+.workspace-prose td {
+  border-bottom: 1px solid var(--statement-border);
+  padding: 0.72rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.problem-prose tr:last-child td,
+.workspace-prose tr:last-child td {
+  border-bottom: 0;
+}
+
+.problem-prose th,
+.workspace-prose th {
+  background: rgba(14, 165, 233, 0.09);
+  color: var(--statement-heading);
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .problem-prose code,
+.workspace-prose code,
 .sample-box pre,
 .judge-code,
 .judge-output,
@@ -271,7 +426,24 @@ html.dark .problem-prose h3 {
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+.problem-prose :not(pre) > code,
+.workspace-prose :not(pre) > code {
+  border: 1px solid rgba(14, 165, 233, 0.16);
+  border-radius: 0.42rem;
+  background: var(--statement-chip);
+  color: #0e7490;
+  padding: 0.1rem 0.36rem;
+  font-size: 0.92em;
+  font-weight: 800;
+}
+
+html.dark .problem-prose :not(pre) > code,
+html.dark .workspace-prose :not(pre) > code {
+  color: #67e8f9;
+}
+
 .problem-prose pre,
+.workspace-prose pre,
 .sample-box pre,
 .judge-code,
 .judge-output {
@@ -281,12 +453,15 @@ html.dark .problem-prose h3 {
 }
 
 .problem-prose pre,
+.workspace-prose pre,
 .sample-box pre {
+  border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 14px;
-  background: #111827;
+  background: #0f172a;
   color: #e5e7eb;
   padding: 1rem;
   line-height: 1.65;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .statement-sample-pair {
@@ -588,32 +763,6 @@ html.dark .workspace-header {
   padding: 1.45rem;
 }
 
-.workspace-prose {
-  max-width: none;
-  color: #334155;
-  line-height: 1.85;
-}
-
-html.dark .workspace-prose {
-  color: #d4d4d8;
-}
-
-.workspace-prose h1,
-.workspace-prose h2,
-.workspace-prose h3 {
-  margin-top: 1.4rem;
-  margin-bottom: 0.75rem;
-  color: #0f172a;
-  font-weight: 900;
-}
-
-html.dark .workspace-prose h1,
-html.dark .workspace-prose h2,
-html.dark .workspace-prose h3 {
-  color: #f8fafc;
-}
-
-.workspace-prose pre,
 .sample-code {
   border-radius: 14px;
   background: #0f172a;

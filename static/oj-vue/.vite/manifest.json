@@ -1,30 +1,37 @@
 {
-  "_runtime-dom.esm-bundler-B8xFnQ3G.js": {
-    "file": "assets/runtime-dom.esm-bundler-B8xFnQ3G.js",
-    "name": "runtime-dom.esm-bundler"
+  "_DifficultyBadge-!~{003}~.js": {
+    "file": "assets/DifficultyBadge-DUTgsz55.css",
+    "src": "_DifficultyBadge-!~{003}~.js"
+  },
+  "_DifficultyBadge-Ccm4BSr5.js": {
+    "file": "assets/DifficultyBadge-Ccm4BSr5.js",
+    "name": "DifficultyBadge",
+    "css": [
+      "assets/DifficultyBadge-DUTgsz55.css"
+    ]
   },
   "frontend/src/oj-admin.js": {
-    "file": "assets/src/oj-admin.js-BfEvqjjm.js",
+    "file": "assets/src/oj-admin.js-Cu5iTapW.js",
     "name": "src/oj-admin.js",
     "src": "frontend/src/oj-admin.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-B8xFnQ3G.js"
+      "_DifficultyBadge-Ccm4BSr5.js"
     ],
     "css": [
       "assets/oj-admin-BcM-gHSs.css"
     ]
   },
   "frontend/src/oj-public.js": {
-    "file": "assets/src/oj-public.js-B97qOyhU.js",
+    "file": "assets/src/oj-public.js-VrRUhfBM.js",
     "name": "src/oj-public.js",
     "src": "frontend/src/oj-public.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-B8xFnQ3G.js"
+      "_DifficultyBadge-Ccm4BSr5.js"
     ],
     "css": [
-      "assets/oj-public-D70j8cko.css"
+      "assets/oj-public-UCOgOsz1.css"
     ]
   }
 }

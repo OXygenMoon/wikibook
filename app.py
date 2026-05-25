@@ -696,9 +696,26 @@ def vite_css_assets(entry_name):
             ),
             {},
         )
+    css_files = []
+    seen_entries = set()
+
+    def collect_css(manifest_entry):
+        if not manifest_entry:
+            return
+        file_key = manifest_entry.get("file")
+        if file_key in seen_entries:
+            return
+        seen_entries.add(file_key)
+        for imported_key in manifest_entry.get("imports", []):
+            collect_css(manifest.get(imported_key))
+        for css_file in manifest_entry.get("css", []):
+            if css_file not in css_files:
+                css_files.append(css_file)
+
+    collect_css(entry)
     return [
         url_for("static", filename=f"oj-vue/{css_file}")
-        for css_file in entry.get("css", [])
+        for css_file in css_files
     ]
 
 
@@ -801,6 +818,7 @@ AST_RULE_SPECIAL_PARAM_KEYS = {
 
 
 OJ_LANGUAGE_OPTIONS = ("python", "cpp", "c")
+OJ_DIFFICULTY_VALUES = ("easy", "medium", "hard", "extreme", "glitch")
 
 OJ_DEFAULT_PYTHON_TEMPLATE = """import sys
 
@@ -1376,17 +1394,21 @@ def serialize_oj_problem_row(problem, submission_stat=None, my_status=None):
 
 
 def _build_problem_stats(stats_query):
-    total, easy, medium, hard = stats_query.with_entities(
+    total, easy, medium, hard, extreme, glitch = stats_query.with_entities(
         db.func.count(Problem.id),
         db.func.sum(case((Problem.difficulty == "easy", 1), else_=0)),
         db.func.sum(case((Problem.difficulty == "medium", 1), else_=0)),
         db.func.sum(case((Problem.difficulty == "hard", 1), else_=0)),
+        db.func.sum(case((Problem.difficulty == "extreme", 1), else_=0)),
+        db.func.sum(case((Problem.difficulty == "glitch", 1), else_=0)),
     ).one()
     return {
         "total": int(total or 0),
         "easy": int(easy or 0),
         "medium": int(medium or 0),
         "hard": int(hard or 0),
+        "extreme": int(extreme or 0),
+        "glitch": int(glitch or 0),
     }
 
 
@@ -1417,7 +1439,7 @@ def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
         like = f"%{q}%"
         query = query.filter(db.or_(Problem.problem_code.like(like), Problem.title.like(like), Problem.slug.like(like), Problem.source.like(like)))
 
-    if difficulty in {"easy", "medium", "hard"}:
+    if difficulty in OJ_DIFFICULTY_VALUES:
         query = query.filter_by(difficulty=difficulty)
 
     problems = query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
@@ -1430,7 +1452,7 @@ def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
                 db.func.count(JudgeTask.id).label("attempts"),
                 db.func.sum(case((JudgeTask.status.in_(OJ_PASSING_STATUSES), 1), else_=0)).label("accepted"),
             )
-            .filter(JudgeTask.problem_id.in_(problem_ids), JudgeTask.assignment_id.is_(None))
+            .filter(JudgeTask.problem_id.in_(problem_ids))
             .group_by(JudgeTask.problem_id)
             .all()
         )
@@ -1449,7 +1471,7 @@ def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
                 db.func.sum(case((JudgeTask.status.in_(OJ_PASSING_STATUSES), 1), else_=0)).label("accepted"),
                 db.func.sum(case((JudgeTask.status.in_({"accepted", "PAC"}), 1), else_=0)).label("perfect_accepted"),
             )
-            .filter(JudgeTask.problem_id.in_(problem_ids), JudgeTask.user_id == current_user.id, JudgeTask.assignment_id.is_(None))
+            .filter(JudgeTask.problem_id.in_(problem_ids), JudgeTask.user_id == current_user.id)
             .group_by(JudgeTask.problem_id)
             .all()
         )
@@ -1535,7 +1557,9 @@ def serialize_oj_problem_detail(problem, active_assignment=None):
         all_files = ProblemFile.query.filter_by(problem_id=problem.id).order_by(ProblemFile.filename.asc()).all()
         visible_files = all_files if current_user.is_admin else [problem_file for problem_file in all_files if not problem_file.is_testdata_file]
     assignment_id = active_assignment.id if active_assignment else None
-    task_query = JudgeTask.query.filter_by(problem_id=problem.id, user_id=current_user.id, assignment_id=assignment_id)
+    task_query = JudgeTask.query.filter_by(problem_id=problem.id, user_id=current_user.id)
+    if active_assignment:
+        task_query = task_query.filter_by(assignment_id=assignment_id)
     my_latest_task = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).first()
     submission_history = task_query.order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc()).limit(5).all()
     if hidden_for_viewer:
@@ -1587,13 +1611,17 @@ def serialize_oj_problem_code_workspace(problem, active_assignment=None):
     sample_cases = get_oj_problem_sample_cases(problem.id)
     statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
     assignment_id = active_assignment.id if active_assignment else None
-    my_latest_task = (
+    latest_task_query = (
         JudgeTask.query
         .filter_by(
             problem_id=problem.id,
             user_id=current_user.id,
-            assignment_id=assignment_id,
         )
+    )
+    if active_assignment:
+        latest_task_query = latest_task_query.filter_by(assignment_id=assignment_id)
+    my_latest_task = (
+        latest_task_query
         .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
         .first()
     )
@@ -1639,13 +1667,17 @@ def serialize_oj_problem_code_workspace(problem, active_assignment=None):
 
 def serialize_oj_problem_submit_workspace(problem, active_assignment=None):
     assignment_id = active_assignment.id if active_assignment else None
-    my_latest_task = (
+    latest_task_query = (
         JudgeTask.query
         .filter_by(
             problem_id=problem.id,
             user_id=current_user.id,
-            assignment_id=assignment_id,
         )
+    )
+    if active_assignment:
+        latest_task_query = latest_task_query.filter_by(assignment_id=assignment_id)
+    my_latest_task = (
+        latest_task_query
         .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
         .first()
     )
@@ -1730,8 +1762,13 @@ def serialize_submission_row(task, status_meta=None):
             "title": task.problem.title,
             "slug": task.problem.slug,
             "code": task.problem.problem_code,
-            "url": url_for("oj_problem_detail", slug=task.problem.slug),
+            "url": url_for("oj_problem_detail", slug=task.problem.slug, assignment_id=task.assignment_id),
         } if task.problem else None,
+        "assignment": {
+            "id": task.assignment.id,
+            "title": task.assignment.title,
+            "url": url_for("oj_assignment_detail", assignment_id=task.assignment.id),
+        } if task.assignment else None,
         "url": url_for("oj_submission_detail", task_id=task.id),
         "deleteUrl": url_for("delete_oj_submission", task_id=task.id) if current_user.is_admin else None,
     }
@@ -1801,6 +1838,7 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
             ),
             joinedload(JudgeTask.user).load_only(User.id, User.username, User.real_name),
             joinedload(JudgeTask.problem).load_only(Problem.id, Problem.title, Problem.slug, Problem.problem_code),
+            joinedload(JudgeTask.assignment).load_only(OJAssignment.id, OJAssignment.title),
         )
         .filter(JudgeTask.problem_id.isnot(None))
     )
@@ -1821,11 +1859,6 @@ def build_oj_submission_list_payload(status_filter="", language_filter="", user_
         else:
             selected_assignment = None
             assignment_id_filter = None
-    else:
-        query = query.filter(JudgeTask.assignment_id.is_(None))
-        stats_query = stats_query.filter(JudgeTask.assignment_id.is_(None))
-        language_query = language_query.filter(JudgeTask.assignment_id.is_(None))
-
     if status_filter in OJ_STATUS_META:
         query = query.filter_by(status=status_filter)
         stats_query = stats_query.filter_by(status=status_filter)
@@ -2183,8 +2216,13 @@ def serialize_submission_detail(task, results=None):
         "problem": {
             "title": task.problem.title,
             "slug": task.problem.slug,
-            "url": url_for("oj_problem_detail", slug=task.problem.slug),
+            "url": url_for("oj_problem_detail", slug=task.problem.slug, assignment_id=task.assignment_id),
         } if task.problem else None,
+        "assignment": {
+            "id": task.assignment.id,
+            "title": task.assignment.title,
+            "url": url_for("oj_assignment_detail", assignment_id=task.assignment.id),
+        } if task.assignment else None,
         "results": [
             {
                 "caseIndex": result.case_index,
@@ -9950,7 +9988,7 @@ def import_oj_problem_from_zip(file_storage, user):
             else:
                 problem_code = next_problem_code()
 
-            difficulty = meta["difficulty"] if meta["difficulty"] in {"easy", "medium", "hard"} else "medium"
+            difficulty = meta["difficulty"] if meta["difficulty"] in OJ_DIFFICULTY_VALUES else "medium"
             problem = Problem(
                 problem_code=problem_code,
                 title=meta["title"],
@@ -11968,7 +12006,7 @@ def create_oj_problem():
             problem_code=problem_code,
             title=draft['title'],
             slug=final_slug,
-            difficulty=draft['difficulty'] if draft['difficulty'] in {'easy', 'medium', 'hard'} else 'medium',
+            difficulty=draft['difficulty'] if draft['difficulty'] in OJ_DIFFICULTY_VALUES else 'medium',
             time_limit_ms=max(draft['time_limit_ms'], 100),
             memory_limit_mb=max(draft['memory_limit_mb'], 16),
             allowed_languages=normalize_language_list(draft['allowed_languages']),
@@ -12095,7 +12133,7 @@ def edit_oj_problem(problem_id):
         problem.source = request.form.get('source', '').strip() or None
 
         difficulty = request.form.get('difficulty', 'medium').strip().lower()
-        problem.difficulty = difficulty if difficulty in {'easy', 'medium', 'hard'} else 'medium'
+        problem.difficulty = difficulty if difficulty in OJ_DIFFICULTY_VALUES else 'medium'
         problem.time_limit_ms = max(request.form.get('time_limit_ms', 2000, type=int) or 2000, 100)
         problem.memory_limit_mb = max(request.form.get('memory_limit_mb', 256, type=int) or 256, 16)
         problem.allowed_languages = normalize_language_list(request.form.get('allowed_languages', 'python,cpp,c'))

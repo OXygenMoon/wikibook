@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { postForm, requestJson } from './api.js';
+import { DIFFICULTY_OPTIONS } from '../difficulty.js';
 
 const props = defineProps({
   problem: {
@@ -635,9 +636,7 @@ onBeforeUnmount(() => {
         <label class="form-control">
           <span class="label-text font-bold mb-2">难度</span>
           <select v-model="form.difficulty" class="select select-bordered rounded-2xl">
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
+            <option v-for="option in DIFFICULTY_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
           </select>
         </label>
         <label class="form-control">

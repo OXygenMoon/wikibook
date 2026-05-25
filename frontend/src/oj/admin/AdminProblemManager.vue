@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { requestJson } from './api.js';
+import DifficultyBadge from '../DifficultyBadge.vue';
 
 const props = defineProps({
   initialProblems: {
@@ -19,12 +20,6 @@ const loading = ref(false);
 const notice = ref(null);
 
 const countText = computed(() => `当前共 ${problems.value.length} 道题。`);
-
-function difficultyClass(difficulty) {
-  if (difficulty === 'easy') return 'bg-emerald-100 text-emerald-700';
-  if (difficulty === 'hard') return 'bg-rose-100 text-rose-700';
-  return 'bg-amber-100 text-amber-700';
-}
 
 function showNotice(message, category = 'success') {
   notice.value = { message, category };
@@ -102,7 +97,7 @@ async function deleteProblem(problem) {
               <div class="text-xs font-mono text-stone-400 mt-1">{{ problem.slug }}</div>
             </td>
             <td>
-              <span class="oj-pill" :class="difficultyClass(problem.difficulty)">{{ problem.difficulty }}</span>
+              <DifficultyBadge :difficulty="problem.difficulty" />
             </td>
             <td class="font-bold">{{ problem.testcaseCount }}</td>
             <td class="font-bold">{{ problem.fileCount }}</td>

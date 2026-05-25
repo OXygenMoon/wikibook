@@ -1,4 +1,6 @@
 <script setup>
+import DifficultyBadge from '../DifficultyBadge.vue';
+
 const props = defineProps({
   problem: { type: Object, required: true },
 });
@@ -17,7 +19,7 @@ const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', '
           <span v-if="!problem.visible" class="badge badge-ghost">隐藏题</span>
         </div>
         <div class="flex gap-2 flex-wrap mt-5">
-          <span class="badge badge-outline">{{ problem.difficulty }}</span>
+          <DifficultyBadge :difficulty="problem.difficulty" />
           <span class="badge badge-outline">{{ problem.timeLimitMs }}ms</span>
           <span class="badge badge-outline">{{ problem.memoryLimitMb }}MB</span>
           <span v-if="problem.source" class="badge badge-outline">{{ problem.source }}</span>
@@ -72,7 +74,7 @@ const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', '
       <h2 class="text-xl font-black text-stone-900 dark:text-stone-100 mb-4">题目信息</h2>
       <div class="meta-line"><span class="text-stone-500">UID</span><span class="font-mono font-bold">{{ problem.uid }}</span></div>
       <div class="meta-line"><span class="text-stone-500">编号</span><span class="font-mono font-bold">{{ problem.code }}</span></div>
-      <div class="meta-line"><span class="text-stone-500">难度</span><span class="font-bold">{{ problem.difficulty }}</span></div>
+      <div class="meta-line"><span class="text-stone-500">难度</span><DifficultyBadge :difficulty="problem.difficulty" /></div>
       <div class="meta-line"><span class="text-stone-500">时间限制</span><span class="font-bold">{{ problem.timeLimitMs }} ms</span></div>
       <div class="meta-line"><span class="text-stone-500">内存限制</span><span class="font-bold">{{ problem.memoryLimitMb }} MB</span></div>
       <div class="meta-line"><span class="text-stone-500">语言</span><span class="font-bold text-right">{{ problem.allowedLanguages }}</span></div>

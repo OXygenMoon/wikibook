@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { postForm, requestJson } from './api.js';
+import DifficultyBadge from '../DifficultyBadge.vue';
 
 const props = defineProps({
   workspace: {
@@ -355,9 +356,7 @@ onBeforeUnmount(() => {
           <input v-model="form.selected_problem_ids" type="checkbox" class="checkbox checkbox-sm" :value="item.id">
           <span class="font-mono">{{ item.code }}</span>
           <span>{{ item.title }}</span>
-          <span class="oj-pill" :class="item.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-700' : item.difficulty === 'hard' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'">
-            {{ item.difficulty }}
-          </span>
+          <DifficultyBadge :difficulty="item.difficulty" />
         </label>
         <div v-if="!filteredProblems.length" class="text-sm text-stone-400">没有匹配的题目。</div>
       </div>

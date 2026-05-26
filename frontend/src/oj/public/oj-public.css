@@ -173,11 +173,24 @@ html.dark .mini-link-card {
 }
 
 .problem-detail-tabs .animal-tabs__content {
+  background: #fff;
   padding: 1rem;
 }
 
 .problem-detail-tabs__content {
   color: inherit;
+}
+
+.problem-detail-tabs__content :where(.problem-analysis-surface, .problem-trajectory-surface) {
+  background: #fff !important;
+}
+
+html.dark .problem-detail-tabs .animal-tabs__content {
+  background: rgba(24, 24, 27, 0.96);
+}
+
+html.dark .problem-detail-tabs__content :where(.problem-analysis-surface, .problem-trajectory-surface) {
+  background: rgba(24, 24, 27, 0.96) !important;
 }
 
 .full-star-goals .animal-collapse__trigger {

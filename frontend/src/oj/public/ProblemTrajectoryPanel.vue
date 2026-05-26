@@ -19,7 +19,7 @@ const trajectory = computed(() => props.analysis?.my?.trajectory || []);
       <span class="text-xs font-bold text-stone-500">{{ trajectory.length }} 个版本</span>
     </div>
 
-    <section class="min-w-0 rounded-lg border border-stone-200/80 bg-white/35 p-4 dark:border-white/10 dark:bg-white/5">
+    <section class="problem-trajectory-surface min-w-0 rounded-lg border border-stone-200/80 p-4 dark:border-white/10 dark:bg-white/5">
       <div v-if="trajectory.length" class="space-y-4">
         <div class="flex min-w-0 items-center gap-1.5 overflow-x-auto pb-1">
           <template v-for="(item, index) in trajectory" :key="`flow-${item.id}`">
@@ -41,7 +41,7 @@ const trajectory = computed(() => props.analysis?.my?.trajectory || []);
             v-for="item in trajectory"
             :key="item.id"
             :href="item.url"
-            class="grid min-w-0 grid-cols-[4.25rem,1fr,4.5rem,4rem] gap-3 py-2.5 text-xs transition-colors hover:bg-stone-50/80 dark:hover:bg-white/5"
+            class="grid min-w-0 grid-cols-[4.25rem,1fr,4.5rem,4rem] gap-3 py-2.5 text-xs transition-colors hover:bg-stone-50 dark:hover:bg-white/5"
             @click.prevent="emit('openSubmission', item.id, item.url)"
           >
             <span class="font-black text-stone-500">v{{ item.attempt }}</span>

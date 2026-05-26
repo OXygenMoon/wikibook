@@ -96,7 +96,7 @@ function dotToneClass(tone) {
       <article
         v-for="card in summaryCards"
         :key="card.key"
-        class="rounded-lg border border-stone-200/80 bg-white/45 p-3 dark:border-white/10 dark:bg-white/5"
+        class="problem-analysis-surface rounded-lg border border-stone-200/80 p-3 dark:border-white/10 dark:bg-white/5"
       >
         <div class="flex items-center gap-2 text-xs font-black text-stone-500">
           <span class="h-2 w-2 rounded-full" :class="dotToneClass(card.tone)"></span>
@@ -108,7 +108,7 @@ function dotToneClass(tone) {
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      <section class="rounded-lg border border-stone-200/80 bg-white/35 p-4 dark:border-white/10 dark:bg-white/5">
+      <section class="problem-analysis-surface rounded-lg border border-stone-200/80 p-4 dark:border-white/10 dark:bg-white/5">
         <div class="flex items-center justify-between gap-3 mb-3">
           <h3 class="text-base font-black text-stone-900 dark:text-stone-100">提交结果</h3>
           <span class="text-xs font-bold text-stone-500">{{ statusTotal }} 次</span>
@@ -127,7 +127,7 @@ function dotToneClass(tone) {
         <div v-else class="py-8 text-center text-stone-400">暂无提交数据。</div>
       </section>
 
-      <section class="rounded-lg border border-stone-200/80 bg-white/35 p-4 dark:border-white/10 dark:bg-white/5">
+      <section class="problem-analysis-surface rounded-lg border border-stone-200/80 p-4 dark:border-white/10 dark:bg-white/5">
         <div class="flex items-center justify-between gap-3 mb-3">
           <h3 class="text-base font-black text-stone-900 dark:text-stone-100">我的表现</h3>
           <span class="status-chip" :class="`status-chip--${analysis.my?.bestStatus?.tone || 'neutral'}`">{{ analysis.my?.bestStatus?.label || '未提交' }}</span>
@@ -150,7 +150,7 @@ function dotToneClass(tone) {
             <span class="font-black text-stone-900 dark:text-stone-100">{{ analysis.my?.timeToFirstAccepted || '-' }}</span>
           </div>
         </div>
-        <div v-if="analysis.my?.latestTask" class="mt-3 rounded-lg bg-stone-50/80 p-3 dark:bg-white/5">
+        <div v-if="analysis.my?.latestTask" class="problem-analysis-surface mt-3 rounded-lg p-3 dark:bg-white/5">
           <div class="text-xs font-black text-stone-500 mb-1.5">最近一次提交</div>
           <div class="flex items-center justify-between gap-3">
             <span class="status-chip" :class="`status-chip--${analysis.my.latestTask.statusTone}`">{{ analysis.my.latestTask.statusLabel }}</span>
@@ -161,7 +161,7 @@ function dotToneClass(tone) {
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-      <section class="rounded-lg border border-stone-200/80 bg-white/35 p-4 dark:border-white/10 dark:bg-white/5">
+      <section class="problem-analysis-surface rounded-lg border border-stone-200/80 p-4 dark:border-white/10 dark:bg-white/5">
         <h3 class="text-base font-black text-stone-900 dark:text-stone-100 mb-3">错误类型</h3>
         <div v-if="analysis.failureDistribution?.length" class="space-y-2.5">
           <div v-for="item in analysis.failureDistribution" :key="item.key">
@@ -177,10 +177,10 @@ function dotToneClass(tone) {
         <div v-else class="py-8 text-center text-stone-400">暂无错误数据。</div>
       </section>
 
-      <section class="rounded-lg border border-stone-200/80 bg-white/35 p-4 dark:border-white/10 dark:bg-white/5">
+      <section class="problem-analysis-surface rounded-lg border border-stone-200/80 p-4 dark:border-white/10 dark:bg-white/5">
         <h3 class="text-base font-black text-stone-900 dark:text-stone-100 mb-3">近期热度</h3>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <div v-for="stat in timedStats" :key="stat.key" class="rounded-md bg-stone-50/80 px-3 py-2 dark:bg-white/5">
+          <div v-for="stat in timedStats" :key="stat.key" class="problem-analysis-surface rounded-md px-3 py-2 dark:bg-white/5">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs font-black text-stone-500">{{ stat.label }}</span>
               <span class="text-sm font-black text-stone-900 dark:text-stone-100">{{ stat.count }}</span>
@@ -193,7 +193,7 @@ function dotToneClass(tone) {
       </section>
     </div>
 
-    <section v-if="analysis.canViewTestcaseAnalysis" class="rounded-lg border border-stone-200/80 bg-white/35 p-4 dark:border-white/10 dark:bg-white/5">
+    <section v-if="analysis.canViewTestcaseAnalysis" class="problem-analysis-surface rounded-lg border border-stone-200/80 p-4 dark:border-white/10 dark:bg-white/5">
       <h3 class="text-base font-black text-stone-900 dark:text-stone-100 mb-3">测试点表现</h3>
       <div v-if="analysis.testcaseAnalysis?.length" class="space-y-2.5">
         <div v-for="item in analysis.testcaseAnalysis" :key="item.caseIndex" class="grid grid-cols-[3.5rem,1fr,8.5rem] gap-3 items-center">

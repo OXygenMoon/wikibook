@@ -74,3 +74,5 @@ pnpm-debug.log*
 # 打包输出
 *.zip
 *.tar.gz
+dump.rdb
+*.pid

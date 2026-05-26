@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import DifficultyBadge from '../DifficultyBadge.vue';
 import { DIFFICULTY_OPTIONS } from '../difficulty.js';
 
@@ -10,10 +10,29 @@ const props = defineProps({
 
 const emit = defineEmits(['filter', 'openProblem', 'openSubmissions']);
 const filters = reactive({ q: '', difficulty: '', visibility: 'visible' });
-let debounceTimer = 0;
+const quickSearches = ['P', 'PF', 'Q'];
+const quickSearchTerm = ref('');
+
+const displayedProblems = computed(() => {
+  const needle = quickSearchTerm.value.trim().toLowerCase();
+  if (!needle) return props.payload.problems;
+
+  return props.payload.problems.filter((problem) => {
+    const searchableText = [
+      problem.code,
+      problem.title,
+      problem.slug,
+      problem.source,
+      problem.author,
+      ...(problem.tags || []),
+    ].join(' ').toLowerCase();
+    return searchableText.includes(needle);
+  });
+});
 
 function syncFilters() {
   Object.assign(filters, props.payload.filters || {});
+  quickSearchTerm.value = '';
 }
 
 function difficultySelectClass() {
@@ -48,17 +67,18 @@ function buildUrl() {
 }
 
 function submitFilter() {
+  quickSearchTerm.value = '';
   emit('filter', buildUrl());
-}
-
-function scheduleFilter() {
-  window.clearTimeout(debounceTimer);
-  debounceTimer = window.setTimeout(submitFilter, 260);
 }
 
 function tagFilter(tag) {
   filters.q = tag;
   submitFilter();
+}
+
+function quickSearch(term) {
+  filters.q = term;
+  quickSearchTerm.value = term;
 }
 
 function difficultyFilter(difficulty) {
@@ -98,29 +118,47 @@ watch(() => props.payload, syncFilters, { immediate: true });
       </div>
     </div>
 
-    <form class="oj-panel p-4 grid grid-cols-1 md:grid-cols-[1fr,12rem,12rem,auto] gap-3 items-end" @submit.prevent="submitFilter">
-      <label class="form-control">
-        <span class="label-text font-bold mb-1">搜索</span>
-        <input v-model.trim="filters.q" type="text" class="input input-bordered rounded-lg" placeholder="编号、题目、标签" @input="scheduleFilter">
-      </label>
-      <label class="form-control">
-        <span class="label-text font-bold mb-1">难度</span>
-        <select v-model="filters.difficulty" class="select select-bordered rounded-lg font-black transition-colors" :class="difficultySelectClass()" @change="submitFilter">
-          <option value="">全部难度</option>
-          <option v-for="option in DIFFICULTY_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
-        </select>
-      </label>
-      <label v-if="isAdmin" class="form-control">
-        <span class="label-text font-bold mb-1">可见性</span>
-        <select v-model="filters.visibility" class="select select-bordered rounded-lg" @change="submitFilter">
-          <option value="visible">公开题</option>
-          <option value="hidden">隐藏题</option>
-          <option value="all">全部</option>
-        </select>
-      </label>
-      <button type="submit" class="btn btn-primary rounded-lg">
-        <i class="fas fa-search" aria-hidden="true"></i> 筛选
-      </button>
+    <form class="oj-panel p-4 flex flex-col gap-3" @submit.prevent="submitFilter">
+      <div
+        class="grid grid-cols-1 gap-3 items-end"
+        :class="isAdmin ? 'md:grid-cols-[1fr,12rem,12rem,auto]' : 'md:grid-cols-[1fr,12rem,auto]'"
+      >
+        <label class="form-control">
+          <span class="label-text font-bold mb-1">搜索</span>
+          <input v-model.trim="filters.q" type="text" class="input input-bordered rounded-lg" placeholder="编号、题目、标签">
+        </label>
+        <label class="form-control">
+          <span class="label-text font-bold mb-1">难度</span>
+          <select v-model="filters.difficulty" class="select select-bordered rounded-lg font-black transition-colors" :class="difficultySelectClass()" @change="submitFilter">
+            <option value="">全部难度</option>
+            <option v-for="option in DIFFICULTY_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
+          </select>
+        </label>
+        <label v-if="isAdmin" class="form-control">
+          <span class="label-text font-bold mb-1">可见性</span>
+          <select v-model="filters.visibility" class="select select-bordered rounded-lg" @change="submitFilter">
+            <option value="visible">公开题</option>
+            <option value="hidden">隐藏题</option>
+            <option value="all">全部</option>
+          </select>
+        </label>
+        <button type="submit" class="btn btn-primary rounded-lg">
+          <i class="fas fa-search" aria-hidden="true"></i> 筛选
+        </button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 border-t border-stone-200/80 pt-3 dark:border-white/10">
+        <span class="text-xs font-black uppercase tracking-widest text-stone-400">快速搜索</span>
+        <button
+          v-for="term in quickSearches"
+          :key="term"
+          type="button"
+          class="btn btn-sm rounded-lg"
+          :class="quickSearchTerm === term ? 'btn-secondary' : 'btn-outline'"
+          @click="quickSearch(term)"
+        >
+          包含 {{ term }}
+        </button>
+      </div>
     </form>
 
     <div class="oj-panel overflow-hidden">
@@ -138,7 +176,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
             </tr>
           </thead>
           <tbody>
-            <tr v-for="problem in payload.problems" :key="problem.id" :class="rowClass(problem)">
+            <tr v-for="problem in displayedProblems" :key="problem.id" :class="rowClass(problem)">
               <td class="font-mono font-black text-stone-900 dark:text-stone-100">{{ problem.code }}</td>
               <td>
                 <div class="flex items-center gap-2 flex-wrap">
@@ -190,7 +228,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
               </td>
               <td class="text-sm font-bold text-stone-500">{{ problem.author }}</td>
             </tr>
-            <tr v-if="!payload.problems.length">
+            <tr v-if="!displayedProblems.length">
               <td colspan="7" class="text-center py-14 text-stone-400">当前没有匹配的题目。</td>
             </tr>
           </tbody>

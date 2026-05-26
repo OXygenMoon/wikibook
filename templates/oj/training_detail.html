@@ -167,6 +167,7 @@
   const activeChapterNodes = () => activeChapter()?.nodes || [];
   const nodeMap = () => Object.fromEntries((payload.nodes || []).map((node) => [node.id, node]));
   const openNode = () => openNodeId ? nodeMap()[openNodeId] : null;
+  const taskTitle = (task, node) => task?.title || node.label || node.problem.title;
 
   function problemInitials(problem) {
     const code = problem?.code || '';
@@ -222,6 +223,12 @@
     const map = nodeMap();
     const incoming = (payload.edges || []).filter((edge) => edge.toNodeId === node.id).map((edge) => map[edge.fromNodeId]).filter(Boolean);
     const outgoing = (payload.edges || []).filter((edge) => edge.fromNodeId === node.id).map((edge) => map[edge.toNodeId]).filter(Boolean);
+    const tasks = (node.tasks && node.tasks.length) ? node.tasks : [{
+      title: node.label || node.problem.title,
+      description: '完成关联 OJ 题目',
+      targetValue: 'accepted',
+    }];
+    const rewards = node.rewards || [];
     return `<div class="quest-modal-backdrop" data-close-modal>
       <div class="quest-modal" role="dialog" aria-modal="true" data-modal-card>
         <div class="quest-modal-head">
@@ -239,7 +246,10 @@
           <div class="quest-modal-cell">
             <div class="quest-modal-title">目标</div>
             <div class="quest-detail-list">
-              <div>完成题目：${esc(node.problem.title)}</div>
+              ${tasks.map((task, index) => `<div>
+                <strong>${index + 1}. ${esc(taskTitle(task, node))}</strong>
+                <div class="quest-small-muted">${esc(task.description || '完成关联 OJ 题目')} · ${esc(task.targetValue || 'accepted')}</div>
+              </div>`).join('')}
               <div>状态：${node.accepted ? '已完成' : (node.locked ? '未解锁' : '可挑战')}</div>
               <div>前置要求：${incoming.length ? '完成全部前置节点' : '无'}</div>
             </div>
@@ -248,6 +258,7 @@
             <div class="quest-modal-title reward">解锁</div>
             <div class="quest-detail-list">
               ${outgoing.length ? outgoing.map((item) => `<div>${esc(item.problem.code)} · ${esc(item.label || item.problem.title)}</div>`).join('') : '<div class="quest-small-muted">没有后续节点</div>'}
+              ${rewards.length ? `<div class="mt-3"><strong>奖励</strong></div>${rewards.map((reward) => `<div>${esc(reward.title || '解锁后续节点')}<div class="quest-small-muted">${esc(reward.description || '自动发放')}</div></div>`).join('')}` : ''}
             </div>
           </div>
         </div>

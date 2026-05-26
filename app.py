@@ -2555,6 +2555,12 @@ def get_visible_oj_trainings_for_user(user):
             selectinload(OJTrainingProject.chapters)
             .selectinload(OJTrainingChapter.nodes)
             .joinedload(OJTrainingNode.problem),
+            selectinload(OJTrainingProject.chapters)
+            .selectinload(OJTrainingChapter.nodes)
+            .selectinload(OJTrainingNode.tasks),
+            selectinload(OJTrainingProject.chapters)
+            .selectinload(OJTrainingChapter.nodes)
+            .selectinload(OJTrainingNode.rewards),
             selectinload(OJTrainingProject.allowed_classes),
             selectinload(OJTrainingProject.allowed_groups),
             selectinload(OJTrainingProject.allowed_users),
@@ -2609,6 +2615,46 @@ def serialize_training_problem(problem):
         "title": problem.title,
         "slug": problem.slug,
         "difficulty": problem.difficulty,
+    }
+
+
+def serialize_oj_training_task(task):
+    return {
+        "id": task.id,
+        "taskType": task.task_type,
+        "problemId": task.problem_id,
+        "title": task.title or "",
+        "description": task.description or "",
+        "targetValue": task.target_value or "",
+        "requiredCount": task.required_count,
+        "isRequired": bool(task.is_required),
+        "sortOrder": task.sort_order,
+    }
+
+
+def serialize_oj_training_reward(reward):
+    return {
+        "id": reward.id,
+        "rewardType": reward.reward_type,
+        "title": reward.title or "",
+        "description": reward.description or "",
+        "value": reward.value or "",
+        "sortOrder": reward.sort_order,
+        "isAutoClaim": bool(reward.is_auto_claim),
+    }
+
+
+def default_training_task_payload(node):
+    return {
+        "id": None,
+        "taskType": "oj_problem_ac",
+        "problemId": node.problem_id,
+        "title": node.label or node.problem.title,
+        "description": "完成关联 OJ 题目",
+        "targetValue": "accepted",
+        "requiredCount": 1,
+        "isRequired": True,
+        "sortOrder": 0,
     }
 
 
@@ -2672,6 +2718,8 @@ def serialize_oj_training_graph(training, for_admin=False):
                 "isEntry": bool(node.is_entry),
                 "isCore": bool(node.is_core),
                 "problem": serialize_training_problem(node.problem),
+                "tasks": [serialize_oj_training_task(task) for task in node.tasks] or [default_training_task_payload(node)],
+                "rewards": [serialize_oj_training_reward(reward) for reward in node.rewards],
             }
             nodes.append(node_payload)
             chapter_nodes.append(node_payload)
@@ -2700,6 +2748,9 @@ def serialize_oj_training_graph(training, for_admin=False):
                 "fromNodeId": edge.from_node_id,
                 "toNodeId": edge.to_node_id,
                 "label": edge.label or "",
+                "requirementType": edge.requirement_type or "all_completed",
+                "minCompleted": edge.min_completed or 1,
+                "isHidden": bool(edge.is_hidden),
             }
             for edge in edge_rows
         ]
@@ -2873,7 +2924,12 @@ def save_oj_training_graph_from_payload(training, payload):
     next_nodes_by_chapter = defaultdict(list)
     temp_node_map = {}
     problem_ids = {_safe_int(raw_node.get("problemId"), 0) for raw_node in raw_nodes}
+    for raw_node in raw_nodes:
+        for raw_task in raw_node.get("tasks") or []:
+            problem_ids.add(_safe_int(raw_task.get("problemId"), 0))
     problem_map = {problem.id: problem for problem in Problem.query.filter(Problem.id.in_(problem_ids)).all()} if problem_ids else {}
+    node_task_payloads = {}
+    node_reward_payloads = {}
     for index, raw_node in enumerate(raw_nodes):
         problem_id = _safe_int(raw_node.get("problemId"), 0)
         problem = problem_map.get(problem_id)
@@ -2892,13 +2948,15 @@ def save_oj_training_graph_from_payload(training, payload):
         node.note = (raw_node.get("note") or "").strip()
         node.pos_x = _safe_int(raw_node.get("x"), 120, minimum=0, maximum=4800)
         node.pos_y = _safe_int(raw_node.get("y"), 120, minimum=0, maximum=4800)
-        node.width = _safe_int(raw_node.get("width"), 220, minimum=160, maximum=500)
-        node.height = _safe_int(raw_node.get("height"), 120, minimum=80, maximum=360)
+        node.width = _safe_int(raw_node.get("width"), 64, minimum=48, maximum=180)
+        node.height = _safe_int(raw_node.get("height"), 64, minimum=48, maximum=180)
         node.sort_order = _safe_int(raw_node.get("sortOrder"), index, minimum=0)
         node.is_entry = bool(raw_node.get("isEntry", False))
         node.is_core = bool(raw_node.get("isCore", False))
         next_nodes_by_chapter[chapter.id].append(node)
         temp_node_map[str(raw_node.get("clientId") or raw_node.get("id"))] = node
+        node_task_payloads[id(node)] = raw_node.get("tasks") or []
+        node_reward_payloads[id(node)] = raw_node.get("rewards") or []
 
     for chapter in training.chapters:
         chapter.nodes = next_nodes_by_chapter.get(chapter.id, [])
@@ -2906,6 +2964,48 @@ def save_oj_training_graph_from_payload(training, payload):
     for chapter in training.chapters:
         for node in chapter.nodes:
             temp_node_map[str(node.id)] = node
+            raw_tasks = node_task_payloads.get(id(node)) or []
+            next_tasks = []
+            for task_index, raw_task in enumerate(raw_tasks):
+                task_problem_id = _safe_int(raw_task.get("problemId"), node.problem_id)
+                if task_problem_id and task_problem_id not in problem_map:
+                    continue
+                title = (raw_task.get("title") or node.label or node.problem.title or "").strip()
+                next_tasks.append(OJTrainingTask(
+                    task_type=(raw_task.get("taskType") or "oj_problem_ac").strip()[:40],
+                    problem_id=task_problem_id or node.problem_id,
+                    title=title[:200],
+                    description=(raw_task.get("description") or "").strip(),
+                    target_value=(raw_task.get("targetValue") or "accepted").strip()[:200],
+                    required_count=_safe_int(raw_task.get("requiredCount"), 1, minimum=1, maximum=1000),
+                    is_required=bool(raw_task.get("isRequired", True)),
+                    sort_order=_safe_int(raw_task.get("sortOrder"), task_index, minimum=0),
+                ))
+            if not next_tasks:
+                next_tasks.append(OJTrainingTask(
+                    task_type="oj_problem_ac",
+                    problem_id=node.problem_id,
+                    title=(node.label or node.problem.title or "")[:200],
+                    description="完成关联 OJ 题目",
+                    target_value="accepted",
+                    required_count=1,
+                    is_required=True,
+                    sort_order=0,
+                ))
+            node.tasks = next_tasks
+
+            raw_rewards = node_reward_payloads.get(id(node)) or []
+            node.rewards = [
+                OJTrainingReward(
+                    reward_type=(raw_reward.get("rewardType") or "unlock").strip()[:40],
+                    title=(raw_reward.get("title") or "解锁后续节点").strip()[:200],
+                    description=(raw_reward.get("description") or "").strip(),
+                    value=(raw_reward.get("value") or "").strip()[:200],
+                    sort_order=_safe_int(raw_reward.get("sortOrder"), reward_index, minimum=0),
+                    is_auto_claim=bool(raw_reward.get("isAutoClaim", True)),
+                )
+                for reward_index, raw_reward in enumerate(raw_rewards)
+            ]
 
     node_scope = [node.id for chapter in training.chapters for node in chapter.nodes]
     if node_scope:
@@ -2927,6 +3027,9 @@ def save_oj_training_graph_from_payload(training, payload):
             from_node_id=from_node.id,
             to_node_id=to_node.id,
             label=(raw_edge.get("label") or "").strip(),
+            requirement_type=(raw_edge.get("requirementType") or "all_completed").strip()[:40],
+            min_completed=_safe_int(raw_edge.get("minCompleted"), 1, minimum=1, maximum=1000),
+            is_hidden=bool(raw_edge.get("isHidden", False)),
         ))
 
     db.session.commit()
@@ -9837,6 +9940,18 @@ class OJTrainingNode(db.Model):
         backref='to_node',
         foreign_keys='OJTrainingEdge.to_node_id',
     )
+    tasks = db.relationship(
+        'OJTrainingTask',
+        backref='node',
+        cascade='all, delete-orphan',
+        order_by='OJTrainingTask.sort_order.asc(), OJTrainingTask.id.asc()',
+    )
+    rewards = db.relationship(
+        'OJTrainingReward',
+        backref='node',
+        cascade='all, delete-orphan',
+        order_by='OJTrainingReward.sort_order.asc(), OJTrainingReward.id.asc()',
+    )
 
 
 class OJTrainingEdge(db.Model):
@@ -9845,11 +9960,46 @@ class OJTrainingEdge(db.Model):
     from_node_id = db.Column(db.Integer, db.ForeignKey('oj_training_node.id'), nullable=False, index=True)
     to_node_id = db.Column(db.Integer, db.ForeignKey('oj_training_node.id'), nullable=False, index=True)
     label = db.Column(db.String(120), nullable=True)
+    requirement_type = db.Column(db.String(40), nullable=False, default='all_completed')
+    min_completed = db.Column(db.Integer, nullable=False, default=1)
+    is_hidden = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=now_utc8)
 
     __table_args__ = (
         db.UniqueConstraint('from_node_id', 'to_node_id', name='uq_oj_training_edge_from_to'),
     )
+
+
+class OJTrainingTask(db.Model):
+    __tablename__ = 'oj_training_task'
+    id = db.Column(db.Integer, primary_key=True)
+    node_id = db.Column(db.Integer, db.ForeignKey('oj_training_node.id'), nullable=False, index=True)
+    task_type = db.Column(db.String(40), nullable=False, default='oj_problem_ac')
+    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), nullable=True, index=True)
+    title = db.Column(db.String(200), nullable=False, default='')
+    description = db.Column(db.Text, nullable=True)
+    target_value = db.Column(db.String(200), nullable=True)
+    required_count = db.Column(db.Integer, nullable=False, default=1)
+    is_required = db.Column(db.Boolean, nullable=False, default=True)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
+
+    problem = db.relationship('Problem')
+
+
+class OJTrainingReward(db.Model):
+    __tablename__ = 'oj_training_reward'
+    id = db.Column(db.Integer, primary_key=True)
+    node_id = db.Column(db.Integer, db.ForeignKey('oj_training_node.id'), nullable=False, index=True)
+    reward_type = db.Column(db.String(40), nullable=False, default='unlock')
+    title = db.Column(db.String(200), nullable=False, default='')
+    description = db.Column(db.Text, nullable=True)
+    value = db.Column(db.String(200), nullable=True)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+    is_auto_claim = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=now_utc8)
+    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
 
 
 def can_view_problem(problem, user):
@@ -10705,6 +10855,8 @@ def ensure_oj_authoring_schema(force=False):
         'oj_training_chapter': OJTrainingChapter.__table__,
         'oj_training_node': OJTrainingNode.__table__,
         'oj_training_edge': OJTrainingEdge.__table__,
+        'oj_training_task': OJTrainingTask.__table__,
+        'oj_training_reward': OJTrainingReward.__table__,
         'oj_training_classes': oj_training_classes,
         'oj_training_groups': oj_training_groups,
         'oj_training_users': oj_training_users,
@@ -10801,6 +10953,16 @@ def ensure_oj_authoring_schema(force=False):
                         "ON judge_task (created_at, user_id, problem_id, status)"
                     )
                 )
+
+        if 'oj_training_edge' in existing_tables:
+            inspector = inspect(connection)
+            edge_columns = {column['name'] for column in inspector.get_columns('oj_training_edge')}
+            if 'requirement_type' not in edge_columns:
+                connection.execute(db.text("ALTER TABLE oj_training_edge ADD COLUMN requirement_type VARCHAR(40) DEFAULT 'all_completed'"))
+            if 'min_completed' not in edge_columns:
+                connection.execute(db.text("ALTER TABLE oj_training_edge ADD COLUMN min_completed INTEGER DEFAULT 1"))
+            if 'is_hidden' not in edge_columns:
+                connection.execute(db.text("ALTER TABLE oj_training_edge ADD COLUMN is_hidden BOOLEAN DEFAULT FALSE"))
 
     seed_ast_rule_templates()
     OJ_AUTHORING_SCHEMA_READY = True

@@ -169,10 +169,37 @@
   .questbook-primary-btn {
     height: 40px;
     padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     border: 1px solid rgba(34,211,238,0.45);
     background: rgba(6,182,212,0.22);
     color: #67e8f9;
     font-weight: 900;
+  }
+
+  .questbook-primary-btn.is-hot {
+    border-color: rgba(249,115,22,0.72);
+    background: rgba(249,115,22,0.22);
+    color: #fed7aa;
+  }
+
+  .questbook-connect-banner {
+    position: absolute;
+    left: 18px;
+    top: 76px;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(249,115,22,0.62);
+    background: rgba(21, 15, 10, 0.84);
+    color: #fed7aa;
+    box-shadow: 0 14px 32px rgba(0,0,0,0.34);
+    backdrop-filter: blur(10px);
+    font-weight: 900;
+    pointer-events: auto;
   }
 
   .questbook-viewport {
@@ -404,12 +431,54 @@
   const activeChapter = () => chapters().find((chapter) => chapterKey(chapter) === activeChapterKey) || chapters()[0];
   const nodeByKey = (key) => nodes().find((node) => nodeKey(node) === String(key));
   const nodeMap = () => Object.fromEntries(nodes().map((node) => [nodeKey(node), node]));
+  const taskTitle = (task, node) => task?.title || node.label || node.problem.title;
 
   function normalizeState() {
     state.chapters = (state.chapters || []).map((chapter, index) => ({ ...chapter, clientId: chapter.clientId || (chapter.id ? String(chapter.id) : nextClientId('chapter')), sortOrder: index }));
-    state.nodes = (state.nodes || []).map((node, index) => ({ ...node, clientId: node.clientId || (node.id ? String(node.id) : nextClientId('node')), chapterClientId: node.chapterClientId || String(node.chapterId), sortOrder: index, width: 64, height: 64 }));
-    state.edges = (state.edges || []).map((edge) => ({ ...edge, clientId: edge.clientId || (edge.id ? String(edge.id) : nextClientId('edge')), fromClientId: edge.fromClientId || String(edge.fromNodeId), toClientId: edge.toClientId || String(edge.toNodeId) }));
+    state.nodes = (state.nodes || []).map((node, index) => ({
+      ...node,
+      clientId: node.clientId || (node.id ? String(node.id) : nextClientId('node')),
+      chapterClientId: node.chapterClientId || String(node.chapterId),
+      sortOrder: index,
+      width: 64,
+      height: 64,
+      tasks: (node.tasks && node.tasks.length) ? node.tasks : [defaultTaskForNode(node)],
+      rewards: node.rewards || [],
+    }));
+    state.edges = (state.edges || []).map((edge) => ({
+      ...edge,
+      clientId: edge.clientId || (edge.id ? String(edge.id) : nextClientId('edge')),
+      fromClientId: edge.fromClientId || String(edge.fromNodeId),
+      toClientId: edge.toClientId || String(edge.toNodeId),
+      requirementType: edge.requirementType || 'all_completed',
+      minCompleted: Number(edge.minCompleted || 1),
+      isHidden: Boolean(edge.isHidden),
+    }));
     if (!activeChapterKey && state.chapters[0]) activeChapterKey = chapterKey(state.chapters[0]);
+  }
+
+  function defaultTaskForNode(node) {
+    return {
+      taskType: 'oj_problem_ac',
+      problemId: node.problemId,
+      title: node.label || node.problem?.title || '',
+      description: '完成关联 OJ 题目',
+      targetValue: 'accepted',
+      requiredCount: 1,
+      isRequired: true,
+      sortOrder: 0,
+    };
+  }
+
+  function defaultRewardForNode() {
+    return {
+      rewardType: 'unlock',
+      title: '解锁后续节点',
+      description: '完成后解锁连接的后续训练节点。',
+      value: '',
+      sortOrder: 0,
+      isAutoClaim: true,
+    };
   }
 
   function activeChapterNodes() {
@@ -496,6 +565,8 @@
     const map = nodeMap();
     const incoming = edges().filter((edge) => String(edge.toClientId || edge.toNodeId) === openNodeKey).map((edge) => map[String(edge.fromClientId || edge.fromNodeId)]).filter(Boolean);
     const outgoing = edges().filter((edge) => String(edge.fromClientId || edge.fromNodeId) === openNodeKey).map((edge) => map[String(edge.toClientId || edge.toNodeId)]).filter(Boolean);
+    const tasks = (node.tasks && node.tasks.length) ? node.tasks : [defaultTaskForNode(node)];
+    const rewards = node.rewards || [];
     return `<div class="quest-modal-backdrop" data-close-modal>
       <div class="quest-modal" role="dialog" aria-modal="true" data-modal-card>
         <div class="quest-modal-head">
@@ -505,7 +576,7 @@
             <input data-node-field="label" value="${esc(node.label || '')}" placeholder="${esc(node.problem.title)}" style="width:100%;background:transparent;border:0;color:#e5edf7;font-size:26px;font-weight:900;outline:none;">
           </div>
           <div class="flex gap-2">
-            <button type="button" class="questbook-icon-btn" data-connect="${openNodeKey}" title="从此节点连线"><i class="fas fa-share-nodes"></i></button>
+            <button type="button" class="questbook-primary-btn is-hot" data-connect="${openNodeKey}" title="从此节点连线"><i class="fas fa-share-nodes"></i> 从此节点连线</button>
             <button type="button" class="questbook-icon-btn" data-delete-node="${openNodeKey}" title="删除"><i class="fas fa-trash"></i></button>
             <button type="button" class="questbook-icon-btn" data-close-modal-btn title="关闭"><i class="fas fa-xmark"></i></button>
           </div>
@@ -514,8 +585,10 @@
           <div class="quest-modal-cell">
             <div class="quest-modal-title">目标</div>
             <div class="quest-detail-list">
-              <div>完成题目：${esc(node.problem.title)}</div>
-              <div>题目编号：${esc(node.problem.code)}</div>
+              ${tasks.map((task, index) => `<div>
+                <strong>${index + 1}. ${esc(taskTitle(task, node))}</strong>
+                <div class="quest-small-muted">${esc(task.description || '完成关联 OJ 题目')} · ${esc(task.targetValue || 'accepted')}</div>
+              </div>`).join('')}
               <div>解锁状态：${incoming.length ? '完成全部前置节点' : '入口可见'}</div>
               <label class="flex items-center gap-3 mt-2"><input type="checkbox" data-node-bool="isEntry" ${node.isEntry ? 'checked' : ''}> 设为入口节点</label>
               <label class="flex items-center gap-3"><input type="checkbox" data-node-bool="isCore" ${node.isCore ? 'checked' : ''}> 设为核心节点</label>
@@ -528,6 +601,8 @@
               ${incoming.length ? incoming.map((item) => `<div>${esc(item.problem.code)} · ${esc(item.label || item.problem.title)}</div>`).join('') : '<div class="quest-small-muted">无</div>'}
               <div class="mt-3"><strong>可解锁节点</strong></div>
               ${outgoing.length ? outgoing.map((item) => `<div class="flex items-center justify-between gap-3"><span>${esc(item.problem.code)} · ${esc(item.label || item.problem.title)}</span><button type="button" class="questbook-icon-btn" data-remove-edge="${openNodeKey}|${nodeKey(item)}" title="断开"><i class="fas fa-unlink"></i></button></div>`).join('') : '<div class="quest-small-muted">无</div>'}
+              <div class="mt-3"><strong>奖励</strong></div>
+              ${rewards.length ? rewards.map((reward) => `<div>${esc(reward.title || '解锁后续节点')}<div class="quest-small-muted">${esc(reward.description || '自动发放')}</div></div>`).join('') : '<div class="quest-small-muted">暂无显式奖励</div>'}
             </div>
           </div>
         </div>
@@ -544,6 +619,7 @@
     updateChapterNodeCaches();
     const chapter = activeChapter();
     const stats = currentStats();
+    const connectNode = connectFromKey ? nodeByKey(connectFromKey) : null;
     app.innerHTML = `
       <div class="questbook-app">
         <aside class="questbook-sidebar">
@@ -581,6 +657,11 @@
               <a class="questbook-icon-btn" href="${state.project.urls.detail}" title="查看训练"><i class="fas fa-eye"></i></a>
             </div>
           </div>
+          ${connectNode ? `<div class="questbook-connect-banner">
+            <i class="fas fa-share-nodes"></i>
+            <span>正在从「${esc(connectNode.problem.code)} · ${esc(connectNode.label || connectNode.problem.title)}」连线，点击目标节点完成。</span>
+            <button type="button" class="questbook-icon-btn" data-cancel-connect title="取消连线"><i class="fas fa-xmark"></i></button>
+          </div>` : ''}
           <div class="questbook-viewport" id="quest-viewport">
             <div class="questbook-stage" id="quest-stage" style="width:${chapter?.canvasWidth || 2200}px;height:${chapter?.canvasHeight || 1400}px;transform:translate(${view.x}px, ${view.y}px) scale(${view.scale});">
               <svg class="questbook-edge-layer" width="${chapter?.canvasWidth || 2200}" height="${chapter?.canvasHeight || 1400}">
@@ -658,6 +739,10 @@
       openNodeKey = null;
       render();
     }));
+    app.querySelector('[data-cancel-connect]')?.addEventListener('click', () => {
+      connectFromKey = null;
+      render();
+    });
     app.querySelectorAll('[data-delete-node]').forEach((button) => button.addEventListener('click', (event) => {
       event.stopPropagation();
       deleteNode(button.dataset.deleteNode);
@@ -735,12 +820,8 @@
         const key = el.dataset.node;
         const node = nodeByKey(key);
         if (!node) return;
-        if (connectFromKey && connectFromKey !== key) {
-          addEdge(connectFromKey, key);
-          connectFromKey = null;
-          selectedNodeKey = key;
-          openNodeKey = key;
-          render();
+        if (connectFromKey) {
+          connectToNode(key);
           return;
         }
         selectedNodeKey = key;
@@ -819,6 +900,8 @@
       isEntry: count === 0,
       isCore: false,
       problem,
+      tasks: [defaultTaskForNode({ problemId: problem.id, problem })],
+      rewards: [defaultRewardForNode()],
     };
     state.nodes.push(node);
     selectedNodeKey = node.clientId;
@@ -830,7 +913,22 @@
     if (fromKey === toKey) return;
     const exists = edges().some((edge) => String(edge.fromClientId || edge.fromNodeId) === fromKey && String(edge.toClientId || edge.toNodeId) === toKey);
     if (exists) return;
-    state.edges.push({ clientId: nextClientId('edge'), fromClientId: fromKey, toClientId: toKey, label: '' });
+    state.edges.push({ clientId: nextClientId('edge'), fromClientId: fromKey, toClientId: toKey, label: '', requirementType: 'all_completed', minCompleted: 1, isHidden: false });
+  }
+
+  function connectToNode(targetKey) {
+    if (!connectFromKey) return false;
+    if (connectFromKey === targetKey) {
+      connectFromKey = null;
+      render();
+      return true;
+    }
+    addEdge(connectFromKey, targetKey);
+    connectFromKey = null;
+    selectedNodeKey = targetKey;
+    openNodeKey = targetKey;
+    render();
+    return true;
   }
 
   function deleteNode(key) {

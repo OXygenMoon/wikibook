@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import { reactive, watch } from 'vue';
 import DifficultyBadge from '../DifficultyBadge.vue';
 import { DIFFICULTY_OPTIONS } from '../difficulty.js';
 
@@ -11,28 +11,9 @@ const props = defineProps({
 const emit = defineEmits(['filter', 'openProblem', 'openSubmissions']);
 const filters = reactive({ q: '', difficulty: '', visibility: 'visible' });
 const quickSearches = ['P', 'PF', 'Q'];
-const quickSearchTerm = ref('');
-
-const displayedProblems = computed(() => {
-  const needle = quickSearchTerm.value.trim().toLowerCase();
-  if (!needle) return props.payload.problems;
-
-  return props.payload.problems.filter((problem) => {
-    const searchableText = [
-      problem.code,
-      problem.title,
-      problem.slug,
-      problem.source,
-      problem.author,
-      ...(problem.tags || []),
-    ].join(' ').toLowerCase();
-    return searchableText.includes(needle);
-  });
-});
 
 function syncFilters() {
   Object.assign(filters, props.payload.filters || {});
-  quickSearchTerm.value = '';
 }
 
 function difficultySelectClass() {
@@ -67,7 +48,6 @@ function buildUrl() {
 }
 
 function submitFilter() {
-  quickSearchTerm.value = '';
   emit('filter', buildUrl());
 }
 
@@ -78,7 +58,7 @@ function tagFilter(tag) {
 
 function quickSearch(term) {
   filters.q = term;
-  quickSearchTerm.value = term;
+  submitFilter();
 }
 
 function difficultyFilter(difficulty) {
@@ -153,7 +133,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
           :key="term"
           type="button"
           class="btn btn-sm rounded-lg"
-          :class="quickSearchTerm === term ? 'btn-secondary' : 'btn-outline'"
+          :class="filters.q === term ? 'btn-secondary' : 'btn-outline'"
           @click="quickSearch(term)"
         >
           包含 {{ term }}
@@ -176,7 +156,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
             </tr>
           </thead>
           <tbody>
-            <tr v-for="problem in displayedProblems" :key="problem.id" :class="rowClass(problem)">
+            <tr v-for="problem in payload.problems" :key="problem.id" :class="rowClass(problem)">
               <td class="font-mono font-black text-stone-900 dark:text-stone-100">{{ problem.code }}</td>
               <td>
                 <div class="flex items-center gap-2 flex-wrap">
@@ -228,7 +208,7 @@ watch(() => props.payload, syncFilters, { immediate: true });
               </td>
               <td class="text-sm font-bold text-stone-500">{{ problem.author }}</td>
             </tr>
-            <tr v-if="!displayedProblems.length">
+            <tr v-if="!payload.problems.length">
               <td colspan="7" class="text-center py-14 text-stone-400">当前没有匹配的题目。</td>
             </tr>
           </tbody>

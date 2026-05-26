@@ -6926,17 +6926,13 @@ toast: {
                         });
                     }
                     
-                    let attempts = 0;
-                    const checkExist = setInterval(() => {
-                        attempts++;
+                    const scheduleBookmarkLoad = window.requestIdleCallback
+                        ? (callback) => window.requestIdleCallback(callback, { timeout: 1200 })
+                        : (callback) => window.setTimeout(callback, 250);
+                    scheduleBookmarkLoad(() => {
                         const contentArea = document.querySelector('.markdown-body');
-                        if (contentArea && contentArea.querySelectorAll('p, h1, h2, h3').length > 0) {
-                            clearInterval(checkExist);
-                            this.loadPageBookmarks();
-                        } else if (attempts > 15) { 
-                            clearInterval(checkExist);
-                        }
-                    }, 200);
+                        if (contentArea) this.loadPageBookmarks();
+                    });
                 },
 
                 // 💡 新增：检查并触发获得新书签的弹窗
@@ -7026,8 +7022,10 @@ toast: {
                 initDeterministicIds() {
                     const contentArea = document.querySelector('.markdown-body');
                     if (!contentArea) return;
+                    if (contentArea.dataset.bookmarkIdsReady === 'true') return;
                     const blocks = contentArea.querySelectorAll('p, pre, h1, h2, h3, li, blockquote');
                     blocks.forEach((b, index) => { b.id = `bm-block-idx-${index}`; });
+                    contentArea.dataset.bookmarkIdsReady = 'true';
                 },
                 
                 renderList(bms) {

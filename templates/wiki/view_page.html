@@ -120,6 +120,26 @@
         object-fit: cover;
         transform-origin: center center;
     }
+
+    .wiki-view-page .wiki-reader-card {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+
+    .wiki-readable-markdown {
+        contain: layout style;
+        overflow-wrap: anywhere;
+    }
+
+    .wiki-readable-markdown :where(img, video, iframe) {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 320px;
+    }
+
+    .wiki-view-page .code-window {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 260px;
+    }
 </style>
 {% endblock %}
 
@@ -191,56 +211,6 @@
 }
 </script>
 
-<div class="fixed inset-y-0 left-4 md:left-8 z-[100] flex items-center group/left-nav hidden lg:flex">
-    <div class="relative pointer-events-auto">
-        <div class="absolute inset-y-0 left-0 w-8 bg-white/20 dark:bg-black/20 backdrop-blur-md rounded-full border border-white/30 shadow-lg transition-all duration-500 group-hover/left-nav:bg-white/40 dark:group-hover/left-nav:bg-black/40 -z-10"></div>
-        
-        <div class="flex flex-col gap-3 py-4">
-            {% for item in root_items %}
-                
-                {% if item.item_type == 'folder' and item.children %}
-                <div class="flex flex-col items-center gap-2.5 py-2.5 w-5 ml-[6px] rounded-full bg-base-content/5 dark:bg-base-content/10 border border-base-content/10 relative group/folder shadow-inner transition-colors hover:bg-base-content/10">
-
-                    
-                    {% for p in item.children %}
-                    <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=p.slug) }}" class="flex items-center group/item relative z-10 cursor-pointer w-full justify-center">
-                        <div class="w-2 h-2 rounded-full transition-all duration-300 group-hover/item:scale-150 flex-shrink-0"
-                             style="background-color: {{ 'var(--theme-primary)' if page and p.id == page.id else 'hsl(var(--bc) / 0.4)' }}; 
-                                    box-shadow: {{ '0 0 10px var(--theme-primary)' if page and p.id == page.id else 'none' }};">
-                        </div>
-                        <span class="absolute left-full ml-1.5 opacity-0 group-hover/left-nav:opacity-80 text-[10px] font-bold whitespace-nowrap transition-all duration-300 -translate-x-2 group-hover/left-nav:translate-x-0 text-base-content drop-shadow-sm pointer-events-none">
-                            {{ p.title }}
-                        </span>
-                    </a>
-                    {% endfor %}
-                </div>
-                
-                {% elif item.item_type == 'page' %}
-                <a href="{{ url_for('view_page', wiki_id=wiki.id, slug=item.slug) }}" class="flex items-center group/item relative z-10 cursor-pointer ml-[12px] h-3">
-                    <div class="w-2 h-2 rounded-full transition-all duration-300 group-hover/item:scale-150 flex-shrink-0"
-                         style="background-color: {{ 'var(--theme-primary)' if page and item.id == page.id else 'hsl(var(--bc) / 0.3)' }}; 
-                                box-shadow: {{ '0 0 10px var(--theme-primary)' if page and item.id == page.id else 'none' }};">
-                    </div>
-                    <span class="absolute left-full ml-3 opacity-0 group-hover/left-nav:opacity-80 text-[10px] font-bold whitespace-nowrap transition-all duration-300 -translate-x-2 group-hover/left-nav:translate-x-0 text-base-content drop-shadow-sm pointer-events-none">
-                        {{ item.title }}
-                    </span>
-                </a>
-                {% endif %}
-                
-            {% endfor %}
-        </div>
-    </div>
-</div>
-
-<div id="right-toc-dots" class="fixed inset-y-0 right-4 md:right-8 z-[100] flex items-center group/right-nav hidden xl:flex opacity-0 transition-opacity duration-500">
-    <div class="relative pointer-events-auto">
-        <div class="absolute inset-y-0 right-0 w-8 bg-white/20 dark:bg-black/20 backdrop-blur-md rounded-full border border-white/30 shadow-lg transition-all duration-500 group-hover/right-nav:bg-white/40 dark:group-hover/right-nav:bg-black/40 -z-10"></div>
-        
-        <div id="toc-dots-container" class="flex flex-col gap-3 py-4 pr-3 items-end">
-        </div>
-    </div>
-</div>
-
 <div id="split-container" class="wiki-view-page flex transition-all duration-500 ease-in-out relative w-full mx-auto max-w-5xl">
     
     <div id="wiki-main-content" class="flex-1 min-w-0 transition-all duration-500">
@@ -298,7 +268,7 @@
             </div>
         </div>
 
-        <div class="card wiki-glass-card bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-white/60 dark:border-white/5 min-h-[75vh] rounded-[2rem] relative">
+        <div class="card wiki-glass-card wiki-reader-card bg-white/60 dark:bg-base-100/60 backdrop-blur-3xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-white/60 dark:border-white/5 min-h-[75vh] rounded-[2rem] relative">
             
             {% if page %}
             <div class="absolute top-4 right-4 md:top-6 md:right-6 flex items-center bg-base-200/50 p-1.5 rounded-xl border border-base-300/50 shadow-sm overflow-x-auto scrollbar-hide z-20 backdrop-blur-md">
@@ -390,7 +360,7 @@
                             </div>
                         </div>
                     {% else %}
-                        <div class="markdown-body prose prose-stone max-w-none lg:prose-lg prose-headings:font-bold prose-a:text-primary hover:prose-a:text-primary-focus selection:bg-primary/20 selection:text-base-content">
+                        <div class="markdown-body wiki-readable-markdown prose prose-stone max-w-none lg:prose-lg prose-headings:font-bold prose-a:text-primary hover:prose-a:text-primary-focus selection:bg-primary/20 selection:text-base-content">
                           {{ html|safe }}
                         </div>
                         
@@ -654,7 +624,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/cpp.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/sql.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/go.min.js"></script>
-<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
 <script src="{{ url_for('static', filename='js/easymde.min.js') }}"></script>
 
 
@@ -681,9 +650,39 @@ try {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    
-    // 执行原生高亮
-    hljs.highlightAll();
+    const articleContent = document.querySelector('.markdown-body');
+    const articleHeaders = articleContent ? Array.from(articleContent.querySelectorAll('h1, h2, h3')) : [];
+    const runWhenIdle = window.requestIdleCallback
+        ? (callback, timeout = 900) => window.requestIdleCallback(callback, { timeout })
+        : (callback) => window.setTimeout(() => callback({ timeRemaining: () => 0, didTimeout: true }), 16);
+    const loadScriptOnce = (() => {
+        const cache = new Map();
+        return (src) => {
+            if (cache.has(src)) return cache.get(src);
+            const promise = new Promise((resolve, reject) => {
+                const existing = document.querySelector(`script[src="${src}"]`);
+                if (existing) {
+                    existing.addEventListener('load', resolve, { once: true });
+                    existing.addEventListener('error', reject, { once: true });
+                    if (existing.dataset.loaded === 'true') resolve();
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.onload = () => {
+                    script.dataset.loaded = 'true';
+                    resolve();
+                };
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+            cache.set(src, promise);
+            return promise;
+        };
+    })();
+
+    window.__wikiArticleHeadings = articleHeaders;
 
     // ==========================================
     // 🖥 宽屏/窄屏切换逻辑
@@ -697,12 +696,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (widthBtn && splitContainer) {
         const savedMode = localStorage.getItem('wiki_width_mode');
         let isWide = savedMode ? savedMode === 'wide' : true;
-        
-// 获取圆点导航容器
-        const leftNavDots = document.querySelector('.group\\/left-nav');
-        const rightNavDots = document.getElementById('right-toc-dots');
-
-window.applyLayout = function(wide) {
+	window.applyLayout = function(wide) {
             if (window.isSplitMode) return; 
             if (wide) {
                 // 宽屏模式
@@ -711,10 +705,6 @@ window.applyLayout = function(wide) {
                 widthBtn.innerHTML = iconCompress; 
                 widthBtn.setAttribute('title', '恢复窄屏');
                 widthBtn.classList.add('bg-base-300/50', 'shadow-inner'); 
-                
-                // 💡 宽屏时：用 !hidden 强制隐藏两侧圆点
-                if(leftNavDots) leftNavDots.classList.add('!hidden');
-                if(rightNavDots) rightNavDots.classList.add('!hidden');
             } else {
                 // 居中模式 (窄屏)
                 splitContainer.classList.add('max-w-5xl');
@@ -722,10 +712,6 @@ window.applyLayout = function(wide) {
                 widthBtn.innerHTML = iconExpand; 
                 widthBtn.setAttribute('title', '切换宽屏');
                 widthBtn.classList.remove('bg-base-300/50', 'shadow-inner');
-                
-                // 💡 居中时：移除 !hidden，恢复它们原本的响应式显示
-                if(leftNavDots) leftNavDots.classList.remove('!hidden');
-                if(rightNavDots) rightNavDots.classList.remove('!hidden');
             }
         };
 
@@ -747,6 +733,7 @@ window.applyLayout = function(wide) {
     // ==========================================
     let pyodideInstance = null;
     let isPyodideLoading = false;
+    let pyodideLoadPromise = null;
 
     function formatOutput(text, isError = false) {
         const safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -754,8 +741,49 @@ window.applyLayout = function(wide) {
         return safeText + '\n';
     }
 
-    document.querySelectorAll('pre code').forEach((block, index) => {
+    function ensurePyodide(outputDiv) {
+        if (pyodideInstance) return Promise.resolve(pyodideInstance);
+        if (!pyodideLoadPromise) {
+            isPyodideLoading = true;
+            pyodideLoadPromise = loadScriptOnce('https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js')
+                .then(() => loadPyodide({
+                    stdout: (msg) => {
+                        if (outputDiv.innerHTML.includes('正在初始化')) outputDiv.innerHTML = '';
+                        outputDiv.innerHTML += formatOutput(msg);
+                    },
+                    stderr: (msg) => {
+                        if (outputDiv.innerHTML.includes('正在初始化')) outputDiv.innerHTML = '';
+                        outputDiv.innerHTML += formatOutput(msg, true);
+                    }
+                }))
+                .then((instance) => {
+                    pyodideInstance = instance;
+                    return instance;
+                })
+                .finally(() => {
+                    isPyodideLoading = false;
+                });
+        }
+        return pyodideLoadPromise;
+    }
+
+    function highlightCodeBlock(block) {
+        if (!window.hljs || block.dataset.highlighted === 'true') return;
+        hljs.highlightElement(block);
+        block.dataset.highlighted = 'true';
+    }
+
+    function enhanceCodeBlock(block, index) {
+        if (block.dataset.wikiEnhanced === 'true') {
+            highlightCodeBlock(block);
+            return;
+        }
+        block.dataset.wikiEnhanced = 'true';
         const pre = block.parentNode;
+        if (!pre || pre.parentNode?.classList?.contains('code-window')) {
+            highlightCodeBlock(block);
+            return;
+        }
         let lang = 'text';
         block.classList.forEach(c => { if (c.startsWith('language-')) lang = c.replace('language-', ''); });
 
@@ -818,22 +846,15 @@ window.applyLayout = function(wide) {
                 outputDiv.style.display = 'block'; 
                 runBtn.disabled = true;
                 runBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> <span>执行中</span>';
-                outputDiv.innerHTML = '<span class="text-emerald-500/80 animate-pulse"># 正在初始化 Pyodide 运行环境... (首次需下载约 10MB)</span>\n';
+                outputDiv.innerHTML = isPyodideLoading
+                    ? '<span class="text-emerald-500/80 animate-pulse"># 正在等待 Pyodide 运行环境...</span>\n'
+                    : '<span class="text-emerald-500/80 animate-pulse"># 正在初始化 Pyodide 运行环境... (首次需下载约 10MB)</span>\n';
 
                 try {
-                    if (!pyodideInstance && !isPyodideLoading) {
-                        isPyodideLoading = true;
-                        pyodideInstance = await loadPyodide({
-                            stdout: (msg) => { if(outputDiv.innerHTML.includes('正在初始化')) outputDiv.innerHTML = ''; outputDiv.innerHTML += formatOutput(msg); },
-                            stderr: (msg) => { if(outputDiv.innerHTML.includes('正在初始化')) outputDiv.innerHTML = ''; outputDiv.innerHTML += formatOutput(msg, true); }
-                        });
-                        isPyodideLoading = false;
-                    } else if (isPyodideLoading) {
-                        while(isPyodideLoading) { await new Promise(r => setTimeout(r, 200)); }
-                    }
+                    const pyodide = await ensurePyodide(outputDiv);
                     outputDiv.innerHTML = ''; 
                     const userStdin = stdinTextarea.value;
-                    pyodideInstance.globals.set("__user_stdin__", userStdin);
+                    pyodide.globals.set("__user_stdin__", userStdin);
                     const pythonSetupCode = `
 import sys\nimport io\nimport builtins\nimport js\nsys.stdin = io.StringIO(__user_stdin__)
 def custom_input(prompt=""):
@@ -849,10 +870,10 @@ def custom_input(prompt=""):
     return res
 builtins.input = custom_input
 `;
-                    await pyodideInstance.runPythonAsync(pythonSetupCode);
-                    pyodideInstance.setStdout({ batched: (msg) => outputDiv.innerHTML += formatOutput(msg) });
-                    pyodideInstance.setStderr({ batched: (msg) => outputDiv.innerHTML += formatOutput(msg, true) });
-                    await pyodideInstance.runPythonAsync(code);
+                    await pyodide.runPythonAsync(pythonSetupCode);
+                    pyodide.setStdout({ batched: (msg) => outputDiv.innerHTML += formatOutput(msg) });
+                    pyodide.setStderr({ batched: (msg) => outputDiv.innerHTML += formatOutput(msg, true) });
+                    await pyodide.runPythonAsync(code);
                     if(outputDiv.innerHTML.trim() === '') outputDiv.innerHTML = '<span class="text-stone-300 italic"># 代码执行成功，无任何打印输出。</span>';
                 } catch (err) {
                     if(outputDiv.innerHTML.includes('正在初始化')) outputDiv.innerHTML = '';
@@ -890,22 +911,49 @@ builtins.input = custom_input
         windowDiv.appendChild(pre);
         if (stdinWrapper) windowDiv.appendChild(stdinWrapper);
         if (outputDiv) windowDiv.appendChild(outputDiv);
-    });
+        highlightCodeBlock(block);
+    }
+
+    const codeBlocks = articleContent ? Array.from(articleContent.querySelectorAll('pre code')) : [];
+    const codeBlockIndex = new Map(codeBlocks.map((block, index) => [block, index]));
+    if ('IntersectionObserver' in window) {
+        const codeObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                const block = entry.target.querySelector('code');
+                if (block) enhanceCodeBlock(block, codeBlockIndex.get(block) ?? 0);
+                codeObserver.unobserve(entry.target);
+            });
+        }, { rootMargin: '700px 0px' });
+        codeBlocks.forEach((block) => codeObserver.observe(block.parentNode));
+    } else {
+        let codeIndex = 0;
+        const processCodeChunk = () => {
+            const deadline = performance.now() + 12;
+            while (codeIndex < codeBlocks.length && performance.now() < deadline) {
+                enhanceCodeBlock(codeBlocks[codeIndex], codeIndex);
+                codeIndex++;
+            }
+            if (codeIndex < codeBlocks.length) runWhenIdle(processCodeChunk);
+        };
+        runWhenIdle(processCodeChunk);
+    }
 
     // ==========================================
     // 目录 TOC 联动逻辑
     // ==========================================
-    const content = document.querySelector('.markdown-body');
     const tocContainer = document.getElementById('toc-container');
     const tocWrapper = document.getElementById('sidebar-toc-wrapper');
     
-    if (content && tocContainer) {
-        const headers = content.querySelectorAll('h1, h2, h3');
+    if (articleContent && tocContainer) {
+        const headers = articleHeaders;
         if (headers.length > 0) {
             if (tocWrapper) tocWrapper.classList.remove('hidden');
             const tocLinks = [];
+            const headerIndexById = new Map();
             headers.forEach((header, index) => {
                 if (!header.id) header.id = 'heading-' + index;
+                headerIndexById.set(header.id, index);
                 const link = document.createElement('a');
                 link.href = '#' + header.id;
                 link.textContent = header.textContent;
@@ -920,14 +968,17 @@ builtins.input = custom_input
                 tocLinks.push(link);
             });
             
+            let activeTocIndex = -1;
             function updateTOCVisibility(activeIndex) {
+                if (activeIndex === activeTocIndex) return;
+                activeTocIndex = activeIndex;
                 tocLinks.forEach((link, idx) => {
                     if (idx === activeIndex) {
                         link.classList.add('active');
                         if (idx > 0 && idx < tocLinks.length - 1) {
                              const rect = link.getBoundingClientRect();
-                             const navRect = document.querySelector('#sidebar nav').getBoundingClientRect();
-                             if (rect.bottom > navRect.bottom || rect.top < navRect.top) {
+                             const navRect = document.querySelector('#sidebar nav')?.getBoundingClientRect();
+                             if (navRect && (rect.bottom > navRect.bottom || rect.top < navRect.top)) {
                                  link.scrollIntoView({ behavior: 'smooth', block: 'center' });
                              }
                         }
@@ -940,9 +991,8 @@ builtins.input = custom_input
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
-                        const id = entry.target.id;
-                        const index = Array.from(headers).findIndex(h => h.id === id);
-                        if (index !== -1) updateTOCVisibility(index);
+                        const index = headerIndexById.get(entry.target.id);
+                        if (index !== undefined) updateTOCVisibility(index);
                     }
                 });
             }, { rootMargin: '-100px 0px -66%' });
@@ -952,91 +1002,6 @@ builtins.input = custom_input
 });
 
 // ==========================================
-    // 💡 动态生成右侧标题小圆点 (防爆屏 + 精确跳转版)
-    // ==========================================
-    const rightDotsContainer = document.getElementById('toc-dots-container');
-    const rightDotsWrapper = document.getElementById('right-toc-dots');
-    
-    // 初始获取所有一二三级标题
-    let articleHeaders = document.querySelectorAll('.markdown-body h1, .markdown-body h2, .markdown-body h3');
-
-    if (articleHeaders.length > 0 && rightDotsContainer) {
-        
-        // 💡 优雅降级机制：如果标题数量超过 40 个，就自动隐藏 H3 (三级标题)，防止小圆点把屏幕撑破
-        if (articleHeaders.length > 40) {
-            articleHeaders = document.querySelectorAll('.markdown-body h1, .markdown-body h2');
-        }
-        
-        // 💡 动态调整间距：数量越多，排列越紧凑，保证完美居中
-        let gapClass = 'gap-3';
-        if (articleHeaders.length > 30) gapClass = 'gap-1';
-        else if (articleHeaders.length > 15) gapClass = 'gap-2';
-        
-        // 重置容器 class，应用新的间距
-        rightDotsContainer.className = `flex flex-col ${gapClass} py-6 pr-3 items-end`;
-        rightDotsWrapper.classList.remove('opacity-0');
-        
-        let dotsHtml = '';
-        articleHeaders.forEach((h, index) => {
-            // 给没有 ID 的标题补上，保证滚动侦测正常
-            if (!h.id) h.id = 'dot-heading-' + index;
-            
-            // 💡 核心修复：不用 href 存 ID，而是把数组索引 data-index 存进去
-            dotsHtml += `
-                <a href="javascript:void(0);" data-index="${index}" class="right-toc-link flex items-center justify-end gap-3 group/item w-max relative z-10 cursor-pointer outline-none">
-                    <span class="opacity-0 group-hover/right-nav:opacity-100 text-[10px] font-bold whitespace-nowrap transition-all duration-300 translate-x-2 group-hover/right-nav:translate-x-0 text-base-content drop-shadow-sm pointer-events-none">
-                        ${h.innerText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
-                    </span>
-                    <div class="toc-dot w-2 h-2 rounded-full transition-all duration-300 group-hover/item:scale-150 flex-shrink-0 bg-base-content/30"></div>
-                </a>`;
-        });
-        rightDotsContainer.innerHTML = dotsHtml;
-
-        // 💡 核心修复：使用“事件委托”绑定点击，并通过 getBoundingClientRect 计算绝对位置
-        rightDotsContainer.addEventListener('click', function(e) {
-            const link = e.target.closest('.right-toc-link');
-            if (link) {
-                e.preventDefault(); // 阻止默认跳转导致页面抽搐
-                // 直接从内存里的 NodeList 取出对应的 HTML 元素，无视任何特殊字符 ID！
-                const index = parseInt(link.getAttribute('data-index'));
-                const targetEl = articleHeaders[index]; 
-                
-                if (targetEl) {
-                    // 获取精确的物理像素位置，减去 80px 留出顶部导航栏的距离
-                    const y = targetEl.getBoundingClientRect().top + window.scrollY - 80;
-                    window.scrollTo({ top: y, behavior: 'smooth' });
-                }
-            }
-        });
-
-        // 保持不变：滚动时的自动高亮侦测
-        const dotElements = rightDotsContainer.querySelectorAll('.toc-dot');
-        const observerOptions = { rootMargin: '-100px 0px -66%', threshold: 0 };
-        
-        const dotObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const activeId = entry.target.id;
-                    const activeIndex = Array.from(articleHeaders).findIndex(h => h.id === activeId);
-                    dotElements.forEach((dot, i) => {
-                        if (i === activeIndex) {
-                            dot.classList.add('bg-primary', 'scale-150');
-                            dot.style.boxShadow = '0 0 10px var(--theme-primary)';
-                            dot.classList.remove('bg-base-content/30');
-                        } else {
-                            dot.classList.remove('bg-primary', 'scale-150');
-                            dot.style.boxShadow = 'none';
-                            dot.classList.add('bg-base-content/30');
-                        }
-                    });
-                }
-            });
-        }, observerOptions);
-
-        articleHeaders.forEach(header => dotObserver.observe(header));
-    }
-
-// ==========================================
 // 📖 核心功能：分屏阅读与写作 (Wiki + Book)
 // ==========================================
 
@@ -1044,9 +1009,6 @@ window.toggleSplitScreen = function() {
     const container = document.getElementById('split-container');
     const bookPanel = document.getElementById('book-side-panel');
     const toggleBtn = document.getElementById('toggle-split-btn');
-
-    const leftNavDots = document.querySelector('.group\\/left-nav');
-    const rightNavDots = document.getElementById('right-toc-dots');
 
     window.isSplitMode = !window.isSplitMode;
 
@@ -1064,11 +1026,6 @@ window.toggleSplitScreen = function() {
             toggleBtn.innerHTML = '<i class="fas fa-times text-[11px] text-error"></i><span class="text-xs font-medium text-error">关闭分屏</span>';
             toggleBtn.setAttribute('title', '关闭分屏笔记');
         }
-        
-        // 💡 开启分屏时：无论如何，强制隐藏两侧圆点导航
-        if(leftNavDots) leftNavDots.classList.add('!hidden');
-        if(rightNavDots) rightNavDots.classList.add('!hidden');
-        
         if (!window.quickEditor) {
             setTimeout(() => {
                 const loadingEl = document.getElementById('editor-loading');

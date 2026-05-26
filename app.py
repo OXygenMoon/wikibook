@@ -1542,6 +1542,237 @@ def serialize_oj_task_summary(task):
     }
 
 
+def _percent(numerator, denominator):
+    if not denominator:
+        return 0
+    return round((float(numerator or 0) / float(denominator)) * 100, 1)
+
+
+def _format_duration_delta(start_at, end_at):
+    if not start_at or not end_at:
+        return "-"
+    seconds = max(int(datetime_diff_seconds(end_at, start_at)), 0)
+    if seconds < 60:
+        return "少于1分钟"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes}分钟"
+    hours, minutes = divmod(minutes, 60)
+    if hours < 24:
+        return f"{hours}小时{minutes}分钟" if minutes else f"{hours}小时"
+    days, hours = divmod(hours, 24)
+    return f"{days}天{hours}小时" if hours else f"{days}天"
+
+
+def _build_status_distribution(query):
+    rows = (
+        query
+        .with_entities(JudgeTask.status, db.func.count(JudgeTask.id))
+        .group_by(JudgeTask.status)
+        .all()
+    )
+    distribution = {}
+    for status, count in rows:
+        meta = oj_status_meta(status)
+        key = f"{meta['label']}:{meta['tone']}"
+        if key not in distribution:
+            distribution[key] = {
+                "key": status or "unknown",
+                "label": meta["label"],
+                "tone": meta["tone"],
+                "count": 0,
+            }
+        distribution[key]["count"] += int(count or 0)
+    return [
+        item
+        for item in sorted(distribution.values(), key=lambda value: (-value["count"], value["label"]))
+    ]
+
+
+def _build_failure_distribution(query):
+    failed_tasks = (
+        query
+        .filter(~JudgeTask.status.in_(OJ_PASSING_STATUSES))
+        .with_entities(JudgeTask.id, JudgeTask.status, JudgeTask.result_summary)
+        .all()
+    )
+    first_failed_statuses = _first_failed_result_statuses([task_id for task_id, _, _ in failed_tasks])
+    counts = defaultdict(int)
+    for task_id, status, result_summary in failed_tasks:
+        failure_reason = (result_summary or {}).get("failure_reason") if result_summary else ""
+        reason = "compile_error" if failure_reason == "compile_error" else first_failed_statuses.get(task_id) or status or "failed"
+        counts[reason] += 1
+    return [
+        {
+            "key": key,
+            "label": oj_case_status_meta(key)["label"],
+            "tone": oj_case_status_meta(key)["tone"],
+            "count": count,
+        }
+        for key, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
+
+def _trajectory_status_code(task, first_failed_status=None):
+    if task.status in {"accepted", "PAC"}:
+        return "PAC"
+    if task.status == "AC":
+        return "AC"
+    if task.status == "queued":
+        return "Q"
+    if task.status == "running":
+        return "RUN"
+    if task.status == "system_error":
+        return "SE"
+
+    failure_reason = (task.result_summary or {}).get("failure_reason") if task.result_summary else ""
+    reason = "compile_error" if failure_reason == "compile_error" else first_failed_status or task.status
+    return {
+        "wrong_answer": "WA",
+        "runtime_error": "RE",
+        "time_limit_exceeded": "TLE",
+        "compile_error": "CE",
+        "security_violation": "SV",
+        "system_error": "SE",
+        "failed": "WA",
+    }.get(reason or "", (reason or task.status or "?").upper()[:4])
+
+
+def _build_submission_trajectory(tasks):
+    first_failed_statuses = _first_failed_result_statuses([task.id for task in tasks])
+    trajectory = []
+    for index, task in enumerate(tasks, start=1):
+        first_failed_status = first_failed_statuses.get(task.id)
+        meta = oj_submission_status_meta(task, first_failed_status=first_failed_status)
+        trajectory.append({
+            "id": task.id,
+            "attempt": index,
+            "code": _trajectory_status_code(task, first_failed_status=first_failed_status),
+            "statusLabel": meta["label"],
+            "statusTone": meta["tone"],
+            "score": int(task.total_score or 0),
+            "passedCount": int(task.passed_count or 0),
+            "totalCount": int(task.total_count or 0),
+            "createdAt": task.created_at.strftime("%m-%d %H:%M") if task.created_at else "-",
+            "url": url_for("oj_submission_detail", task_id=task.id),
+        })
+    return trajectory
+
+
+def _build_my_problem_analysis(query):
+    tasks = query.order_by(JudgeTask.created_at.asc(), JudgeTask.id.asc()).all()
+    if not tasks:
+        return {
+            "attempts": 0,
+            "bestStatus": {"label": "未提交", "tone": "neutral"},
+            "bestScore": 0,
+            "latestTask": None,
+            "firstAcceptedAttempt": None,
+            "timeToFirstAccepted": "-",
+            "failureDistribution": [],
+            "trajectory": [],
+        }
+
+    status_rank = {"accepted": 4, "PAC": 4, "AC": 3, "failed": 2, "system_error": 1, "running": 0, "queued": 0}
+    best_task = max(tasks, key=lambda task: (status_rank.get(task.status, 0), task.total_score or 0, task.created_at or datetime.min))
+    latest_task = max(tasks, key=lambda task: (task.created_at or datetime.min, task.id or 0))
+    first_accepted_index = None
+    first_accepted_task = None
+    for index, task in enumerate(tasks, start=1):
+        if task.status in OJ_PASSING_STATUSES:
+            first_accepted_index = index
+            first_accepted_task = task
+            break
+    best_meta = oj_submission_status_meta(best_task)
+    failure_rows = _build_failure_distribution(query)
+    return {
+        "attempts": len(tasks),
+        "bestStatus": {"label": best_meta["label"], "tone": best_meta["tone"]},
+        "bestScore": int(best_task.total_score or 0),
+        "latestTask": serialize_oj_task_summary(latest_task),
+        "firstAcceptedAttempt": first_accepted_index,
+        "timeToFirstAccepted": _format_duration_delta(tasks[0].created_at, first_accepted_task.created_at) if first_accepted_task else "-",
+        "failureDistribution": failure_rows,
+        "trajectory": _build_submission_trajectory(tasks),
+    }
+
+
+def _build_testcase_analysis(problem_id, assignment_id=None):
+    filters = [JudgeTask.problem_id == problem_id]
+    if assignment_id:
+        filters.append(JudgeTask.assignment_id == assignment_id)
+    rows = (
+        db.session.query(
+            JudgeTaskResult.case_index,
+            db.func.count(JudgeTaskResult.id).label("attempts"),
+            db.func.coalesce(db.func.sum(case((JudgeTaskResult.status == "accepted", 1), else_=0)), 0).label("accepted"),
+            db.func.coalesce(db.func.avg(JudgeTaskResult.time_ms), 0).label("avg_time"),
+            db.func.coalesce(db.func.avg(JudgeTaskResult.memory_kb), 0).label("avg_memory"),
+        )
+        .join(JudgeTask, JudgeTask.id == JudgeTaskResult.task_id)
+        .filter(*filters)
+        .group_by(JudgeTaskResult.case_index)
+        .order_by(JudgeTaskResult.case_index.asc())
+        .all()
+    )
+    return [
+        {
+            "caseIndex": int(case_index or 0) + 1,
+            "attempts": int(attempts or 0),
+            "accepted": int(accepted or 0),
+            "passRate": _percent(accepted, attempts),
+            "avgTimeMs": round(float(avg_time or 0), 1),
+            "avgMemoryKb": round(float(avg_memory or 0), 1),
+        }
+        for case_index, attempts, accepted, avg_time, avg_memory in rows
+    ]
+
+
+def build_oj_problem_analysis(problem, active_assignment=None):
+    assignment_id = active_assignment.id if active_assignment else None
+    base_query = JudgeTask.query.filter(JudgeTask.problem_id == problem.id)
+    if assignment_id:
+        base_query = base_query.filter(JudgeTask.assignment_id == assignment_id)
+
+    total_submissions, participant_count, accepted_submissions, perfect_submissions, accepted_users = (
+        base_query
+        .with_entities(
+            db.func.count(JudgeTask.id),
+            db.func.count(db.func.distinct(JudgeTask.user_id)),
+            db.func.coalesce(db.func.sum(case((JudgeTask.status.in_(OJ_PASSING_STATUSES), 1), else_=0)), 0),
+            db.func.coalesce(db.func.sum(case((JudgeTask.status.in_(OJ_PERFECT_STATUSES), 1), else_=0)), 0),
+            db.func.count(db.func.distinct(case((JudgeTask.status.in_(OJ_PASSING_STATUSES), JudgeTask.user_id), else_=None))),
+        )
+        .one()
+    )
+    total_submissions = int(total_submissions or 0)
+    participant_count = int(participant_count or 0)
+    accepted_submissions = int(accepted_submissions or 0)
+    perfect_submissions = int(perfect_submissions or 0)
+    accepted_users = int(accepted_users or 0)
+
+    my_query = base_query.filter(JudgeTask.user_id == current_user.id)
+    return {
+        "scopeLabel": active_assignment.title if active_assignment else "全站题库",
+        "summary": {
+            "totalSubmissions": total_submissions,
+            "participantCount": participant_count,
+            "acceptedSubmissions": accepted_submissions,
+            "acceptedUsers": accepted_users,
+            "perfectSubmissions": perfect_submissions,
+            "submissionPassRate": _percent(accepted_submissions, total_submissions),
+            "userPassRate": _percent(accepted_users, participant_count),
+            "perfectRate": _percent(perfect_submissions, total_submissions),
+        },
+        "my": _build_my_problem_analysis(my_query),
+        "statusDistribution": _build_status_distribution(base_query),
+        "failureDistribution": _build_failure_distribution(base_query),
+        "timeStats": build_submission_time_stats(base_query),
+        "testcaseAnalysis": _build_testcase_analysis(problem.id, assignment_id) if current_user.is_admin else [],
+        "canViewTestcaseAnalysis": bool(current_user.is_admin),
+    }
+
+
 def serialize_oj_problem_detail(problem, active_assignment=None):
     hidden_for_viewer = bool(not problem.is_visible and not current_user.is_admin)
     sample_cases = [] if hidden_for_viewer else get_oj_problem_sample_cases(problem.id)
@@ -1585,6 +1816,7 @@ def serialize_oj_problem_detail(problem, active_assignment=None):
         "hasAstGoals": bool(ast_goals),
         "latestTask": serialize_oj_task_summary(my_latest_task),
         "submissionHistory": [serialize_oj_task_summary(task) for task in submission_history],
+        "analysis": None if hidden_for_viewer else build_oj_problem_analysis(problem, active_assignment),
         "canManage": bool(current_user.is_admin),
         "canCode": bool(not hidden_for_viewer),
         "canSubmit": bool(not hidden_for_viewer),
@@ -1776,7 +2008,7 @@ SUBMISSION_TIME_STAT_WINDOWS = [
     ("12h", "12小时", timedelta(hours=12)),
     ("24h", "24小时", timedelta(hours=24)),
     ("1w", "一周", timedelta(weeks=1)),
-    ("1m", "一个月", timedelta(days=30)),
+    ("1m", "一月", timedelta(days=30)),
     ("6m", "半年", timedelta(days=183)),
     ("1y", "一年", timedelta(days=365)),
     ("all", "全部", None),
@@ -2544,495 +2776,6 @@ def build_oj_assignment_scoreboard_payload(assignment):
         },
         "isAdmin": bool(current_user.is_admin),
     }
-
-
-def get_visible_oj_trainings_for_user(user):
-    if not user.is_authenticated:
-        return []
-    base_query = (
-        OJTrainingProject.query
-        .options(
-            selectinload(OJTrainingProject.chapters)
-            .selectinload(OJTrainingChapter.nodes)
-            .joinedload(OJTrainingNode.problem),
-            selectinload(OJTrainingProject.chapters)
-            .selectinload(OJTrainingChapter.nodes)
-            .selectinload(OJTrainingNode.tasks),
-            selectinload(OJTrainingProject.chapters)
-            .selectinload(OJTrainingChapter.nodes)
-            .selectinload(OJTrainingNode.rewards),
-            selectinload(OJTrainingProject.allowed_classes),
-            selectinload(OJTrainingProject.allowed_groups),
-            selectinload(OJTrainingProject.allowed_users),
-            selectinload(OJTrainingProject.managers),
-        )
-        .order_by(OJTrainingProject.updated_at.desc(), OJTrainingProject.id.desc())
-    )
-    if user.is_admin:
-        return base_query.all()
-
-    group_ids = [group.id for group in user.groups]
-    visibility_clauses = [
-        OJTrainingProject.created_by_id == user.id,
-        OJTrainingProject.managers.any(User.id == user.id),
-        db.and_(OJTrainingProject.is_active.is_(True), OJTrainingProject.visibility == 'all'),
-        db.and_(OJTrainingProject.is_active.is_(True), OJTrainingProject.allowed_users.any(User.id == user.id)),
-    ]
-    if user.class_id:
-        visibility_clauses.append(
-            db.and_(OJTrainingProject.is_active.is_(True), OJTrainingProject.allowed_classes.any(Class.id == user.class_id))
-        )
-    if group_ids:
-        visibility_clauses.append(
-            db.and_(OJTrainingProject.is_active.is_(True), OJTrainingProject.allowed_groups.any(Group.id.in_(group_ids)))
-        )
-    return base_query.filter(db.or_(*visibility_clauses)).all()
-
-
-def get_oj_training_or_404_visible(training_id):
-    training = OJTrainingProject.query.get_or_404(training_id)
-    if not training.is_visible_to(current_user):
-        abort(404)
-    return training
-
-
-def resolve_oj_training_targets(training, class_ids, group_ids, user_ids, manager_ids):
-    class_ids = {int(value) for value in class_ids if str(value).isdigit()}
-    group_ids = {int(value) for value in group_ids if str(value).isdigit()}
-    user_ids = {int(value) for value in user_ids if str(value).isdigit()}
-    manager_ids = {int(value) for value in manager_ids if str(value).isdigit()}
-
-    training.allowed_classes = Class.query.filter(Class.id.in_(class_ids)).order_by(Class.name.asc()).all() if class_ids else []
-    training.allowed_groups = Group.query.filter(Group.id.in_(group_ids)).order_by(Group.name.asc()).all() if group_ids else []
-    training.allowed_users = User.query.filter(User.id.in_(user_ids)).order_by(User.username.asc()).all() if user_ids else []
-    training.managers = User.query.filter(User.id.in_(manager_ids)).order_by(User.username.asc()).all() if manager_ids else []
-
-
-def serialize_training_problem(problem):
-    return {
-        "id": problem.id,
-        "code": problem.problem_code,
-        "title": problem.title,
-        "slug": problem.slug,
-        "difficulty": problem.difficulty,
-    }
-
-
-def serialize_oj_training_task(task):
-    return {
-        "id": task.id,
-        "taskType": task.task_type,
-        "problemId": task.problem_id,
-        "title": task.title or "",
-        "description": task.description or "",
-        "targetValue": task.target_value or "",
-        "requiredCount": task.required_count,
-        "isRequired": bool(task.is_required),
-        "sortOrder": task.sort_order,
-    }
-
-
-def serialize_oj_training_reward(reward):
-    return {
-        "id": reward.id,
-        "rewardType": reward.reward_type,
-        "title": reward.title or "",
-        "description": reward.description or "",
-        "value": reward.value or "",
-        "sortOrder": reward.sort_order,
-        "isAutoClaim": bool(reward.is_auto_claim),
-    }
-
-
-def default_training_task_payload(node):
-    return {
-        "id": None,
-        "taskType": "oj_problem_ac",
-        "problemId": node.problem_id,
-        "title": node.label or node.problem.title,
-        "description": "完成关联 OJ 题目",
-        "targetValue": "accepted",
-        "requiredCount": 1,
-        "isRequired": True,
-        "sortOrder": 0,
-    }
-
-
-def serialize_oj_training_summary(training, accepted_problem_ids=None):
-    accepted_problem_ids = accepted_problem_ids or set()
-    node_count = sum(len(chapter.nodes) for chapter in training.chapters)
-    problem_ids = {node.problem_id for chapter in training.chapters for node in chapter.nodes}
-    return {
-        "id": training.id,
-        "title": training.title,
-        "targetText": training.target_text,
-        "isActive": bool(training.is_active),
-        "chapterCount": len(training.chapters),
-        "nodeCount": node_count,
-        "problemCount": len(problem_ids),
-        "acceptedCount": len(problem_ids.intersection(accepted_problem_ids)),
-        "updatedAt": training.updated_at.strftime("%Y-%m-%d %H:%M") if training.updated_at else "-",
-        "urls": {
-            "detail": url_for("oj_training_detail", training_id=training.id),
-            "designer": url_for("edit_oj_training", training_id=training.id) if current_user.is_admin else None,
-            "delete": url_for("delete_oj_training", training_id=training.id) if current_user.is_admin else None,
-        },
-    }
-
-
-def get_user_accepted_problem_ids(user, problem_ids):
-    if not user.is_authenticated or not problem_ids:
-        return set()
-    return {
-        problem_id for (problem_id,) in (
-            db.session.query(JudgeTask.problem_id)
-            .filter(
-                JudgeTask.user_id == user.id,
-                JudgeTask.problem_id.in_(problem_ids),
-                JudgeTask.status.in_(OJ_PASSING_STATUSES),
-            )
-            .distinct()
-            .all()
-        )
-    }
-
-
-def serialize_oj_training_graph(training, for_admin=False):
-    chapters = []
-    nodes = []
-    node_ids = []
-    for chapter in training.chapters:
-        chapter_nodes = []
-        for node in chapter.nodes:
-            node_payload = {
-                "id": node.id,
-                "chapterId": node.chapter_id,
-                "problemId": node.problem_id,
-                "label": node.label or "",
-                "note": node.note or "",
-                "x": node.pos_x,
-                "y": node.pos_y,
-                "width": node.width,
-                "height": node.height,
-                "sortOrder": node.sort_order,
-                "isEntry": bool(node.is_entry),
-                "isCore": bool(node.is_core),
-                "problem": serialize_training_problem(node.problem),
-                "tasks": [serialize_oj_training_task(task) for task in node.tasks] or [default_training_task_payload(node)],
-                "rewards": [serialize_oj_training_reward(reward) for reward in node.rewards],
-            }
-            nodes.append(node_payload)
-            chapter_nodes.append(node_payload)
-            node_ids.append(node.id)
-        chapters.append({
-            "id": chapter.id,
-            "title": chapter.title,
-            "descriptionMd": chapter.description_md or "",
-            "sortOrder": chapter.sort_order,
-            "canvasWidth": chapter.canvas_width,
-            "canvasHeight": chapter.canvas_height,
-            "nodes": chapter_nodes,
-        })
-
-    edges = []
-    if node_ids:
-        edge_rows = (
-            OJTrainingEdge.query
-            .filter(OJTrainingEdge.from_node_id.in_(node_ids), OJTrainingEdge.to_node_id.in_(node_ids))
-            .order_by(OJTrainingEdge.id.asc())
-            .all()
-        )
-        edges = [
-            {
-                "id": edge.id,
-                "fromNodeId": edge.from_node_id,
-                "toNodeId": edge.to_node_id,
-                "label": edge.label or "",
-                "requirementType": edge.requirement_type or "all_completed",
-                "minCompleted": edge.min_completed or 1,
-                "isHidden": bool(edge.is_hidden),
-            }
-            for edge in edge_rows
-        ]
-
-    accepted_problem_ids = get_user_accepted_problem_ids(current_user, {node["problemId"] for node in nodes})
-    prerequisite_map = defaultdict(list)
-    unlock_map = defaultdict(list)
-    for edge in edges:
-        prerequisite_map[edge["toNodeId"]].append(edge["fromNodeId"])
-        unlock_map[edge["fromNodeId"]].append(edge["toNodeId"])
-
-    by_id = {node["id"]: node for node in nodes}
-    for node in nodes:
-        prereq_node_ids = prerequisite_map.get(node["id"], [])
-        prereq_problem_ids = [by_id[item_id]["problemId"] for item_id in prereq_node_ids if item_id in by_id]
-        node["prerequisiteNodeIds"] = prereq_node_ids
-        node["unlocksNodeIds"] = unlock_map.get(node["id"], [])
-        node["accepted"] = node["problemId"] in accepted_problem_ids
-        node["locked"] = bool(prereq_problem_ids) and not all(problem_id in accepted_problem_ids for problem_id in prereq_problem_ids)
-        node["problem"]["url"] = url_for("oj_problem_detail", slug=node["problem"]["slug"])
-
-    payload = {
-        "project": {
-            "id": training.id,
-            "title": training.title,
-            "descriptionMd": training.description_md or "",
-            "descriptionHtml": markdown(training.description_md or "暂无训练介绍。"),
-            "visibility": training.visibility,
-            "isActive": bool(training.is_active),
-            "targetText": training.target_text,
-            "urls": {
-                "detail": url_for("oj_training_detail", training_id=training.id),
-                "designer": url_for("edit_oj_training", training_id=training.id) if current_user.is_admin else None,
-                "save": url_for("save_oj_training_graph", training_id=training.id) if current_user.is_admin else None,
-            },
-        },
-        "chapters": chapters,
-        "nodes": nodes,
-        "edges": edges,
-        "stats": {
-            "chapterCount": len(chapters),
-            "nodeCount": len(nodes),
-            "edgeCount": len(edges),
-            "acceptedCount": len({node["problemId"] for node in nodes}.intersection(accepted_problem_ids)),
-        },
-        "isAdmin": bool(current_user.is_admin),
-    }
-    if for_admin:
-        payload["options"] = {
-            "classes": [{"id": item.id, "label": item.name} for item in Class.query.order_by(Class.name.asc()).all()],
-            "groups": [{"id": item.id, "label": item.name} for item in Group.query.order_by(Group.name.asc()).all()],
-            "users": [
-                {"id": item.id, "label": item.real_name or item.username, "username": item.username}
-                for item in User.query.order_by(User.username.asc()).all()
-            ],
-            "problems": [
-                {
-                    **serialize_training_problem(problem),
-                    "label": f"{problem.problem_code} · {problem.title}",
-                }
-                for problem in Problem.query.order_by(Problem.problem_code.asc(), Problem.id.asc()).all()
-            ],
-        }
-        payload["form"] = {
-            "title": training.title,
-            "descriptionMd": training.description_md or "",
-            "visibility": training.visibility,
-            "isActive": bool(training.is_active),
-            "selectedClassIds": [item.id for item in training.allowed_classes],
-            "selectedGroupIds": [item.id for item in training.allowed_groups],
-            "selectedUserIds": [item.id for item in training.allowed_users],
-            "selectedManagerIds": [item.id for item in training.managers],
-        }
-    return payload
-
-
-def build_oj_training_list_payload():
-    trainings = get_visible_oj_trainings_for_user(current_user)
-    problem_ids = {
-        node.problem_id
-        for training in trainings
-        for chapter in training.chapters
-        for node in chapter.nodes
-    }
-    accepted_problem_ids = get_user_accepted_problem_ids(current_user, problem_ids)
-    return {
-        "trainings": [serialize_oj_training_summary(training, accepted_problem_ids) for training in trainings],
-        "count": len(trainings),
-        "isAdmin": bool(current_user.is_admin),
-        "urls": {
-            "create": url_for("create_oj_training") if current_user.is_admin else None,
-            "adminList": url_for("manage_oj_trainings") if current_user.is_admin else None,
-        },
-    }
-
-
-def _safe_int(value, default=0, minimum=None, maximum=None):
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError):
-        parsed = default
-    if minimum is not None:
-        parsed = max(parsed, minimum)
-    if maximum is not None:
-        parsed = min(parsed, maximum)
-    return parsed
-
-
-def save_oj_training_graph_from_payload(training, payload):
-    if not isinstance(payload, dict):
-        raise ValueError("训练图数据格式不正确。")
-    project_payload = payload.get("project") or {}
-    title = (project_payload.get("title") or "").strip()
-    if not title:
-        raise ValueError("训练项目标题不能为空。")
-    training.title = title
-    training.description_md = (project_payload.get("descriptionMd") or "").strip()
-    training.visibility = project_payload.get("visibility") if project_payload.get("visibility") in {"all", "restricted"} else "all"
-    training.is_active = bool(project_payload.get("isActive", True))
-
-    resolve_oj_training_targets(
-        training,
-        payload.get("classIds") or [],
-        payload.get("groupIds") or [],
-        payload.get("userIds") or [],
-        payload.get("managerIds") or [],
-    )
-
-    raw_chapters = payload.get("chapters") or []
-    raw_nodes = payload.get("nodes") or []
-    raw_edges = payload.get("edges") or []
-    if not isinstance(raw_chapters, list) or not isinstance(raw_nodes, list) or not isinstance(raw_edges, list):
-        raise ValueError("章节、节点和边必须是数组。")
-
-    existing_node_ids = [node.id for chapter in training.chapters for node in chapter.nodes]
-    if existing_node_ids:
-        OJTrainingEdge.query.filter(
-            OJTrainingEdge.from_node_id.in_(existing_node_ids) | OJTrainingEdge.to_node_id.in_(existing_node_ids)
-        ).delete(synchronize_session=False)
-
-    existing_chapters = {chapter.id: chapter for chapter in training.chapters}
-    next_chapters = []
-    temp_chapter_map = {}
-    for index, raw_chapter in enumerate(raw_chapters):
-        chapter_id = _safe_int(raw_chapter.get("id"), 0)
-        chapter = existing_chapters.get(chapter_id) if chapter_id > 0 else None
-        if chapter is None:
-            chapter = OJTrainingChapter(project=training)
-        chapter.title = (raw_chapter.get("title") or f"第 {index + 1} 章").strip()
-        chapter.description_md = (raw_chapter.get("descriptionMd") or "").strip()
-        chapter.sort_order = _safe_int(raw_chapter.get("sortOrder"), index, minimum=0)
-        chapter.canvas_width = _safe_int(raw_chapter.get("canvasWidth"), 1400, minimum=800, maximum=5000)
-        chapter.canvas_height = _safe_int(raw_chapter.get("canvasHeight"), 820, minimum=480, maximum=5000)
-        next_chapters.append(chapter)
-        temp_chapter_map[str(raw_chapter.get("clientId") or raw_chapter.get("id"))] = chapter
-
-    if not next_chapters:
-        chapter = OJTrainingChapter(project=training, title="第一章", sort_order=0)
-        next_chapters.append(chapter)
-
-    training.chapters = next_chapters
-    db.session.flush()
-    for chapter in next_chapters:
-        temp_chapter_map[str(chapter.id)] = chapter
-
-    existing_nodes = {
-        node.id: node
-        for chapter in training.chapters
-        for node in chapter.nodes
-    }
-    next_nodes_by_chapter = defaultdict(list)
-    temp_node_map = {}
-    problem_ids = {_safe_int(raw_node.get("problemId"), 0) for raw_node in raw_nodes}
-    for raw_node in raw_nodes:
-        for raw_task in raw_node.get("tasks") or []:
-            problem_ids.add(_safe_int(raw_task.get("problemId"), 0))
-    problem_map = {problem.id: problem for problem in Problem.query.filter(Problem.id.in_(problem_ids)).all()} if problem_ids else {}
-    node_task_payloads = {}
-    node_reward_payloads = {}
-    for index, raw_node in enumerate(raw_nodes):
-        problem_id = _safe_int(raw_node.get("problemId"), 0)
-        problem = problem_map.get(problem_id)
-        if not problem:
-            continue
-        chapter_key = str(raw_node.get("chapterClientId") or raw_node.get("chapterId"))
-        chapter = temp_chapter_map.get(chapter_key)
-        if chapter is None:
-            continue
-        node_id = _safe_int(raw_node.get("id"), 0)
-        node = existing_nodes.get(node_id) if node_id > 0 else None
-        if node is None:
-            node = OJTrainingNode(chapter=chapter)
-        node.problem_id = problem.id
-        node.label = (raw_node.get("label") or "").strip()
-        node.note = (raw_node.get("note") or "").strip()
-        node.pos_x = _safe_int(raw_node.get("x"), 120, minimum=0, maximum=4800)
-        node.pos_y = _safe_int(raw_node.get("y"), 120, minimum=0, maximum=4800)
-        node.width = _safe_int(raw_node.get("width"), 64, minimum=48, maximum=180)
-        node.height = _safe_int(raw_node.get("height"), 64, minimum=48, maximum=180)
-        node.sort_order = _safe_int(raw_node.get("sortOrder"), index, minimum=0)
-        node.is_entry = bool(raw_node.get("isEntry", False))
-        node.is_core = bool(raw_node.get("isCore", False))
-        next_nodes_by_chapter[chapter.id].append(node)
-        temp_node_map[str(raw_node.get("clientId") or raw_node.get("id"))] = node
-        node_task_payloads[id(node)] = raw_node.get("tasks") or []
-        node_reward_payloads[id(node)] = raw_node.get("rewards") or []
-
-    for chapter in training.chapters:
-        chapter.nodes = next_nodes_by_chapter.get(chapter.id, [])
-    db.session.flush()
-    for chapter in training.chapters:
-        for node in chapter.nodes:
-            temp_node_map[str(node.id)] = node
-            raw_tasks = node_task_payloads.get(id(node)) or []
-            next_tasks = []
-            for task_index, raw_task in enumerate(raw_tasks):
-                task_problem_id = _safe_int(raw_task.get("problemId"), node.problem_id)
-                if task_problem_id and task_problem_id not in problem_map:
-                    continue
-                title = (raw_task.get("title") or node.label or node.problem.title or "").strip()
-                next_tasks.append(OJTrainingTask(
-                    task_type=(raw_task.get("taskType") or "oj_problem_ac").strip()[:40],
-                    problem_id=task_problem_id or node.problem_id,
-                    title=title[:200],
-                    description=(raw_task.get("description") or "").strip(),
-                    target_value=(raw_task.get("targetValue") or "accepted").strip()[:200],
-                    required_count=_safe_int(raw_task.get("requiredCount"), 1, minimum=1, maximum=1000),
-                    is_required=bool(raw_task.get("isRequired", True)),
-                    sort_order=_safe_int(raw_task.get("sortOrder"), task_index, minimum=0),
-                ))
-            if not next_tasks:
-                next_tasks.append(OJTrainingTask(
-                    task_type="oj_problem_ac",
-                    problem_id=node.problem_id,
-                    title=(node.label or node.problem.title or "")[:200],
-                    description="完成关联 OJ 题目",
-                    target_value="accepted",
-                    required_count=1,
-                    is_required=True,
-                    sort_order=0,
-                ))
-            node.tasks = next_tasks
-
-            raw_rewards = node_reward_payloads.get(id(node)) or []
-            node.rewards = [
-                OJTrainingReward(
-                    reward_type=(raw_reward.get("rewardType") or "unlock").strip()[:40],
-                    title=(raw_reward.get("title") or "解锁后续节点").strip()[:200],
-                    description=(raw_reward.get("description") or "").strip(),
-                    value=(raw_reward.get("value") or "").strip()[:200],
-                    sort_order=_safe_int(raw_reward.get("sortOrder"), reward_index, minimum=0),
-                    is_auto_claim=bool(raw_reward.get("isAutoClaim", True)),
-                )
-                for reward_index, raw_reward in enumerate(raw_rewards)
-            ]
-
-    node_scope = [node.id for chapter in training.chapters for node in chapter.nodes]
-    if node_scope:
-        OJTrainingEdge.query.filter(
-            OJTrainingEdge.from_node_id.in_(node_scope) | OJTrainingEdge.to_node_id.in_(node_scope)
-        ).delete(synchronize_session=False)
-
-    seen_edges = set()
-    for raw_edge in raw_edges:
-        from_node = temp_node_map.get(str(raw_edge.get("fromClientId") or raw_edge.get("fromNodeId")))
-        to_node = temp_node_map.get(str(raw_edge.get("toClientId") or raw_edge.get("toNodeId")))
-        if not from_node or not to_node or from_node.id == to_node.id:
-            continue
-        edge_key = (from_node.id, to_node.id)
-        if edge_key in seen_edges:
-            continue
-        seen_edges.add(edge_key)
-        db.session.add(OJTrainingEdge(
-            from_node_id=from_node.id,
-            to_node_id=to_node.id,
-            label=(raw_edge.get("label") or "").strip(),
-            requirement_type=(raw_edge.get("requirementType") or "all_completed").strip()[:40],
-            min_completed=_safe_int(raw_edge.get("minCompleted"), 1, minimum=1, maximum=1000),
-            is_hidden=bool(raw_edge.get("isHidden", False)),
-        ))
-
-    db.session.commit()
 
 
 app.jinja_env.globals["vite_asset"] = vite_asset
@@ -9812,196 +9555,6 @@ class OJAssignmentFile(db.Model):
         return f"[{self.filename}]({self.file_path})"
 
 
-oj_training_classes = db.Table(
-    'oj_training_classes',
-    db.Column('training_id', db.Integer, db.ForeignKey('oj_training_project.id'), primary_key=True),
-    db.Column('class_id', db.Integer, db.ForeignKey('class.id'), primary_key=True),
-)
-
-oj_training_groups = db.Table(
-    'oj_training_groups',
-    db.Column('training_id', db.Integer, db.ForeignKey('oj_training_project.id'), primary_key=True),
-    db.Column('group_id', db.Integer, db.ForeignKey('group.id'), primary_key=True),
-)
-
-oj_training_users = db.Table(
-    'oj_training_users',
-    db.Column('training_id', db.Integer, db.ForeignKey('oj_training_project.id'), primary_key=True),
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
-)
-
-oj_training_managers = db.Table(
-    'oj_training_managers',
-    db.Column('training_id', db.Integer, db.ForeignKey('oj_training_project.id'), primary_key=True),
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
-)
-
-
-class OJTrainingProject(db.Model):
-    __tablename__ = 'oj_training_project'
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(200), nullable=False)
-    description_md = db.Column(db.Text, nullable=True)
-    visibility = db.Column(db.String(20), nullable=False, default='all')
-    is_active = db.Column(db.Boolean, nullable=False, default=True)
-    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=now_utc8)
-    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
-
-    created_by = db.relationship('User', backref='created_oj_trainings', foreign_keys=[created_by_id])
-    allowed_classes = db.relationship('Class', secondary=oj_training_classes, lazy='subquery')
-    allowed_groups = db.relationship('Group', secondary=oj_training_groups, lazy='subquery')
-    allowed_users = db.relationship('User', secondary=oj_training_users, lazy='subquery')
-    managers = db.relationship('User', secondary=oj_training_managers, lazy='subquery')
-    chapters = db.relationship(
-        'OJTrainingChapter',
-        backref='project',
-        cascade='all, delete-orphan',
-        order_by='OJTrainingChapter.sort_order.asc(), OJTrainingChapter.id.asc()',
-    )
-
-    @property
-    def target_text(self):
-        if self.visibility == 'all':
-            return '全部学生'
-        parts = []
-        parts.extend(cls.name for cls in self.allowed_classes)
-        parts.extend(group.name for group in self.allowed_groups)
-        parts.extend((user.real_name or user.username) for user in self.allowed_users)
-        return '、'.join(parts) or '未设置'
-
-    def is_manager(self, user):
-        if not user.is_authenticated:
-            return False
-        return bool(user.is_admin or user.id == self.created_by_id or user in self.managers)
-
-    def is_visible_to(self, user):
-        if not user.is_authenticated:
-            return False
-        if self.is_manager(user):
-            return True
-        if not self.is_active:
-            return False
-        if self.visibility == 'all':
-            return True
-        if user in self.allowed_users:
-            return True
-        if user.student_class and user.student_class in self.allowed_classes:
-            return True
-        return not set(user.groups).isdisjoint(set(self.allowed_groups))
-
-
-class OJTrainingChapter(db.Model):
-    __tablename__ = 'oj_training_chapter'
-    id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('oj_training_project.id'), nullable=False, index=True)
-    title = db.Column(db.String(200), nullable=False)
-    description_md = db.Column(db.Text, nullable=True)
-    sort_order = db.Column(db.Integer, nullable=False, default=0)
-    canvas_width = db.Column(db.Integer, nullable=False, default=1400)
-    canvas_height = db.Column(db.Integer, nullable=False, default=820)
-    created_at = db.Column(db.DateTime, default=now_utc8)
-    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
-
-    nodes = db.relationship(
-        'OJTrainingNode',
-        backref='chapter',
-        cascade='all, delete-orphan',
-        order_by='OJTrainingNode.sort_order.asc(), OJTrainingNode.id.asc()',
-    )
-
-
-class OJTrainingNode(db.Model):
-    __tablename__ = 'oj_training_node'
-    id = db.Column(db.Integer, primary_key=True)
-    chapter_id = db.Column(db.Integer, db.ForeignKey('oj_training_chapter.id'), nullable=False, index=True)
-    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), nullable=False, index=True)
-    label = db.Column(db.String(200), nullable=True)
-    note = db.Column(db.Text, nullable=True)
-    pos_x = db.Column(db.Integer, nullable=False, default=120)
-    pos_y = db.Column(db.Integer, nullable=False, default=120)
-    width = db.Column(db.Integer, nullable=False, default=220)
-    height = db.Column(db.Integer, nullable=False, default=120)
-    sort_order = db.Column(db.Integer, nullable=False, default=0)
-    is_entry = db.Column(db.Boolean, nullable=False, default=False)
-    is_core = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime, default=now_utc8)
-    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
-
-    problem = db.relationship('Problem')
-    outgoing_edges = db.relationship(
-        'OJTrainingEdge',
-        backref='from_node',
-        cascade='all, delete-orphan',
-        foreign_keys='OJTrainingEdge.from_node_id',
-    )
-    incoming_edges = db.relationship(
-        'OJTrainingEdge',
-        backref='to_node',
-        foreign_keys='OJTrainingEdge.to_node_id',
-    )
-    tasks = db.relationship(
-        'OJTrainingTask',
-        backref='node',
-        cascade='all, delete-orphan',
-        order_by='OJTrainingTask.sort_order.asc(), OJTrainingTask.id.asc()',
-    )
-    rewards = db.relationship(
-        'OJTrainingReward',
-        backref='node',
-        cascade='all, delete-orphan',
-        order_by='OJTrainingReward.sort_order.asc(), OJTrainingReward.id.asc()',
-    )
-
-
-class OJTrainingEdge(db.Model):
-    __tablename__ = 'oj_training_edge'
-    id = db.Column(db.Integer, primary_key=True)
-    from_node_id = db.Column(db.Integer, db.ForeignKey('oj_training_node.id'), nullable=False, index=True)
-    to_node_id = db.Column(db.Integer, db.ForeignKey('oj_training_node.id'), nullable=False, index=True)
-    label = db.Column(db.String(120), nullable=True)
-    requirement_type = db.Column(db.String(40), nullable=False, default='all_completed')
-    min_completed = db.Column(db.Integer, nullable=False, default=1)
-    is_hidden = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime, default=now_utc8)
-
-    __table_args__ = (
-        db.UniqueConstraint('from_node_id', 'to_node_id', name='uq_oj_training_edge_from_to'),
-    )
-
-
-class OJTrainingTask(db.Model):
-    __tablename__ = 'oj_training_task'
-    id = db.Column(db.Integer, primary_key=True)
-    node_id = db.Column(db.Integer, db.ForeignKey('oj_training_node.id'), nullable=False, index=True)
-    task_type = db.Column(db.String(40), nullable=False, default='oj_problem_ac')
-    problem_id = db.Column(db.Integer, db.ForeignKey('problem.id'), nullable=True, index=True)
-    title = db.Column(db.String(200), nullable=False, default='')
-    description = db.Column(db.Text, nullable=True)
-    target_value = db.Column(db.String(200), nullable=True)
-    required_count = db.Column(db.Integer, nullable=False, default=1)
-    is_required = db.Column(db.Boolean, nullable=False, default=True)
-    sort_order = db.Column(db.Integer, nullable=False, default=0)
-    created_at = db.Column(db.DateTime, default=now_utc8)
-    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
-
-    problem = db.relationship('Problem')
-
-
-class OJTrainingReward(db.Model):
-    __tablename__ = 'oj_training_reward'
-    id = db.Column(db.Integer, primary_key=True)
-    node_id = db.Column(db.Integer, db.ForeignKey('oj_training_node.id'), nullable=False, index=True)
-    reward_type = db.Column(db.String(40), nullable=False, default='unlock')
-    title = db.Column(db.String(200), nullable=False, default='')
-    description = db.Column(db.Text, nullable=True)
-    value = db.Column(db.String(200), nullable=True)
-    sort_order = db.Column(db.Integer, nullable=False, default=0)
-    is_auto_claim = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, default=now_utc8)
-    updated_at = db.Column(db.DateTime, default=now_utc8, onupdate=now_utc8)
-
-
 def can_view_problem(problem, user):
     if problem.is_visible:
         return True
@@ -10851,16 +10404,6 @@ def ensure_oj_authoring_schema(force=False):
         'oj_assignment_groups': oj_assignment_groups,
         'oj_assignment_users': oj_assignment_users,
         'oj_assignment_managers': oj_assignment_managers,
-        'oj_training_project': OJTrainingProject.__table__,
-        'oj_training_chapter': OJTrainingChapter.__table__,
-        'oj_training_node': OJTrainingNode.__table__,
-        'oj_training_edge': OJTrainingEdge.__table__,
-        'oj_training_task': OJTrainingTask.__table__,
-        'oj_training_reward': OJTrainingReward.__table__,
-        'oj_training_classes': oj_training_classes,
-        'oj_training_groups': oj_training_groups,
-        'oj_training_users': oj_training_users,
-        'oj_training_managers': oj_training_managers,
     }
     created_tables = []
 
@@ -10953,16 +10496,6 @@ def ensure_oj_authoring_schema(force=False):
                         "ON judge_task (created_at, user_id, problem_id, status)"
                     )
                 )
-
-        if 'oj_training_edge' in existing_tables:
-            inspector = inspect(connection)
-            edge_columns = {column['name'] for column in inspector.get_columns('oj_training_edge')}
-            if 'requirement_type' not in edge_columns:
-                connection.execute(db.text("ALTER TABLE oj_training_edge ADD COLUMN requirement_type VARCHAR(40) DEFAULT 'all_completed'"))
-            if 'min_completed' not in edge_columns:
-                connection.execute(db.text("ALTER TABLE oj_training_edge ADD COLUMN min_completed INTEGER DEFAULT 1"))
-            if 'is_hidden' not in edge_columns:
-                connection.execute(db.text("ALTER TABLE oj_training_edge ADD COLUMN is_hidden BOOLEAN DEFAULT FALSE"))
 
     seed_ast_rule_templates()
     OJ_AUTHORING_SCHEMA_READY = True
@@ -13595,147 +13128,6 @@ def oj_assignment_scoreboard_json(assignment_id):
     ensure_oj_authoring_schema()
     assignment = get_oj_assignment_or_404_visible(assignment_id)
     return jsonify({"ok": True, "assignmentScoreboard": build_oj_assignment_scoreboard_payload(assignment)})
-
-
-@app.route('/oj/trainings')
-@login_required
-def oj_training_list():
-    ensure_oj_authoring_schema()
-    return render_template(
-        'oj/trainings.html',
-        payload=build_oj_training_list_payload(),
-    )
-
-
-@app.route('/oj/trainings.json')
-@login_required
-def oj_training_list_json():
-    ensure_oj_authoring_schema()
-    return jsonify({"ok": True, "trainingList": build_oj_training_list_payload()})
-
-
-@app.route('/oj/trainings/<int:training_id>')
-@login_required
-def oj_training_detail(training_id):
-    ensure_oj_authoring_schema()
-    training = get_oj_training_or_404_visible(training_id)
-    return render_template(
-        'oj/training_detail.html',
-        payload=serialize_oj_training_graph(training),
-    )
-
-
-@app.route('/oj/trainings/<int:training_id>.json')
-@login_required
-def oj_training_detail_json(training_id):
-    ensure_oj_authoring_schema()
-    training = get_oj_training_or_404_visible(training_id)
-    return jsonify({"ok": True, "training": serialize_oj_training_graph(training)})
-
-
-@app.route('/admin/oj/trainings')
-@login_required
-def manage_oj_trainings():
-    if not current_user.is_admin:
-        abort(403)
-    ensure_oj_authoring_schema()
-    return render_template(
-        'admin/oj_trainings.html',
-        payload=build_oj_training_list_payload(),
-    )
-
-
-@app.route('/admin/oj/trainings/new', methods=['GET', 'POST'])
-@login_required
-def create_oj_training():
-    if not current_user.is_admin:
-        abort(403)
-    ensure_oj_authoring_schema()
-    if request.method == 'POST':
-        title = request.form.get('title', '').strip()
-        description_md = request.form.get('description_md', '').strip()
-        if not title:
-            flash('训练项目标题不能为空。', 'error')
-            return redirect(url_for('manage_oj_trainings'))
-        training = OJTrainingProject(
-            title=title,
-            description_md=description_md,
-            visibility=request.form.get('visibility') if request.form.get('visibility') in {'all', 'restricted'} else 'all',
-            is_active=request.form.get('is_active', '1') == '1',
-            created_by_id=current_user.id,
-        )
-        resolve_oj_training_targets(
-            training,
-            request.form.getlist('class_ids'),
-            request.form.getlist('group_ids'),
-            request.form.getlist('user_ids'),
-            request.form.getlist('manager_ids'),
-        )
-        training.chapters.append(OJTrainingChapter(title='第一章', sort_order=0))
-        db.session.add(training)
-        db.session.commit()
-        flash(f'训练项目《{training.title}》已创建。', 'success')
-        return redirect(url_for('edit_oj_training', training_id=training.id))
-    return redirect(url_for('manage_oj_trainings'))
-
-
-@app.route('/admin/oj/trainings/<int:training_id>/edit')
-@login_required
-def edit_oj_training(training_id):
-    if not current_user.is_admin:
-        abort(403)
-    ensure_oj_authoring_schema()
-    training = OJTrainingProject.query.get_or_404(training_id)
-    return render_template(
-        'admin/oj_training_designer.html',
-        payload=serialize_oj_training_graph(training, for_admin=True),
-    )
-
-
-@app.route('/admin/oj/trainings/<int:training_id>/graph.json', methods=['GET'])
-@login_required
-def admin_oj_training_graph_json(training_id):
-    if not current_user.is_admin:
-        abort(403)
-    ensure_oj_authoring_schema()
-    training = OJTrainingProject.query.get_or_404(training_id)
-    return jsonify({"ok": True, "training": serialize_oj_training_graph(training, for_admin=True)})
-
-
-@app.route('/admin/oj/trainings/<int:training_id>/graph.json', methods=['POST'])
-@login_required
-def save_oj_training_graph(training_id):
-    if not current_user.is_admin:
-        abort(403)
-    ensure_oj_authoring_schema()
-    training = OJTrainingProject.query.get_or_404(training_id)
-    try:
-        save_oj_training_graph_from_payload(training, request.get_json() or {})
-    except ValueError as exc:
-        db.session.rollback()
-        return jsonify({"ok": False, "message": str(exc)}), 400
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({"ok": False, "message": "训练拓扑保存失败，请检查是否存在重复连线。"}), 400
-    return jsonify({
-        "ok": True,
-        "message": f'训练项目《{training.title}》已保存。',
-        "training": serialize_oj_training_graph(training, for_admin=True),
-    })
-
-
-@app.route('/admin/oj/trainings/<int:training_id>/delete', methods=['POST'])
-@login_required
-def delete_oj_training(training_id):
-    if not current_user.is_admin:
-        abort(403)
-    ensure_oj_authoring_schema()
-    training = OJTrainingProject.query.get_or_404(training_id)
-    title = training.title
-    db.session.delete(training)
-    db.session.commit()
-    flash(f'训练项目《{title}》已删除。', 'success')
-    return redirect(url_for('manage_oj_trainings'))
 
 
 @app.route('/admin/oj/assignments/<int:assignment_id>/rejudge', methods=['POST'])

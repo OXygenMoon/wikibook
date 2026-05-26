@@ -1,17 +1,20 @@
 <script setup>
 import { ref } from 'vue';
 import DifficultyBadge from '../DifficultyBadge.vue';
+import ProblemAnalysisPanel from './ProblemAnalysisPanel.vue';
+import ProblemTrajectoryPanel from './ProblemTrajectoryPanel.vue';
 
 const props = defineProps({
   problem: { type: Object, required: true },
 });
 const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', 'openSubmission']);
 const astGoalsExpanded = ref(true);
+const activeTab = ref('statement');
 </script>
 
 <template>
   <div class="grid grid-cols-1 xl:grid-cols-[1fr,20rem] gap-6 items-start">
-    <main class="oj-panel p-6 md:p-8">
+    <main class="oj-panel min-w-0 p-6 md:p-8">
       <div class="border-b border-stone-200 dark:border-white/10 pb-6 mb-6">
         <div class="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -32,67 +35,120 @@ const astGoalsExpanded = ref(true);
         {{ problem.hiddenMessage }}
       </section>
 
-      <section v-if="!problem.hiddenForViewer && problem.hasAstGoals" class="full-star-goals mb-6">
-        <div
-          class="animal-collapse"
-          :class="{ 'animal-collapse--expanded': astGoalsExpanded }"
-        >
+      <div v-if="!problem.hiddenForViewer" class="animal-tabs problem-detail-tabs min-w-0">
+        <div class="animal-tabs__list problem-detail-tabs__list" aria-label="题目内容">
           <button
             type="button"
-            class="animal-collapse__trigger"
-            :aria-expanded="astGoalsExpanded"
-            aria-controls="full-star-goals-panel"
-            @click="astGoalsExpanded = !astGoalsExpanded"
+            class="animal-tabs__item"
+            :class="{ 'animal-tabs__item--active animal-tabs__item--active-shadow': activeTab === 'statement' }"
+            :aria-pressed="activeTab === 'statement'"
+            @click="activeTab = 'statement'"
           >
-            <span class="animal-collapse__question">
-              满星目标
-              <span class="full-star-goals__count">{{ problem.astGoals.length }} 项</span>
-            </span>
-            <span class="animal-collapse__leaf" aria-hidden="true">
-              <i class="fas fa-leaf"></i>
-            </span>
+            <span class="animal-tabs__icon" aria-hidden="true"><i class="fas fa-circle"></i></span>
+            <span class="animal-tabs__label">题面</span>
+            <span v-if="activeTab === 'statement'" class="animal-tabs__leaf"></span>
           </button>
-          <div id="full-star-goals-panel" class="animal-collapse__body">
-            <div class="animal-collapse__content">
-              <ol class="full-star-goals__list">
-                <li v-for="goal in problem.astGoals" :key="goal.id || goal.description">{{ goal.description }}</li>
-              </ol>
-            </div>
+          <button
+            type="button"
+            class="animal-tabs__item"
+            :class="{ 'animal-tabs__item--active animal-tabs__item--active-shadow': activeTab === 'analysis' }"
+            :aria-pressed="activeTab === 'analysis'"
+            @click="activeTab = 'analysis'"
+          >
+            <span class="animal-tabs__icon" aria-hidden="true"><i class="fas fa-circle"></i></span>
+            <span class="animal-tabs__label">分析</span>
+            <span v-if="activeTab === 'analysis'" class="animal-tabs__leaf"></span>
+          </button>
+          <button
+            type="button"
+            class="animal-tabs__item"
+            :class="{ 'animal-tabs__item--active animal-tabs__item--active-shadow': activeTab === 'trajectory' }"
+            :aria-pressed="activeTab === 'trajectory'"
+            @click="activeTab = 'trajectory'"
+          >
+            <span class="animal-tabs__icon" aria-hidden="true"><i class="fas fa-circle"></i></span>
+            <span class="animal-tabs__label">轨迹</span>
+            <span v-if="activeTab === 'trajectory'" class="animal-tabs__leaf"></span>
+          </button>
+        </div>
+
+        <div class="animal-tabs__content">
+          <div v-if="activeTab === 'statement'" class="animal-tabs__content-inner problem-detail-tabs__content">
+            <section v-if="problem.hasAstGoals" class="full-star-goals mb-6">
+              <div
+                class="animal-collapse"
+                :class="{ 'animal-collapse--expanded': astGoalsExpanded }"
+              >
+                <button
+                  type="button"
+                  class="animal-collapse__trigger"
+                  :aria-expanded="astGoalsExpanded"
+                  aria-controls="full-star-goals-panel"
+                  @click="astGoalsExpanded = !astGoalsExpanded"
+                >
+                  <span class="animal-collapse__question">
+                    满星目标
+                    <span class="full-star-goals__count">{{ problem.astGoals.length }} 项</span>
+                  </span>
+                  <span class="animal-collapse__leaf" aria-hidden="true">
+                    <i class="fas fa-leaf"></i>
+                  </span>
+                </button>
+                <div id="full-star-goals-panel" class="animal-collapse__body">
+                  <div class="animal-collapse__content">
+                    <ol class="full-star-goals__list">
+                      <li v-for="goal in problem.astGoals" :key="goal.id || goal.description">{{ goal.description }}</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="problem-prose" v-html="problem.statementHtml"></section>
+
+            <section v-if="!problem.statementHasSamplePairs" class="mt-8">
+              <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <template v-for="(sample, index) in problem.sampleCases" :key="index">
+                  <div class="sample-box oj-panel p-4">
+                    <div class="flex items-center justify-between mb-3">
+                      <h3 class="font-black text-stone-900 dark:text-stone-100">输入 {{ index + 1 }}</h3>
+                      <span class="text-xs text-stone-400">score {{ sample.score }}</span>
+                    </div>
+                    <pre>{{ sample.input }}</pre>
+                  </div>
+                  <div class="sample-box oj-panel p-4">
+                    <h3 class="font-black text-stone-900 dark:text-stone-100 mb-3">输出 {{ index + 1 }}</h3>
+                    <pre>{{ sample.expectedOutput }}</pre>
+                  </div>
+                </template>
+                <div v-if="!problem.sampleCases.length" class="oj-panel p-6 text-stone-400 md:col-span-2">这道题暂时没有公开样例。</div>
+              </div>
+            </section>
+
+            <section v-if="problem.visibleFiles.length" class="mt-8">
+              <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">文件</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <a v-for="file in problem.visibleFiles" :key="file.id" :href="file.filePath" target="_blank" class="oj-panel p-4 hover:border-cyan-400 transition-colors">
+                  <div class="font-bold text-stone-900 dark:text-stone-100">{{ file.filename }}</div>
+                  <div class="text-xs text-stone-400 mt-1">{{ file.fileSizeKb }} KB</div>
+                </a>
+              </div>
+            </section>
+          </div>
+
+          <div v-else-if="activeTab === 'analysis'" class="animal-tabs__content-inner problem-detail-tabs__content">
+            <ProblemAnalysisPanel :analysis="problem.analysis" />
+          </div>
+
+          <div v-else class="animal-tabs__content-inner problem-detail-tabs__content">
+            <ProblemTrajectoryPanel
+              :analysis="problem.analysis"
+              @open-submission="(...args) => emit('openSubmission', ...args)"
+            />
           </div>
         </div>
-      </section>
-
-      <section v-if="!problem.hiddenForViewer" class="problem-prose" v-html="problem.statementHtml"></section>
-
-      <section v-if="!problem.hiddenForViewer && !problem.statementHasSamplePairs" class="mt-8">
-        <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <template v-for="(sample, index) in problem.sampleCases" :key="index">
-            <div class="sample-box oj-panel p-4">
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="font-black text-stone-900 dark:text-stone-100">输入 {{ index + 1 }}</h3>
-                <span class="text-xs text-stone-400">score {{ sample.score }}</span>
-              </div>
-              <pre>{{ sample.input }}</pre>
-            </div>
-            <div class="sample-box oj-panel p-4">
-              <h3 class="font-black text-stone-900 dark:text-stone-100 mb-3">输出 {{ index + 1 }}</h3>
-              <pre>{{ sample.expectedOutput }}</pre>
-            </div>
-          </template>
-          <div v-if="!problem.sampleCases.length" class="oj-panel p-6 text-stone-400 md:col-span-2">这道题暂时没有公开样例。</div>
-        </div>
-      </section>
-
-      <section v-if="!problem.hiddenForViewer && problem.visibleFiles.length" class="mt-8">
-        <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">文件</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <a v-for="file in problem.visibleFiles" :key="file.id" :href="file.filePath" target="_blank" class="oj-panel p-4 hover:border-cyan-400 transition-colors">
-            <div class="font-bold text-stone-900 dark:text-stone-100">{{ file.filename }}</div>
-            <div class="text-xs text-stone-400 mt-1">{{ file.fileSizeKb }} KB</div>
-          </a>
-        </div>
-      </section>
+      </div>
     </main>
 
     <aside class="oj-panel p-5 sticky top-24">

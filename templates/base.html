@@ -3168,18 +3168,12 @@
                 <a href="{{ url_for('oj_assignment_list') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/oj/assignments') else '' }}">
                     <i class="fas fa-clipboard-list"></i> 作业
                 </a>
-                <a href="{{ url_for('oj_training_list') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/oj/trainings') else '' }}">
-                    <i class="fas fa-diagram-project"></i> 训练
-                </a>
                 <a href="{{ url_for('oj_settings') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/oj/settings') else '' }}">
                     <i class="fas fa-gear"></i> 设置
                 </a>
                 {% if current_user.is_authenticated and current_user.is_admin %}
-                <a href="{{ url_for('manage_oj_problems') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/admin/oj') and not request.path.startswith('/admin/oj/trainings') else '' }}">
+                <a href="{{ url_for('manage_oj_problems') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/admin/oj') else '' }}">
                     <i class="fas fa-sliders-h"></i> 管理题库
-                </a>
-                <a href="{{ url_for('manage_oj_trainings') }}" class="nav-pill-item {{ 'active' if request.path.startswith('/admin/oj/trainings') else '' }}">
-                    <i class="fas fa-route"></i> 管理训练
                 </a>
                 {% endif %}
             </div>
@@ -6926,13 +6920,17 @@ toast: {
                         });
                     }
                     
-                    const scheduleBookmarkLoad = window.requestIdleCallback
-                        ? (callback) => window.requestIdleCallback(callback, { timeout: 1200 })
-                        : (callback) => window.setTimeout(callback, 250);
-                    scheduleBookmarkLoad(() => {
+                    let attempts = 0;
+                    const checkExist = setInterval(() => {
+                        attempts++;
                         const contentArea = document.querySelector('.markdown-body');
-                        if (contentArea) this.loadPageBookmarks();
-                    });
+                        if (contentArea && contentArea.querySelectorAll('p, h1, h2, h3').length > 0) {
+                            clearInterval(checkExist);
+                            this.loadPageBookmarks();
+                        } else if (attempts > 15) { 
+                            clearInterval(checkExist);
+                        }
+                    }, 200);
                 },
 
                 // 💡 新增：检查并触发获得新书签的弹窗
@@ -7022,10 +7020,8 @@ toast: {
                 initDeterministicIds() {
                     const contentArea = document.querySelector('.markdown-body');
                     if (!contentArea) return;
-                    if (contentArea.dataset.bookmarkIdsReady === 'true') return;
                     const blocks = contentArea.querySelectorAll('p, pre, h1, h2, h3, li, blockquote');
                     blocks.forEach((b, index) => { b.id = `bm-block-idx-${index}`; });
-                    contentArea.dataset.bookmarkIdsReady = 'true';
                 },
                 
                 renderList(bms) {

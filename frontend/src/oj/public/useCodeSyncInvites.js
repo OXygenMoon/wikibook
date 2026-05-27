@@ -45,6 +45,39 @@ function normalizeProblem(problem = {}, codeUrl = '') {
   };
 }
 
+function normalizeLatestTask(task = null) {
+  if (!task?.id) return null;
+  return {
+    id: task.id,
+    statusLabel: task.statusLabel || task.status_label || '未提交',
+    statusTone: task.statusTone || task.status_tone || 'neutral',
+    passedCount: task.passedCount ?? task.passed_count ?? null,
+    totalCount: task.totalCount ?? task.total_count ?? null,
+    createdAt: task.createdAt || task.created_at || '',
+  };
+}
+
+function normalizeTrajectoryItem(item = {}) {
+  if (!item?.id) return null;
+  return {
+    id: item.id,
+    attempt: item.attempt ?? null,
+    code: item.code || '?',
+    statusLabel: item.statusLabel || item.status_label || '未知结果',
+    statusTone: item.statusTone || item.status_tone || 'neutral',
+    score: item.score ?? 0,
+    passedCount: item.passedCount ?? item.passed_count ?? 0,
+    totalCount: item.totalCount ?? item.total_count ?? 0,
+    createdAt: item.createdAt || item.created_at || '',
+    url: item.url || '',
+  };
+}
+
+function normalizeTrajectory(items = []) {
+  if (!Array.isArray(items)) return [];
+  return items.map(normalizeTrajectoryItem).filter(Boolean);
+}
+
 export function useCodeSyncInvites({ currentUser, inviteUrl, serverUrl }) {
   const user = normalizeUser(currentUser);
   const endpoint = resolveInviteUrl(inviteUrl, serverUrl);
@@ -119,6 +152,9 @@ export function useCodeSyncInvites({ currentUser, inviteUrl, serverUrl }) {
         kind: 'student-code-presence',
         user,
         problem: currentCodeContext.problem,
+        latestTask: currentCodeContext.latestTask || null,
+        submissionCount: currentCodeContext.submissionCount || 0,
+        submissionTrajectory: currentCodeContext.submissionTrajectory || [],
         seenAt: now(),
       });
     }
@@ -205,6 +241,9 @@ export function useCodeSyncInvites({ currentUser, inviteUrl, serverUrl }) {
       studentPresence.set(data.user.id, {
         ...data.user,
         problem: data.problem,
+        latestTask: normalizeLatestTask(data.latestTask),
+        submissionCount: Number(data.submissionCount) || 0,
+        submissionTrajectory: normalizeTrajectory(data.submissionTrajectory),
         seenAt: data.seenAt || now(),
       });
       prunePresence();
@@ -321,6 +360,9 @@ export function useCodeSyncInvites({ currentUser, inviteUrl, serverUrl }) {
     currentCodeContext = context?.problem?.id ? {
       ...context,
       problem: normalizeProblem(context.problem, context.codeUrl),
+      latestTask: normalizeLatestTask(context.latestTask),
+      submissionCount: Number(context.submissionCount) || 0,
+      submissionTrajectory: normalizeTrajectory(context.submissionTrajectory),
     } : null;
     publishPresence();
   }

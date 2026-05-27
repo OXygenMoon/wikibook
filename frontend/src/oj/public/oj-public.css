@@ -1330,6 +1330,60 @@ html.dark .oj-sync-empty {
   color: #94a3b8;
 }
 
+.sync-admin-panel {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.sync-admin-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sync-admin-panel__title {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+html.dark .sync-admin-panel__title {
+  color: #f8fafc;
+}
+
+.sync-admin-panel__meta {
+  margin-top: 0.15rem;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+html.dark .sync-admin-panel__meta {
+  color: #94a3b8;
+}
+
+.sync-student-trajectory {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.sync-student-trajectory__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sync-student-trajectory__flow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+}
+
 .monaco-editor-frame {
   position: relative;
   z-index: 30;

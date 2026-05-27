@@ -1898,7 +1898,7 @@ def serialize_oj_problem_code_workspace(problem, active_assignment=None):
     sample_cases = get_oj_problem_sample_cases(problem.id)
     statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
     assignment_id = active_assignment.id if active_assignment else None
-    latest_task_query = (
+    my_task_query = (
         JudgeTask.query
         .filter_by(
             problem_id=problem.id,
@@ -1906,11 +1906,17 @@ def serialize_oj_problem_code_workspace(problem, active_assignment=None):
         )
     )
     if active_assignment:
-        latest_task_query = latest_task_query.filter_by(assignment_id=assignment_id)
+        my_task_query = my_task_query.filter_by(assignment_id=assignment_id)
+    latest_task_query = my_task_query
     my_latest_task = (
         latest_task_query
         .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
         .first()
+    )
+    my_tasks = (
+        my_task_query
+        .order_by(JudgeTask.created_at.asc(), JudgeTask.id.asc())
+        .all()
     )
     allowed_languages = problem.allowed_languages or ['python', 'cpp', 'c']
     attempted = bool(my_latest_task)
@@ -1932,6 +1938,8 @@ def serialize_oj_problem_code_workspace(problem, active_assignment=None):
             "sampleCases": sample_cases,
         },
         "latestTask": serialize_oj_task_summary(my_latest_task),
+        "submissionCount": len(my_tasks),
+        "submissionTrajectory": _build_submission_trajectory(my_tasks),
         "defaultLanguage": effective_oj_default_language(current_user, allowed_languages),
         "initialCode": build_oj_initial_code(problem, current_user, attempted=attempted),
         "activeAssignment": {

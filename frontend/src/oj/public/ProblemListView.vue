@@ -1,16 +1,19 @@
 <script setup>
-import { reactive, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import DifficultyBadge from '../DifficultyBadge.vue';
 import { DIFFICULTY_OPTIONS } from '../difficulty.js';
 
 const props = defineProps({
   payload: { type: Object, required: true },
   isAdmin: { type: Boolean, default: false },
+  syncStudents: { type: Array, default: () => [] },
+  syncConnected: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['filter', 'openProblem', 'openSubmissions']);
+const emit = defineEmits(['filter', 'openProblem', 'openSubmissions', 'inviteSyncStudent']);
 const filters = reactive({ q: '', difficulty: '', visibility: 'visible' });
 const quickSearches = ['P', 'PF', 'Q'];
+const syncPanelOpen = ref(false);
 
 function syncFilters() {
   Object.assign(filters, props.payload.filters || {});
@@ -64,6 +67,22 @@ function quickSearch(term) {
 function difficultyFilter(difficulty) {
   filters.difficulty = difficulty;
   submitFilter();
+}
+
+function toggleSyncPanel() {
+  syncPanelOpen.value = !syncPanelOpen.value;
+}
+
+function latestTaskMeta(student) {
+  if (!student?.latestTask) return '尚未提交';
+  if (student.latestTask.passedCount !== null && student.latestTask.totalCount !== null) {
+    return `${student.latestTask.passedCount}/${student.latestTask.totalCount}`;
+  }
+  return student.latestTask.createdAt || '最近提交';
+}
+
+function trajectoryTitle(item) {
+  return `第 ${item.attempt} 次 · ${item.statusLabel}`;
 }
 
 watch(() => props.payload, syncFilters, { immediate: true });
@@ -138,8 +157,94 @@ watch(() => props.payload, syncFilters, { immediate: true });
         >
           包含 {{ term }}
         </button>
+        <button
+          v-if="isAdmin"
+          type="button"
+          class="btn btn-sm rounded-lg ml-auto"
+          :class="syncPanelOpen ? 'btn-secondary' : 'btn-outline'"
+          @click="toggleSyncPanel"
+        >
+          <i class="fas fa-link" aria-hidden="true"></i>
+          同步
+        </button>
       </div>
     </form>
+
+    <section v-if="isAdmin && syncPanelOpen" class="oj-panel p-4 sync-admin-panel">
+      <div class="sync-admin-panel__header">
+        <div>
+          <div class="sync-admin-panel__title">在线编程学生</div>
+          <div class="sync-admin-panel__meta">
+            {{ syncStudents.length }} 人正在普通题代码页
+            <span v-if="!syncConnected"> · 同步服务连接中</span>
+          </div>
+        </div>
+      </div>
+      <div v-if="syncStudents.length" class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr class="text-xs uppercase tracking-widest text-stone-500">
+              <th>学生</th>
+              <th>正在编写</th>
+              <th>上次提交</th>
+              <th class="text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="student in syncStudents" :key="student.id" class="submission-row">
+              <td>
+                <div class="font-black text-stone-900 dark:text-stone-100">{{ student.name }}</div>
+                <div class="text-xs text-stone-400">@{{ student.username || student.id }}</div>
+              </td>
+              <td>
+                <div class="font-black text-stone-900 dark:text-stone-100">{{ student.problem.code }}</div>
+                <div class="text-sm text-stone-500 dark:text-stone-300">{{ student.problem.title }}</div>
+              </td>
+              <td>
+                <div class="sync-student-trajectory">
+                  <div class="sync-student-trajectory__meta">
+                    <span class="text-xs font-black text-stone-500 dark:text-stone-300">{{ student.submissionCount || 0 }} 次提交</span>
+                    <span
+                      v-if="student.latestTask"
+                      class="status-chip"
+                      :class="`status-chip--${student.latestTask.statusTone || 'neutral'}`"
+                    >
+                      {{ student.latestTask.statusLabel }}
+                    </span>
+                    <span v-else class="status-chip status-chip--neutral">未提交</span>
+                  </div>
+                  <div v-if="student.submissionTrajectory?.length" class="sync-student-trajectory__flow">
+                    <template v-for="(item, index) in student.submissionTrajectory" :key="item.id">
+                      <span
+                        class="status-chip shrink-0 text-xs"
+                        :class="`status-chip--${item.statusTone}`"
+                        :title="trajectoryTitle(item)"
+                      >
+                        {{ item.code }}
+                      </span>
+                      <span v-if="index < student.submissionTrajectory.length - 1" class="shrink-0 text-stone-300">→</span>
+                    </template>
+                  </div>
+                  <div v-else class="text-xs text-stone-400">{{ latestTaskMeta(student) }}</div>
+                </div>
+              </td>
+              <td class="text-right">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-primary rounded-lg"
+                  :disabled="!syncConnected"
+                  @click="emit('inviteSyncStudent', student)"
+                >
+                  <i class="fas fa-link" aria-hidden="true"></i>
+                  同步
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-else class="text-sm font-bold text-stone-400">当前没有学生在普通题在线编程。</div>
+    </section>
 
     <div class="oj-panel overflow-hidden">
       <div class="overflow-x-auto">

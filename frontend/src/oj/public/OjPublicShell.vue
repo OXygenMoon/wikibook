@@ -247,6 +247,10 @@ function handleCodeSyncRequest(payload) {
   if (!result.ok && result.message) showNotice(result.message);
 }
 
+function handleStudentSyncInvite(student) {
+  syncInvites.inviteStudent(student);
+}
+
 async function openAcceptedSession(session) {
   if (!session?.problem?.slug || !session.problem.codeUrl) return;
   if (view.value !== 'problemCode' || problemCode.value?.problem?.id !== session.problem.id) {
@@ -327,6 +331,9 @@ watch(
           codeUrl: problemCode.value.urls.code,
         },
         codeUrl: problemCode.value.urls.code,
+        latestTask: problemCode.value.latestTask || null,
+        submissionCount: problemCode.value.submissionCount || 0,
+        submissionTrajectory: problemCode.value.submissionTrajectory || [],
       });
     } else {
       syncInvites.setCodeContext(null);
@@ -363,9 +370,12 @@ watch(
         v-else-if="view === 'problems' && problemList"
         :payload="problemList"
         :is-admin="currentUser?.isAdmin"
+        :sync-students="syncInviteState.codingStudents"
+        :sync-connected="syncInviteState.socketState === 'connected'"
         @filter="loadProblems"
         @open-problem="goProblem"
         @open-submissions="loadSubmissions"
+        @invite-sync-student="handleStudentSyncInvite"
       />
       <ProblemDetailView
         v-else-if="view === 'problemDetail' && problemDetail"

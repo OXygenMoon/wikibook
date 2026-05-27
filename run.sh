@@ -55,6 +55,28 @@ find_npm() {
     command -v npm 2>/dev/null || true
 }
 
+frontend_dependencies_ready() {
+    local npm_bin="$1"
+    [ -d "${ROOT_DIR}/node_modules" ] || return 1
+
+    (
+        cd "${ROOT_DIR}" &&
+        "${npm_bin}" ls --depth=0 yjs y-websocket y-protocols ws >/dev/null 2>&1
+    )
+}
+
+ensure_frontend_dependencies() {
+    local npm_bin="$1"
+
+    cd "${ROOT_DIR}"
+    if frontend_dependencies_ready "${npm_bin}"; then
+        return 0
+    fi
+
+    echo "Installing frontend dependencies ..."
+    "${npm_bin}" install
+}
+
 pid_is_running() {
     local pidfile="$1"
     if [ ! -f "${pidfile}" ]; then
@@ -359,11 +381,7 @@ build_frontend_assets() {
         return 0
     fi
 
-    cd "${ROOT_DIR}"
-    if [ ! -d "${ROOT_DIR}/node_modules" ]; then
-        echo "Installing frontend dependencies ..."
-        "${npm_bin}" install
-    fi
+    ensure_frontend_dependencies "${npm_bin}"
 
     echo "Building OJ Vue assets ..."
     "${npm_bin}" run build:oj
@@ -440,11 +458,7 @@ start_signaling() {
 
     local signaling_port="${SYNC_SERVER_PORT:-${SIGNALING_PORT:-4444}}"
 
-    cd "${ROOT_DIR}"
-    if [ ! -d "${ROOT_DIR}/node_modules" ]; then
-        echo "Installing frontend dependencies ..."
-        "${npm_bin}" install
-    fi
+    ensure_frontend_dependencies "${npm_bin}"
 
     : > "${SIGNALING_LOGFILE}"
     echo "Starting OJ sync server on port ${signaling_port} ..."

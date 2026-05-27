@@ -2,8 +2,10 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
+  base: '/static/oj-vue/',
   plugins: [vue()],
   build: {
+    modulePreload: false,
     outDir: 'static/oj-vue',
     emptyOutDir: true,
     manifest: true,

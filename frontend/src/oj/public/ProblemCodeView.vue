@@ -1,13 +1,17 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { requestJson } from './api.js';
 import DifficultyBadge from '../DifficultyBadge.vue';
+import { useCodeCollaboration } from './useCodeCollaboration.js';
 
 const props = defineProps({
   workspace: { type: Object, required: true },
+  currentUser: { type: Object, default: () => ({}) },
+  syncSession: { type: Object, default: null },
+  syncRequest: { type: Object, default: null },
 });
 
-const emit = defineEmits(['back', 'openProblem', 'openSubmissions', 'openSubmission', 'submitted']);
+const emit = defineEmits(['back', 'openProblem', 'openSubmissions', 'openSubmission', 'submitted', 'requestSync', 'syncEnded']);
 
 const editorHost = ref(null);
 const notice = ref('');
@@ -22,10 +26,12 @@ const selfTestStatus = ref({ text: '准备自测', tone: 'neutral' });
 const selfTesting = ref(false);
 const editorFontSize = ref(Number(localStorage.getItem('oj-code-editor-font-size')) || 14);
 const editorFontFamily = ref(localStorage.getItem('oj-code-editor-font-family') || '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace');
+const collaboration = useCodeCollaboration();
 
 let monacoEditor = null;
 let autosaveTimer = 0;
 let syntaxTimer = 0;
+const startedSessionId = ref('');
 
 const defaultSnippets = {
   python: '',
@@ -45,6 +51,16 @@ const fontSizeOptions = [12, 13, 14, 15, 16, 18, 20, 22];
 
 const latestTask = computed(() => props.workspace.latestTask);
 const assignmentId = computed(() => props.workspace.activeAssignment?.id || null);
+const currentUser = computed(() => props.workspace.currentUser || props.currentUser || {});
+const collaborationConfig = computed(() => props.workspace.collaboration || {});
+const showSyncFeature = computed(() => Boolean(collaborationConfig.value.enabled && !props.workspace.contestId));
+const syncRequestPending = computed(() => props.syncRequest?.status === 'pending');
+const syncStatusTone = computed(() => {
+  if (collaboration.status.value === 'active') return 'success';
+  if (collaboration.status.value === 'waiting' || collaboration.status.value === 'connecting') return 'warning';
+  if (collaboration.status.value === 'left') return 'neutral';
+  return 'danger';
+});
 
 function storageKey(language) {
   return `oj-code-draft:${props.workspace.problem.slug}:${props.workspace.storageScope}:${language}`;
@@ -140,6 +156,46 @@ function queueSyntaxCheck() {
   syntaxTimer = window.setTimeout(checkSyntax, 520);
 }
 
+function toggleSync() {
+  if (!showSyncFeature.value || !monacoEditor) return;
+  if (collaboration.enabled.value) {
+    collaboration.stopSync({ nextMessage: '同步已断开。' });
+    startedSessionId.value = '';
+    emit('syncEnded');
+    return;
+  }
+  if (syncRequestPending.value) return;
+  if (props.syncSession) {
+    startAcceptedSync(props.syncSession);
+    return;
+  }
+  emit('requestSync', {
+    problem: {
+      ...props.workspace.problem,
+      codeUrl: props.workspace.urls.code,
+    },
+    codeUrl: props.workspace.urls.code,
+    inviteUrl: collaborationConfig.value.inviteUrl,
+    collaborationUrl: collaborationConfig.value.collaborationUrl,
+  });
+}
+
+function startAcceptedSync(session) {
+  if (!session || !monacoEditor || !showSyncFeature.value) return;
+  if (startedSessionId.value === session.id && collaboration.enabled.value) return;
+  if (collaboration.enabled.value) collaboration.stopSync({ nextMessage: '正在切换同步会话。' });
+  startedSessionId.value = session.id;
+  const room = collaborationConfig.value.room || `problem-${props.workspace.problem.id}`;
+  collaboration.startSync({
+    editorView: monacoEditor,
+    room: session.room || room,
+    user: currentUser.value,
+    collaborationUrl: collaborationConfig.value.collaborationUrl,
+    serverUrl: collaborationConfig.value.serverUrl,
+    seedDocument: session.ownerUserId === currentUser.value.id,
+  });
+}
+
 async function ensureMonaco() {
   if (window.monaco?.editor) return window.monaco;
   if (window.__ojMonacoLoaderPromise) return window.__ojMonacoLoaderPromise;
@@ -199,6 +255,8 @@ async function initializeEditor() {
   monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
     submitCode();
   });
+
+  if (props.syncSession) startAcceptedSync(props.syncSession);
 }
 
 async function submitCode() {
@@ -273,11 +331,20 @@ onMounted(async () => {
 onUnmounted(() => {
   window.clearTimeout(autosaveTimer);
   window.clearTimeout(syntaxTimer);
+  collaboration.stopSync({ nextMessage: '同步已断开。' });
   if (monacoEditor) {
     monacoEditor.dispose();
     monacoEditor = null;
   }
 });
+
+watch(
+  () => props.syncSession,
+  (session) => {
+    if (editorReady.value && session) startAcceptedSync(session);
+  },
+  { deep: true },
+);
 </script>
 
 <template>
@@ -357,6 +424,18 @@ onUnmounted(() => {
           <button type="button" class="btn btn-ghost btn-sm rounded-lg" @click="saveDraft()" :disabled="!editorReady">
             <i class="fas fa-bookmark" aria-hidden="true"></i> 保存草稿
           </button>
+          <button
+            v-if="showSyncFeature"
+            type="button"
+            class="btn btn-ghost btn-sm rounded-lg sync-toggle-button"
+            :class="{ 'sync-toggle-button--active': collaboration.enabled.value }"
+            :disabled="!editorReady"
+            :title="collaboration.enabled.value ? '断开同步' : '开启同步'"
+            @click="toggleSync"
+          >
+            <i class="fas" :class="collaboration.enabled.value ? 'fa-link-slash' : 'fa-bolt'" aria-hidden="true"></i>
+            {{ collaboration.enabled.value ? '断开同步' : (syncRequestPending ? '等待确认' : '同步') }}
+          </button>
           <button type="button" class="btn btn-sm btn-judge px-5" :disabled="submitting || !editorReady" @click="submitCode">
             <i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> {{ submitting ? '提交中...' : '提交' }}
           </button>
@@ -380,7 +459,17 @@ onUnmounted(() => {
             使用全部测试点评测
           </span>
         </div>
-        <div class="text-xs text-stone-400">{{ draftStatus }}</div>
+        <div class="editor-status-strip">
+          <span v-if="syncRequestPending && !collaboration.enabled.value" class="sync-status-chip sync-status-chip--warning">
+            <i class="fas fa-paper-plane" aria-hidden="true"></i>
+            已发送同步邀请
+          </span>
+          <span v-else-if="collaboration.enabled.value || ['left', 'error'].includes(collaboration.status.value)" class="sync-status-chip" :class="`sync-status-chip--${syncStatusTone}`">
+            <i class="fas" :class="collaboration.active.value ? 'fa-link' : 'fa-circle-info'" aria-hidden="true"></i>
+            {{ collaboration.message.value }}
+          </span>
+          <span class="text-xs text-stone-400">{{ draftStatus }}</span>
+        </div>
       </div>
 
       <div v-if="notice" class="px-4 pt-3">

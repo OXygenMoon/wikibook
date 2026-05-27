@@ -3,12 +3,17 @@
   "type": "module",
   "scripts": {
     "build:oj": "vite build",
-    "dev:oj": "vite --host 127.0.0.1 --port 5173"
+    "dev:oj": "vite --host 127.0.0.1 --port 5173",
+    "sync:server": "node scripts/oj-sync-server.js",
+    "sync:signaling": "node scripts/oj-sync-server.js"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^5.2.4",
     "vite": "^5.4.19",
-    "vue": "^3.5.16"
-  },
-  "devDependencies": {}
+    "vue": "^3.5.16",
+    "ws": "^8.21.0",
+    "y-protocols": "^1.0.7",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.30"
+  }
 }

@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { requestJson } from './api.js';
+import { useCodeSyncInvites } from './useCodeSyncInvites.js';
 import ProblemListView from './ProblemListView.vue';
 import ProblemDetailView from './ProblemDetailView.vue';
 import ProblemCodeView from './ProblemCodeView.vue';
@@ -26,6 +27,7 @@ const props = defineProps({
   leaderboard: { type: Object, default: null },
   urls: { type: Object, default: () => ({}) },
   currentUser: { type: Object, default: () => ({}) },
+  syncConfig: { type: Object, default: () => ({}) },
 });
 
 const view = ref(props.initialView);
@@ -48,6 +50,12 @@ const initialSubmissionListUrl = (() => {
   return props.urls.submissionListJson || '/oj/submissions.json';
 })();
 const lastSubmissionListUrl = ref(initialSubmissionListUrl);
+const syncInvites = useCodeSyncInvites({
+  currentUser: props.currentUser,
+  inviteUrl: props.syncConfig?.inviteUrl || props.problemCode?.collaboration?.inviteUrl || props.syncConfig?.signalingUrl || props.problemCode?.collaboration?.signalingUrl || '',
+  serverUrl: props.syncConfig?.serverUrl || props.problemCode?.collaboration?.serverUrl || '',
+});
+const syncInviteState = reactive(syncInvites);
 
 const title = computed(() => {
   if (view.value === 'problemDetail') return problemDetail.value?.title || '题目详情';
@@ -63,6 +71,14 @@ const title = computed(() => {
   if (view.value === 'assignmentScoreboard') return `${assignmentScoreboard.value?.assignment?.title || '作业'} · 成绩表`;
   if (view.value === 'leaderboard') return 'OJ 排行榜';
   return 'OJ 题库';
+});
+const currentSyncSession = computed(() => {
+  if (!problemCode.value?.problem?.id || !syncInvites.activeSession.value) return null;
+  return syncInvites.activeSession.value.problem?.id === problemCode.value.problem.id ? syncInvites.activeSession.value : null;
+});
+const currentSyncRequest = computed(() => {
+  if (!problemCode.value?.problem?.id) return null;
+  return syncInvites.outgoingForProblem(problemCode.value.problem.id);
 });
 
 function showNotice(message, category = 'error') {
@@ -226,6 +242,18 @@ function showSubmissionDetail(nextSubmission, redirectUrl, message = '') {
   if (message) showNotice(message, 'success');
 }
 
+function handleCodeSyncRequest(payload) {
+  const result = syncInvites.requestAdminSync(payload.problem);
+  if (!result.ok && result.message) showNotice(result.message);
+}
+
+async function openAcceptedSession(session) {
+  if (!session?.problem?.slug || !session.problem.codeUrl) return;
+  if (view.value !== 'problemCode' || problemCode.value?.problem?.id !== session.problem.id) {
+    await goProblemCode(session.problem.slug, session.problem.codeUrl);
+  }
+}
+
 function routeFromLocation({ pushState = false } = {}) {
   const path = window.location.pathname;
   if (path === '/oj/problems') {
@@ -281,11 +309,39 @@ function onPopState() {
 
 onMounted(() => {
   window.addEventListener('popstate', onPopState);
+  syncInvites.connect();
 });
 
 onUnmounted(() => {
   window.removeEventListener('popstate', onPopState);
+  syncInvites.disconnect();
 });
+
+watch(
+  () => [view.value, problemCode.value?.problem?.id],
+  () => {
+    if (view.value === 'problemCode' && problemCode.value?.problem) {
+      syncInvites.setCodeContext({
+        problem: {
+          ...problemCode.value.problem,
+          codeUrl: problemCode.value.urls.code,
+        },
+        codeUrl: problemCode.value.urls.code,
+      });
+    } else {
+      syncInvites.setCodeContext(null);
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => syncInvites.activeSession.value,
+  (session) => {
+    if (session) openAcceptedSession(session);
+  },
+  { deep: true },
+);
 </script>
 
 <template>
@@ -324,11 +380,16 @@ onUnmounted(() => {
         v-else-if="view === 'problemCode' && problemCode"
         :key="problemCode.urls.code"
         :workspace="problemCode"
+        :current-user="currentUser"
+        :sync-session="currentSyncSession"
+        :sync-request="currentSyncRequest"
         @back="goProblem(problemCode.problem.slug, problemCode.urls.detail)"
         @open-problem="goProblem"
         @open-submissions="loadSubmissions"
         @open-submission="goSubmission"
         @submitted="showSubmissionDetail"
+        @request-sync="handleCodeSyncRequest"
+        @sync-ended="syncInvites.clearActiveSession"
       />
       <ProblemSubmitView
         v-else-if="view === 'problemSubmit' && problemSubmit"
@@ -381,6 +442,55 @@ onUnmounted(() => {
         :payload="leaderboard"
         @filter="loadLeaderboard"
       />
+    </div>
+
+    <div class="oj-sync-toast-stack" aria-live="polite">
+      <section v-if="syncInviteState.notice" class="oj-sync-toast oj-sync-toast--notice">
+        <i class="fas fa-circle-info" aria-hidden="true"></i>
+        <span>{{ syncInviteState.notice }}</span>
+      </section>
+
+      <section v-for="invite in syncInviteState.incomingInvites" :key="invite.id" class="oj-sync-toast">
+        <div class="oj-sync-toast__icon">
+          <i class="fas fa-code-branch" aria-hidden="true"></i>
+        </div>
+        <div class="oj-sync-toast__body">
+          <div class="oj-sync-toast__title">{{ invite.fromUser.name }} 邀请同步</div>
+          <div class="oj-sync-toast__meta">{{ invite.problem.code }} · {{ invite.problem.title }}</div>
+          <div class="oj-sync-toast__actions">
+            <button type="button" class="btn btn-xs btn-primary rounded-lg" @click="syncInviteState.acceptInvite(invite)">接受</button>
+            <button type="button" class="btn btn-xs btn-ghost rounded-lg" @click="syncInviteState.declineInvite(invite)">稍后</button>
+          </div>
+        </div>
+      </section>
+
+      <section v-if="syncInviteState.pickerOpen" class="oj-sync-picker">
+        <div class="oj-sync-picker__header">
+          <div>
+            <div class="oj-sync-toast__title">选择同步学生</div>
+            <div class="oj-sync-toast__meta">{{ syncInviteState.codingStudents.length }} 人正在编码</div>
+          </div>
+          <button type="button" class="btn btn-xs btn-ghost rounded-lg" @click="syncInviteState.closePicker">
+            <i class="fas fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div v-if="syncInviteState.codingStudents.length" class="oj-sync-student-list">
+          <button
+            v-for="student in syncInviteState.codingStudents"
+            :key="student.id"
+            type="button"
+            class="oj-sync-student"
+            @click="syncInviteState.inviteStudent(student)"
+          >
+            <span class="oj-sync-student__avatar">{{ (student.name || '?').slice(0, 1) }}</span>
+            <span class="oj-sync-student__main">
+              <span class="oj-sync-student__name">{{ student.name }}</span>
+              <span class="oj-sync-student__problem">{{ student.problem.code }} · {{ student.problem.title }}</span>
+            </span>
+          </button>
+        </div>
+        <div v-else class="oj-sync-empty">当前没有学生在普通题编码页。</div>
+      </section>
     </div>
   </div>
 </template>

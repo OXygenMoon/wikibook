@@ -6,7 +6,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['filter']);
-const filters = reactive({ period: 'weekly', metric: 'solved' });
+const filters = reactive({ period: 'weekly', metric: 'solved', scope: 'all' });
 
 function syncFilters() {
   Object.assign(filters, props.payload.filters || {});
@@ -16,6 +16,7 @@ function buildUrl() {
   const params = new URLSearchParams();
   if (filters.period) params.set('period', filters.period);
   if (filters.metric) params.set('metric', filters.metric);
+  if (filters.scope && filters.scope !== 'all') params.set('scope', filters.scope);
   const query = params.toString();
   return `/oj/leaderboard.json${query ? `?${query}` : ''}`;
 }
@@ -27,6 +28,11 @@ function choosePeriod(period) {
 
 function chooseMetric(metric) {
   filters.metric = metric;
+  emit('filter', buildUrl());
+}
+
+function chooseScope(scope) {
+  filters.scope = scope;
   emit('filter', buildUrl());
 }
 
@@ -47,10 +53,41 @@ watch(() => props.payload, syncFilters, { immediate: true });
         <div>
           <h2 class="text-xl font-black text-stone-900 dark:text-stone-100">OJ 排行榜</h2>
           <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">
-            {{ payload.activePeriod.label }} · {{ payload.activeMetric.description }}
+            {{ payload.activePeriod.label }} · {{ payload.activeScope.label }} · {{ payload.activeMetric.description }}
           </p>
         </div>
         <div class="flex flex-col md:flex-row gap-3">
+          <div class="relative min-w-[12rem]">
+            <i class="fas fa-users absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" aria-hidden="true"></i>
+            <select
+              v-model="filters.scope"
+              class="select select-bordered rounded-lg w-full pl-10 font-bold"
+              aria-label="按班级或小组筛选排行榜"
+              @change="chooseScope(filters.scope)"
+            >
+              <option :value="payload.scopeOptions?.all?.key || 'all'">
+                {{ payload.scopeOptions?.all?.label || '全部同学' }}
+              </option>
+              <optgroup v-if="payload.scopeOptions?.classes?.length" label="班级">
+                <option
+                  v-for="option in payload.scopeOptions.classes"
+                  :key="option.key"
+                  :value="option.key"
+                >
+                  {{ option.label }}
+                </option>
+              </optgroup>
+              <optgroup v-if="payload.scopeOptions?.groups?.length" label="小组">
+                <option
+                  v-for="option in payload.scopeOptions.groups"
+                  :key="option.key"
+                  :value="option.key"
+                >
+                  {{ option.label }}
+                </option>
+              </optgroup>
+            </select>
+          </div>
           <div class="join">
             <button
               v-for="period in payload.periods"

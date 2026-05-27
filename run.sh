@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEB_PIDFILE="${ROOT_DIR}/.wikibook-web.pid"
 WEB_LOGFILE="${ROOT_DIR}/.wikibook-web.log"
+SIGNALING_PIDFILE="${ROOT_DIR}/.wikibook-signaling.pid"
+SIGNALING_LOGFILE="${ROOT_DIR}/.wikibook-signaling.log"
 JUDGE_PIDFILE="${ROOT_DIR}/.wikibook-judge.pid"
 JUDGE_LOGFILE="${ROOT_DIR}/.wikibook-judge.log"
 PROXY_PIDFILE="${ROOT_DIR}/.wikibook-docker-proxy.pid"
@@ -417,6 +419,57 @@ start_web() {
     exit 1
 }
 
+signaling_pid_from_port() {
+    lsof -tiTCP:"${SYNC_SERVER_PORT:-${SIGNALING_PORT:-4444}}" -sTCP:LISTEN 2>/dev/null | head -n 1
+}
+
+start_signaling() {
+    if pid_is_running "${SIGNALING_PIDFILE}"; then
+        echo "OJ sync server is already running (PID: $(cat "${SIGNALING_PIDFILE}"))."
+        return 0
+    fi
+
+    load_env
+
+    local npm_bin
+    npm_bin="$(find_npm)"
+    if [ -z "${npm_bin}" ]; then
+        echo "npm is missing; cannot start the OJ sync server."
+        exit 1
+    fi
+
+    local signaling_port="${SYNC_SERVER_PORT:-${SIGNALING_PORT:-4444}}"
+
+    cd "${ROOT_DIR}"
+    if [ ! -d "${ROOT_DIR}/node_modules" ]; then
+        echo "Installing frontend dependencies ..."
+        "${npm_bin}" install
+    fi
+
+    : > "${SIGNALING_LOGFILE}"
+    echo "Starting OJ sync server on port ${signaling_port} ..."
+    nohup env PORT="${signaling_port}" SIGNALING_PORT="${signaling_port}" SYNC_SERVER_PORT="${signaling_port}" "${npm_bin}" run sync:server >> "${SIGNALING_LOGFILE}" 2>&1 &
+    echo $! > "${SIGNALING_PIDFILE}"
+
+    sleep 1
+    local running_pid
+    running_pid="$(signaling_pid_from_port)"
+    if [ -n "${running_pid}" ]; then
+        echo "${running_pid}" > "${SIGNALING_PIDFILE}"
+    fi
+
+    if pid_is_running "${SIGNALING_PIDFILE}"; then
+        echo "OJ sync server started (PID: $(cat "${SIGNALING_PIDFILE}"))."
+        echo "Sync server log: ${SIGNALING_LOGFILE}"
+        return 0
+    fi
+
+    echo "OJ sync server failed to start. Recent logs:"
+    tail -n 80 "${SIGNALING_LOGFILE}" 2>/dev/null || true
+    rm -f "${SIGNALING_PIDFILE}"
+    exit 1
+}
+
 start_judge() {
     if [ "${SKIP_JUDGE:-0}" = "1" ]; then
         echo "Skipping judge worker because SKIP_JUDGE=1."
@@ -512,6 +565,13 @@ show_status() {
         echo "Judge:  stopped"
     fi
 
+    if pid_is_running "${SIGNALING_PIDFILE}"; then
+        echo "Signal: running (PID: $(cat "${SIGNALING_PIDFILE}"))"
+        echo "Signal URL: ${PUBLIC_SYNC_SERVER_URL:-${PUBLIC_SIGNALING_URL:-ws://<server-host>:${SYNC_SERVER_PORT:-${SIGNALING_PORT:-4444}}}}"
+    else
+        echo "Signal: stopped"
+    fi
+
     echo
     if command -v pg_isready >/dev/null 2>&1; then
         echo -n "PostgreSQL: "
@@ -564,6 +624,14 @@ show_logs() {
     fi
 
     echo
+    echo "== OJ sync server logs =="
+    if [ -f "${SIGNALING_LOGFILE}" ]; then
+        tail -n 80 "${SIGNALING_LOGFILE}"
+    else
+        echo "No sync server log file yet: ${SIGNALING_LOGFILE}"
+    fi
+
+    echo
     echo "== Judge logs =="
     if [ -f "${JUDGE_LOGFILE}" ]; then
         tail -n 80 "${JUDGE_LOGFILE}"
@@ -590,22 +658,26 @@ case "${1:-restart}" in
         ensure_dependencies
         build_frontend_assets
         start_web
+        start_signaling
         start_judge
         ;;
     stop)
         load_env
         stop_process "${JUDGE_PIDFILE}" "Judge worker"
+        stop_process "${SIGNALING_PIDFILE}" "OJ sync server"
         stop_docker_proxy
         stop_web
         ;;
     restart)
         load_env
         stop_process "${JUDGE_PIDFILE}" "Judge worker"
+        stop_process "${SIGNALING_PIDFILE}" "OJ sync server"
         stop_docker_proxy
         stop_web
         ensure_dependencies
         build_frontend_assets
         start_web
+        start_signaling
         start_judge
         ;;
     build-frontend)

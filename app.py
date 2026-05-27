@@ -1859,6 +1859,41 @@ def serialize_oj_problem_detail(problem, active_assignment=None):
     }
 
 
+def serialize_oj_current_user():
+    return {
+        "id": current_user.id,
+        "name": current_user.real_name or current_user.username,
+        "username": current_user.username,
+        "isAdmin": bool(current_user.is_admin),
+        "isSuperAdmin": bool(current_user.is_admin),
+    }
+
+
+def get_oj_sync_server_url():
+    return (
+        os.environ.get("PUBLIC_SYNC_SERVER_URL")
+        or os.environ.get("PUBLIC_SIGNALING_URL")
+        or ""
+    ).rstrip("/")
+
+
+def build_oj_sync_url(path_suffix):
+    base_url = get_oj_sync_server_url()
+    if not base_url:
+        return ""
+    return f"{base_url}{path_suffix}"
+
+
+def serialize_oj_sync_config():
+    return {
+        "enabled": True,
+        "serverUrl": get_oj_sync_server_url(),
+        "inviteUrl": build_oj_sync_url("/events"),
+        "collaborationUrl": build_oj_sync_url("/collaboration"),
+        "signalingUrl": build_oj_sync_url("/events"),
+    }
+
+
 def serialize_oj_problem_code_workspace(problem, active_assignment=None):
     sample_cases = get_oj_problem_sample_cases(problem.id)
     statement_html, statement_has_sample_pairs = render_problem_statement(problem.statement_md or "")
@@ -1905,6 +1940,16 @@ def serialize_oj_problem_code_workspace(problem, active_assignment=None):
             "url": url_for("oj_assignment_detail", assignment_id=active_assignment.id),
         } if active_assignment else None,
         "storageScope": str(assignment_id) if assignment_id else "global",
+        "currentUser": serialize_oj_current_user(),
+        "collaboration": {
+            "enabled": True,
+            "room": f"problem-{problem.id}",
+            "serverUrl": get_oj_sync_server_url(),
+            "inviteUrl": build_oj_sync_url("/events"),
+            "collaborationUrl": build_oj_sync_url("/collaboration"),
+            "signalingUrl": build_oj_sync_url("/events"),
+            "maxUsers": 2,
+        },
         "urls": {
             "detail": url_for("oj_problem_detail", slug=problem.slug, assignment_id=assignment_id),
             "code": url_for("oj_problem_code", slug=problem.slug, assignment_id=assignment_id),
@@ -2202,11 +2247,56 @@ def _format_oj_leaderboard_time(dt):
     return dt.strftime("%m-%d %H:%M") if dt else "-"
 
 
-def build_oj_leaderboard_payload(period="weekly", metric="solved"):
+def build_oj_leaderboard_payload(period="weekly", metric="solved", scope="all"):
     period = normalize_oj_leaderboard_period(period)
     metric = normalize_oj_leaderboard_metric(metric)
+    scope = (scope or "all").strip().lower()
     period_meta = OJ_LEADERBOARD_PERIODS[period]
     start_at = now_utc8() - period_meta["delta"] if period_meta["delta"] else None
+
+    classes = Class.query.order_by(Class.name.asc()).all()
+    groups = Group.query.order_by(Group.name.asc()).all()
+    available_scopes = {
+        "all": {
+            "key": "all",
+            "label": "全部同学",
+            "type": "all",
+            "description": "显示所有同学的排行",
+        }
+    }
+    for class_item in classes:
+        available_scopes[f"class:{class_item.id}"] = {
+            "key": f"class:{class_item.id}",
+            "label": class_item.name,
+            "type": "class",
+            "classId": class_item.id,
+            "description": "按班级查看排行",
+        }
+    for group_item in groups:
+        available_scopes[f"group:{group_item.id}"] = {
+            "key": f"group:{group_item.id}",
+            "label": group_item.name,
+            "type": "group",
+            "groupId": group_item.id,
+            "description": group_item.description or "按小组查看排行",
+        }
+    if scope not in available_scopes:
+        scope = "all"
+
+    scoped_user_ids = None
+    if scope.startswith("class:"):
+        class_id = int(scope.split(":", 1)[1])
+        scoped_user_ids = [
+            user_id
+            for user_id, in db.session.query(User.id).filter(User.class_id == class_id).all()
+        ]
+    elif scope.startswith("group:"):
+        group_id = int(scope.split(":", 1)[1])
+        scoped_user_ids = [
+            user_id
+            for user_id, in db.session.query(user_groups.c.user_id).filter(user_groups.c.group_id == group_id).all()
+        ]
+    scoped_user_id_set = set(scoped_user_ids) if scoped_user_ids is not None else None
 
     base_filters = [
         JudgeTask.user_id.isnot(None),
@@ -2214,6 +2304,11 @@ def build_oj_leaderboard_payload(period="weekly", metric="solved"):
     ]
     if start_at:
         base_filters.append(JudgeTask.created_at >= start_at)
+    if scoped_user_ids is not None:
+        if scoped_user_ids:
+            base_filters.append(JudgeTask.user_id.in_(scoped_user_ids))
+        else:
+            base_filters.append(db.text("1 = 0"))
 
     passing_problem = case((JudgeTask.status.in_(OJ_PASSING_STATUSES), JudgeTask.problem_id), else_=None)
     perfect_problem = case((JudgeTask.status.in_(OJ_PERFECT_STATUSES), JudgeTask.problem_id), else_=None)
@@ -2289,7 +2384,9 @@ def build_oj_leaderboard_payload(period="weekly", metric="solved"):
     }
 
     user_ids = set(stats_by_user.keys())
-    if current_user.is_authenticated:
+    if current_user.is_authenticated and (
+        scoped_user_id_set is None or current_user.id in scoped_user_id_set
+    ):
         user_ids.add(current_user.id)
 
     user_id_list = list(user_ids)
@@ -2378,7 +2475,7 @@ def build_oj_leaderboard_payload(period="weekly", metric="solved"):
         gap_to_next = max(previous_row["primaryScore"] - my_rank["primaryScore"], 0)
 
     return {
-        "filters": {"period": period, "metric": metric},
+        "filters": {"period": period, "metric": metric, "scope": scope},
         "periods": [
             {"key": key, "label": value["label"]}
             for key, value in OJ_LEADERBOARD_PERIODS.items()
@@ -2387,8 +2484,20 @@ def build_oj_leaderboard_payload(period="weekly", metric="solved"):
             {"key": key, **value}
             for key, value in OJ_LEADERBOARD_METRICS.items()
         ],
+        "scopeOptions": {
+            "all": available_scopes["all"],
+            "classes": [
+                available_scopes[f"class:{class_item.id}"]
+                for class_item in classes
+            ],
+            "groups": [
+                available_scopes[f"group:{group_item.id}"]
+                for group_item in groups
+            ],
+        },
         "activePeriod": {"key": period, "label": period_meta["label"]},
         "activeMetric": {"key": metric, **OJ_LEADERBOARD_METRICS[metric]},
+        "activeScope": available_scopes[scope],
         "summary": {
             "participantCount": len(rows),
             "submissionCount": sum(row["submissionCount"] for row in rows),
@@ -11509,7 +11618,8 @@ def oj_problem_list():
                 "createProblem": url_for("create_oj_problem") if current_user.is_admin else None,
                 "createAssignment": url_for("create_oj_assignment") if current_user.is_admin else None,
             },
-            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+            "currentUser": serialize_oj_current_user(),
+            "syncConfig": serialize_oj_sync_config(),
         },
     )
 
@@ -11548,7 +11658,8 @@ def oj_problem_detail(slug):
                 "assignmentListJson": url_for("oj_assignment_list_json"),
                 "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
             },
-            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+            "currentUser": serialize_oj_current_user(),
+            "syncConfig": serialize_oj_sync_config(),
         },
     )
 
@@ -11588,7 +11699,8 @@ def oj_problem_code(slug):
                 "assignmentListJson": url_for("oj_assignment_list_json"),
                 "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
             },
-            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+            "currentUser": serialize_oj_current_user(),
+            "syncConfig": serialize_oj_sync_config(),
         },
     )
 
@@ -11863,7 +11975,8 @@ def submit_oj_problem(slug):
                     "assignmentListJson": url_for("oj_assignment_list_json"),
                     "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
                 },
-                "currentUser": {"isAdmin": bool(current_user.is_admin)},
+                "currentUser": serialize_oj_current_user(),
+                "syncConfig": serialize_oj_sync_config(),
             },
         )
 
@@ -11996,7 +12109,8 @@ def oj_submission_list():
                 "assignmentList": url_for("oj_assignment_list"),
                 "assignmentListJson": url_for("oj_assignment_list_json"),
             },
-            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+            "currentUser": serialize_oj_current_user(),
+            "syncConfig": serialize_oj_sync_config(),
         },
     )
 
@@ -12025,7 +12139,8 @@ def oj_leaderboard():
     ensure_oj_authoring_schema()
     period = normalize_oj_leaderboard_period(request.args.get('period', 'weekly').strip().lower())
     metric = normalize_oj_leaderboard_metric(request.args.get('metric', 'solved').strip().lower())
-    payload = build_oj_leaderboard_payload(period, metric)
+    scope = (request.args.get('scope', 'all') or 'all').strip().lower()
+    payload = build_oj_leaderboard_payload(period, metric, scope)
     return render_template(
         'oj/oj_shell.html',
         page_title='OJ 排行榜',
@@ -12042,7 +12157,8 @@ def oj_leaderboard():
                 "leaderboard": url_for("oj_leaderboard"),
                 "leaderboardJson": url_for("oj_leaderboard_json"),
             },
-            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+            "currentUser": serialize_oj_current_user(),
+            "syncConfig": serialize_oj_sync_config(),
         },
     )
 
@@ -12056,6 +12172,7 @@ def oj_leaderboard_json():
         "leaderboard": build_oj_leaderboard_payload(
             normalize_oj_leaderboard_period(request.args.get('period', 'weekly').strip().lower()),
             normalize_oj_leaderboard_metric(request.args.get('metric', 'solved').strip().lower()),
+            (request.args.get('scope', 'all') or 'all').strip().lower(),
         ),
     })
 
@@ -12081,7 +12198,8 @@ def oj_submission_detail(task_id):
                 "assignmentList": url_for("oj_assignment_list"),
                 "assignmentListJson": url_for("oj_assignment_list_json"),
             },
-            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+            "currentUser": serialize_oj_current_user(),
+            "syncConfig": serialize_oj_sync_config(),
         },
     )
 
@@ -13088,7 +13206,8 @@ def oj_assignment_list():
                 "createAssignment": url_for("create_oj_assignment") if current_user.is_admin else None,
                 "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
             },
-            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+            "currentUser": serialize_oj_current_user(),
+            "syncConfig": serialize_oj_sync_config(),
         },
     )
 
@@ -13120,7 +13239,8 @@ def oj_assignment_detail(assignment_id):
                 "assignmentListJson": url_for("oj_assignment_list_json"),
                 "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
             },
-            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+            "currentUser": serialize_oj_current_user(),
+            "syncConfig": serialize_oj_sync_config(),
         },
     )
 
@@ -13153,7 +13273,8 @@ def oj_assignment_scoreboard(assignment_id):
                 "assignmentListJson": url_for("oj_assignment_list_json"),
                 "adminProblems": url_for("manage_oj_problems") if current_user.is_admin else None,
             },
-            "currentUser": {"isAdmin": bool(current_user.is_admin)},
+            "currentUser": serialize_oj_current_user(),
+            "syncConfig": serialize_oj_sync_config(),
         },
     )
 

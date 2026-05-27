@@ -3016,10 +3016,317 @@
             border: 2px dashed rgba(255, 174, 0, 0.62) !important;
         }
 
+        #learning_report_modal .report-modal-box {
+            width: min(96vw, 980px) !important;
+            max-width: 980px !important;
+            max-height: 90vh !important;
+        }
+
+        #learning_report_modal .report-receipt {
+            width: 100%;
+            max-height: 88vh;
+            padding: 1rem !important;
+            overflow: hidden !important;
+        }
+
+        #learning_report_modal .receipt-tape {
+            left: 16%;
+        }
+
+        #learning_report_modal .receipt-wide-layout {
+            display: grid;
+            grid-template-columns: minmax(210px, 250px) 2px minmax(0, 1fr);
+            gap: 1rem;
+            height: calc(88vh - 2rem);
+            min-height: 0;
+            max-height: 34rem;
+            min-width: 0;
+        }
+
+        #learning_report_modal .receipt-profile-panel,
+        #learning_report_modal .receipt-report-panel {
+            min-height: 0;
+        }
+
+        #learning_report_modal .receipt-profile-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.15rem 0.65rem 0.85rem;
+            text-align: center;
+        }
+
+        #learning_report_modal .receipt-divider {
+            width: 2px;
+            min-height: 100%;
+            background:
+                repeating-linear-gradient(
+                    to bottom,
+                    rgba(114, 93, 66, 0.22) 0 10px,
+                    transparent 10px 18px
+                );
+            border-radius: 999px;
+        }
+
+        #learning_report_modal .receipt-report-panel {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        #learning_report_modal .receipt-report-scroll {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 1rem 0.35rem 0.7rem 0;
+        }
+
+        #learning_report_modal .receipt-report-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.2rem 0 0.85rem;
+            border-bottom: 2px dashed rgba(114, 93, 66, 0.18);
+        }
+
+        #learning_report_modal .receipt-title {
+            font-size: 1.85rem;
+            line-height: 1.14;
+            word-break: keep-all;
+            overflow-wrap: anywhere;
+        }
+
+        #learning_report_modal .receipt-subtitle {
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+        }
+
+        #learning_report_modal .receipt-avatar-wrap {
+            position: relative;
+            margin: 1rem 0 0.75rem;
+        }
+
+        #learning_report_modal .receipt-avatar {
+            display: grid;
+            place-items: center;
+            width: 6rem;
+            height: 6rem;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 2.5rem;
+            font-weight: 900;
+            background:
+                radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.48), transparent 1.8rem),
+                var(--receipt-accent);
+            border: 4px solid #fff9e9;
+            box-shadow: 0 5px 0 rgba(114, 93, 66, 0.16), inset 0 -8px 0 rgba(0, 0, 0, 0.08);
+        }
+
+        #learning_report_modal .receipt-avatar-wrap .receipt-rating-stamp {
+            right: -1.1rem;
+            bottom: -0.55rem;
+            width: 3.25rem;
+            height: 3.25rem;
+        }
+
+        #learning_report_modal .receipt-user-name {
+            max-width: 100%;
+            color: var(--ai-soil, #725d42);
+            font-size: 1.32rem;
+            font-weight: 900;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+        }
+
+        #learning_report_modal .receipt-user-meta {
+            min-height: 1.25rem;
+            margin-top: 0.25rem;
+            color: var(--ai-soil-soft, #9f927d);
+            font-size: 0.82rem;
+            font-weight: 800;
+            overflow-wrap: anywhere;
+        }
+
+        #learning_report_modal .receipt-profile-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            width: 100%;
+            margin-top: 0.95rem;
+            padding: 0.65rem 0.7rem;
+            color: var(--ai-soil, #725d42);
+            font-size: 0.78rem;
+            font-weight: 900;
+            line-height: 1.35;
+            background: #fdfdf5;
+            border: 2px solid rgba(196, 184, 158, 0.35);
+            border-radius: 16px;
+            box-shadow: 0 3px 0 rgba(114, 93, 66, 0.1);
+        }
+
+        #learning_report_modal .receipt-story {
+            margin: 0.95rem 0 1rem;
+            padding: 1rem 1.1rem;
+            color: #625139;
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1.9;
+            background: rgba(255, 255, 255, 0.7);
+            border: 2px solid rgba(196, 184, 158, 0.3);
+            border-radius: 20px;
+            box-shadow: 0 3px 0 rgba(114, 93, 66, 0.09);
+        }
+
+        #learning_report_modal .receipt-story strong {
+            color: var(--receipt-accent-deep);
+            font-weight: 900;
+        }
+
+        #learning_report_modal .receipt-oj-grid,
+        #learning_report_modal .receipt-card-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        #learning_report_modal .receipt-card-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            margin-top: 0.8rem;
+        }
+
+        #learning_report_modal .receipt-oj-card,
+        #learning_report_modal .receipt-metric-card {
+            min-height: 7.1rem;
+            padding: 0.9rem 0.6rem 0.75rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.78) !important;
+            border: 2px solid rgba(196, 184, 158, 0.35) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 3px 0 rgba(114, 93, 66, 0.12) !important;
+        }
+
+        #learning_report_modal .receipt-oj-card:nth-child(1) .receipt-stat-icon { background: #19c8b9; }
+        #learning_report_modal .receipt-oj-card:nth-child(2) .receipt-stat-icon { background: #6fba2c; }
+        #learning_report_modal .receipt-oj-card:nth-child(3) .receipt-stat-icon { background: #f7cd67; color: #725d42; }
+
+        #learning_report_modal .receipt-metric-card:nth-child(1) .receipt-stat-icon { background: #ff8f35; }
+        #learning_report_modal .receipt-metric-card:nth-child(2) .receipt-stat-icon { background: #889df0; }
+        #learning_report_modal .receipt-metric-card:nth-child(3) .receipt-stat-icon { background: #82d5bb; }
+        #learning_report_modal .receipt-metric-card:nth-child(4) .receipt-stat-icon { background: #fc736d; }
+
+        #learning_report_modal .receipt-stat-value {
+            font-size: 1.9rem;
+        }
+
+        #learning_report_modal .receipt-footer {
+            flex: 0 0 auto;
+            padding: 0.85rem 0.35rem 0 0;
+        }
+
+        #learning_report_modal .receipt-footer .animal-btn {
+            height: 3rem;
+            background: #f8f8f0 !important;
+            color: #794f27 !important;
+            border-color: #f8f8f0 !important;
+            border-radius: 18px !important;
+        }
+
+        #learning_report_modal .receipt-badges {
+            width: 100%;
+            margin-top: auto;
+            padding-top: 1rem;
+        }
+
+        #learning_report_modal .receipt-badges-list {
+            max-height: 8.6rem;
+            overflow-y: auto;
+            align-content: flex-start;
+        }
+
         html.dark #learning_report_modal.report-modal {
             background:
                 radial-gradient(circle at 50% 18%, rgba(255, 204, 0, 0.14), transparent 24rem),
                 rgba(12, 18, 14, 0.74) !important;
+        }
+
+        html.dark #learning_report_modal .receipt-story,
+        html.dark #learning_report_modal .receipt-profile-chip,
+        html.dark #learning_report_modal .receipt-oj-card,
+        html.dark #learning_report_modal .receipt-metric-card,
+        html.dark #learning_report_modal .receipt-badges-list {
+            background: rgba(35, 39, 31, 0.92) !important;
+            border-color: rgba(110, 116, 87, 0.64) !important;
+            color: #f2ebd7 !important;
+        }
+
+        html.dark #learning_report_modal .receipt-user-name,
+        html.dark #learning_report_modal .receipt-story {
+            color: #f2ebd7 !important;
+        }
+
+        html.dark #learning_report_modal .receipt-user-meta {
+            color: #d5cab0 !important;
+        }
+
+        @media (max-width: 760px) {
+            #learning_report_modal .report-modal-box {
+                width: min(94vw, 430px) !important;
+            }
+
+            #learning_report_modal .report-receipt {
+                max-height: 90vh;
+                overflow-y: auto !important;
+            }
+
+            #learning_report_modal .receipt-wide-layout {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+                min-height: 0;
+                max-height: none;
+            }
+
+            #learning_report_modal .receipt-profile-panel {
+                padding: 0.95rem 0.5rem 0.3rem;
+            }
+
+            #learning_report_modal .receipt-avatar {
+                width: 4.6rem;
+                height: 4.6rem;
+                font-size: 2rem;
+            }
+
+            #learning_report_modal .receipt-divider {
+                width: 100%;
+                height: 2px;
+                min-height: 2px;
+                background:
+                    repeating-linear-gradient(
+                        to right,
+                        rgba(114, 93, 66, 0.22) 0 10px,
+                        transparent 10px 18px
+                    );
+            }
+
+            #learning_report_modal .receipt-report-scroll {
+                overflow: visible;
+                padding-right: 0;
+            }
+
+            #learning_report_modal .receipt-title {
+                font-size: 1.42rem;
+            }
+
+            #learning_report_modal .receipt-oj-grid,
+            #learning_report_modal .receipt-card-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            #learning_report_modal .receipt-footer {
+                padding-right: 0;
+            }
         }
 
         @media (max-width: 1399px) {
@@ -4655,53 +4962,81 @@
         <div class="modal-box report-modal-box p-0 bg-transparent shadow-none border-none relative">
             <div id="report-receipt" class="report-receipt report-receipt--daily">
                 <div class="receipt-tape"></div>
+                <div class="receipt-wide-layout">
+                    <aside class="receipt-profile-panel">
+                        <div id="report-type-label" class="receipt-type-pill">DAILY</div>
+                        <div class="receipt-avatar-wrap">
+                            <div id="report-avatar" class="receipt-avatar">
+                                {% if current_user.is_authenticated %}
+                                    {{ (current_user.real_name or current_user.username or 'W')[0]|upper }}
+                                {% else %}
+                                    W
+                                {% endif %}
+                            </div>
+                            <div class="receipt-rating-stamp" aria-label="学习评级"><span id="report-rating">C</span></div>
+                        </div>
+                        <h3 id="report-user-name" class="receipt-user-name">
+                            {% if current_user.is_authenticated %}{{ current_user.real_name or current_user.username }}{% else %}WikiBook{% endif %}
+                        </h3>
+                        <p id="report-user-meta" class="receipt-user-meta">
+                            {% if current_user.is_authenticated %}
+                                {{ current_user.class_name or current_user.department or current_user.username }}
+                            {% else %}
+                                Learning Island
+                            {% endif %}
+                        </p>
+                        <div class="receipt-profile-chip">
+                            <i class="fas fa-calendar-day"></i>
+                            <span id="report-period">--</span>
+                        </div>
+                        <div id="report-badges-section" class="receipt-badges hidden">
+                            <p class="receipt-badges-title">期间解锁新成就</p>
+                            <div id="report-badges-list" class="receipt-badges-list"></div>
+                        </div>
+                    </aside>
 
-                <div class="receipt-header">
-                    <div id="report-type-label" class="receipt-type-pill">DAILY</div>
-                    <h3 id="report-title" class="receipt-title">昨日出货单</h3>
-                    <p id="report-subtitle" class="receipt-subtitle">Learning Harvest</p>
-                    <div class="receipt-rating-stamp" aria-label="学习评级"><span id="report-rating">C</span></div>
-                </div>
-                
-                <div class="receipt-stat-grid">
-                    <div class="receipt-stat-box">
-                        <div class="receipt-stat-icon"><i class="fas fa-hourglass-half"></i></div>
-                        <div class="receipt-stat-value"><span id="report-duration">0</span></div>
-                        <div class="receipt-stat-label">专注分钟</div>
-                    </div>
-                    <div class="receipt-stat-box">
-                        <div class="receipt-stat-icon"><i class="fas fa-clock"></i></div>
-                        <div class="receipt-stat-value"><span id="report-pomos">0</span></div>
-                        <div class="receipt-stat-label">收获番茄</div>
-                    </div>
-                    <div class="receipt-stat-box">
-                        <div class="receipt-stat-icon"><i class="fas fa-pen-nib"></i></div>
-                        <div class="receipt-stat-value"><span id="report-notes">0</span></div>
-                        <div class="receipt-stat-label">产出笔记</div>
-                    </div>
-                    <div class="receipt-stat-box">
-                        <div class="receipt-stat-icon"><i class="fas fa-globe"></i></div>
-                        <div class="receipt-stat-value"><span id="report-wiki">0</span></div>
-                        <div class="receipt-stat-label">Wiki 贡献</div>
-                    </div>
-                </div>
+                    <div class="receipt-divider" aria-hidden="true"></div>
 
-                <div class="receipt-exp-area">
-                    <div class="receipt-exp-label">
-                        <i class="fas fa-bolt"></i> 综合源力产出 EXP
-                    </div>
-                    <div class="receipt-exp-value"><span id="report-exp">0</span></div>
-                </div>
+                    <section class="receipt-report-panel">
+                        <div class="receipt-report-scroll">
+                            <div class="receipt-report-head">
+                                <div>
+                                    <h3 id="report-title" class="receipt-title">昨日出货单</h3>
+                                    <p id="report-subtitle" class="receipt-subtitle">Learning Harvest</p>
+                                </div>
+                            </div>
 
-                <div id="report-badges-section" class="receipt-badges hidden">
-                    <p class="receipt-badges-title">期间解锁新成就</p>
-                    <div id="report-badges-list" class="receipt-badges-list"></div>
-                </div>
+                            <p id="report-story" class="receipt-story">
+                                这段时间的学习成果正在整理中。
+                            </p>
 
-                <div class="receipt-footer">
-                    <button onclick="app.reports.confirm()" class="animal-btn animal-btn--primary animal-btn--block animal-btn--middle">
-                        开心收下
-                    </button>
+                            <div class="receipt-oj-grid" aria-label="OJ 统计">
+                                <div class="receipt-oj-card">
+                                    <div class="receipt-stat-icon"><i class="fas fa-terminal"></i></div>
+                                    <div class="receipt-stat-value"><span id="report-oj-submissions">0</span></div>
+                                    <div class="receipt-stat-label">OJ 提交</div>
+                                </div>
+                                <div class="receipt-oj-card">
+                                    <div class="receipt-stat-icon"><i class="fas fa-check"></i></div>
+                                    <div class="receipt-stat-value"><span id="report-oj-ac">0</span></div>
+                                    <div class="receipt-stat-label">AC 题目</div>
+                                </div>
+                                <div class="receipt-oj-card">
+                                    <div class="receipt-stat-icon"><i class="fas fa-star"></i></div>
+                                    <div class="receipt-stat-value"><span id="report-oj-pac">0</span></div>
+                                    <div class="receipt-stat-label">PAC 题目</div>
+                                </div>
+                            </div>
+
+                            <div id="report-metric-cards" class="receipt-card-grid"></div>
+                        </div>
+
+                        <div class="receipt-footer">
+                            <button onclick="app.reports.confirm()" class="animal-btn animal-btn--primary animal-btn--block animal-btn--middle">
+                                开心收下
+                            </button>
+                        </div>
+                    </section>
                 </div>
             </div>
         </div>
@@ -7445,6 +7780,9 @@ toast: {
                 },
                 renderAndShow(data) {
                     this.currentType = data.type;
+                    const stats = data.stats || {};
+                    const period = data.period || {};
+                    const user = data.user || {};
                     const receipt = document.getElementById('report-receipt');
                     const typeMeta = {
                         daily: { label: '每日收货', subtitle: 'Daily Learning Harvest' },
@@ -7457,33 +7795,98 @@ toast: {
                         receipt.classList.add(`report-receipt--${data.type || 'daily'}`);
                     }
 
-                    document.getElementById('report-title').innerText = data.title;
-                    document.getElementById('report-type-label').innerText = typeMeta.label;
-                    document.getElementById('report-subtitle').innerText = typeMeta.subtitle;
-                    document.getElementById('report-rating').innerText = data.stats.rating || 'C';
+                    this.setText('report-title', data.title || '学习收货单');
+                    this.setText('report-type-label', typeMeta.label);
+                    this.setText('report-subtitle', typeMeta.subtitle);
+                    this.setText('report-rating', stats.rating || 'C');
+                    this.setText('report-user-name', user.display_name || user.username || 'WikiBook');
+                    this.setText('report-user-meta', [user.class_name, user.department, user.student_id ? `#${user.student_id}` : ''].filter(Boolean).join(' · ') || user.username || 'Learning Island');
+                    this.setText('report-avatar', (user.display_name || user.username || 'W').trim().slice(0, 1).toUpperCase());
+                    this.setText('report-period', period.start && period.end ? `${period.start} - ${period.end}` : typeMeta.label);
+                    this.renderStory(data, typeMeta);
+                    this.renderMetricCards(stats);
                     
                     // 动态数字滚动
-                    this.animateValue('report-duration', 0, data.stats.duration, 1200);
-                    this.animateValue('report-pomos', 0, data.stats.pomos, 1200);
-                    this.animateValue('report-notes', 0, data.stats.notes, 1200);
-                    this.animateValue('report-wiki', 0, data.stats.wiki_edits, 1200);
-                    this.animateValue('report-exp', 0, data.stats.exp, 1500);
+                    this.animateValue('report-oj-submissions', 0, stats.oj_submissions || 0, 1100);
+                    this.animateValue('report-oj-ac', 0, stats.oj_ac || 0, 1100);
+                    this.animateValue('report-oj-pac', 0, stats.oj_pac || 0, 1100);
+                    this.animateValue('report-duration', 0, stats.duration || 0, 1200);
+                    this.animateValue('report-pomos', 0, stats.pomos || 0, 1200);
+                    this.animateValue('report-notes', 0, stats.notes || 0, 1200);
+                    this.animateValue('report-exp', 0, stats.exp || 0, 1500);
 
                     // 渲染成就徽章
                     const badgeSec = document.getElementById('report-badges-section');
                     const badgeList = document.getElementById('report-badges-list');
-                    if (data.stats.badges && data.stats.badges.length > 0) {
-                        badgeList.innerHTML = data.stats.badges.map(b => {
-                            const icon = b.is_image ? `<img src="${b.icon}" class="w-9 h-9 object-contain drop-shadow-sm">` : `<span class="text-3xl drop-shadow-sm">${b.icon}</span>`;
-                            return `<div class="receipt-badge-item tooltip tooltip-bottom hover:scale-110 transition-transform" data-tip="${b.name}">${icon}</div>`;
+                    if (stats.badges && stats.badges.length > 0) {
+                        badgeList.innerHTML = stats.badges.map(b => {
+                            const name = this.escapeHtml(b.name || '新成就');
+                            const icon = b.is_image ? `<img src="${this.escapeAttr(b.icon)}" class="w-9 h-9 object-contain drop-shadow-sm" alt="${name}">` : `<span class="text-3xl drop-shadow-sm">${this.escapeHtml(b.icon || '★')}</span>`;
+                            return `<div class="receipt-badge-item tooltip tooltip-bottom hover:scale-110 transition-transform" data-tip="${name}">${icon}</div>`;
                         }).join('');
                         badgeSec.classList.remove('hidden');
                     } else {
                         badgeSec.classList.add('hidden');
+                        badgeList.innerHTML = '';
                     }
 
                     // 显示弹窗
                     document.getElementById('learning_report_modal').showModal();
+                },
+
+                setText(id, value) {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = value;
+                },
+
+                renderStory(data, typeMeta) {
+                    const stats = data.stats || {};
+                    const storyEl = document.getElementById('report-story');
+                    if (!storyEl) return;
+                    const label = typeMeta.label.replace('收货', '');
+                    const pieces = [
+                        `这份${label}里，你累计专注了 <strong>${stats.duration || 0}</strong> 分钟，收下 <strong>${stats.pomos || 0}</strong> 个番茄。`,
+                        `笔记区也有收获：本期新增 <strong>${stats.notes || 0}</strong> 篇笔记。`,
+                    ];
+                    if ((stats.oj_submissions || 0) > 0) {
+                        pieces.push(`OJ 也很有动静：提交 <strong>${stats.oj_submissions || 0}</strong> 次，解出 <strong>${stats.oj_ac || 0}</strong> 道 AC，其中 <strong>${stats.oj_pac || 0}</strong> 道达成 PAC。`);
+                    } else {
+                        pieces.push('OJ 本期还没有提交记录，下一张收货单可以给它留个高光位。');
+                    }
+                    pieces.push(`综合评级是 <strong>${stats.rating || 'C'}</strong>，EXP 入账 <strong>${stats.exp || 0}</strong>。`);
+                    storyEl.innerHTML = pieces.join('');
+                },
+
+                renderMetricCards(stats) {
+                    const cardList = document.getElementById('report-metric-cards');
+                    if (!cardList) return;
+                    const cards = [
+                        { id: 'report-duration', icon: 'fa-hourglass-half', label: '专注分钟' },
+                        { id: 'report-pomos', icon: 'fa-clock', label: '收获番茄' },
+                        { id: 'report-notes', icon: 'fa-pen-nib', label: '产出笔记' },
+                        { id: 'report-exp', icon: 'fa-bolt', label: '综合 EXP' },
+                    ];
+                    cardList.innerHTML = cards.map(card => `
+                        <div class="receipt-metric-card">
+                            <div class="receipt-stat-icon"><i class="fas ${card.icon}"></i></div>
+                            <div class="receipt-stat-value"><span id="${card.id}">0</span></div>
+                            <div class="receipt-stat-label">${card.label}</div>
+                        </div>
+                    `).join('');
+                },
+
+                escapeHtml(value) {
+                    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#39;',
+                    }[ch]));
+                },
+
+                escapeAttr(value) {
+                    return this.escapeHtml(value).replace(/`/g, '&#96;');
                 },
                 
                 animateValue(id, start, end, duration) {

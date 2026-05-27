@@ -204,6 +204,31 @@ def datetime_diff_seconds(later, earlier):
 def study_session_seconds(session):
     return max(datetime_diff_seconds(session.end_time, session.start_time), 0)
 
+def count_oj_report_stats(user_id, start_dt, end_dt):
+    query = JudgeTask.query.filter(
+        JudgeTask.user_id == user_id,
+        JudgeTask.problem_id.isnot(None),
+        JudgeTask.created_at >= start_dt,
+        JudgeTask.created_at < end_dt,
+    )
+    return {
+        "submissions": query.count(),
+        "ac": (
+            query
+            .filter(JudgeTask.status.in_(OJ_PASSING_STATUSES))
+            .with_entities(JudgeTask.problem_id)
+            .distinct()
+            .count()
+        ),
+        "pac": (
+            query
+            .filter(JudgeTask.status.in_(OJ_PERFECT_STATUSES))
+            .with_entities(JudgeTask.problem_id)
+            .distinct()
+            .count()
+        ),
+    }
+
 def is_image_icon(s):
     if not s:
         return False
@@ -11284,13 +11309,12 @@ def check_learning_reports():
     notes = Note.query.filter(Note.user_id == current_user.id, Note.created_at >= start_dt, Note.created_at < end_dt).count()
     pomos = PomodoroRecord.query.filter(PomodoroRecord.user_id == current_user.id, PomodoroRecord.completed_at >= start_dt, PomodoroRecord.completed_at < end_dt).count()
     
-    # 💡 2. 新增进阶数据：Wiki贡献与社区互动
-    wiki_edits = WikiPageHistory.query.filter(WikiPageHistory.user_id == current_user.id, WikiPageHistory.created_at >= start_dt, WikiPageHistory.created_at < end_dt).count()
-    comments = Comment.query.filter(Comment.user_id == current_user.id, Comment.created_at >= start_dt, Comment.created_at < end_dt).count()
+    # 2. OJ 数据
+    oj_stats = count_oj_report_stats(current_user.id, start_dt, end_dt)
     
     # 💡 3. 计算“综合源力值” (EXP) 与 评级
-    # 公式：每分钟1分 + 每番茄5分 + 每笔记15分 + 每次Wiki贡献10分 + 每次评论2分
-    exp = duration_mins + (pomos * 5) + (notes * 15) + (wiki_edits * 10) + (comments * 2)
+    # 公式：每分钟1分 + 每番茄5分 + 每笔记15分
+    exp = duration_mins + (pomos * 5) + (notes * 15)
     
     rating = 'C'
     if report_type == 'daily':
@@ -11319,7 +11343,7 @@ def check_learning_reports():
         })
         
     # 💡 智能静默逻辑（新增的维度也纳入判定，全为0才不弹窗）
-    if duration_mins == 0 and notes == 0 and pomos == 0 and wiki_edits == 0 and comments == 0 and len(badge_list) == 0:
+    if duration_mins == 0 and notes == 0 and pomos == 0 and oj_stats["submissions"] == 0 and len(badge_list) == 0:
         if report_type == 'monthly':
             status.last_monthly_report = today
             status.last_weekly_report = today
@@ -11336,12 +11360,24 @@ def check_learning_reports():
         "has_report": True,
         "type": report_type,
         "title": title,
+        "period": {
+            "start": start_dt.strftime("%Y.%m.%d"),
+            "end": (end_dt - timedelta(days=1)).strftime("%Y.%m.%d"),
+        },
+        "user": {
+            "display_name": current_user.real_name or current_user.username,
+            "username": current_user.username,
+            "student_id": current_user.student_id or "",
+            "class_name": current_user.class_name or "",
+            "department": current_user.department or "",
+        },
         "stats": {
             "duration": duration_mins,
             "pomos": pomos,
             "notes": notes,
-            "wiki_edits": wiki_edits,
-            "comments": comments,
+            "oj_submissions": oj_stats["submissions"],
+            "oj_ac": oj_stats["ac"],
+            "oj_pac": oj_stats["pac"],
             "exp": exp,
             "rating": rating,
             "badges": badge_list

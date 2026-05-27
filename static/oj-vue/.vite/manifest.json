@@ -23,7 +23,7 @@
     ]
   },
   "frontend/src/oj-public.js": {
-    "file": "assets/src/oj-public.js-BJfJSos3.js",
+    "file": "assets/src/oj-public.js-n5G3-nan.js",
     "name": "src/oj-public.js",
     "src": "frontend/src/oj-public.js",
     "isEntry": true,
@@ -31,7 +31,7 @@
       "_DifficultyBadge-BmnU10WC.js"
     ],
     "css": [
-      "assets/oj-public-DG2s7LUP.css"
+      "assets/oj-public-CpoxlRP_.css"
     ]
   }
 }

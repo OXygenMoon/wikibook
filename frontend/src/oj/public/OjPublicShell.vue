@@ -289,8 +289,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="oj-page min-h-[calc(100vh-4rem)] pt-6 pb-16">
-    <div class="max-w-7xl mx-auto px-4 md:px-8 flex flex-col gap-6">
+  <div class="oj-page min-h-[calc(100vh-4rem)] pt-6 pb-16" :class="{ 'oj-page--code': view === 'problemCode' }">
+    <div class="oj-public-shell max-w-7xl mx-auto px-4 md:px-8 flex flex-col gap-6" :class="{ 'oj-public-shell--code': view === 'problemCode' }">
       <header class="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <p class="text-xs font-black tracking-[0.3em] uppercase text-cyan-600 mb-2">Online Judge</p>

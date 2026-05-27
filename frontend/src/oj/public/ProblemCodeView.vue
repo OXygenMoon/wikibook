@@ -13,7 +13,7 @@ const editorHost = ref(null);
 const notice = ref('');
 const draftStatus = ref('准备中...');
 const syntaxStatus = ref({ text: '正在初始化编辑器...', isError: false });
-const activeLanguage = ref(props.workspace.defaultLanguage || props.workspace.problem.allowedLanguages[0] || 'python');
+const activeLanguage = ref('python');
 const submitting = ref(false);
 const editorReady = ref(false);
 const selfTestInput = ref('');
@@ -50,13 +50,6 @@ function storageKey(language) {
   return `oj-code-draft:${props.workspace.problem.slug}:${props.workspace.storageScope}:${language}`;
 }
 
-function monacoLanguageFor(language) {
-  if (language === 'python') return 'python';
-  if (language === 'cpp') return 'cpp';
-  if (language === 'c') return 'c';
-  return 'plaintext';
-}
-
 function setSyntaxStatus(text, isError = false) {
   syntaxStatus.value = { text, isError };
 }
@@ -88,15 +81,11 @@ function loadDraft(language) {
   queueSyntaxCheck();
 }
 
-function applyLanguage(language) {
+function applyLanguage() {
   if (!monacoEditor || !window.monaco) return;
-  window.monaco.editor.setModelLanguage(monacoEditor.getModel(), monacoLanguageFor(language));
+  window.monaco.editor.setModelLanguage(monacoEditor.getModel(), 'python');
   window.monaco.editor.setModelMarkers(monacoEditor.getModel(), 'oj-python', []);
-  if (language === 'python') {
-    setSyntaxStatus('Python 语法检查已开启。', false);
-  } else {
-    setSyntaxStatus('当前语言提供高亮和草稿保存，语法检查暂支持 Python。', false);
-  }
+  setSyntaxStatus('Python 语法检查已开启。', false);
 }
 
 function applyEditorPreferences() {
@@ -122,10 +111,6 @@ function changeFontSize(event) {
 
 async function checkSyntax() {
   if (!monacoEditor || !window.monaco) return;
-  if (activeLanguage.value !== 'python') {
-    window.monaco.editor.setModelMarkers(monacoEditor.getModel(), 'oj-python', []);
-    return;
-  }
   try {
     const data = await requestJson(props.workspace.urls.syntaxCheck, {
       method: 'POST',
@@ -189,7 +174,7 @@ async function initializeEditor() {
   const theme = document.documentElement.classList.contains('dark') ? 'vs-dark' : 'vs';
   monacoEditor = monaco.editor.create(editorHost.value, {
     value: '',
-    language: monacoLanguageFor(activeLanguage.value),
+    language: 'python',
     theme,
     automaticLayout: true,
     minimap: { enabled: false },
@@ -202,7 +187,7 @@ async function initializeEditor() {
   });
 
   editorReady.value = true;
-  applyLanguage(activeLanguage.value);
+  applyLanguage();
   loadDraft(activeLanguage.value);
 
   monacoEditor.onDidChangeModelContent(() => {
@@ -214,12 +199,6 @@ async function initializeEditor() {
   monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
     submitCode();
   });
-}
-
-function changeLanguage(event) {
-  activeLanguage.value = event.target.value;
-  applyLanguage(activeLanguage.value);
-  loadDraft(activeLanguage.value);
 }
 
 async function submitCode() {
@@ -386,9 +365,10 @@ onUnmounted(() => {
 
       <div class="editor-toolbar">
         <div class="flex items-center gap-3 flex-wrap">
-          <select class="editor-select" :value="activeLanguage" aria-label="选择语言" @change="changeLanguage">
-            <option v-for="language in workspace.problem.allowedLanguages" :key="language" :value="language">{{ language }}</option>
-          </select>
+          <span class="editor-language-pill" aria-label="编程语言">
+            <i class="fab fa-python" aria-hidden="true"></i>
+            Python
+          </span>
           <select class="editor-select" :value="editorFontFamily" aria-label="选择编辑器字体" @change="changeFontFamily">
             <option v-for="font in fontOptions" :key="font.value" :value="font.value">{{ font.label }}</option>
           </select>

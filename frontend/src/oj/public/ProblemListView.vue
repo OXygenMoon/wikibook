@@ -261,11 +261,21 @@ watch(() => props.payload, syncFilters, { immediate: true });
             </tr>
           </thead>
           <tbody>
-            <tr v-for="problem in payload.problems" :key="problem.id" :class="rowClass(problem)">
+            <tr
+              v-for="problem in payload.problems"
+              :key="problem.id"
+              :class="rowClass(problem)"
+              class="cursor-pointer"
+              @click="emit('openProblem', problem.slug, problem.urls.detail)"
+            >
               <td class="font-mono font-black text-stone-900 dark:text-stone-100">{{ problem.code }}</td>
               <td>
                 <div class="flex items-center gap-2 flex-wrap">
-                  <a :href="problem.urls.detail" class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600" @click.prevent="emit('openProblem', problem.slug, problem.urls.detail)">
+                  <a
+                    :href="problem.urls.detail"
+                    class="font-black text-stone-900 dark:text-stone-100 hover:text-cyan-600"
+                    @click.prevent.stop="emit('openProblem', problem.slug, problem.urls.detail)"
+                  >
                     {{ problem.title }}
                   </a>
                 </div>
@@ -277,37 +287,47 @@ watch(() => props.payload, syncFilters, { immediate: true });
                   :href="problem.urls.submissions"
                   class="diff-pill hover:opacity-80"
                   :class="statusClass(problem)"
-                  @click.prevent="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)"
+                  @click.prevent.stop="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)"
                 >满星通过</a>
                 <a
                   v-else-if="problem.myStatus?.accepted"
                   :href="problem.urls.submissions"
                   class="diff-pill hover:opacity-80"
                   :class="statusClass(problem)"
-                  @click.prevent="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)"
+                  @click.prevent.stop="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)"
                 >通过</a>
                 <a
                   v-else-if="problem.myStatus?.attempted"
                   :href="problem.urls.submissions"
                   class="diff-pill hover:opacity-80"
                   :class="statusClass(problem)"
-                  @click.prevent="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)"
+                  @click.prevent.stop="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)"
                 >未通过</a>
                 <span v-else class="text-stone-400">-</span>
               </td>
               <td>
-                <button type="button" class="hover:opacity-80" @click="difficultyFilter(problem.difficulty)">
+                <button type="button" class="hover:opacity-80" @click.stop="difficultyFilter(problem.difficulty)">
                   <DifficultyBadge :difficulty="problem.difficulty" />
                 </button>
               </td>
               <td>
-                <button v-for="tag in problem.tags" :key="tag" type="button" class="badge badge-outline hover:border-cyan-500 hover:text-cyan-600 mr-1" @click="tagFilter(tag)">
+                <button
+                  v-for="tag in problem.tags"
+                  :key="tag"
+                  type="button"
+                  class="badge badge-outline hover:border-cyan-500 hover:text-cyan-600 mr-1"
+                  @click.stop="tagFilter(tag)"
+                >
                   {{ tag }}
                 </button>
                 <span v-if="!problem.tags.length" class="text-stone-400">-</span>
               </td>
               <td>
-                <a :href="problem.urls.submissions" class="font-mono font-black text-stone-700 dark:text-stone-200 hover:text-cyan-600" @click.prevent="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)">
+                <a
+                  :href="problem.urls.submissions"
+                  class="font-mono font-black text-stone-700 dark:text-stone-200 hover:text-cyan-600"
+                  @click.prevent.stop="emit('openSubmissions', `/oj/submissions.json?problem_id=${problem.id}`)"
+                >
                   {{ problem.submissionStat.accepted }}/{{ problem.submissionStat.attempts }}
                 </a>
               </td>

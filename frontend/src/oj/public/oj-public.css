@@ -1430,6 +1430,163 @@ html.dark .monaco-editor-frame {
   z-index: 220;
 }
 
+.submit-workspace {
+  width: 100%;
+}
+
+.submit-workspace__main {
+  padding: 0;
+  overflow: hidden;
+}
+
+.submit-workspace__hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+html.dark .submit-workspace__hero {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.submit-workspace__hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.submit-workspace__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 21rem;
+  gap: 1rem;
+  padding: 1rem 1.5rem 1.5rem;
+  align-items: stretch;
+}
+
+.submit-editor-shell {
+  min-width: 0;
+  min-height: clamp(36rem, calc(100vh - 16rem), 56rem);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+html.dark .submit-editor-shell {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.submit-editor-shell__toolbar {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+
+html.dark .submit-editor-shell__toolbar {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.submit-editor-shell__body {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: clamp(31rem, calc(100vh - 21rem), 50rem);
+}
+
+.submit-editor-shell__frame {
+  min-height: clamp(28rem, calc(100vh - 23rem), 47rem);
+}
+
+.submit-editor-shell__diagnostics {
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.82);
+}
+
+html.dark .submit-editor-shell__diagnostics {
+  border-top-color: rgba(255, 255, 255, 0.08);
+  background: rgba(39, 39, 42, 0.72);
+}
+
+.submit-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  align-self: start;
+  position: sticky;
+  top: 1rem;
+}
+
+.submit-sidebar__section + .submit-sidebar__section {
+  padding-top: 0.25rem;
+}
+
+.editor-diagnostics {
+  padding: 0.85rem 1rem;
+}
+
+.diagnostic-line {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #0f766e;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.diagnostic-line.error {
+  color: #b91c1c;
+}
+
+html.dark .diagnostic-line {
+  color: #99f6e4;
+}
+
+html.dark .diagnostic-line.error {
+  color: #fca5a5;
+}
+
+@media (max-width: 1279px) {
+  .submit-workspace__content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .submit-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 767px) {
+  .submit-workspace__hero {
+    padding: 1.25rem 1.25rem 0.9rem;
+  }
+
+  .submit-workspace__content {
+    padding: 0.9rem 1.25rem 1.25rem;
+  }
+
+  .submit-workspace__hero,
+  .submit-workspace__hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .submit-editor-shell {
+    min-height: 32rem;
+  }
+
+  .submit-editor-shell__body {
+    min-height: 28rem;
+  }
+
+  .submit-editor-shell__frame {
+    min-height: 25rem;
+  }
+}
+
 .oj-remote-cursor-widget {
   position: relative;
   width: 0;

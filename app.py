@@ -2017,6 +2017,7 @@ def serialize_oj_problem_submit_workspace(problem, active_assignment=None):
             "submit": url_for("submit_oj_problem", slug=problem.slug, assignment_id=assignment_id),
             "submitJson": url_for("oj_problem_submit_json", slug=problem.slug, assignment_id=assignment_id),
             "submissions": url_for("oj_submission_list", problem_id=problem.id, assignment_id=assignment_id, mine=1),
+            "syntaxCheck": url_for("oj_problem_syntax_check", slug=problem.slug, assignment_id=assignment_id),
             "adminEdit": url_for("edit_oj_problem", problem_id=problem.id) if current_user.is_admin else None,
         },
     }

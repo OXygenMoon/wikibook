@@ -14,6 +14,10 @@ const props = defineProps({
 const emit = defineEmits(['back', 'openProblem', 'openSubmissions', 'openSubmission', 'submitted', 'requestSync', 'syncEnded']);
 
 const editorHost = ref(null);
+const statementScrollHost = ref(null);
+const statementViewport = ref(null);
+const statementOverlay = ref(null);
+const statementContent = ref(null);
 const notice = ref('');
 const draftStatus = ref('准备中...');
 const syntaxStatus = ref({ text: '正在初始化编辑器...', isError: false });
@@ -193,6 +197,10 @@ function startAcceptedSync(session) {
     collaborationUrl: collaborationConfig.value.collaborationUrl,
     serverUrl: collaborationConfig.value.serverUrl,
     seedDocument: session.ownerUserId === currentUser.value.id,
+    statementViewportEl: statementViewport.value,
+    statementContentEl: statementContent.value,
+    statementOverlayEl: statementOverlay.value,
+    statementScrollEl: statementScrollHost.value,
   });
 }
 
@@ -369,40 +377,45 @@ watch(
         </div>
       </div>
 
-      <div class="problem-scroll">
-        <div class="mb-6">
-          <p class="text-xs font-black tracking-[0.32em] uppercase text-cyan-600 mb-2">Problem {{ workspace.problem.code }} · UID {{ workspace.problem.uid }}</p>
-          <h1 class="text-3xl md:text-4xl font-black text-stone-900 dark:text-stone-100">{{ workspace.problem.title }}</h1>
-          <div class="flex gap-2 flex-wrap mt-4">
-            <DifficultyBadge :difficulty="workspace.problem.difficulty" />
-            <span class="badge badge-outline">{{ workspace.problem.timeLimitMs }}ms</span>
-            <span class="badge badge-outline">{{ workspace.problem.memoryLimitMb }}MB</span>
-            <span v-if="workspace.problem.source" class="badge badge-outline">{{ workspace.problem.source }}</span>
-            <span v-if="assignmentId" class="badge badge-outline">作业模式</span>
+      <div ref="statementScrollHost" class="problem-scroll statement-sync-surface">
+        <div ref="statementViewport" class="statement-sync-viewport">
+          <div ref="statementOverlay" class="statement-sync-overlay" aria-hidden="true"></div>
+          <div ref="statementContent" class="statement-sync-content">
+            <div class="mb-6">
+              <p class="text-xs font-black tracking-[0.32em] uppercase text-cyan-600 mb-2">Problem {{ workspace.problem.code }} · UID {{ workspace.problem.uid }}</p>
+              <h1 class="text-3xl md:text-4xl font-black text-stone-900 dark:text-stone-100">{{ workspace.problem.title }}</h1>
+              <div class="flex gap-2 flex-wrap mt-4">
+                <DifficultyBadge :difficulty="workspace.problem.difficulty" />
+                <span class="badge badge-outline">{{ workspace.problem.timeLimitMs }}ms</span>
+                <span class="badge badge-outline">{{ workspace.problem.memoryLimitMb }}MB</span>
+                <span v-if="workspace.problem.source" class="badge badge-outline">{{ workspace.problem.source }}</span>
+                <span v-if="assignmentId" class="badge badge-outline">作业模式</span>
+              </div>
+            </div>
+
+            <section class="workspace-prose" v-html="workspace.problem.statementHtml"></section>
+
+            <section v-if="!workspace.problem.statementHasSamplePairs" class="mt-8">
+              <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>
+              <div class="sample-grid">
+                <template v-for="(sample, index) in workspace.problem.sampleCases" :key="index">
+                  <div class="sample-card">
+                    <div class="flex items-center justify-between mb-2">
+                      <h3 class="font-black text-stone-900 dark:text-stone-100">输入 {{ index + 1 }}</h3>
+                      <span class="text-xs text-stone-400">score {{ sample.score }}</span>
+                    </div>
+                    <pre class="sample-code">{{ sample.input }}</pre>
+                  </div>
+                  <div class="sample-card">
+                    <h3 class="font-black text-stone-900 dark:text-stone-100 mb-2">输出 {{ index + 1 }}</h3>
+                    <pre class="sample-code">{{ sample.expectedOutput }}</pre>
+                  </div>
+                </template>
+                <div v-if="!workspace.problem.sampleCases.length" class="sample-card text-stone-400 md:col-span-2">这道题暂时没有公开样例。</div>
+              </div>
+            </section>
           </div>
         </div>
-
-        <section class="workspace-prose" v-html="workspace.problem.statementHtml"></section>
-
-        <section v-if="!workspace.problem.statementHasSamplePairs" class="mt-8">
-          <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>
-          <div class="sample-grid">
-            <template v-for="(sample, index) in workspace.problem.sampleCases" :key="index">
-              <div class="sample-card">
-                <div class="flex items-center justify-between mb-2">
-                  <h3 class="font-black text-stone-900 dark:text-stone-100">输入 {{ index + 1 }}</h3>
-                  <span class="text-xs text-stone-400">score {{ sample.score }}</span>
-                </div>
-                <pre class="sample-code">{{ sample.input }}</pre>
-              </div>
-              <div class="sample-card">
-                <h3 class="font-black text-stone-900 dark:text-stone-100 mb-2">输出 {{ index + 1 }}</h3>
-                <pre class="sample-code">{{ sample.expectedOutput }}</pre>
-              </div>
-            </template>
-            <div v-if="!workspace.problem.sampleCases.length" class="sample-card text-stone-400 md:col-span-2">这道题暂时没有公开样例。</div>
-          </div>
-        </section>
       </div>
     </section>
 
@@ -511,6 +524,34 @@ watch(
           </div>
         </section>
       </div>
+    </section>
+
+    <section v-if="collaboration.enabled.value || collaboration.drawCount.value" class="oj-sync-toolbox" aria-label="同步工具">
+      <div class="oj-sync-toolbox__status">
+        <i class="fas fa-link" aria-hidden="true"></i>
+        {{ collaboration.enabled.value ? (collaboration.active.value ? '同步感知已开启' : '同步工具待命') : '画笔保留中' }}
+      </div>
+      <button
+        v-if="collaboration.enabled.value"
+        type="button"
+        class="oj-sync-toolbox__button"
+        :class="{ 'oj-sync-toolbox__button--active': collaboration.drawingMode.value }"
+        :title="collaboration.drawingMode.value ? '关闭画笔' : '开启画笔'"
+        @click="collaboration.toggleDrawingMode"
+      >
+        <i class="fas fa-pen-nib" aria-hidden="true"></i>
+        {{ collaboration.drawingMode.value ? '退出画笔' : '画笔' }}
+      </button>
+      <button
+        type="button"
+        class="oj-sync-toolbox__button"
+        :disabled="!collaboration.drawCount.value"
+        title="清空屏幕画笔"
+        @click="collaboration.clearDrawings"
+      >
+        <i class="fas fa-eraser" aria-hidden="true"></i>
+        清空
+      </button>
     </section>
   </div>
 </template>

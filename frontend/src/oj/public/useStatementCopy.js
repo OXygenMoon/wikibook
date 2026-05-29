@@ -51,7 +51,19 @@ export function useStatementCopy(rootRef, contentRef, { onCopied = () => {}, onC
       const code = pre.querySelector('code');
       if (!code) return;
 
-      pre.classList.add('statement-code-block');
+      const wrapper = document.createElement('div');
+      wrapper.className = 'statement-code-frame';
+
+      const toolbar = document.createElement('div');
+      toolbar.className = 'statement-code-toolbar';
+
+      const meta = document.createElement('div');
+      meta.className = 'statement-code-meta';
+      meta.textContent = code.className
+        .split(/\s+/)
+        .find((name) => name.startsWith('language-'))
+        ?.replace('language-', '')
+        .toUpperCase() || 'CODE';
 
       const button = document.createElement('button');
       button.type = 'button';
@@ -70,12 +82,24 @@ export function useStatementCopy(rootRef, contentRef, { onCopied = () => {}, onC
       };
 
       button.addEventListener('click', handleClick);
-      pre.appendChild(button);
+
+      const parent = pre.parentNode;
+      if (!parent) return;
+
+      parent.insertBefore(wrapper, pre);
+      wrapper.appendChild(toolbar);
+      toolbar.appendChild(meta);
+      toolbar.appendChild(button);
+      wrapper.appendChild(pre);
 
       cleanups.push(() => {
         button.removeEventListener('click', handleClick);
-        button.remove();
-        pre.classList.remove('statement-code-block');
+        if (wrapper.parentNode) {
+          wrapper.parentNode.insertBefore(pre, wrapper);
+          wrapper.remove();
+        } else {
+          button.remove();
+        }
       });
     });
   }

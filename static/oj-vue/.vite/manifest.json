@@ -28,7 +28,7 @@
     ]
   },
   "frontend/src/oj-public.js": {
-    "file": "assets/src/oj-public.js-DolCcq4J.js",
+    "file": "assets/src/oj-public.js-C7QO3QUv.js",
     "name": "src/oj-public.js",
     "src": "frontend/src/oj-public.js",
     "isEntry": true,
@@ -40,7 +40,7 @@
       "node_modules/y-websocket/src/y-websocket.js"
     ],
     "css": [
-      "assets/oj-public-B3DoNMY0.css"
+      "assets/oj-public-DSVWw3SI.css"
     ]
   },
   "node_modules/y-websocket/src/y-websocket.js": {

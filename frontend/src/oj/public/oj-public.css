@@ -540,7 +540,6 @@ html.dark .workspace-prose :not(pre) > code {
 .problem-prose pre,
 .workspace-prose pre,
 .sample-box pre {
-  position: relative;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 14px;
   background: #0f172a;
@@ -550,34 +549,68 @@ html.dark .workspace-prose :not(pre) > code {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.statement-code-block {
-  position: relative;
-  padding-top: 3.3rem !important;
+.statement-code-frame {
+  margin: 1.15rem 0;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.98));
+  box-shadow:
+    0 14px 36px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.statement-code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(51, 65, 85, 0.86), rgba(30, 41, 59, 0.9));
+  padding: 0.7rem 0.85rem;
+}
+
+.statement-code-meta {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.statement-code-frame pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .statement-copy-button {
-  position: absolute;
-  top: 0.8rem;
-  right: 0.8rem;
-  z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  gap: 0.42rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.88);
+  background: rgba(15, 23, 42, 0.4);
   color: #e2e8f0;
-  padding: 0.38rem 0.72rem;
-  font-size: 0.76rem;
+  padding: 0.42rem 0.78rem;
+  font-size: 0.75rem;
   font-weight: 900;
   line-height: 1;
+  backdrop-filter: blur(8px);
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease, color 160ms ease;
 }
 
 .statement-copy-button:hover {
   border-color: rgba(103, 232, 249, 0.45);
-  background: rgba(8, 47, 73, 0.96);
+  background: rgba(8, 47, 73, 0.76);
+  color: #ecfeff;
   transform: translateY(-1px);
 }
 
@@ -588,6 +621,21 @@ html.dark .workspace-prose :not(pre) > code {
 
 .statement-copy-button i {
   font-size: 0.78rem;
+}
+
+html.dark .statement-code-frame {
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow:
+    0 16px 42px rgba(2, 6, 23, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html.dark .statement-code-toolbar {
+  border-bottom-color: rgba(148, 163, 184, 0.14);
+}
+
+html.dark .statement-copy-button {
+  background: rgba(15, 23, 42, 0.52);
 }
 
 .statement-sample-pair {

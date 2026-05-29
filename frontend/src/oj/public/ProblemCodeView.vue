@@ -1,8 +1,9 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, toRef, watch } from 'vue';
 import { requestJson } from './api.js';
 import DifficultyBadge from '../DifficultyBadge.vue';
 import { useCodeCollaboration } from './useCodeCollaboration.js';
+import { useStatementCopy } from './useStatementCopy.js';
 
 const props = defineProps({
   workspace: { type: Object, required: true },
@@ -11,13 +12,14 @@ const props = defineProps({
   syncRequest: { type: Object, default: null },
 });
 
-const emit = defineEmits(['back', 'openProblem', 'openSubmissions', 'openSubmission', 'submitted', 'requestSync', 'syncEnded']);
+const emit = defineEmits(['back', 'openProblem', 'openSubmissions', 'openSubmission', 'submitted', 'requestSync', 'syncEnded', 'statementCopied']);
 
 const editorHost = ref(null);
 const statementScrollHost = ref(null);
 const statementViewport = ref(null);
 const statementOverlay = ref(null);
 const statementContent = ref(null);
+const statementBody = ref(null);
 const notice = ref('');
 const draftStatus = ref('准备中...');
 const syntaxStatus = ref({ text: '正在初始化编辑器...', isError: false });
@@ -64,6 +66,11 @@ const syncStatusTone = computed(() => {
   if (collaboration.status.value === 'waiting' || collaboration.status.value === 'connecting') return 'warning';
   if (collaboration.status.value === 'left') return 'neutral';
   return 'danger';
+});
+
+useStatementCopy(statementBody, toRef(() => props.workspace.problem.statementHtml), {
+  onCopied: () => emit('statementCopied'),
+  onCopyError: (error) => setNotice(error.message || '复制失败，请稍后重试。'),
 });
 
 function storageKey(language) {
@@ -393,7 +400,7 @@ watch(
               </div>
             </div>
 
-            <section class="workspace-prose" v-html="workspace.problem.statementHtml"></section>
+            <section ref="statementBody" class="workspace-prose" v-html="workspace.problem.statementHtml"></section>
 
             <section v-if="!workspace.problem.statementHasSamplePairs" class="mt-8">
               <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>

@@ -3,8 +3,8 @@
     "file": "assets/DifficultyBadge-BTtXDHLw.css",
     "src": "_DifficultyBadge-!~{003}~.js"
   },
-  "_DifficultyBadge-BmnU10WC.js": {
-    "file": "assets/DifficultyBadge-BmnU10WC.js",
+  "_DifficultyBadge-N9ytuqk0.js": {
+    "file": "assets/DifficultyBadge-N9ytuqk0.js",
     "name": "DifficultyBadge",
     "css": [
       "assets/DifficultyBadge-BTtXDHLw.css"
@@ -16,31 +16,31 @@
     "isDynamicEntry": true
   },
   "frontend/src/oj-admin.js": {
-    "file": "assets/src/oj-admin.js-Dww_cr9X.js",
+    "file": "assets/src/oj-admin.js-B8ZaxeeZ.js",
     "name": "src/oj-admin.js",
     "src": "frontend/src/oj-admin.js",
     "isEntry": true,
     "imports": [
-      "_DifficultyBadge-BmnU10WC.js"
+      "_DifficultyBadge-N9ytuqk0.js"
     ],
     "css": [
       "assets/oj-admin-BcM-gHSs.css"
     ]
   },
   "frontend/src/oj-public.js": {
-    "file": "assets/src/oj-public.js-q9SCk-TK.js",
+    "file": "assets/src/oj-public.js-DolCcq4J.js",
     "name": "src/oj-public.js",
     "src": "frontend/src/oj-public.js",
     "isEntry": true,
     "imports": [
-      "_DifficultyBadge-BmnU10WC.js"
+      "_DifficultyBadge-N9ytuqk0.js"
     ],
     "dynamicImports": [
       "_yjs-BrNHHss_.js",
       "node_modules/y-websocket/src/y-websocket.js"
     ],
     "css": [
-      "assets/oj-public-CMrnUXZA.css"
+      "assets/oj-public-B3DoNMY0.css"
     ]
   },
   "node_modules/y-websocket/src/y-websocket.js": {

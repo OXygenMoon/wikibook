@@ -1,15 +1,21 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, toRef } from 'vue';
 import DifficultyBadge from '../DifficultyBadge.vue';
 import ProblemAnalysisPanel from './ProblemAnalysisPanel.vue';
 import ProblemTrajectoryPanel from './ProblemTrajectoryPanel.vue';
+import { useStatementCopy } from './useStatementCopy.js';
 
 const props = defineProps({
   problem: { type: Object, required: true },
 });
-const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', 'openSubmission']);
+const emit = defineEmits(['back', 'openCode', 'openSubmit', 'openSubmissions', 'openSubmission', 'statementCopied']);
 const astGoalsExpanded = ref(true);
 const activeTab = ref('statement');
+const statementRoot = ref(null);
+
+useStatementCopy(statementRoot, toRef(() => props.problem.statementHtml), {
+  onCopied: () => emit('statementCopied'),
+});
 </script>
 
 <template>
@@ -104,7 +110,7 @@ const activeTab = ref('statement');
               </div>
             </section>
 
-            <section class="problem-prose" v-html="problem.statementHtml"></section>
+            <section ref="statementRoot" class="problem-prose" v-html="problem.statementHtml"></section>
 
             <section v-if="!problem.statementHasSamplePairs" class="mt-8">
               <h2 class="text-2xl font-black text-stone-900 dark:text-stone-100 mb-4">样例</h2>

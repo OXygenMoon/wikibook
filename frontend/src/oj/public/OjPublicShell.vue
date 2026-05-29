@@ -43,6 +43,7 @@ const assignmentScoreboard = ref(props.assignmentScoreboard);
 const leaderboard = ref(props.leaderboard);
 const loading = ref(false);
 const notice = ref(null);
+const statementCopyToast = ref('');
 const initialSubmissionListUrl = (() => {
   if (props.initialView === 'submissions' && typeof window !== 'undefined') {
     return `/oj/submissions.json${window.location.search}`;
@@ -86,6 +87,13 @@ function showNotice(message, category = 'error') {
   window.setTimeout(() => {
     if (notice.value?.message === message) notice.value = null;
   }, 3200);
+}
+
+function showStatementCopyToast(message = '已复制到剪贴板') {
+  statementCopyToast.value = message;
+  window.setTimeout(() => {
+    if (statementCopyToast.value === message) statementCopyToast.value = '';
+  }, 2200);
 }
 
 function push(url, viewName) {
@@ -385,6 +393,7 @@ watch(
         @open-submit="goProblemSubmit"
         @open-submissions="loadSubmissions"
         @open-submission="goSubmission"
+        @statement-copied="showStatementCopyToast"
       />
       <ProblemCodeView
         v-else-if="view === 'problemCode' && problemCode"
@@ -400,6 +409,7 @@ watch(
         @submitted="showSubmissionDetail"
         @request-sync="handleCodeSyncRequest"
         @sync-ended="syncInvites.clearActiveSession"
+        @statement-copied="showStatementCopyToast"
       />
       <ProblemSubmitView
         v-else-if="view === 'problemSubmit' && problemSubmit"
@@ -455,6 +465,11 @@ watch(
     </div>
 
     <div class="oj-sync-toast-stack" aria-live="polite">
+      <section v-if="statementCopyToast" class="oj-sync-toast oj-sync-toast--notice">
+        <i class="fas fa-check" aria-hidden="true"></i>
+        <span>{{ statementCopyToast }}</span>
+      </section>
+
       <section v-if="syncInviteState.notice" class="oj-sync-toast oj-sync-toast--notice">
         <i class="fas fa-circle-info" aria-hidden="true"></i>
         <span>{{ syncInviteState.notice }}</span>

@@ -14,6 +14,14 @@ const emit = defineEmits(['filter', 'openProblem', 'openSubmissions', 'inviteSyn
 const filters = reactive({ q: '', difficulty: '', visibility: 'visible' });
 const quickSearches = ['P', 'PF', 'Q'];
 const syncPanelOpen = ref(false);
+const statCards = [
+  { key: 'total', label: '全部', valueClass: 'text-stone-900 dark:text-stone-100' },
+  { key: 'easy', label: '简单', valueClass: 'text-emerald-600' },
+  { key: 'medium', label: '中等', valueClass: 'text-amber-600' },
+  { key: 'hard', label: '困难', valueClass: 'text-rose-600' },
+  { key: 'extreme', label: '特难', valueClass: 'text-red-800 dark:text-red-300' },
+  { key: 'glitch', label: '???', valueClass: 'text-cyan-600' },
+];
 
 function syncFilters() {
   Object.assign(filters, props.payload.filters || {});
@@ -91,29 +99,11 @@ watch(() => props.payload, syncFilters, { immediate: true });
 <template>
   <div class="flex flex-col gap-6">
     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-      <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">全部</div>
-        <div class="text-2xl font-black text-stone-900 dark:text-stone-100">{{ payload.stats.total }}</div>
-      </div>
-      <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">简单</div>
-        <div class="text-2xl font-black text-emerald-600">{{ payload.stats.easy }}</div>
-      </div>
-      <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">中等</div>
-        <div class="text-2xl font-black text-amber-600">{{ payload.stats.medium }}</div>
-      </div>
-      <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">困难</div>
-        <div class="text-2xl font-black text-rose-600">{{ payload.stats.hard }}</div>
-      </div>
-      <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">特难</div>
-        <div class="text-2xl font-black text-red-800 dark:text-red-300">{{ payload.stats.extreme }}</div>
-      </div>
-      <div class="oj-panel p-4">
-        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">???</div>
-        <div class="text-2xl font-black text-cyan-600">{{ payload.stats.glitch }}</div>
+      <div v-for="card in statCards" :key="card.key" class="oj-panel p-4">
+        <div class="text-xs text-stone-400 uppercase tracking-widest mb-1">{{ card.label }}</div>
+        <div class="text-2xl font-black" :class="card.valueClass">
+          {{ payload.stats?.[card.key]?.completed ?? 0 }}/{{ payload.stats?.[card.key]?.total ?? 0 }}
+        </div>
       </div>
     </div>
 

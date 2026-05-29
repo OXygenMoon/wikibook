@@ -1432,6 +1432,28 @@ def _build_problem_stats(stats_query):
     }
 
 
+def _build_problem_completion_stats(stats_query, user_id):
+    totals = _build_problem_stats(stats_query)
+    stats = {
+        key: {"completed": 0, "total": totals.get(key, 0)}
+        for key in ("total", "easy", "medium", "hard", "extreme", "glitch")
+    }
+
+    accepted_rows = (
+        stats_query.join(JudgeTask, JudgeTask.problem_id == Problem.id)
+        .filter(JudgeTask.user_id == user_id, JudgeTask.status.in_(OJ_PASSING_STATUSES))
+        .with_entities(Problem.id, Problem.difficulty)
+        .distinct()
+        .all()
+    )
+    stats["total"]["completed"] = len(accepted_rows)
+    for _, difficulty in accepted_rows:
+        if difficulty in stats:
+            stats[difficulty]["completed"] += 1
+
+    return stats
+
+
 def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
     query = Problem.query.options(
         load_only(
@@ -1503,10 +1525,16 @@ def build_oj_problem_list_payload(q="", difficulty="", visibility="visible"):
             }
 
     stats_query = Problem.query if current_user.is_admin else Problem.query.filter_by(is_visible=True)
-    problem_stats = _build_problem_stats(stats_query)
+    if current_user.is_admin and visibility == "hidden":
+        stats_query = stats_query.filter_by(is_visible=False)
+    elif current_user.is_admin and visibility == "all":
+        pass
+    elif current_user.is_admin:
+        stats_query = stats_query.filter_by(is_visible=True)
+
     return {
         "filters": {"q": q, "difficulty": difficulty, "visibility": visibility},
-        "stats": problem_stats,
+        "stats": _build_problem_completion_stats(stats_query, current_user.id),
         "problems": [
             serialize_oj_problem_row(problem, problem_submission_stats.get(problem.id), my_problem_status.get(problem.id))
             for problem in problems

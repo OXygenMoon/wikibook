@@ -293,13 +293,23 @@
 	                            <option value="assignment_stars">⭐ 任务实得星星数达标</option>
 	                            <option value="assignment_grade">🏆 任务获得等第达标 (A/S/S+ 等)</option>
                                 <option value="oj_ac_count">🧩 OJ AC题目数量</option>
+                                <option value="oj_perfect_ac_count">💎 OJ PAC数量</option>
                                 <option value="oj_submission_count">🚀 OJ 提交数量</option>
                                 <option value="oj_error_count">🧪 OJ 错误次数</option>
                                 <option value="oj_assignment_complete_count">📦 OJ 作业全部完成次数</option>
                                 <option value="oj_consecutive_ac_count">⚡ OJ 连续 AC 次数</option>
+                                <option value="oj_consecutive_perfect_count">👑 OJ 连续 PAC 次数</option>
                                 <option value="oj_consecutive_error_count">🛠️ OJ 连续错误次数</option>
                                 <option value="oj_first_try_ac_count">🎯 OJ 一发 AC 题目数</option>
+                                <option value="oj_fast_solve_count">⚔️ OJ 两次内解决题目数</option>
                                 <option value="oj_daily_ac_peak">🌞 OJ 单日 AC 峰值</option>
+                                <option value="oj_ac_to_pac_ratio_below">📉 OJ AC/PAC 比例低于阈值</option>
+                                <option value="oj_glitch_ac_count">🌀 完成多少个 ??? 题目</option>
+                                <option value="oj_extreme_ac_count">🔥 完成多少个特难题</option>
+                                <option value="oj_hard_ac_count">🪨 完成多少个困难题</option>
+                                <option value="oj_medium_ac_count">🌤️ 完成多少个中等题</option>
+                                <option value="oj_easy_ac_count">🍀 完成多少个简单题</option>
+                                <option value="oj_difficulty_variety_count">🗺️ 点亮多少种题目难度</option>
                                 <option value="oj_specific_assignment_complete">🏁 完成指定 OJ 作业</option>
 	                        </select>
 	                    </div>
@@ -340,7 +350,7 @@
                             <input type="number" name="condition_value" class="input input-bordered join-item w-full" placeholder="例如：10" />
 	                            <span class="btn btn-disabled join-item border-base-300">题/次/天/级</span>
 	                        </div>
-	                        <label class="label pt-1 pb-0"><span class="label-text-alt opacity-60">注：等第权重 S+=6, S=5, A=4, B=3, C=2, D=1；OJ 连续错误可用于鼓励“持续调试”。</span></label>
+	                        <label class="label pt-1 pb-0"><span class="label-text-alt opacity-60">注：等第权重 S+=6, S=5, A=4, B=3, C=2, D=1；比例类条件使用百分比，例如填 50 代表 AC/PAC 不高于 50%。</span></label>
                     </div>
 
                     <div class="form-control hidden" id="time_range_group">

@@ -3267,13 +3267,23 @@ class UserBadge(db.Model):
 
 OJ_BADGE_CONDITION_LABELS = {
     'oj_ac_count': 'OJ AC题目数',
+    'oj_perfect_ac_count': 'OJ PAC题目数',
     'oj_submission_count': 'OJ提交次数',
     'oj_error_count': 'OJ错误次数',
     'oj_assignment_complete_count': 'OJ作业全完成次数',
     'oj_consecutive_ac_count': 'OJ连续AC次数',
+    'oj_consecutive_perfect_count': 'OJ连续PAC次数',
     'oj_consecutive_error_count': 'OJ连续错误次数',
     'oj_first_try_ac_count': 'OJ一发AC题目数',
+    'oj_fast_solve_count': 'OJ两次内解决题目数',
     'oj_daily_ac_peak': 'OJ单日AC峰值',
+    'oj_ac_to_pac_ratio_below': 'OJ AC/PAC比例上限',
+    'oj_glitch_ac_count': 'OJ ???题通过数',
+    'oj_extreme_ac_count': 'OJ特难题通过数',
+    'oj_hard_ac_count': 'OJ困难题通过数',
+    'oj_medium_ac_count': 'OJ中等题通过数',
+    'oj_easy_ac_count': 'OJ简单题通过数',
+    'oj_difficulty_variety_count': 'OJ难度图鉴点亮数',
     'oj_specific_assignment_complete': '完成指定OJ作业',
 }
 
@@ -3282,6 +3292,15 @@ OJ_PERFECT_STATUSES = {'accepted', 'PAC'}
 OJ_FINAL_STATUSES = OJ_PASSING_STATUSES | {'failed', 'system_error'}
 OJ_ERROR_STATUSES = {'failed', 'system_error'}
 OJ_SPECIFIC_ASSIGNMENT_CONDITIONS = {'oj_specific_assignment_complete'}
+OJ_MAX_THRESHOLD_CONDITIONS = {'oj_ac_to_pac_ratio_below'}
+OJ_BADGE_DIFFICULTIES = ('easy', 'medium', 'hard', 'extreme', 'glitch')
+OJ_BADGE_DIFFICULTY_LABELS = {
+    'easy': '简单',
+    'medium': '中等',
+    'hard': '困难',
+    'extreme': '特难',
+    'glitch': '???',
+}
 
 
 def _base_oj_task_query(user_id, final_only=False):
@@ -3292,6 +3311,19 @@ def _base_oj_task_query(user_id, final_only=False):
     if final_only:
         query = query.filter(JudgeTask.status.in_(OJ_FINAL_STATUSES))
     return query
+
+
+def _distinct_oj_problem_ids(user_id, statuses=None, difficulty=None):
+    query = _base_oj_task_query(user_id)
+    if statuses:
+        query = query.filter(JudgeTask.status.in_(statuses))
+    if difficulty:
+        query = query.join(Problem, Problem.id == JudgeTask.problem_id).filter(Problem.difficulty == difficulty)
+    return {
+        row[0] for row in (
+            query.with_entities(JudgeTask.problem_id).distinct().all()
+        ) if row[0] is not None
+    }
 
 
 def _count_current_oj_streak(user_id, accepted=True):
@@ -3306,6 +3338,21 @@ def _count_current_oj_streak(user_id, accepted=True):
             streak += 1
             continue
         if not accepted and task.status in OJ_ERROR_STATUSES:
+            streak += 1
+            continue
+        break
+    return streak
+
+
+def _count_current_oj_perfect_streak(user_id):
+    streak = 0
+    tasks = (
+        _base_oj_task_query(user_id, final_only=True)
+        .order_by(JudgeTask.created_at.desc(), JudgeTask.id.desc())
+        .all()
+    )
+    for task in tasks:
+        if task.status in OJ_PERFECT_STATUSES:
             streak += 1
             continue
         break
@@ -3361,16 +3408,38 @@ def _is_oj_assignment_completed(user_id, assignment_id):
     return set(problem_ids).issubset(accepted_problem_ids)
 
 
-def _count_first_try_oj_accepts(user_id):
-    first_tasks_by_problem = {}
+def _accepted_attempt_index_by_problem(user_id):
+    attempt_info_by_problem = {}
     tasks = (
         _base_oj_task_query(user_id, final_only=True)
         .order_by(JudgeTask.problem_id.asc(), JudgeTask.created_at.asc(), JudgeTask.id.asc())
         .all()
     )
     for task in tasks:
-        first_tasks_by_problem.setdefault(task.problem_id, task)
-    return sum(1 for task in first_tasks_by_problem.values() if task.status in OJ_PASSING_STATUSES)
+        if task.problem_id is None:
+            continue
+        bucket = attempt_info_by_problem.setdefault(task.problem_id, {"attempts": 0, "accepted_attempt": None})
+        bucket["attempts"] += 1
+        if bucket["accepted_attempt"] is None and task.status in OJ_PASSING_STATUSES:
+            bucket["accepted_attempt"] = bucket["attempts"]
+    return attempt_info_by_problem
+
+
+def _count_oj_accepts_within_attempts(user_id, max_attempts):
+    attempt_info_by_problem = _accepted_attempt_index_by_problem(user_id)
+    return sum(
+        1
+        for info in attempt_info_by_problem.values()
+        if info["accepted_attempt"] is not None and info["accepted_attempt"] <= max_attempts
+    )
+
+
+def _count_first_try_oj_accepts(user_id):
+    return _count_oj_accepts_within_attempts(user_id, 1)
+
+
+def _count_fast_solve_oj_accepts(user_id):
+    return _count_oj_accepts_within_attempts(user_id, 2)
 
 
 def _count_daily_oj_ac_peak(user_id):
@@ -3391,15 +3460,37 @@ def _count_daily_oj_ac_peak(user_id):
     return max(len(problem_ids) for problem_ids in ac_by_day.values())
 
 
+def _count_oj_passed_problems_by_difficulty(user_id, difficulty):
+    return len(_distinct_oj_problem_ids(user_id, statuses=OJ_PASSING_STATUSES, difficulty=difficulty))
+
+
+def _count_oj_passed_difficulty_variety(user_id):
+    return sum(1 for difficulty in OJ_BADGE_DIFFICULTIES if _count_oj_passed_problems_by_difficulty(user_id, difficulty) > 0)
+
+
+def _count_oj_perfect_problems(user_id):
+    return len(_distinct_oj_problem_ids(user_id, statuses=OJ_PERFECT_STATUSES))
+
+
+def _count_oj_ac_only_and_perfect_problems(user_id):
+    passing_problem_ids = _distinct_oj_problem_ids(user_id, statuses=OJ_PASSING_STATUSES)
+    perfect_problem_ids = _distinct_oj_problem_ids(user_id, statuses=OJ_PERFECT_STATUSES)
+    ac_only_problem_ids = passing_problem_ids - perfect_problem_ids
+    return len(ac_only_problem_ids), len(perfect_problem_ids)
+
+
+def _get_oj_ac_to_pac_ratio_percent(user_id):
+    ac_only_count, perfect_count = _count_oj_ac_only_and_perfect_problems(user_id)
+    if perfect_count <= 0:
+        return None
+    return round((ac_only_count * 100) / perfect_count, 2)
+
+
 def get_oj_badge_progress(user, badge):
     if badge.condition_type == 'oj_ac_count':
-        return (
-            _base_oj_task_query(user.id)
-            .filter(JudgeTask.status.in_(OJ_PASSING_STATUSES))
-            .with_entities(JudgeTask.problem_id)
-            .distinct()
-            .count()
-        )
+        return len(_distinct_oj_problem_ids(user.id, statuses=OJ_PASSING_STATUSES))
+    if badge.condition_type == 'oj_perfect_ac_count':
+        return _count_oj_perfect_problems(user.id)
     if badge.condition_type == 'oj_submission_count':
         return _base_oj_task_query(user.id).count()
     if badge.condition_type == 'oj_error_count':
@@ -3408,12 +3499,30 @@ def get_oj_badge_progress(user, badge):
         return _count_oj_completed_assignments(user.id)
     if badge.condition_type == 'oj_consecutive_ac_count':
         return _count_current_oj_streak(user.id, accepted=True)
+    if badge.condition_type == 'oj_consecutive_perfect_count':
+        return _count_current_oj_perfect_streak(user.id)
     if badge.condition_type == 'oj_consecutive_error_count':
         return _count_current_oj_streak(user.id, accepted=False)
     if badge.condition_type == 'oj_first_try_ac_count':
         return _count_first_try_oj_accepts(user.id)
+    if badge.condition_type == 'oj_fast_solve_count':
+        return _count_fast_solve_oj_accepts(user.id)
     if badge.condition_type == 'oj_daily_ac_peak':
         return _count_daily_oj_ac_peak(user.id)
+    if badge.condition_type == 'oj_ac_to_pac_ratio_below':
+        return _get_oj_ac_to_pac_ratio_percent(user.id)
+    if badge.condition_type == 'oj_glitch_ac_count':
+        return _count_oj_passed_problems_by_difficulty(user.id, 'glitch')
+    if badge.condition_type == 'oj_extreme_ac_count':
+        return _count_oj_passed_problems_by_difficulty(user.id, 'extreme')
+    if badge.condition_type == 'oj_hard_ac_count':
+        return _count_oj_passed_problems_by_difficulty(user.id, 'hard')
+    if badge.condition_type == 'oj_medium_ac_count':
+        return _count_oj_passed_problems_by_difficulty(user.id, 'medium')
+    if badge.condition_type == 'oj_easy_ac_count':
+        return _count_oj_passed_problems_by_difficulty(user.id, 'easy')
+    if badge.condition_type == 'oj_difficulty_variety_count':
+        return _count_oj_passed_difficulty_variety(user.id)
     if badge.condition_type == 'oj_specific_assignment_complete':
         return 1 if badge.target_id and _is_oj_assignment_completed(user.id, badge.target_id) else 0
     return None
@@ -3423,6 +3532,8 @@ def meets_oj_badge_condition(user, badge):
     progress = get_oj_badge_progress(user, badge)
     if progress is None:
         return False
+    if badge.condition_type == 'oj_ac_to_pac_ratio_below':
+        return progress <= badge.condition_value
     target = 1 if badge.condition_type in OJ_SPECIFIC_ASSIGNMENT_CONDITIONS else badge.condition_value
     return progress >= target
 
@@ -3995,6 +4106,8 @@ def format_badge_condition(badge):
         return f'在指定任务中达到 {grade_text} 及以上'
     elif ctype == 'oj_ac_count':
         return f'OJ 累计 AC {val} 道题'
+    elif ctype == 'oj_perfect_ac_count':
+        return f'OJ 累计 PAC {val} 道题'
     elif ctype == 'oj_submission_count':
         return f'OJ 累计提交 {val} 次'
     elif ctype == 'oj_error_count':
@@ -4003,12 +4116,30 @@ def format_badge_condition(badge):
         return f'完整完成 {val} 次 OJ 作业'
     elif ctype == 'oj_consecutive_ac_count':
         return f'OJ 当前连续 AC {val} 次'
+    elif ctype == 'oj_consecutive_perfect_count':
+        return f'OJ 当前连续 PAC {val} 次'
     elif ctype == 'oj_consecutive_error_count':
         return f'OJ 当前连续调试未通过 {val} 次'
     elif ctype == 'oj_first_try_ac_count':
         return f'OJ 一发 AC {val} 道题'
+    elif ctype == 'oj_fast_solve_count':
+        return f'OJ 在前两次提交内解决 {val} 道题'
     elif ctype == 'oj_daily_ac_peak':
         return f'OJ 单日 AC 达到 {val} 道题'
+    elif ctype == 'oj_ac_to_pac_ratio_below':
+        return f'OJ AC/PAC 比例不高于 {val}%'
+    elif ctype == 'oj_glitch_ac_count':
+        return f'OJ 累计完成 {val} 道 ??? 题'
+    elif ctype == 'oj_extreme_ac_count':
+        return f'OJ 累计完成 {val} 道特难题'
+    elif ctype == 'oj_hard_ac_count':
+        return f'OJ 累计完成 {val} 道困难题'
+    elif ctype == 'oj_medium_ac_count':
+        return f'OJ 累计完成 {val} 道中等题'
+    elif ctype == 'oj_easy_ac_count':
+        return f'OJ 累计完成 {val} 道简单题'
+    elif ctype == 'oj_difficulty_variety_count':
+        return f'OJ 点亮 {val} 种不同难度的题目'
     elif ctype == 'oj_specific_assignment_complete':
         assignment_title = None
         if target_id:

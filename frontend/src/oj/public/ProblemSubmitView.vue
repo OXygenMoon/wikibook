@@ -16,12 +16,14 @@ const syntaxStatus = ref({ text: '正在初始化编辑器...', isError: false }
 const draftStatus = ref('准备中...');
 const submitting = ref(false);
 const editorReady = ref(false);
+const clearConfirming = ref(false);
 const editorFontSize = ref(Number(localStorage.getItem('oj-code-editor-font-size')) || 14);
 const editorFontFamily = ref(localStorage.getItem('oj-code-editor-font-family') || '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace');
 
 let monacoEditor = null;
 let autosaveTimer = 0;
 let syntaxTimer = 0;
+let clearConfirmTimer = 0;
 
 const fontOptions = [
   { label: 'JetBrains Mono', value: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' },
@@ -44,6 +46,11 @@ function setNotice(text) {
   window.setTimeout(() => {
     if (notice.value === text) notice.value = '';
   }, 3200);
+}
+
+function resetClearConfirm() {
+  window.clearTimeout(clearConfirmTimer);
+  clearConfirming.value = false;
 }
 
 function setSyntaxStatus(text, isError = false) {
@@ -111,10 +118,38 @@ function changeFontSize(event) {
 
 function changeLanguage(event) {
   if (!monacoEditor) return;
+  resetClearConfirm();
   saveDraft(activeLanguage.value);
   activeLanguage.value = event.target.value;
   applyLanguage();
   loadDraft(activeLanguage.value);
+}
+
+function requestClearEditor() {
+  if (!monacoEditor || !editorReady.value) return;
+  if (!monacoEditor.getValue().length) {
+    setNotice('编辑器已经是空的。');
+    return;
+  }
+  clearConfirming.value = true;
+  window.clearTimeout(clearConfirmTimer);
+  clearConfirmTimer = window.setTimeout(() => {
+    clearConfirming.value = false;
+  }, 5000);
+}
+
+function confirmClearEditor() {
+  if (!monacoEditor || !editorReady.value) return;
+  window.clearTimeout(clearConfirmTimer);
+  clearConfirming.value = false;
+  monacoEditor.setValue('');
+  localStorage.setItem(storageKey(activeLanguage.value), '');
+  draftStatus.value = '已清空草稿';
+  setSyntaxStatus(activeLanguage.value === 'python' ? 'Python 语法检查已开启。' : '当前仅对 Python 代码提供语法检查。', false);
+  if (window.monaco) {
+    window.monaco.editor.setModelMarkers(monacoEditor.getModel(), 'oj-submit', []);
+  }
+  monacoEditor.focus();
 }
 
 async function checkSyntax() {
@@ -199,6 +234,7 @@ async function initializeEditor() {
   loadDraft(activeLanguage.value);
 
   monacoEditor.onDidChangeModelContent(() => {
+    resetClearConfirm();
     draftStatus.value = '编辑中...';
     queueAutosave();
     queueSyntaxCheck();
@@ -247,6 +283,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.clearTimeout(autosaveTimer);
   window.clearTimeout(syntaxTimer);
+  window.clearTimeout(clearConfirmTimer);
   if (monacoEditor) {
     monacoEditor.dispose();
     monacoEditor = null;
@@ -297,9 +334,29 @@ onUnmounted(() => {
               <select class="editor-select editor-select--compact" :value="editorFontSize" aria-label="选择编辑器字号" @change="changeFontSize">
                 <option v-for="size in fontSizeOptions" :key="size" :value="size">{{ size }}px</option>
               </select>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline rounded-lg submit-clear-button"
+                :disabled="!editorReady"
+                @click="requestClearEditor"
+              >
+                <i class="fas fa-eraser" aria-hidden="true"></i>
+                清空代码
+              </button>
             </div>
             <div class="editor-status-strip">
               <span class="text-xs text-stone-400">{{ draftStatus }}</span>
+            </div>
+          </div>
+
+          <div v-if="clearConfirming" class="submit-clear-confirm">
+            <span>
+              <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+              确认清空当前编辑器内容？
+            </span>
+            <div class="submit-clear-confirm__actions">
+              <button type="button" class="btn btn-xs rounded-lg submit-clear-confirm__confirm" @click="confirmClearEditor">确认清空</button>
+              <button type="button" class="btn btn-xs rounded-lg submit-clear-confirm__cancel" @click="resetClearConfirm">取消</button>
             </div>
           </div>
 

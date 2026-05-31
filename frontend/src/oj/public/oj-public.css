@@ -1580,6 +1580,105 @@ html.dark .submit-editor-shell__toolbar {
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
+.submit-clear-button {
+  border-color: rgba(239, 68, 68, 0.22);
+  color: #b91c1c;
+  font-weight: 900;
+}
+
+.submit-clear-button:hover {
+  border-color: rgba(239, 68, 68, 0.38);
+  background: rgba(254, 226, 226, 0.7);
+}
+
+html.dark .submit-clear-button {
+  border-color: rgba(248, 113, 113, 0.26);
+  color: #fca5a5;
+}
+
+html.dark .submit-clear-button:hover {
+  background: rgba(127, 29, 29, 0.24);
+}
+
+.submit-clear-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(255, 251, 235, 0.96);
+  color: #78350f;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.submit-clear-confirm > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.submit-clear-confirm__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.submit-clear-confirm__confirm {
+  border: 1px solid #b91c1c;
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.submit-clear-confirm__confirm:hover {
+  border-color: #991b1b;
+  background: #b91c1c;
+}
+
+.submit-clear-confirm__cancel {
+  border: 1px solid rgba(120, 113, 108, 0.34);
+  background: #ffffff;
+  color: #44403c;
+  font-weight: 900;
+}
+
+.submit-clear-confirm__cancel:hover {
+  border-color: rgba(68, 64, 60, 0.48);
+  background: #f5f5f4;
+  color: #1c1917;
+}
+
+html.dark .submit-clear-confirm {
+  border-bottom-color: rgba(251, 191, 36, 0.24);
+  background: rgba(69, 26, 3, 0.44);
+  color: #fde68a;
+}
+
+html.dark .submit-clear-confirm__confirm {
+  border-color: #fca5a5;
+  background: #ef4444;
+  color: #ffffff;
+}
+
+html.dark .submit-clear-confirm__confirm:hover {
+  border-color: #fecaca;
+  background: #dc2626;
+}
+
+html.dark .submit-clear-confirm__cancel {
+  border-color: rgba(214, 211, 209, 0.28);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f5f5f4;
+}
+
+html.dark .submit-clear-confirm__cancel:hover {
+  border-color: rgba(245, 245, 244, 0.42);
+  background: rgba(255, 255, 255, 0.16);
+}
+
 .submit-editor-shell__body {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
@@ -1674,6 +1773,11 @@ html.dark .diagnostic-line.error {
 
   .submit-editor-shell__frame {
     min-height: 25rem;
+  }
+
+  .submit-clear-confirm {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
